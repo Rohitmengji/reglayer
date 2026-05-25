@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["@sparticuz/chromium", "playwright", "puppeteer-core"],
+  serverExternalPackages: ["@sparticuz/chromium", "playwright", "puppeteer-core", "pg"],
   outputFileTracingIncludes: {
     "/api/scan": ["./node_modules/@sparticuz/chromium/bin/**"],
     "/api/scan/async": ["./node_modules/@sparticuz/chromium/bin/**"],

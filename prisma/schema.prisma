@@ -1,0 +1,250 @@
+// RegLayer — Database Schema
+// Multi-tenant accessibility compliance platform
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────────────────────
+// Identity & Multi-Tenancy
+// ─────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  image         String?
+  passwordHash  String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  memberships   WorkspaceMember[]
+  scans         Scan[]
+  apiKeys       ApiKey[]
+
+  @@map("users")
+}
+
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  plan      Plan     @default(FREE)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  members   WorkspaceMember[]
+  sites     Site[]
+  scans     Scan[]
+  schedules Schedule[]
+  webhooks  Webhook[]
+  apiKeys   ApiKey[]
+
+  @@map("workspaces")
+}
+
+model WorkspaceMember {
+  id          String   @id @default(cuid())
+  role        Role     @default(MEMBER)
+  joinedAt    DateTime @default(now())
+
+  userId      String
+  workspaceId String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, workspaceId])
+  @@map("workspace_members")
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+enum Plan {
+  FREE
+  PRO
+  ENTERPRISE
+}
+
+// ─────────────────────────────────────────────
+// Sites & Monitoring
+// ─────────────────────────────────────────────
+
+model Site {
+  id          String   @id @default(cuid())
+  url         String
+  name        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  // Relations
+  scans       Scan[]
+  schedules   Schedule[]
+
+  @@unique([workspaceId, url])
+  @@map("sites")
+}
+
+// ─────────────────────────────────────────────
+// Scans & Results
+// ─────────────────────────────────────────────
+
+model Scan {
+  id            String     @id @default(cuid())
+  url           String
+  status        ScanStatus @default(PENDING)
+  score         Float?
+  totalViolations Int      @default(0)
+  critical      Int        @default(0)
+  serious       Int        @default(0)
+  moderate      Int        @default(0)
+  minor         Int        @default(0)
+  compliance    Float?
+  pageTitle     String?
+  duration      Int?       // milliseconds
+  screenshot    String?    // base64 or URL
+  metadata      Json?      // additional scan metadata
+  errorMessage  String?
+
+  startedAt     DateTime?
+  completedAt   DateTime?
+  createdAt     DateTime   @default(now())
+
+  // Relations
+  workspaceId   String?
+  siteId        String?
+  userId        String?
+  workspace     Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  site          Site?      @relation(fields: [siteId], references: [id], onDelete: SetNull)
+  user          User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  violations    Violation[]
+
+  @@index([workspaceId, createdAt])
+  @@index([url])
+  @@index([status])
+  @@map("scans")
+}
+
+model Violation {
+  id              String   @id @default(cuid())
+  ruleId          String   // axe rule ID (e.g., "color-contrast")
+  impact          Impact
+  description     String
+  help            String
+  helpUrl         String?
+  tags            String[] // WCAG tags
+  wcagCriteria    String?  // e.g., "1.4.3"
+  wcagLevel       String?  // A, AA, AAA
+  affectedElements Json    // array of { html, target, failureSummary }
+  aiExplanation   String?  // cached AI explanation
+
+  scanId          String
+  scan            Scan     @relation(fields: [scanId], references: [id], onDelete: Cascade)
+
+  @@index([scanId])
+  @@index([ruleId])
+  @@map("violations")
+}
+
+enum ScanStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum Impact {
+  critical
+  serious
+  moderate
+  minor
+}
+
+// ─────────────────────────────────────────────
+// Scheduling & Automation
+// ─────────────────────────────────────────────
+
+model Schedule {
+  id          String   @id @default(cuid())
+  name        String
+  cron        String   // cron expression
+  enabled     Boolean  @default(true)
+  lastRunAt   DateTime?
+  nextRunAt   DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspaceId String
+  siteId      String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  site        Site      @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@map("schedules")
+}
+
+// ─────────────────────────────────────────────
+// Integrations
+// ─────────────────────────────────────────────
+
+model Webhook {
+  id          String      @id @default(cuid())
+  url         String
+  events      String[]    // ["scan.completed", "score.dropped"]
+  secret      String?     // HMAC signing secret
+  enabled     Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+
+  workspaceId String
+  workspace   Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@map("webhooks")
+}
+
+model ApiKey {
+  id          String   @id @default(cuid())
+  name        String
+  keyHash     String   @unique // hashed API key
+  prefix      String   // first 8 chars for identification
+  lastUsedAt  DateTime?
+  expiresAt   DateTime?
+  createdAt   DateTime @default(now())
+
+  userId      String
+  workspaceId String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@map("api_keys")
+}
+
+// ─────────────────────────────────────────────
+// Audit Trail
+// ─────────────────────────────────────────────
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  action      String   // "scan.created", "member.invited", etc.
+  actor       String?  // user ID
+  target      String?  // resource ID
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  workspaceId String?
+
+  @@index([workspaceId, createdAt])
+  @@map("audit_logs")
+}
