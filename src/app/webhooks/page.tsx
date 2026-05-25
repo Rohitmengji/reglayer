@@ -145,8 +145,8 @@ export default function WebhooksPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-neutral-900">Webhooks</h1>
-            <p className="mt-1 text-sm text-neutral-500">
+            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Webhooks</h1>
+            <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
               Receive real-time notifications when events happen in RegLayer.
             </p>
           </div>
@@ -158,13 +158,13 @@ export default function WebhooksPage() {
 
         {/* Secret reveal (one-time) */}
         {newSecret && (
-          <div className="rounded-xl border border-green-200 bg-green-50 p-5">
+          <div className="rounded-xl border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950 p-5">
             <h3 className="text-sm font-semibold text-green-800 mb-2">Signing Secret Created</h3>
             <p className="text-xs text-green-700 mb-3">
               Copy this secret now — it won&apos;t be shown again. Use it to verify webhook signatures.
             </p>
             <div className="flex items-center gap-2">
-              <code className="flex-1 rounded bg-white px-3 py-2 text-xs font-mono border border-green-200">
+              <code className="flex-1 rounded bg-white dark:bg-neutral-900 px-3 py-2 text-xs font-mono border border-green-200 dark:border-green-800">
                 {showSecret ? newSecret : "•".repeat(40)}
               </code>
               <Button variant="ghost" size="sm" onClick={() => setShowSecret(!showSecret)}>
@@ -192,7 +192,7 @@ export default function WebhooksPage() {
             <CardContent>
               <form onSubmit={handleCreate} className="space-y-4">
                 <div>
-                  <label className="text-xs font-medium text-neutral-600">Name</label>
+                  <label className="text-xs font-medium text-neutral-600 dark:text-neutral-300">Name</label>
                   <Input
                     placeholder="e.g. Slack Notifications"
                     value={name}
@@ -202,7 +202,7 @@ export default function WebhooksPage() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-neutral-600">Endpoint URL</label>
+                  <label className="text-xs font-medium text-neutral-600 dark:text-neutral-300">Endpoint URL</label>
                   <Input
                     type="url"
                     placeholder="https://your-server.com/webhook"
@@ -213,15 +213,15 @@ export default function WebhooksPage() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-neutral-600 mb-2 block">Events</label>
+                  <label className="text-xs font-medium text-neutral-600 dark:text-neutral-300 mb-2 block">Events</label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {ALL_EVENTS.map((ev) => (
                       <label
                         key={ev.value}
                         className={`flex items-start gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${
                           selectedEvents.includes(ev.value)
-                            ? "border-blue-300 bg-blue-50"
-                            : "border-neutral-200 hover:bg-neutral-50"
+                            ? "border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-950"
+                            : "border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-800"
                         }`}
                       >
                         <input
@@ -231,8 +231,8 @@ export default function WebhooksPage() {
                           className="mt-0.5"
                         />
                         <div>
-                          <p className="text-sm font-medium text-neutral-800">{ev.label}</p>
-                          <p className="text-xs text-neutral-500">{ev.description}</p>
+                          <p className="text-sm font-medium text-neutral-800 dark:text-neutral-100">{ev.label}</p>
+                          <p className="text-xs text-neutral-500 dark:text-neutral-400">{ev.description}</p>
                         </div>
                       </label>
                     ))}
@@ -258,7 +258,7 @@ export default function WebhooksPage() {
             <Card>
               <CardContent className="p-12 text-center">
                 <Webhook className="h-12 w-12 text-neutral-200 mx-auto mb-4" />
-                <p className="text-neutral-600 font-medium">No webhooks configured</p>
+                <p className="text-neutral-600 dark:text-neutral-300 font-medium">No webhooks configured</p>
                 <p className="text-sm text-neutral-400 mt-1">
                   Add an endpoint to receive real-time event notifications.
                 </p>
@@ -273,7 +273,7 @@ export default function WebhooksPage() {
                   <div className="flex items-center gap-3 min-w-0">
                     <div className={`h-2 w-2 rounded-full ${hook.enabled ? "bg-green-500" : "bg-neutral-300"}`} />
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-neutral-900">{hook.name}</p>
+                      <p className="text-sm font-medium text-neutral-900 dark:text-white">{hook.name}</p>
                       <p className="text-xs text-neutral-400 truncate">{hook.url}</p>
                     </div>
                   </div>
@@ -308,7 +308,7 @@ export default function WebhooksPage() {
                 {/* Test result inline */}
                 {testResult && testResult.id === hook.id && (
                   <div className={`mt-3 rounded-lg p-2.5 text-xs flex items-center gap-2 ${
-                    testResult.status === "success" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
+                    testResult.status === "success" ? "bg-green-50 dark:bg-green-950 text-green-700" : "bg-red-50 dark:bg-red-950 text-red-700"
                   }`}>
                     {testResult.status === "success" ? (
                       <CheckCircle2 className="h-3.5 w-3.5" />
@@ -335,7 +335,7 @@ export default function WebhooksPage() {
                 {deliveries.map((d) => (
                   <div
                     key={d.id}
-                    className="flex items-center justify-between rounded-lg border border-neutral-100 p-3"
+                    className="flex items-center justify-between rounded-lg border border-neutral-100 dark:border-neutral-700 p-3"
                   >
                     <div className="flex items-center gap-3">
                       {d.status === "success" ? (
@@ -344,7 +344,7 @@ export default function WebhooksPage() {
                         <XCircle className="h-4 w-4 text-red-500" />
                       )}
                       <div>
-                        <p className="text-sm font-medium text-neutral-800">{d.event}</p>
+                        <p className="text-sm font-medium text-neutral-800 dark:text-neutral-100">{d.event}</p>
                         {d.error && <p className="text-xs text-red-500">{d.error}</p>}
                       </div>
                     </div>
@@ -372,7 +372,7 @@ export default function WebhooksPage() {
           <CardContent>
             <div className="space-y-4">
               <div>
-                <p className="text-xs font-medium text-neutral-600 mb-1">Headers</p>
+                <p className="text-xs font-medium text-neutral-600 dark:text-neutral-300 mb-1">Headers</p>
                 <pre className="rounded-lg bg-neutral-900 p-3 text-xs text-green-300 overflow-x-auto">
 {`X-RegLayer-Event: scan.completed
 X-RegLayer-Signature: sha256=<hmac_hex>
@@ -381,7 +381,7 @@ Content-Type: application/json`}
                 </pre>
               </div>
               <div>
-                <p className="text-xs font-medium text-neutral-600 mb-1">Body</p>
+                <p className="text-xs font-medium text-neutral-600 dark:text-neutral-300 mb-1">Body</p>
                 <pre className="rounded-lg bg-neutral-900 p-3 text-xs text-green-300 overflow-x-auto">
 {`{
   "event": "scan.completed",
@@ -398,7 +398,7 @@ Content-Type: application/json`}
                 </pre>
               </div>
               <div>
-                <p className="text-xs font-medium text-neutral-600 mb-1">Verifying Signatures (Node.js)</p>
+                <p className="text-xs font-medium text-neutral-600 dark:text-neutral-300 mb-1">Verifying Signatures (Node.js)</p>
                 <pre className="rounded-lg bg-neutral-900 p-3 text-xs text-green-300 overflow-x-auto">
 {`const crypto = require('crypto');
 const signature = req.headers['x-reglayer-signature'];

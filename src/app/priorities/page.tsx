@@ -47,7 +47,7 @@ export default function PrioritiesPage() {
       fallback={
         <AppShell>
           <div className="flex items-center justify-center py-20">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-neutral-300 border-t-neutral-900" />
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-neutral-300 dark:border-neutral-600 border-t-neutral-900 dark:border-t-white" />
           </div>
         </AppShell>
       }
@@ -108,7 +108,7 @@ function PrioritiesContent() {
     return (
       <AppShell>
         <div className="flex items-center justify-center py-20">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-neutral-300 border-t-neutral-900" />
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-neutral-300 dark:border-neutral-600 border-t-neutral-900 dark:border-t-white" />
         </div>
       </AppShell>
     );
@@ -117,8 +117,8 @@ function PrioritiesContent() {
   if (error || !report) {
     return (
       <AppShell>
-        <div className="rounded-xl border border-neutral-200 bg-white p-12 text-center">
-          <p className="text-lg font-medium text-neutral-700">{error || "No data"}</p>
+        <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-12 text-center">
+          <p className="text-lg font-medium text-neutral-700 dark:text-neutral-200">{error || "No data"}</p>
           <Link href="/dashboard" className="text-sm text-blue-600 hover:underline mt-2 inline-block">
             Run a scan first
           </Link>
@@ -135,29 +135,29 @@ function PrioritiesContent() {
       <div className="space-y-8">
         {/* Header */}
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900">Fix Priorities</h1>
-          <p className="mt-1 text-sm text-neutral-500">
+          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Fix Priorities</h1>
+          <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
             Optimal fix order to maximize your accessibility score improvement.
           </p>
         </div>
 
         {/* Score Projection */}
-        <div className="rounded-2xl border border-neutral-200 bg-white p-8">
+        <div className="rounded-2xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 items-center">
             <div className="text-center">
-              <p className="text-xs font-medium text-neutral-500 mb-1">Current Score</p>
-              <p className="text-4xl font-black text-neutral-700">{Math.round(report.currentScore)}</p>
+              <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Current Score</p>
+              <p className="text-4xl font-black text-neutral-700 dark:text-neutral-200">{Math.round(report.currentScore)}</p>
             </div>
             <div className="text-center">
               <ArrowUpRight className="h-8 w-8 text-green-500 mx-auto" />
             </div>
             <div className="text-center">
-              <p className="text-xs font-medium text-neutral-500 mb-1">After All Fixes</p>
+              <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">After All Fixes</p>
               <p className="text-4xl font-black text-green-600">{Math.round(report.projectedScoreAfterAll)}</p>
             </div>
             <div className="text-center">
-              <p className="text-xs font-medium text-neutral-500 mb-1">Estimated Effort</p>
-              <p className="text-2xl font-bold text-neutral-900">
+              <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Estimated Effort</p>
+              <p className="text-2xl font-bold text-neutral-900 dark:text-white">
                 {hours > 0 ? `${hours}h ` : ""}{mins}m
               </p>
               <p className="text-xs text-neutral-400">{report.allFixes.length} fixes total</p>
@@ -170,10 +170,10 @@ function PrioritiesContent() {
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <Zap className="h-5 w-5 text-yellow-500" />
-              <h2 className="text-lg font-semibold text-neutral-900">Quick Wins</h2>
+              <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">Quick Wins</h2>
               <Badge variant="secondary">{report.quickWins.length}</Badge>
             </div>
-            <p className="text-sm text-neutral-500">
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">
               High-impact fixes that take minimal effort. Fix these first.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -189,9 +189,9 @@ function PrioritiesContent() {
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <Target className="h-5 w-5 text-red-500" />
-              <h2 className="text-lg font-semibold text-neutral-900">High Impact</h2>
+              <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">High Impact</h2>
             </div>
-            <p className="text-sm text-neutral-500">
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">
               These fixes will give you the biggest score improvement.
             </p>
             <div className="space-y-3">
@@ -205,8 +205,8 @@ function PrioritiesContent() {
         {/* All Fixes (Ranked) */}
         <div className="space-y-4">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-5 w-5 text-neutral-500" />
-            <h2 className="text-lg font-semibold text-neutral-900">All Fixes (Ranked)</h2>
+            <CheckCircle2 className="h-5 w-5 text-neutral-500 dark:text-neutral-400" />
+            <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">All Fixes (Ranked)</h2>
           </div>
           <div className="space-y-2">
             {report.allFixes.map((fix) => (
@@ -221,25 +221,25 @@ function PrioritiesContent() {
 
 function FixCard({ fix, variant }: { fix: PrioritizedFix; variant: "quickwin" | "high" | "full" }) {
   const difficultyColors: Record<string, string> = {
-    trivial: "text-green-600 bg-green-50",
-    easy: "text-blue-600 bg-blue-50",
-    moderate: "text-yellow-600 bg-yellow-50",
-    complex: "text-red-600 bg-red-50",
+    trivial: "text-green-600 bg-green-50 dark:bg-green-950",
+    easy: "text-blue-600 bg-blue-50 dark:bg-blue-950",
+    moderate: "text-yellow-600 bg-yellow-50 dark:bg-yellow-950",
+    complex: "text-red-600 bg-red-50 dark:bg-red-950",
   };
 
   if (variant === "quickwin") {
     return (
-      <div className="rounded-xl border border-yellow-100 bg-yellow-50/30 p-4">
+      <div className="rounded-xl border border-yellow-100 dark:border-yellow-800 bg-yellow-50/30 dark:bg-yellow-950/30 p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
             <div className="flex items-center gap-2 mb-1">
               <Badge variant={fix.impact as "critical" | "serious" | "moderate" | "minor"}>
                 {fix.impact}
               </Badge>
-              <span className="text-xs text-neutral-500">{fix.category}</span>
+              <span className="text-xs text-neutral-500 dark:text-neutral-400">{fix.category}</span>
             </div>
-            <p className="text-sm font-medium text-neutral-900">{fix.help}</p>
-            <div className="flex items-center gap-3 mt-2 text-xs text-neutral-500">
+            <p className="text-sm font-medium text-neutral-900 dark:text-white">{fix.help}</p>
+            <div className="flex items-center gap-3 mt-2 text-xs text-neutral-500 dark:text-neutral-400">
               <span className="flex items-center gap-1">
                 <TrendingUp className="h-3 w-3 text-green-500" />
                 +{fix.estimatedScoreUplift.toFixed(1)} pts
@@ -261,7 +261,7 @@ function FixCard({ fix, variant }: { fix: PrioritizedFix; variant: "quickwin" | 
   }
 
   return (
-    <div className="rounded-xl border border-neutral-200 bg-white p-4 hover:shadow-sm transition-shadow">
+    <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4 hover:shadow-sm transition-shadow">
       <div className="flex items-center gap-4">
         {/* Rank */}
         <span className="text-lg font-bold text-neutral-300 w-8 text-center">
@@ -274,11 +274,11 @@ function FixCard({ fix, variant }: { fix: PrioritizedFix; variant: "quickwin" | 
             <Badge variant={fix.impact as "critical" | "serious" | "moderate" | "minor"}>
               {fix.impact}
             </Badge>
-            <code className="text-xs text-neutral-500">{fix.ruleId}</code>
+            <code className="text-xs text-neutral-500 dark:text-neutral-400">{fix.ruleId}</code>
             <span className="text-xs text-neutral-400">{fix.category}</span>
           </div>
-          <p className="text-sm font-medium text-neutral-900 truncate">{fix.help}</p>
-          <div className="flex items-center gap-4 mt-1 text-xs text-neutral-500">
+          <p className="text-sm font-medium text-neutral-900 dark:text-white truncate">{fix.help}</p>
+          <div className="flex items-center gap-4 mt-1 text-xs text-neutral-500 dark:text-neutral-400">
             <span>{fix.affectedElementCount} element(s)</span>
             <span>WCAG {fix.wcagLevel}</span>
             {fix.recurrenceRate > 50 && (

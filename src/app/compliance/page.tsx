@@ -86,7 +86,7 @@ function ComplianceContent() {
       <AppShell>
         <div className="text-center py-20">
           <Grid3X3 className="h-12 w-12 text-neutral-200 mx-auto mb-4" />
-          <p className="text-neutral-600">No scan data available. Run a scan first.</p>
+          <p className="text-neutral-600 dark:text-neutral-300">No scan data available. Run a scan first.</p>
         </div>
       </AppShell>
     );
@@ -106,9 +106,9 @@ function ComplianceContent() {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <Grid3X3 className="h-5 w-5 text-indigo-500" />
-            <h1 className="text-2xl font-bold text-neutral-900">WCAG Compliance Matrix</h1>
+            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">WCAG Compliance Matrix</h1>
           </div>
-          <p className="text-sm text-neutral-500">
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">
             WCAG 2.1 AA criterion status for{" "}
             <span className="font-medium">{data.url}</span>
           </p>
@@ -118,28 +118,28 @@ function ComplianceContent() {
         <div className="grid grid-cols-4 gap-3">
           <button
             onClick={() => setFilter("all")}
-            className={`rounded-xl border p-3 text-center transition-colors ${filter === "all" ? "border-neutral-900 bg-neutral-900 text-white" : "border-neutral-200 bg-white"}`}
+            className={`rounded-xl border p-3 text-center transition-colors ${filter === "all" ? "border-neutral-900 bg-neutral-900 text-white" : "border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900"}`}
           >
             <p className="text-xl font-bold">{data.summary.total}</p>
             <p className="text-xs">Total</p>
           </button>
           <button
             onClick={() => setFilter("pass")}
-            className={`rounded-xl border p-3 text-center transition-colors ${filter === "pass" ? "border-green-600 bg-green-600 text-white" : "border-neutral-200 bg-white"}`}
+            className={`rounded-xl border p-3 text-center transition-colors ${filter === "pass" ? "border-green-600 bg-green-600 text-white" : "border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900"}`}
           >
             <p className="text-xl font-bold">{data.summary.passed}</p>
             <p className="text-xs">Passed</p>
           </button>
           <button
             onClick={() => setFilter("fail")}
-            className={`rounded-xl border p-3 text-center transition-colors ${filter === "fail" ? "border-red-600 bg-red-600 text-white" : "border-neutral-200 bg-white"}`}
+            className={`rounded-xl border p-3 text-center transition-colors ${filter === "fail" ? "border-red-600 bg-red-600 text-white" : "border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900"}`}
           >
             <p className="text-xl font-bold">{data.summary.failed}</p>
             <p className="text-xs">Failed</p>
           </button>
           <button
             onClick={() => setFilter("not-tested")}
-            className={`rounded-xl border p-3 text-center transition-colors ${filter === "not-tested" ? "border-neutral-500 bg-neutral-500 text-white" : "border-neutral-200 bg-white"}`}
+            className={`rounded-xl border p-3 text-center transition-colors ${filter === "not-tested" ? "border-neutral-500 bg-neutral-500 text-white" : "border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900"}`}
           >
             <p className="text-xl font-bold">{data.summary.notTested}</p>
             <p className="text-xs">Not Tested</p>
@@ -160,10 +160,10 @@ function ComplianceContent() {
                       key={entry.criterion}
                       className={`flex items-center gap-3 rounded-lg border p-3 ${
                         entry.status === "pass"
-                          ? "border-green-100 bg-green-50"
+                          ? "border-green-100 dark:border-green-800 bg-green-50 dark:bg-green-950"
                           : entry.status === "fail"
-                          ? "border-red-100 bg-red-50"
-                          : "border-neutral-100 bg-neutral-50"
+                          ? "border-red-100 dark:border-red-800 bg-red-50 dark:bg-red-950"
+                          : "border-neutral-100 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800"
                       }`}
                     >
                       {entry.status === "pass" && <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />}
@@ -171,12 +171,12 @@ function ComplianceContent() {
                       {entry.status === "not-tested" && <Minus className="h-4 w-4 text-neutral-400 shrink-0" />}
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-bold text-neutral-700">{entry.criterion}</span>
+                          <span className="text-xs font-bold text-neutral-700 dark:text-neutral-200">{entry.criterion}</span>
                           <Badge variant="secondary" className="text-[9px] px-1 py-0">
                             {entry.level}
                           </Badge>
                         </div>
-                        <p className="text-xs text-neutral-500 truncate">{entry.title}</p>
+                        <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate">{entry.title}</p>
                         {entry.violations.length > 0 && (
                           <p className="text-[10px] text-red-600 mt-0.5 truncate">
                             {entry.violations.join(", ")}

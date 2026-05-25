@@ -84,8 +84,8 @@ export default function CrawlPage() {
       <div className="space-y-8">
         {/* Header */}
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900">Site Crawler</h1>
-          <p className="mt-1 text-sm text-neutral-500">
+          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Site Crawler</h1>
+          <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
             Scan an entire site — discovers pages automatically and evaluates each one.
           </p>
         </div>
@@ -95,7 +95,7 @@ export default function CrawlPage() {
           <CardContent className="p-6">
             <form onSubmit={handleCrawl} className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-neutral-700">Start URL</label>
+                <label className="text-sm font-medium text-neutral-700 dark:text-neutral-200">Start URL</label>
                 <Input
                   type="url"
                   placeholder="https://example.com"
@@ -108,7 +108,7 @@ export default function CrawlPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium text-neutral-700">Max Pages</label>
+                  <label className="text-sm font-medium text-neutral-700 dark:text-neutral-200">Max Pages</label>
                   <Input
                     type="number"
                     min="1"
@@ -120,7 +120,7 @@ export default function CrawlPage() {
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-neutral-700">Max Depth</label>
+                  <label className="text-sm font-medium text-neutral-700 dark:text-neutral-200">Max Depth</label>
                   <Input
                     type="number"
                     min="1"
@@ -156,7 +156,7 @@ export default function CrawlPage() {
 
         {/* Error */}
         {error && (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950 p-4 text-sm text-red-700">
             <AlertTriangle className="h-4 w-4 inline mr-2" />
             {error}
           </div>
@@ -176,7 +176,7 @@ export default function CrawlPage() {
 
             {/* Critical Pages Alert */}
             {result.criticalPages.length > 0 && (
-              <div className="rounded-xl border border-red-200 bg-red-50 p-5">
+              <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950 p-5">
                 <h3 className="text-sm font-semibold text-red-800 flex items-center gap-2 mb-3">
                   <AlertTriangle className="h-4 w-4" />
                   Pages with Critical Violations ({result.criticalPages.length})
@@ -205,7 +205,7 @@ export default function CrawlPage() {
                   {result.pages.map((page) => (
                     <div
                       key={page.url}
-                      className="flex items-center gap-4 rounded-lg p-3 hover:bg-neutral-50 transition-colors"
+                      className="flex items-center gap-4 rounded-lg p-3 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
                     >
                       {/* Score */}
                       <span
@@ -224,7 +224,7 @@ export default function CrawlPage() {
 
                       {/* URL */}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm text-neutral-900 truncate">{page.url}</p>
+                        <p className="text-sm text-neutral-900 dark:text-white truncate">{page.url}</p>
                         <p className="text-xs text-neutral-400">Depth {page.depth}</p>
                       </div>
 
@@ -239,7 +239,7 @@ export default function CrawlPage() {
                       {page.scanId && (
                         <Link
                           href={`/report/${page.scanId}`}
-                          className="text-neutral-400 hover:text-neutral-600"
+                          className="text-neutral-400 hover:text-neutral-600 dark:text-neutral-300"
                         >
                           <ExternalLink className="h-4 w-4" />
                         </Link>
@@ -251,7 +251,7 @@ export default function CrawlPage() {
             </Card>
 
             {/* Weakest Page Highlight */}
-            <div className="rounded-xl border border-orange-200 bg-orange-50 p-5">
+            <div className="rounded-xl border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950 p-5">
               <div className="flex items-center gap-2 mb-2">
                 <TrendingDown className="h-5 w-5 text-orange-600" />
                 <h3 className="text-sm font-semibold text-orange-800">Weakest Page</h3>
@@ -280,11 +280,11 @@ function SummaryCard({
   bad?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-neutral-200 bg-white p-4 text-center">
-      <p className={`text-2xl font-bold ${highlight ? "text-blue-600" : bad ? "text-red-600" : "text-neutral-900"}`}>
+    <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4 text-center">
+      <p className={`text-2xl font-bold ${highlight ? "text-blue-600" : bad ? "text-red-600" : "text-neutral-900 dark:text-white"}`}>
         {value}
       </p>
-      <p className="text-xs text-neutral-500 mt-1">{label}</p>
+      <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">{label}</p>
     </div>
   );
 }

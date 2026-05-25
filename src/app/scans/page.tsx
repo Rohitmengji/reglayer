@@ -79,8 +79,8 @@ export default function ScansPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-neutral-900">Scan History</h1>
-            <p className="mt-1 text-sm text-neutral-500">
+            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Scan History</h1>
+            <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
               All accessibility scans stored in your database.
             </p>
           </div>
@@ -132,13 +132,13 @@ export default function ScansPage() {
         {/* Scan List */}
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-neutral-300 border-t-neutral-900" />
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-neutral-300 dark:border-neutral-600 border-t-neutral-900 dark:border-t-white" />
           </div>
         ) : scans.length === 0 ? (
-          <div className="rounded-xl border border-neutral-200 bg-white p-12 text-center">
+          <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-12 text-center">
             <BarChart3 className="h-12 w-12 text-neutral-300 mx-auto mb-4" />
-            <p className="text-lg font-medium text-neutral-700">No scans yet</p>
-            <p className="text-sm text-neutral-500 mt-1">
+            <p className="text-lg font-medium text-neutral-700 dark:text-neutral-200">No scans yet</p>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
               Run your first scan from the{" "}
               <Link href="/dashboard" className="text-blue-600 hover:underline">
                 Dashboard
@@ -154,10 +154,10 @@ export default function ScansPage() {
             {scans.map((scan, index) => (
               <div
                 key={scan.id}
-                className={`group rounded-xl border bg-white p-5 transition-all hover:shadow-md ${
+                className={`group rounded-xl border bg-white dark:bg-neutral-900 p-5 transition-all hover:shadow-md ${
                   selectedScans.includes(scan.id)
-                    ? "border-blue-300 ring-2 ring-blue-100"
-                    : "border-neutral-200"
+                    ? "border-blue-300 dark:border-blue-700 ring-2 ring-blue-100"
+                    : "border-neutral-200 dark:border-neutral-700"
                 }`}
               >
                 <div className="flex items-center gap-4">
@@ -167,7 +167,7 @@ export default function ScansPage() {
                     className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-colors ${
                       selectedScans.includes(scan.id)
                         ? "border-blue-500 bg-blue-500 text-white"
-                        : "border-neutral-300 hover:border-blue-400"
+                        : "border-neutral-300 dark:border-neutral-600 hover:border-blue-400"
                     }`}
                   >
                     {selectedScans.includes(scan.id) && (
@@ -198,10 +198,10 @@ export default function ScansPage() {
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-neutral-900 truncate">
+                    <p className="text-sm font-medium text-neutral-900 dark:text-white truncate">
                       {scan.pageTitle || scan.url}
                     </p>
-                    <p className="text-xs text-neutral-500 truncate">{scan.url}</p>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate">{scan.url}</p>
                   </div>
 
                   {/* Violations */}
@@ -232,7 +232,7 @@ export default function ScansPage() {
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <Link
                       href={`/report/${scan.id}`}
-                      className="rounded-md p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600"
+                      className="rounded-md p-1.5 text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-600 dark:text-neutral-300"
                       title="View Report"
                     >
                       <ExternalLink className="h-4 w-4" />
@@ -259,12 +259,12 @@ function SummaryCard({
   icon: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-neutral-200 bg-white p-4">
+    <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4">
       <div className="flex items-center gap-2">
         {icon}
-        <p className="text-xs font-medium text-neutral-500">{label}</p>
+        <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">{label}</p>
       </div>
-      <p className="mt-2 text-2xl font-bold text-neutral-900">{value}</p>
+      <p className="mt-2 text-2xl font-bold text-neutral-900 dark:text-white">{value}</p>
     </div>
   );
 }
@@ -282,7 +282,7 @@ function CopyLinkButton({ scanId }: { scanId: string }) {
     <div className="relative">
       <button
         onClick={handleCopy}
-        className="rounded-md p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600 transition-colors"
+        className="rounded-md p-1.5 text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-600 dark:text-neutral-300 transition-colors"
         title="Copy Share Link"
       >
         {copied ? <Check className="h-4 w-4 text-green-500" /> : <Share2 className="h-4 w-4" />}

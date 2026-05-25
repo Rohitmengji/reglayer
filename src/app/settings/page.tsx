@@ -45,22 +45,22 @@ export default function SettingsPage() {
     <AppShell>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900">Settings</h1>
-          <p className="mt-1 text-sm text-neutral-500">
+          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Settings</h1>
+          <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
             Manage API keys, integrations, schedules, and alerts.
           </p>
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex gap-1 border-b border-neutral-200 pb-px">
+        <div className="flex gap-1 border-b border-neutral-200 dark:border-neutral-700 pb-px">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-1.5 rounded-t-lg px-4 py-2 text-sm font-medium transition-colors ${
                 activeTab === tab.id
-                  ? "border-b-2 border-neutral-900 text-neutral-900"
-                  : "text-neutral-500 hover:text-neutral-700"
+                  ? "border-b-2 border-neutral-900 text-neutral-900 dark:text-white"
+                  : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:text-neutral-200"
               }`}
             >
               {tab.icon}
@@ -91,19 +91,19 @@ function GeneralTab() {
         <CardContent className="space-y-3">
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <p className="text-neutral-500">Version</p>
+              <p className="text-neutral-500 dark:text-neutral-400">Version</p>
               <p className="font-medium">0.2.0</p>
             </div>
             <div>
-              <p className="text-neutral-500">Engine</p>
+              <p className="text-neutral-500 dark:text-neutral-400">Engine</p>
               <p className="font-medium">Chromium + axe-core 4.x</p>
             </div>
             <div>
-              <p className="text-neutral-500">Database</p>
+              <p className="text-neutral-500 dark:text-neutral-400">Database</p>
               <p className="font-medium">PostgreSQL (Neon)</p>
             </div>
             <div>
-              <p className="text-neutral-500">AI Model</p>
+              <p className="text-neutral-500 dark:text-neutral-400">AI Model</p>
               <p className="font-medium">ChatGPT-5.4 Mini</p>
             </div>
           </div>
@@ -131,7 +131,7 @@ function GeneralTab() {
               "POST /api/integrations/github/issues",
               "GET  /api/integrations/github/action",
             ].map((ep) => (
-              <div key={ep} className="rounded bg-neutral-50 px-3 py-1.5 text-neutral-700">
+              <div key={ep} className="rounded bg-neutral-50 dark:bg-neutral-800 px-3 py-1.5 text-neutral-700 dark:text-neutral-200">
                 {ep}
               </div>
             ))}
@@ -191,12 +191,12 @@ function ApiKeysTab() {
     <div className="space-y-6">
       {/* New key reveal */}
       {newKey && (
-        <div className="rounded-xl border border-green-200 bg-green-50 p-4">
+        <div className="rounded-xl border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950 p-4">
           <p className="text-sm font-medium text-green-800 mb-2">
             API Key Created — copy it now, you won&apos;t see it again!
           </p>
           <div className="flex items-center gap-2">
-            <code className="flex-1 rounded bg-white px-3 py-2 text-sm text-neutral-900 border border-green-200 font-mono">
+            <code className="flex-1 rounded bg-white dark:bg-neutral-900 px-3 py-2 text-sm text-neutral-900 dark:text-white border border-green-200 dark:border-green-800 font-mono">
               {showKey ? newKey : "••••••••••••••••••••••••••••••••"}
             </code>
             <Button variant="ghost" size="icon" onClick={() => setShowKey(!showKey)}>
@@ -218,8 +218,8 @@ function ApiKeysTab() {
 
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-medium text-neutral-700">API Keys</p>
-          <p className="text-xs text-neutral-500">Used for CI/CD gate and programmatic access</p>
+          <p className="text-sm font-medium text-neutral-700 dark:text-neutral-200">API Keys</p>
+          <p className="text-xs text-neutral-500 dark:text-neutral-400">Used for CI/CD gate and programmatic access</p>
         </div>
         <Button size="sm" onClick={() => setShowCreate(!showCreate)}>
           <Plus className="mr-2 h-3 w-3" />
@@ -242,20 +242,20 @@ function ApiKeysTab() {
       )}
 
       {keys.length === 0 ? (
-        <div className="rounded-xl border border-neutral-200 bg-white p-8 text-center">
+        <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-8 text-center">
           <Key className="h-8 w-8 text-neutral-300 mx-auto mb-3" />
-          <p className="text-sm text-neutral-500">No API keys yet.</p>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">No API keys yet.</p>
         </div>
       ) : (
         <div className="space-y-2">
           {keys.map((key) => (
-            <div key={key.id} className="flex items-center justify-between rounded-xl border border-neutral-200 bg-white p-4">
+            <div key={key.id} className="flex items-center justify-between rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4">
               <div>
                 <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium text-neutral-900">{key.name}</p>
+                  <p className="text-sm font-medium text-neutral-900 dark:text-white">{key.name}</p>
                   <code className="text-xs text-neutral-400">{key.prefix}••••••••</code>
                 </div>
-                <p className="text-xs text-neutral-500 mt-0.5">
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
                   Created {new Date(key.createdAt).toLocaleDateString()}
                   {key.lastUsedAt && ` • Last used ${new Date(key.lastUsedAt).toLocaleDateString()}`}
                 </p>
@@ -329,8 +329,8 @@ function SchedulesTab() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-medium text-neutral-700">Scheduled Scans</p>
-          <p className="text-xs text-neutral-500">Recurring accessibility monitoring</p>
+          <p className="text-sm font-medium text-neutral-700 dark:text-neutral-200">Scheduled Scans</p>
+          <p className="text-xs text-neutral-500 dark:text-neutral-400">Recurring accessibility monitoring</p>
         </div>
         <Button size="sm" onClick={() => setShowForm(!showForm)}>
           <Plus className="mr-2 h-3 w-3" />
@@ -346,7 +346,7 @@ function SchedulesTab() {
               <Input type="url" placeholder="https://example.com" value={url} onChange={(e) => setUrl(e.target.value)} required />
               <div>
                 <Input placeholder="Cron expression" value={cron} onChange={(e) => setCron(e.target.value)} required />
-                <p className="mt-1 text-xs text-neutral-500">
+                <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
                   0 9 * * 1 (Mon 9am) | 0 0 * * * (daily) | 0 */6 * * * (every 6h)
                 </p>
               </div>
@@ -360,23 +360,23 @@ function SchedulesTab() {
       )}
 
       {schedules.length === 0 ? (
-        <div className="rounded-xl border border-neutral-200 bg-white p-8 text-center">
+        <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-8 text-center">
           <Clock className="mx-auto h-8 w-8 text-neutral-300" />
-          <p className="mt-3 text-sm text-neutral-500">No schedules configured.</p>
+          <p className="mt-3 text-sm text-neutral-500 dark:text-neutral-400">No schedules configured.</p>
         </div>
       ) : (
         <div className="space-y-2">
           {schedules.map((schedule) => (
-            <div key={schedule.id} className="flex items-center justify-between rounded-xl border border-neutral-200 bg-white p-4">
+            <div key={schedule.id} className="flex items-center justify-between rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4">
               <div>
                 <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium text-neutral-900">{schedule.name}</p>
+                  <p className="text-sm font-medium text-neutral-900 dark:text-white">{schedule.name}</p>
                   <Badge variant={schedule.enabled ? "success" : "secondary"}>
                     {schedule.enabled ? "Active" : "Paused"}
                   </Badge>
                 </div>
-                <p className="mt-1 text-xs text-neutral-500">
-                  {schedule.url} • <code className="text-neutral-600">{schedule.cron}</code>
+                <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+                  {schedule.url} • <code className="text-neutral-600 dark:text-neutral-300">{schedule.cron}</code>
                 </p>
                 {schedule.nextRunAt && (
                   <p className="text-xs text-neutral-400">
@@ -446,10 +446,10 @@ function IntegrationsTab() {
             <Button size="sm" onClick={handleSave}>Save</Button>
             {saved && <span className="text-xs text-green-600">Saved!</span>}
           </div>
-          <div className="mt-4 rounded-lg bg-neutral-50 p-3 text-xs text-neutral-600 space-y-1">
+          <div className="mt-4 rounded-lg bg-neutral-50 dark:bg-neutral-800 p-3 text-xs text-neutral-600 dark:text-neutral-300 space-y-1">
             <p className="font-medium">After configuring:</p>
             <p>• Go to any scan report → click &quot;Create GitHub Issue&quot;</p>
-            <p>• Download GitHub Action: <code className="bg-white px-1 rounded">/api/integrations/github/action</code></p>
+            <p>• Download GitHub Action: <code className="bg-white dark:bg-neutral-900 px-1 rounded">/api/integrations/github/action</code></p>
           </div>
         </CardContent>
       </Card>
@@ -464,7 +464,7 @@ function IntegrationsTab() {
           <CardDescription>Receive notifications when scans complete or alerts trigger</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="rounded-lg bg-neutral-50 p-3 text-xs text-neutral-600 space-y-1">
+          <div className="rounded-lg bg-neutral-50 dark:bg-neutral-800 p-3 text-xs text-neutral-600 dark:text-neutral-300 space-y-1">
             <p className="font-medium">Webhook Events:</p>
             <p>• <code>scan.completed</code> — fires after every scan</p>
             <p>• <code>alert.triggered</code> — fires when alert condition met</p>
@@ -481,7 +481,7 @@ function IntegrationsTab() {
           <CardDescription>Show your accessibility score in READMEs</CardDescription>
         </CardHeader>
         <CardContent>
-          <code className="block rounded-lg bg-neutral-50 p-3 text-xs text-neutral-700 break-all">
+          <code className="block rounded-lg bg-neutral-50 dark:bg-neutral-800 p-3 text-xs text-neutral-700 dark:text-neutral-200 break-all">
             ![Accessibility](https://reglayer.vercel.app/api/badge?url=YOUR_URL)
           </code>
         </CardContent>
@@ -534,7 +534,7 @@ function AlertsTab() {
               <select
                 value={condition}
                 onChange={(e) => setCondition(e.target.value)}
-                className="rounded-lg border border-neutral-200 px-3 py-2 text-sm bg-white"
+                className="rounded-lg border border-neutral-200 dark:border-neutral-700 px-3 py-2 text-sm bg-white dark:bg-neutral-900"
               >
                 <option value="score_below">Score drops below</option>
                 <option value="score_drop">Score drops by</option>
@@ -556,7 +556,7 @@ function AlertsTab() {
         <CardHeader>
           <CardTitle className="text-sm">How Alerts Work</CardTitle>
         </CardHeader>
-        <CardContent className="text-sm text-neutral-600 space-y-2">
+        <CardContent className="text-sm text-neutral-600 dark:text-neutral-300 space-y-2">
           <p>After every scan, RegLayer evaluates all your alert rules:</p>
           <ul className="list-disc pl-5 space-y-1 text-xs">
             <li><strong>Score Below</strong> — triggers if score falls below threshold</li>

@@ -78,6 +78,9 @@ export default function DashboardPage() {
           </p>
         </div>
 
+        {/* Scan Form */}
+        <ScanForm onScanComplete={handleScanComplete} />
+
         {/* Stats Overview */}
         {stats && stats.totalScans > 0 && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -165,9 +168,6 @@ export default function DashboardPage() {
 
         {/* Compliance Trend */}
         <ComplianceTrend />
-
-        {/* Scan Form */}
-        <ScanForm onScanComplete={handleScanComplete} />
 
         {/* Results */}
         {scanResult && (

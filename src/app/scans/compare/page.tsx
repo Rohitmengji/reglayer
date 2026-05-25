@@ -36,7 +36,7 @@ export default function ComparePage() {
       fallback={
         <AppShell>
           <div className="flex items-center justify-center py-20">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-neutral-300 border-t-neutral-900" />
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-neutral-300 dark:border-neutral-600 border-t-neutral-900 dark:border-t-white" />
           </div>
         </AppShell>
       }
@@ -84,7 +84,7 @@ function CompareContent() {
     return (
       <AppShell>
         <div className="flex items-center justify-center py-20">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-neutral-300 border-t-neutral-900" />
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-neutral-300 dark:border-neutral-600 border-t-neutral-900 dark:border-t-white" />
         </div>
       </AppShell>
     );
@@ -93,7 +93,7 @@ function CompareContent() {
   if (error || !comparison) {
     return (
       <AppShell>
-        <div className="rounded-xl border border-red-200 bg-red-50 p-8 text-center">
+        <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950 p-8 text-center">
           <XCircle className="h-12 w-12 text-red-400 mx-auto mb-3" />
           <p className="text-lg font-medium text-red-800">{error || "Comparison failed"}</p>
           <Link href="/scans" className="text-sm text-red-600 hover:underline mt-2 inline-block">
@@ -111,8 +111,8 @@ function CompareContent() {
       <div className="space-y-8">
         {/* Header */}
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900">Scan Comparison</h1>
-          <p className="mt-1 text-sm text-neutral-500">
+          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Scan Comparison</h1>
+          <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
             See what changed between two scans.
           </p>
         </div>
@@ -120,9 +120,9 @@ function CompareContent() {
         {/* Score Comparison */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
           {/* Base */}
-          <div className="rounded-xl border border-neutral-200 bg-white p-6 text-center">
-            <p className="text-xs font-medium text-neutral-500 mb-2">BASE (Before)</p>
-            <p className="text-4xl font-black text-neutral-700">{Math.round(base.score)}</p>
+          <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-6 text-center">
+            <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-2">BASE (Before)</p>
+            <p className="text-4xl font-black text-neutral-700 dark:text-neutral-200">{Math.round(base.score)}</p>
             <p className="text-xs text-neutral-400 mt-2 truncate">{base.url}</p>
             <p className="text-xs text-neutral-300">
               {new Date(base.scannedAt).toLocaleDateString()}
@@ -138,7 +138,7 @@ function CompareContent() {
                   ? "bg-green-100 text-green-700"
                   : delta.score < 0
                   ? "bg-red-100 text-red-700"
-                  : "bg-neutral-100 text-neutral-600"
+                  : "bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300"
               }`}
             >
               {delta.score > 0 ? "+" : ""}
@@ -148,10 +148,10 @@ function CompareContent() {
           </div>
 
           {/* Head */}
-          <div className="rounded-xl border border-neutral-200 bg-white p-6 text-center">
-            <p className="text-xs font-medium text-neutral-500 mb-2">HEAD (After)</p>
+          <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-6 text-center">
+            <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-2">HEAD (After)</p>
             <p className={`text-4xl font-black ${
-              delta.score > 0 ? "text-green-600" : delta.score < 0 ? "text-red-600" : "text-neutral-700"
+              delta.score > 0 ? "text-green-600" : delta.score < 0 ? "text-red-600" : "text-neutral-700 dark:text-neutral-200"
             }`}>
               {Math.round(head.score)}
             </p>
@@ -164,19 +164,19 @@ function CompareContent() {
 
         {/* Summary Bar */}
         <div className="grid grid-cols-3 gap-4">
-          <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-center">
+          <div className="rounded-xl border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950 p-4 text-center">
             <CheckCircle2 className="h-5 w-5 text-green-600 mx-auto mb-1" />
             <p className="text-2xl font-bold text-green-700">{summary.totalFixed}</p>
             <p className="text-xs text-green-600">Fixed</p>
           </div>
-          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-center">
+          <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950 p-4 text-center">
             <AlertTriangle className="h-5 w-5 text-red-600 mx-auto mb-1" />
             <p className="text-2xl font-bold text-red-700">{summary.totalIntroduced}</p>
             <p className="text-xs text-red-600">New Regressions</p>
           </div>
-          <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4 text-center">
-            <p className="text-2xl font-bold text-neutral-700 mt-6">{summary.totalPersistent}</p>
-            <p className="text-xs text-neutral-500">Unchanged</p>
+          <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 p-4 text-center">
+            <p className="text-2xl font-bold text-neutral-700 dark:text-neutral-200 mt-6">{summary.totalPersistent}</p>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400">Unchanged</p>
           </div>
         </div>
 
@@ -188,15 +188,15 @@ function CompareContent() {
               New Regressions ({regressions.length})
             </h2>
             {regressions.map((v) => (
-              <div key={v.ruleId} className="rounded-xl border border-red-100 bg-white p-4">
+              <div key={v.ruleId} className="rounded-xl border border-red-100 dark:border-red-800 bg-white dark:bg-neutral-900 p-4">
                 <div className="flex items-center gap-2 mb-1">
                   <Badge variant={v.impact as "critical" | "serious" | "moderate" | "minor"}>
                     {v.impact}
                   </Badge>
-                  <code className="text-xs text-neutral-500">{v.ruleId}</code>
+                  <code className="text-xs text-neutral-500 dark:text-neutral-400">{v.ruleId}</code>
                 </div>
-                <p className="text-sm font-medium text-neutral-900">{v.help}</p>
-                <p className="text-xs text-neutral-500 mt-1">{v.description}</p>
+                <p className="text-sm font-medium text-neutral-900 dark:text-white">{v.help}</p>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">{v.description}</p>
               </div>
             ))}
           </div>
@@ -210,13 +210,13 @@ function CompareContent() {
               Fixed ({fixes.length})
             </h2>
             {fixes.map((v) => (
-              <div key={v.ruleId} className="rounded-xl border border-green-100 bg-white p-4">
+              <div key={v.ruleId} className="rounded-xl border border-green-100 dark:border-green-800 bg-white dark:bg-neutral-900 p-4">
                 <div className="flex items-center gap-2 mb-1">
                   <Badge variant="success">fixed</Badge>
-                  <code className="text-xs text-neutral-500">{v.ruleId}</code>
+                  <code className="text-xs text-neutral-500 dark:text-neutral-400">{v.ruleId}</code>
                 </div>
-                <p className="text-sm font-medium text-neutral-900">{v.help}</p>
-                <p className="text-xs text-neutral-500 mt-1">{v.description}</p>
+                <p className="text-sm font-medium text-neutral-900 dark:text-white">{v.help}</p>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">{v.description}</p>
               </div>
             ))}
           </div>
@@ -225,24 +225,24 @@ function CompareContent() {
         {/* Persistent */}
         {persistent.length > 0 && (
           <div className="space-y-3">
-            <h2 className="text-lg font-semibold text-neutral-600">
+            <h2 className="text-lg font-semibold text-neutral-600 dark:text-neutral-300">
               Unchanged ({persistent.length})
             </h2>
             {persistent.map((v) => (
-              <div key={v.ruleId} className="rounded-xl border border-neutral-100 bg-white p-4">
+              <div key={v.ruleId} className="rounded-xl border border-neutral-100 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4">
                 <div className="flex items-center gap-2 mb-1">
                   <Badge variant="secondary">{v.impact}</Badge>
-                  <code className="text-xs text-neutral-500">{v.ruleId}</code>
+                  <code className="text-xs text-neutral-500 dark:text-neutral-400">{v.ruleId}</code>
                 </div>
-                <p className="text-sm text-neutral-700">{v.description}</p>
+                <p className="text-sm text-neutral-700 dark:text-neutral-200">{v.description}</p>
               </div>
             ))}
           </div>
         )}
 
         {/* Back */}
-        <div className="pt-4 border-t border-neutral-100">
-          <Link href="/scans" className="text-sm text-neutral-500 hover:text-neutral-900">
+        <div className="pt-4 border-t border-neutral-100 dark:border-neutral-700">
+          <Link href="/scans" className="text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:text-white">
             ← Back to Scan History
           </Link>
         </div>

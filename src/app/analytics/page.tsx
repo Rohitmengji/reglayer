@@ -82,7 +82,7 @@ export default function AnalyticsPage() {
     return (
       <AppShell>
         <div className="flex items-center justify-center py-20">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-neutral-300 border-t-neutral-900" />
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-neutral-300 dark:border-neutral-600 border-t-neutral-900 dark:border-t-white" />
         </div>
       </AppShell>
     );
@@ -92,11 +92,11 @@ export default function AnalyticsPage() {
     return (
       <AppShell>
         <div className="space-y-6">
-          <h1 className="text-2xl font-bold text-neutral-900">Analytics</h1>
-          <div className="rounded-xl border border-neutral-200 bg-white p-12 text-center">
+          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Analytics</h1>
+          <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-12 text-center">
             <BarChart3 className="h-12 w-12 text-neutral-300 mx-auto mb-4" />
-            <p className="text-lg font-medium text-neutral-700">No data yet</p>
-            <p className="text-sm text-neutral-500 mt-1">
+            <p className="text-lg font-medium text-neutral-700 dark:text-neutral-200">No data yet</p>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
               Run some scans to see analytics and trends.
             </p>
           </div>
@@ -111,8 +111,8 @@ export default function AnalyticsPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-neutral-900">Analytics</h1>
-            <p className="mt-1 text-sm text-neutral-500">
+            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Analytics</h1>
+            <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
               Accessibility intelligence and trend analysis.
             </p>
           </div>
@@ -124,7 +124,7 @@ export default function AnalyticsPage() {
                 className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
                   period === d
                     ? "bg-neutral-900 text-white"
-                    : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+                    : "bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200"
                 }`}
               >
                 {d}d
@@ -173,7 +173,7 @@ export default function AnalyticsPage() {
         {data.trend.dataPoints.length > 1 && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm font-medium text-neutral-600">
+              <CardTitle className="text-sm font-medium text-neutral-600 dark:text-neutral-300">
                 Score Over Time
               </CardTitle>
             </CardHeader>
@@ -185,7 +185,7 @@ export default function AnalyticsPage() {
 
         {/* Forecast */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="border-blue-100 bg-blue-50/30">
+          <Card className="border-blue-100 dark:border-blue-800 bg-blue-50/30 dark:bg-blue-950/30">
             <CardContent className="p-6">
               <div className="flex items-center gap-2 mb-3">
                 <Zap className="h-4 w-4 text-blue-600" />
@@ -193,16 +193,16 @@ export default function AnalyticsPage() {
               </div>
               <div className="space-y-3">
                 <div>
-                  <p className="text-xs text-neutral-500">Next Week</p>
-                  <p className="text-2xl font-bold text-neutral-900">{data.forecast.nextWeekScore}</p>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400">Next Week</p>
+                  <p className="text-2xl font-bold text-neutral-900 dark:text-white">{data.forecast.nextWeekScore}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-neutral-500">Next Month</p>
-                  <p className="text-2xl font-bold text-neutral-900">{data.forecast.nextMonthScore}</p>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400">Next Month</p>
+                  <p className="text-2xl font-bold text-neutral-900 dark:text-white">{data.forecast.nextMonthScore}</p>
                 </div>
                 {data.forecast.weeksTo90 && (
                   <div>
-                    <p className="text-xs text-neutral-500">Weeks to Score 90</p>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400">Weeks to Score 90</p>
                     <p className="text-2xl font-bold text-green-700">{data.forecast.weeksTo90}</p>
                   </div>
                 )}
@@ -222,13 +222,13 @@ export default function AnalyticsPage() {
               </div>
               <div className="space-y-3">
                 <div>
-                  <p className="text-xs text-neutral-500">Scans / Day</p>
-                  <p className="text-2xl font-bold text-neutral-900">
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400">Scans / Day</p>
+                  <p className="text-2xl font-bold text-neutral-900 dark:text-white">
                     {data.velocityMetrics.scansPerDay}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-neutral-500">New Violations / Week</p>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400">New Violations / Week</p>
                   <p className="text-2xl font-bold text-orange-600">
                     {data.velocityMetrics.newViolationsPerWeek}
                   </p>
@@ -241,23 +241,23 @@ export default function AnalyticsPage() {
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center gap-2 mb-3">
-                <BarChart3 className="h-4 w-4 text-neutral-600" />
-                <p className="text-xs font-medium text-neutral-600">DISTRIBUTION</p>
+                <BarChart3 className="h-4 w-4 text-neutral-600 dark:text-neutral-300" />
+                <p className="text-xs font-medium text-neutral-600 dark:text-neutral-300">DISTRIBUTION</p>
               </div>
               <div className="space-y-3">
                 <div className="flex justify-between">
-                  <span className="text-xs text-neutral-500">Best</span>
+                  <span className="text-xs text-neutral-500 dark:text-neutral-400">Best</span>
                   <span className="text-sm font-bold text-green-600">{data.overview.bestScore}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-xs text-neutral-500">Median</span>
-                  <span className="text-sm font-bold text-neutral-900">{data.overview.medianScore}</span>
+                  <span className="text-xs text-neutral-500 dark:text-neutral-400">Median</span>
+                  <span className="text-sm font-bold text-neutral-900 dark:text-white">{data.overview.medianScore}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-xs text-neutral-500">Worst</span>
+                  <span className="text-xs text-neutral-500 dark:text-neutral-400">Worst</span>
                   <span className="text-sm font-bold text-red-600">{data.overview.worstScore}</span>
                 </div>
-                <div className="h-2 rounded-full bg-neutral-100 overflow-hidden mt-2">
+                <div className="h-2 rounded-full bg-neutral-100 dark:bg-neutral-800 overflow-hidden mt-2">
                   <div
                     className="h-full bg-linear-to-r from-red-400 via-yellow-400 to-green-400"
                     style={{ width: `${data.overview.averageScore}%` }}
@@ -272,7 +272,7 @@ export default function AnalyticsPage() {
         {data.topViolations.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm font-medium text-neutral-600">
+              <CardTitle className="text-sm font-medium text-neutral-600 dark:text-neutral-300">
                 Most Common Violations
               </CardTitle>
             </CardHeader>
@@ -281,14 +281,14 @@ export default function AnalyticsPage() {
                 {data.topViolations.map((v, i) => (
                   <div
                     key={v.ruleId}
-                    className="flex items-center gap-4 rounded-lg p-3 hover:bg-neutral-50 transition-colors"
+                    className="flex items-center gap-4 rounded-lg p-3 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
                   >
                     <span className="text-sm font-bold text-neutral-400 w-6">
                       #{i + 1}
                     </span>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <code className="text-sm font-medium text-neutral-900">{v.ruleId}</code>
+                        <code className="text-sm font-medium text-neutral-900 dark:text-white">{v.ruleId}</code>
                         <Badge variant={v.impact as "critical" | "serious" | "moderate" | "minor"}>
                           {v.impact}
                         </Badge>
@@ -299,12 +299,12 @@ export default function AnalyticsPage() {
                           <TrendingDown className="h-3 w-3 text-green-500" />
                         )}
                       </div>
-                      <p className="text-xs text-neutral-500 mt-0.5">
+                      <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
                         Avg {v.avgAffectedElements} elements affected
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-lg font-bold text-neutral-900">{v.count}</p>
+                      <p className="text-lg font-bold text-neutral-900 dark:text-white">{v.count}</p>
                       <p className="text-xs text-neutral-400">occurrences</p>
                     </div>
                   </div>
@@ -318,7 +318,7 @@ export default function AnalyticsPage() {
         {data.urlBreakdown.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm font-medium text-neutral-600">
+              <CardTitle className="text-sm font-medium text-neutral-600 dark:text-neutral-300">
                 URL Performance
               </CardTitle>
             </CardHeader>
@@ -327,10 +327,10 @@ export default function AnalyticsPage() {
                 {data.urlBreakdown.map((u) => (
                   <div
                     key={u.url}
-                    className="flex items-center gap-4 rounded-lg p-3 hover:bg-neutral-50 transition-colors"
+                    className="flex items-center gap-4 rounded-lg p-3 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
                   >
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-neutral-900 truncate">{u.url}</p>
+                      <p className="text-sm text-neutral-900 dark:text-white truncate">{u.url}</p>
                       <p className="text-xs text-neutral-400">{u.scans} scans</p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -371,12 +371,12 @@ function MetricCard({
   subtitle?: string;
 }) {
   return (
-    <div className="rounded-xl border border-neutral-200 bg-white p-4">
+    <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4">
       <div className="flex items-center gap-2 mb-2">
         {icon}
-        <p className="text-xs font-medium text-neutral-500">{label}</p>
+        <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">{label}</p>
       </div>
-      <p className="text-2xl font-bold text-neutral-900">{value}</p>
+      <p className="text-2xl font-bold text-neutral-900 dark:text-white">{value}</p>
       {subtitle && <p className="text-xs text-neutral-400 mt-1">{subtitle}</p>}
     </div>
   );

@@ -65,7 +65,7 @@ export default function InsightsPage() {
       fallback={
         <AppShell>
           <div className="flex items-center justify-center py-20">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-neutral-300 border-t-neutral-900" />
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-neutral-300 dark:border-neutral-600 border-t-neutral-900 dark:border-t-white" />
           </div>
         </AppShell>
       }
@@ -127,7 +127,7 @@ function InsightsContent() {
       <AppShell>
         <div className="flex flex-col items-center justify-center py-20 gap-3">
           <Loader2 className="h-8 w-8 animate-spin text-neutral-400" />
-          <p className="text-sm text-neutral-500">Generating AI insights...</p>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">Generating AI insights...</p>
           <p className="text-xs text-neutral-400">This may take 10-30 seconds</p>
         </div>
       </AppShell>
@@ -137,9 +137,9 @@ function InsightsContent() {
   if (error || !data) {
     return (
       <AppShell>
-        <div className="rounded-xl border border-neutral-200 bg-white p-12 text-center">
+        <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-12 text-center">
           <Brain className="h-12 w-12 text-neutral-300 mx-auto mb-4" />
-          <p className="text-lg font-medium text-neutral-700">{error || "No data"}</p>
+          <p className="text-lg font-medium text-neutral-700 dark:text-neutral-200">{error || "No data"}</p>
           <Link href="/dashboard" className="text-sm text-blue-600 hover:underline mt-2 inline-block">
             Run a scan first
           </Link>
@@ -155,9 +155,9 @@ function InsightsContent() {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <Sparkles className="h-5 w-5 text-purple-500" />
-            <h1 className="text-2xl font-bold text-neutral-900">AI Insights</h1>
+            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">AI Insights</h1>
           </div>
-          <p className="text-sm text-neutral-500">
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">
             Deep analysis of {data.insights.length} violations on{" "}
             <span className="font-medium">{data.url}</span>
           </p>
@@ -167,7 +167,7 @@ function InsightsContent() {
         <div className="space-y-6">
           {data.insights.map((entry) => (
             <Card key={entry.violationId} className="overflow-hidden">
-              <CardHeader className="bg-neutral-50 border-b border-neutral-100">
+              <CardHeader className="bg-neutral-50 dark:bg-neutral-800 dark:bg-neutral-800 border-b border-neutral-100 dark:border-neutral-700">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Badge variant={entry.impact as "critical" | "serious" | "moderate" | "minor"}>
@@ -187,7 +187,7 @@ function InsightsContent() {
                     <Brain className="h-4 w-4 text-purple-500" />
                     <p className="text-xs font-semibold text-purple-600 uppercase">What this means</p>
                   </div>
-                  <p className="text-sm text-neutral-700 leading-relaxed">
+                  <p className="text-sm text-neutral-700 dark:text-neutral-200 leading-relaxed">
                     {str(entry.insight.explanation)}
                   </p>
                 </div>
@@ -198,7 +198,7 @@ function InsightsContent() {
                     <Users className="h-4 w-4 text-blue-500" />
                     <p className="text-xs font-semibold text-blue-600 uppercase">Who is affected</p>
                   </div>
-                  <p className="text-sm text-neutral-700 leading-relaxed">
+                  <p className="text-sm text-neutral-700 dark:text-neutral-200 leading-relaxed">
                     {str(entry.insight.userImpact)}
                   </p>
                 </div>
@@ -209,7 +209,7 @@ function InsightsContent() {
                     <Wrench className="h-4 w-4 text-green-500" />
                     <p className="text-xs font-semibold text-green-600 uppercase">How to fix</p>
                   </div>
-                  <p className="text-sm text-neutral-700 leading-relaxed whitespace-pre-line">
+                  <p className="text-sm text-neutral-700 dark:text-neutral-200 leading-relaxed whitespace-pre-line">
                     {str(entry.insight.fixStrategy)}
                   </p>
                 </div>
@@ -228,13 +228,13 @@ function InsightsContent() {
                 )}
 
                 {/* Effort & Priority */}
-                <div className="flex items-center gap-6 pt-3 border-t border-neutral-100">
+                <div className="flex items-center gap-6 pt-3 border-t border-neutral-100 dark:border-neutral-700">
                   <div className="flex items-center gap-2">
                     <Gauge className="h-4 w-4 text-neutral-400" />
-                    <span className="text-xs text-neutral-500">Effort:</span>
+                    <span className="text-xs text-neutral-500 dark:text-neutral-400">Effort:</span>
                     <Badge variant="secondary">{str(entry.insight.effort)}</Badge>
                   </div>
-                  <p className="text-xs text-neutral-500 italic flex-1">
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400 italic flex-1">
                     {str(entry.insight.priority)}
                   </p>
                 </div>

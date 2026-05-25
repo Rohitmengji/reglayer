@@ -23,7 +23,7 @@ const navigation = [
 export function Sidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
-  const { resolvedTheme, setTheme } = useTheme();
+  const { resolvedTheme, setTheme, mounted } = useTheme();
 
   return (
     <aside className="flex h-full w-64 flex-col border-r border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-900">
@@ -60,13 +60,15 @@ export function Sidebar() {
       {/* User & Footer */}
       <div className="border-t border-neutral-200 dark:border-neutral-700 px-4 py-4 space-y-3">
         {/* Theme Toggle */}
-        <button
-          onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-          className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-neutral-600 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
-        >
-          {resolvedTheme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          {resolvedTheme === "dark" ? "Light Mode" : "Dark Mode"}
-        </button>
+        {mounted && (
+          <button
+            onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+            className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-neutral-600 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
+          >
+            {resolvedTheme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            {resolvedTheme === "dark" ? "Light Mode" : "Dark Mode"}
+          </button>
+        )}
 
         {session?.user && (
           <div className="flex items-center justify-between">
