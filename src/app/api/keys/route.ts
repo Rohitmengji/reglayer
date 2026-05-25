@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
 import { randomBytes, createHash } from "crypto";
+import { getOrCreateWorkspace } from "@/lib/database/workspace";
 
 /**
  * API Key Management
@@ -11,7 +14,16 @@ import { randomBytes, createHash } from "crypto";
  */
 
 export async function GET() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+  if (!user) return NextResponse.json({ keys: [] });
+
   const keys = await prisma.apiKey.findMany({
+    where: { userId: user.id },
     select: {
       id: true,
       name: true,
@@ -27,6 +39,18 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const user = await prisma.user.upsert({
+    where: { email: session.user.email },
+    update: {},
+    create: { email: session.user.email, name: session.user.name || null },
+  });
+  const workspaceId = await getOrCreateWorkspace(user.id, user.email);
+
   let body: { name?: string };
   try {
     body = await request.json();
@@ -47,8 +71,8 @@ export async function POST(request: NextRequest) {
       name,
       prefix,
       keyHash,
-      userId: "", // TODO: associate with authenticated user
-      workspaceId: "",
+      userId: user.id,
+      workspaceId,
       expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year
     },
   });
@@ -58,6 +82,11 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   let body: { id?: string };
   try {
     body = await request.json();

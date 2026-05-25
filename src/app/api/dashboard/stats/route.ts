@@ -11,6 +11,7 @@ import { prisma } from "@/lib/database/prisma";
  * - Top violations by frequency
  */
 export async function GET() {
+  try {
   const [totalScans, recentScans, violationStats] = await Promise.all([
     prisma.scan.count({ where: { status: "COMPLETED" } }),
     prisma.scan.findMany({
@@ -46,7 +47,9 @@ export async function GET() {
   const trend = recentAvg - prevAvg;
 
   // Sites monitored (unique URLs)
-  const uniqueUrls = new Set(recentScans.map((s) => new URL(s.url).hostname));
+  const uniqueUrls = new Set(recentScans.map((s) => {
+    try { return new URL(s.url).hostname; } catch { return s.url; }
+  }));
 
   return NextResponse.json({
     totalScans,
@@ -67,4 +70,10 @@ export async function GET() {
       count: v._count.ruleId,
     })),
   });
+  } catch (error) {
+    return NextResponse.json(
+      { error: "Failed to load dashboard stats", totalScans: 0, avgScore: 0, totalViolations: 0, sitesMonitored: 0, trend: 0, recentScans: [], topViolations: [] },
+      { status: 500 }
+    );
+  }
 }

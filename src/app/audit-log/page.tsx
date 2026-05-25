@@ -64,9 +64,12 @@ export default function AuditLogPage() {
     setLoading(true);
     try {
       const res = await fetch(`/api/audit-log?page=${page}&limit=50`);
+      if (!res.ok) return;
       const data = await res.json();
       setLogs(data.logs || []);
       setPagination(data.pagination || { page: 1, limit: 50, total: 0, pages: 0 });
+    } catch {
+      // Network error
     } finally {
       setLoading(false);
     }

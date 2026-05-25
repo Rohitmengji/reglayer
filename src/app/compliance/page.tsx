@@ -52,19 +52,26 @@ function ComplianceContent() {
     let cancelled = false;
     function doFetch(id: string) {
       fetch(`/api/scans/${id}/wcag-matrix`)
-        .then((r) => r.json())
+        .then((r) => {
+          if (!r.ok) throw new Error("Failed");
+          return r.json();
+        })
         .then((d) => { if (!cancelled) { setData(d); setLoading(false); } })
         .catch(() => { if (!cancelled) setLoading(false); });
     }
 
     if (!scanId) {
       fetch("/api/scans?limit=1")
-        .then((r) => r.json())
+        .then((r) => {
+          if (!r.ok) throw new Error("Failed");
+          return r.json();
+        })
         .then((d) => {
           if (cancelled) return;
           if (d.scans?.[0]) doFetch(d.scans[0].id);
           else setLoading(false);
-        });
+        })
+        .catch(() => { if (!cancelled) setLoading(false); });
     } else {
       doFetch(scanId);
     }
@@ -99,6 +106,10 @@ function ComplianceContent() {
     entries: filtered.filter((e) => e.principle === p),
   }));
 
+  const passRate = data.summary.total > 0
+    ? Math.round((data.summary.passed / (data.summary.passed + data.summary.failed)) * 100) || 0
+    : 0;
+
   return (
     <AppShell>
       <div className="space-y-6">
@@ -112,6 +123,32 @@ function ComplianceContent() {
             WCAG 2.1 AA criterion status for{" "}
             <span className="font-medium">{data.url}</span>
           </p>
+        </div>
+
+        {/* Compliance Progress Gauge */}
+        <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-sm font-medium text-neutral-700 dark:text-neutral-200">Overall Compliance</p>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                {data.summary.passed} of {data.summary.passed + data.summary.failed} testable criteria passing
+              </p>
+            </div>
+            <div className={`text-3xl font-bold ${passRate >= 80 ? "text-green-600" : passRate >= 50 ? "text-amber-600" : "text-red-600"}`}>
+              {passRate}%
+            </div>
+          </div>
+          <div className="w-full h-3 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${passRate >= 80 ? "bg-green-500" : passRate >= 50 ? "bg-amber-500" : "bg-red-500"}`}
+              style={{ width: `${passRate}%` }}
+            />
+          </div>
+          <div className="flex justify-between mt-2 text-[10px] text-neutral-400">
+            <span>0%</span>
+            <span>WCAG 2.1 Level AA Target: 100%</span>
+            <span>100%</span>
+          </div>
         </div>
 
         {/* Summary */}

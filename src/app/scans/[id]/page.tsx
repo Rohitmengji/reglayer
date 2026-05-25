@@ -1,6 +1,6 @@
 "use client";
 
-import { use } from "react";
+import { use, useEffect, useState } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { useScanStore } from "@/stores/scanStore";
 import { ScoreCard } from "@/components/dashboard/score-card";
@@ -18,7 +18,40 @@ export default function ScanDetailPage({
 }) {
   const { id } = use(params);
   const { getScanById } = useScanStore();
-  const entry = getScanById(id);
+  const storeEntry = getScanById(id);
+  const [entry, setEntry] = useState(storeEntry || null);
+  const [loading, setLoading] = useState(!storeEntry);
+
+  useEffect(() => {
+    if (storeEntry) {
+      setEntry(storeEntry);
+      setLoading(false);
+      return;
+    }
+    // Fallback: fetch from API/DB
+    fetch(`/api/scans/${id}`)
+      .then((r) => {
+        if (!r.ok) throw new Error("Not found");
+        return r.json();
+      })
+      .then((data) => {
+        if (data.scan) {
+          setEntry({ scan: data.scan, compliance: data.compliance || null });
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [id, storeEntry]);
+
+  if (loading) {
+    return (
+      <AppShell>
+        <div className="flex items-center justify-center py-20">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-neutral-300 border-t-neutral-900" />
+        </div>
+      </AppShell>
+    );
+  }
 
   if (!entry) {
     return (

@@ -88,13 +88,22 @@ function PrioritiesContent() {
 
     if (!scanId) {
       fetch("/api/scans?limit=1")
-        .then((r) => r.json())
+        .then((r) => {
+          if (!r.ok) throw new Error("Failed");
+          return r.json();
+        })
         .then((data) => {
           if (cancelled) return;
           if (data.scans?.[0]) {
             doFetch(data.scans[0].id);
           } else {
             setError("No scans found");
+            setLoading(false);
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setError("Failed to load scans");
             setLoading(false);
           }
         });

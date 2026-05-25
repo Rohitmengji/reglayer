@@ -21,6 +21,7 @@
 export interface ScanRequest {
   url: string;
   options?: ScanOptions;
+  userEmail?: string;
 }
 
 export interface ScanOptions {

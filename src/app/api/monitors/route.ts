@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
 import { z } from "zod";
 
@@ -16,6 +18,11 @@ const alertRuleSchema = z.object({
  * GET /api/monitors — List all monitoring rules
  */
 export async function GET() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const schedules = await prisma.schedule.findMany({
     orderBy: { createdAt: "desc" },
     include: { site: { select: { url: true, name: true } } },
@@ -31,10 +38,13 @@ export async function GET() {
   return NextResponse.json({ monitors: schedules, recentAlerts });
 }
 
-/**
- * POST /api/monitors — Create a monitoring rule
- */
+/**\n * POST /api/monitors — Create a monitoring rule\n */
 export async function POST(request: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   let body: unknown;
   try {
     body = await request.json();

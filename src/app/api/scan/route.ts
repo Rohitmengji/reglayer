@@ -20,8 +20,10 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
 import { scanRequestSchema } from "@/lib/validations/scan";
 import { performScan } from "@/services/scanService";
+import { authOptions } from "@/lib/auth/config";
 import { logger } from "@/lib/telemetry/logger";
 
 export async function POST(request: NextRequest) {
@@ -49,8 +51,11 @@ export async function POST(request: NextRequest) {
 
     const { url, options } = parseResult.data;
 
+    // Get user session for notification context
+    const session = await getServerSession(authOptions);
+
     // Delegate to service layer
-    const result = await performScan({ url, options });
+    const result = await performScan({ url, options, userEmail: session?.user?.email || undefined });
 
     return NextResponse.json(result, { status: 200 });
   } catch (error) {

@@ -54,10 +54,13 @@ export default function TeamPage() {
   async function fetchTeam() {
     try {
       const res = await fetch("/api/team");
+      if (!res.ok) return;
       const data = await res.json();
       setMembers(data.members || []);
       setWorkspace(data.workspace);
       setCurrentUserRole(data.currentUserRole || "");
+    } catch {
+      // Network error
     } finally {
       setLoading(false);
     }
