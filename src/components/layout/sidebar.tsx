@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession, signOut } from "next-auth/react";
 import { cn } from "@/lib/utils/cn";
-import { Shield, LayoutDashboard, Scan, Settings } from "lucide-react";
+import { Shield, LayoutDashboard, Scan, Settings, LogOut } from "lucide-react";
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -13,6 +14,7 @@ const navigation = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { data: session } = useSession();
 
   return (
     <aside className="flex h-full w-64 flex-col border-r border-neutral-200 bg-white">
@@ -46,13 +48,29 @@ export function Sidebar() {
         })}
       </nav>
 
-      {/* Footer */}
-      <div className="border-t border-neutral-200 px-6 py-4">
-        <p className="text-xs text-neutral-500">
-          RegLayer v0.1.0
-        </p>
+      {/* User & Footer */}
+      <div className="border-t border-neutral-200 px-4 py-4 space-y-3">
+        {session?.user && (
+          <div className="flex items-center justify-between">
+            <div className="min-w-0">
+              <p className="truncate text-xs font-medium text-neutral-700">
+                {session.user.name || session.user.email}
+              </p>
+              <p className="truncate text-xs text-neutral-400">
+                {session.user.email}
+              </p>
+            </div>
+            <button
+              onClick={() => signOut({ callbackUrl: "/auth/login" })}
+              className="rounded-md p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600 transition-colors"
+              title="Sign out"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
         <p className="text-xs text-neutral-400">
-          Accessibility Scanner
+          RegLayer v0.1.0
         </p>
       </div>
     </aside>
