@@ -1,0 +1,224 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth/config";
+import { prisma } from "@/lib/database/prisma";
+import { getOrCreateWorkspace } from "@/lib/database/workspace";
+
+const VALID_PROVIDERS = ["slack", "jira", "github", "linear", "teams", "gitlab", "zapier", "email"];
+
+/**
+ * GET /api/integrations — List all integrations for the user's workspace
+ */
+export async function GET() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const user = await prisma.user.upsert({
+    where: { email: session.user.email },
+    update: {},
+    create: { email: session.user.email, name: (session.user as { name?: string }).name || null },
+  });
+
+  const workspaceId = await getOrCreateWorkspace(user.id, user.email);
+
+  const integrations = await prisma.integration.findMany({
+    where: { workspaceId },
+    orderBy: { connectedAt: "desc" },
+  });
+
+  // Strip sensitive tokens from response
+  const safe = integrations.map((i) => ({
+    id: i.id,
+    provider: i.provider,
+    name: i.name,
+    enabled: i.enabled,
+    webhookUrl: i.webhookUrl ? "••••" + i.webhookUrl.slice(-8) : null,
+    externalId: i.externalId,
+    config: i.config,
+    connectedAt: i.connectedAt,
+  }));
+
+  return NextResponse.json({ integrations: safe, workspaceId });
+}
+
+/**
+ * POST /api/integrations — Connect a new integration
+ */
+export async function POST(request: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const user = await prisma.user.upsert({
+    where: { email: session.user.email },
+    update: {},
+    create: { email: session.user.email, name: (session.user as { name?: string }).name || null },
+  });
+
+  const workspaceId = await getOrCreateWorkspace(user.id, user.email);
+  const body = await request.json();
+  const { provider, webhookUrl, config, name } = body;
+
+  if (!provider || !VALID_PROVIDERS.includes(provider)) {
+    return NextResponse.json({ error: "Invalid provider" }, { status: 400 });
+  }
+
+  // Validate Slack webhook URL format
+  if (provider === "slack" && webhookUrl) {
+    if (!webhookUrl.startsWith("https://hooks.slack.com/")) {
+      return NextResponse.json({ error: "Invalid Slack webhook URL" }, { status: 400 });
+    }
+    // Test the webhook
+    try {
+      const testRes = await fetch(webhookUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: "✅ RegLayer connected successfully! You'll receive accessibility scan notifications here." }),
+      });
+      if (!testRes.ok) {
+        return NextResponse.json({ error: "Slack webhook test failed. Check the URL." }, { status: 400 });
+      }
+    } catch {
+      return NextResponse.json({ error: "Could not reach Slack webhook URL" }, { status: 400 });
+    }
+  }
+
+  // Validate Teams webhook URL
+  if (provider === "teams" && webhookUrl) {
+    if (!webhookUrl.includes("webhook.office.com") && !webhookUrl.includes("microsoft.com")) {
+      return NextResponse.json({ error: "Invalid Teams webhook URL" }, { status: 400 });
+    }
+  }
+
+  // Validate SMTP config
+  if (provider === "email" && config) {
+    const { host, port, user: smtpUser } = config as Record<string, unknown>;
+    if (!host || !port || !smtpUser) {
+      return NextResponse.json({ error: "SMTP config requires host, port, and user" }, { status: 400 });
+    }
+  }
+
+  // Upsert integration (one per provider per workspace)
+  const integration = await prisma.integration.upsert({
+    where: { workspaceId_provider: { workspaceId, provider } },
+    update: {
+      webhookUrl,
+      config: config || undefined,
+      name: name || provider,
+      enabled: true,
+      updatedAt: new Date(),
+    },
+    create: {
+      workspaceId,
+      userId: user.id,
+      provider,
+      name: name || provider,
+      webhookUrl,
+      config: config || undefined,
+      enabled: true,
+    },
+  });
+
+  return NextResponse.json({
+    id: integration.id,
+    provider: integration.provider,
+    name: integration.name,
+    enabled: integration.enabled,
+    connectedAt: integration.connectedAt,
+  });
+}
+
+/**
+ * PATCH /api/integrations — Update integration (enable/disable, update config)
+ */
+export async function PATCH(request: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const body = await request.json();
+  const { id, enabled, config, webhookUrl } = body;
+
+  if (!id) {
+    return NextResponse.json({ error: "Integration ID required" }, { status: 400 });
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { email: session.user.email },
+    include: { memberships: true },
+  });
+
+  if (!user) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+
+  // Verify ownership
+  const integration = await prisma.integration.findUnique({ where: { id } });
+  if (!integration) {
+    return NextResponse.json({ error: "Integration not found" }, { status: 404 });
+  }
+
+  const hasAccess = user.memberships.some((m) => m.workspaceId === integration.workspaceId);
+  if (!hasAccess) {
+    return NextResponse.json({ error: "Access denied" }, { status: 403 });
+  }
+
+  const updateData: Record<string, unknown> = {};
+  if (typeof enabled === "boolean") updateData.enabled = enabled;
+  if (config) updateData.config = config;
+  if (webhookUrl) updateData.webhookUrl = webhookUrl;
+
+  const updated = await prisma.integration.update({
+    where: { id },
+    data: updateData,
+  });
+
+  return NextResponse.json({
+    id: updated.id,
+    provider: updated.provider,
+    enabled: updated.enabled,
+  });
+}
+
+/**
+ * DELETE /api/integrations — Disconnect an integration
+ */
+export async function DELETE(request: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get("id");
+
+  if (!id) {
+    return NextResponse.json({ error: "Integration ID required" }, { status: 400 });
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { email: session.user.email },
+    include: { memberships: true },
+  });
+
+  if (!user) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+
+  const integration = await prisma.integration.findUnique({ where: { id } });
+  if (!integration) {
+    return NextResponse.json({ error: "Integration not found" }, { status: 404 });
+  }
+
+  const hasAccess = user.memberships.some((m) => m.workspaceId === integration.workspaceId);
+  if (!hasAccess) {
+    return NextResponse.json({ error: "Access denied" }, { status: 403 });
+  }
+
+  await prisma.integration.delete({ where: { id } });
+  return NextResponse.json({ success: true });
+}

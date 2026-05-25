@@ -25,6 +25,7 @@
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
+import { prisma } from "@/lib/database/prisma";
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -70,6 +71,17 @@ export const authOptions: NextAuthOptions = {
     signIn: "/auth/login",
   },
   callbacks: {
+    async signIn({ user }) {
+      // Ensure user exists in the database
+      if (user?.email) {
+        await prisma.user.upsert({
+          where: { email: user.email },
+          update: { name: user.name || undefined, image: user.image || undefined },
+          create: { email: user.email, name: user.name || null, image: user.image || null },
+        });
+      }
+      return true;
+    },
     async jwt({ token, user }) {
       if (user) {
         token.role = (user as unknown as { role: string }).role;

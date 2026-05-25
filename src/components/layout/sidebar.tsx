@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { cn } from "@/lib/utils/cn";
 import { useTheme } from "@/components/theme-provider";
-import { Shield, LayoutDashboard, Scan, Globe, Zap, Sparkles, BarChart3, GitCompare, Webhook, Settings, LogOut, Grid3X3, Moon, Sun, FileText, Languages } from "lucide-react";
+import { Shield, LayoutDashboard, Scan, Globe, Zap, Sparkles, BarChart3, GitCompare, Webhook, Settings, LogOut, Grid3X3, Moon, Sun, FileText, Languages, Users, ClipboardList, Bell, Plug } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 import { SUPPORTED_LOCALES } from "@/lib/i18n/translations";
 
@@ -19,6 +19,10 @@ const navigation = [
   { name: "AI Insights", href: "/insights", icon: Sparkles },
   { name: "Analytics", href: "/analytics", icon: BarChart3 },
   { name: "Compare", href: "/scans/compare", icon: GitCompare },
+  { name: "Team", href: "/team", icon: Users },
+  { name: "Audit Log", href: "/audit-log", icon: ClipboardList },
+  { name: "Notifications", href: "/notifications", icon: Bell },
+  { name: "Integrations", href: "/integrations", icon: Plug },
   { name: "Webhooks", href: "/webhooks", icon: Webhook },
   { name: "Settings", href: "/settings", icon: Settings },
 ];
@@ -101,22 +105,19 @@ export function Sidebar({ onNavigate }: SidebarProps) {
               <p className="truncate text-xs font-medium text-neutral-700">
                 {session.user.name || session.user.email}
               </p>
-              <p className="truncate text-xs text-neutral-500 dark:text-neutral-400">
+              <p className="truncate mb-1 text-xs text-neutral-500 dark:text-neutral-400">
                 {session.user.email}
               </p>
             </div>
             <button
               onClick={() => signOut({ callbackUrl: "/auth/login" })}
-              className="rounded-md p-1.5 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-600 dark:text-neutral-400 dark:hover:bg-neutral-800 transition-colors"
+              className="rounded-md p-0.8 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-600 dark:text-neutral-400 dark:hover:bg-neutral-800 transition-colors"
               title="Sign out"
             >
               <LogOut className="h-3.5 w-3.5" />
             </button>
           </div>
         )}
-        <p className="text-xs text-neutral-500 dark:text-neutral-400">
-          RegLayer v0.1.0
-        </p>
       </div>
     </aside>
   );

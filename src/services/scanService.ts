@@ -34,6 +34,8 @@ import { logger } from "@/lib/telemetry/logger";
 import { prisma } from "@/lib/database/prisma";
 import { evaluateAlerts } from "@/lib/intelligence/alertEngine";
 import { dispatchWebhookEvent } from "@/lib/integrations/webhookDispatcher";
+import { sendScanCompleteEmail } from "@/lib/email/service";
+import { dispatchToIntegrations } from "@/lib/integrations/dispatcher";
 import type { ScanRequest, ScanResult, ComplianceReport } from "@/lib/types";
 
 export interface ScanServiceResult {
@@ -102,6 +104,9 @@ export async function performScan(
       duration: scanResult.metadata.scanDuration,
     }).catch(() => {/* non-blocking */});
 
+    // Send email notifications + integration dispatches (fire-and-forget)
+    notifyScanComplete(scanResult).catch(() => {/* non-blocking */});
+
     return {
       scan: scanResult,
       compliance: complianceReport,
@@ -159,4 +164,51 @@ async function persistScan(
       },
     },
   });
+}
+
+/**
+ * Send email notifications and dispatch to connected integrations
+ * after a scan completes. Non-blocking.
+ */
+async function notifyScanComplete(scan: ScanResult): Promise<void> {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://reglayer.vercel.app";
+  const reportUrl = `${appUrl}/report/${scan.id}`;
+
+  // Find scan in DB to get workspace context
+  const dbScan = await prisma.scan.findUnique({
+    where: { id: scan.id },
+    select: { userId: true, workspaceId: true },
+  });
+
+  // Send email notification if user has it enabled
+  if (dbScan?.userId) {
+    const user = await prisma.user.findUnique({ where: { id: dbScan.userId } });
+    if (user?.email) {
+      const prefs = await prisma.notificationPreference.findUnique({
+        where: { userId: user.id },
+      });
+      // Default to true if no preferences saved yet
+      if (!prefs || prefs.scanComplete) {
+        await sendScanCompleteEmail(user.email, {
+          url: scan.url,
+          score: scan.summary.score,
+          violations: scan.summary.totalViolations,
+          critical: scan.summary.critical,
+          reportUrl,
+        });
+      }
+    }
+  }
+
+  // Dispatch to connected integrations (Slack, Jira, GitHub, etc.)
+  if (dbScan?.workspaceId) {
+    await dispatchToIntegrations(dbScan.workspaceId, "scan.completed", {
+      scanId: scan.id,
+      url: scan.url,
+      score: scan.summary.score,
+      violations: scan.summary.totalViolations,
+      critical: scan.summary.critical,
+      reportUrl,
+    });
+  }
 }

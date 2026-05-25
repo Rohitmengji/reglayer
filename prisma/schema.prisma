@@ -248,3 +248,47 @@ model AuditLog {
   @@index([workspaceId, createdAt])
   @@map("audit_logs")
 }
+
+// ─────────────────────────────────────────────
+// Notification Preferences
+// ─────────────────────────────────────────────
+
+model NotificationPreference {
+  id               String  @id @default(cuid())
+  userId           String  @unique
+  scanComplete     Boolean @default(true)
+  weeklyDigest     Boolean @default(true)
+  newViolations    Boolean @default(true)
+  complianceAlerts Boolean @default(true)
+  teamActivity     Boolean @default(false)
+  scheduledReports Boolean @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("notification_preferences")
+}
+
+// ─────────────────────────────────────────────
+// External Integrations
+// ─────────────────────────────────────────────
+
+model Integration {
+  id            String   @id @default(cuid())
+  provider      String   // "slack", "jira", "github", etc.
+  name          String?  // user-given label
+  enabled       Boolean  @default(true)
+  accessToken   String?  // encrypted OAuth token
+  refreshToken  String?  // encrypted refresh token
+  webhookUrl    String?  // incoming webhook URL (Slack, Teams)
+  externalId    String?  // external workspace/project ID
+  config        Json?    // provider-specific config (channel, project key, etc.)
+  connectedAt   DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  workspaceId   String
+  userId        String   // who connected it
+
+  @@unique([workspaceId, provider])
+  @@index([workspaceId])
+  @@map("integrations")
+}
