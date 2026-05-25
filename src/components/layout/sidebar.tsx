@@ -81,20 +81,20 @@ export function Sidebar({ onNavigate }: SidebarProps) {
               <p className="truncate text-xs font-medium text-neutral-700">
                 {session.user.name || session.user.email}
               </p>
-              <p className="truncate text-xs text-neutral-400">
+              <p className="truncate text-xs text-neutral-500 dark:text-neutral-400">
                 {session.user.email}
               </p>
             </div>
             <button
               onClick={() => signOut({ callbackUrl: "/auth/login" })}
-              className="rounded-md p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600 transition-colors"
+              className="rounded-md p-1.5 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-600 dark:text-neutral-400 dark:hover:bg-neutral-800 transition-colors"
               title="Sign out"
             >
               <LogOut className="h-3.5 w-3.5" />
             </button>
           </div>
         )}
-        <p className="text-xs text-neutral-400">
+        <p className="text-xs text-neutral-500 dark:text-neutral-400">
           RegLayer v0.1.0
         </p>
       </div>

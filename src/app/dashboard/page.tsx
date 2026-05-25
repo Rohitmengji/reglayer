@@ -124,11 +124,11 @@ export default function DashboardPage() {
                     >
                       <div className="min-w-0 flex-1">
                         <p className="text-sm text-neutral-800 dark:text-neutral-200 truncate">{scan.url}</p>
-                        <p className="text-xs text-neutral-400 dark:text-neutral-500">{new Date(scan.date).toLocaleDateString()}</p>
+                        <p className="text-xs text-neutral-500 dark:text-neutral-400">{new Date(scan.date).toLocaleDateString()}</p>
                       </div>
                       <div className="flex items-center gap-2">
                         {scan.violations > 0 && (
-                          <span className="text-xs text-neutral-400">{scan.violations} issues</span>
+                          <span className="text-xs text-neutral-500 dark:text-neutral-400">{scan.violations} issues</span>
                         )}
                         <span className={`text-sm font-bold ${
                           scan.score >= 90 ? "text-green-600" :

@@ -127,10 +127,10 @@ export default function Home() {
       <footer className="border-t border-neutral-100 py-8">
         <div className="mx-auto max-w-6xl px-6 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Shield className="h-4 w-4 text-neutral-400" />
-            <span className="text-sm text-neutral-400">RegLayer v0.1.0</span>
+            <Shield className="h-4 w-4 text-neutral-500" />
+            <span className="text-sm text-neutral-500">RegLayer v0.1.0</span>
           </div>
-          <p className="text-xs text-neutral-400">
+          <p className="text-xs text-neutral-500">
             European Accessibility Act Compliance Platform
           </p>
         </div>
