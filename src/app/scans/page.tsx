@@ -90,7 +90,7 @@ export default function ScansPage() {
     <AppShell>
       <div className="space-y-8">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Scan History</h1>
             <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
@@ -110,7 +110,7 @@ export default function ScansPage() {
 
         {/* Summary Stats */}
         {scans.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
             <SummaryCard
               label="Total Scans"
               value={scans.length.toString()}
@@ -167,13 +167,13 @@ export default function ScansPage() {
             {scans.map((scan, index) => (
               <div
                 key={scan.id}
-                className={`group rounded-xl border bg-white dark:bg-neutral-900 p-5 transition-all hover:shadow-md ${
+                className={`group rounded-xl border bg-white dark:bg-neutral-900 p-4 sm:p-5 transition-all hover:shadow-md ${
                   selectedScans.includes(scan.id)
                     ? "border-blue-300 dark:border-blue-700 ring-2 ring-blue-100"
                     : "border-neutral-200 dark:border-neutral-700"
                 }`}
               >
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3 sm:gap-4">
                   {/* Checkbox */}
                   <button
                     onClick={() => toggleSelect(scan.id)}

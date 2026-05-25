@@ -143,7 +143,7 @@ export default function WebhooksPage() {
     <AppShell>
       <div className="space-y-8">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Webhooks</h1>
             <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">

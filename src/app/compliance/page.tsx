@@ -115,7 +115,7 @@ function ComplianceContent() {
         </div>
 
         {/* Summary */}
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <button
             onClick={() => setFilter("all")}
             className={`rounded-xl border p-3 text-center transition-colors ${filter === "all" ? "border-neutral-900 bg-neutral-900 text-white" : "border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900"}`}
