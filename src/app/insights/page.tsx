@@ -28,6 +28,19 @@ interface Insight {
 function str(val: unknown): string {
   if (val == null) return "";
   if (typeof val === "string") return val;
+  if (Array.isArray(val)) return val.join("\n");
+  return JSON.stringify(val, null, 2);
+}
+
+function codeStr(val: unknown): string {
+  if (val == null) return "";
+  if (typeof val === "string") return val;
+  if (typeof val === "object" && val !== null) {
+    const obj = val as Record<string, unknown>;
+    if ("before" in obj && "after" in obj) {
+      return `// Before:\n${obj.before}\n\n// After:\n${obj.after}`;
+    }
+  }
   return JSON.stringify(val, null, 2);
 }
 
@@ -204,7 +217,7 @@ function InsightsContent() {
                       <p className="text-xs font-semibold text-orange-600 uppercase">Code fix</p>
                     </div>
                     <pre className="rounded-lg bg-neutral-900 p-4 text-xs text-green-300 overflow-x-auto whitespace-pre-wrap">
-                      {str(entry.insight.codeExample)}
+                      {codeStr(entry.insight.codeExample)}
                     </pre>
                   </div>
                 )}
