@@ -43,7 +43,7 @@
 import type { Page, Browser } from "playwright-core";
 import type { ScanOptions } from "@/lib/types";
 import { SCAN_DEFAULTS } from "@/lib/constants";
-import { launchBrowser } from "@/lib/scanner/browser/launch";
+import { launchBrowser, isServerless } from "@/lib/scanner/browser/launch";
 import fs from "fs";
 import path from "path";
 
@@ -153,8 +153,14 @@ export async function runAccessibilityScan(
     });
 
     // Allow time for JS frameworks to hydrate and render
-    await page.waitForLoadState("domcontentloaded");
-    await page.waitForTimeout(2000);
+    if (isServerless()) {
+      // Puppeteer: use simple delay (waitForLoadState doesn't exist)
+      await new Promise((r) => setTimeout(r, 2000));
+    } else {
+      // Playwright: use native load state APIs
+      await page.waitForLoadState("domcontentloaded");
+      await page.waitForTimeout(2000);
+    }
 
     /**
      * Optional: wait for specific selector if provided.

@@ -23,7 +23,7 @@
 
 import type { Browser, Page } from "playwright-core";
 import { SCAN_DEFAULTS } from "@/lib/constants";
-import { launchBrowser } from "@/lib/scanner/browser/launch";
+import { launchBrowser, isServerless } from "@/lib/scanner/browser/launch";
 
 export interface CrawlOptions {
   maxPages: number;
@@ -79,7 +79,7 @@ export async function crawlPages(
           waitUntil: "load",
           timeout: options.timeout ?? SCAN_DEFAULTS.timeout,
         });
-        await page.waitForTimeout(1000);
+        await (isServerless() ? new Promise(r => setTimeout(r, 1000)) : page.waitForTimeout(1000));
 
         // Extract all links from the page
         const links = await page.evaluate((orig: string) => {

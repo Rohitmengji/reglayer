@@ -23,7 +23,7 @@
 
 import type { Browser } from "playwright-core";
 import { SCAN_DEFAULTS } from "@/lib/constants";
-import { launchBrowser } from "@/lib/scanner/browser/launch";
+import { launchBrowser, isServerless } from "@/lib/scanner/browser/launch";
 
 export interface ScreenshotOptions {
   fullPage?: boolean;
@@ -49,15 +49,16 @@ export async function captureScreenshot(
 
   try {
     browser = await launchBrowser();
-    const page = await browser.newPage({
-      viewport: { width: 1280, height: 720 },
-    });
+    const page = await browser.newPage();
+    if (!isServerless()) {
+      await (page as unknown as { setViewportSize: (s: { width: number; height: number }) => Promise<void> }).setViewportSize({ width: 1280, height: 720 });
+    }
 
     await page.goto(url, {
       waitUntil: "load",
       timeout: options.timeout ?? SCAN_DEFAULTS.timeout,
     });
-    await page.waitForTimeout(2000);
+    await (isServerless() ? new Promise(r => setTimeout(r, 2000)) : page.waitForTimeout(2000));
 
     let screenshot: Buffer;
 
