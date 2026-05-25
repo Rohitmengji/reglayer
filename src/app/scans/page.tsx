@@ -12,6 +12,7 @@ import {
   Share2,
   Clock,
   BarChart3,
+  Check,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -236,17 +237,7 @@ export default function ScansPage() {
                     >
                       <ExternalLink className="h-4 w-4" />
                     </Link>
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(
-                          `${window.location.origin}/report/${scan.id}`
-                        );
-                      }}
-                      className="rounded-md p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600"
-                      title="Copy Share Link"
-                    >
-                      <Share2 className="h-4 w-4" />
-                    </button>
+                    <CopyLinkButton scanId={scan.id} />
                   </div>
                 </div>
               </div>
@@ -274,6 +265,33 @@ function SummaryCard({
         <p className="text-xs font-medium text-neutral-500">{label}</p>
       </div>
       <p className="mt-2 text-2xl font-bold text-neutral-900">{value}</p>
+    </div>
+  );
+}
+
+function CopyLinkButton({ scanId }: { scanId: string }) {
+  const [copied, setCopied] = useState(false);
+
+  function handleCopy() {
+    navigator.clipboard.writeText(`${window.location.origin}/report/${scanId}`);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  return (
+    <div className="relative">
+      <button
+        onClick={handleCopy}
+        className="rounded-md p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600 transition-colors"
+        title="Copy Share Link"
+      >
+        {copied ? <Check className="h-4 w-4 text-green-500" /> : <Share2 className="h-4 w-4" />}
+      </button>
+      {copied && (
+        <span className="absolute -top-8 left-1/2 -translate-x-1/2 rounded-md bg-neutral-900 px-2 py-1 text-xs text-white whitespace-nowrap animate-in fade-in slide-in-from-bottom-1 duration-200">
+          Copied!
+        </span>
+      )}
     </div>
   );
 }
