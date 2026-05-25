@@ -104,7 +104,7 @@ function GeneralTab() {
             </div>
             <div>
               <p className="text-neutral-500">AI Model</p>
-              <p className="font-medium">GPT-4o-mini</p>
+              <p className="font-medium">ChatGPT-5.4 Mini</p>
             </div>
           </div>
         </CardContent>

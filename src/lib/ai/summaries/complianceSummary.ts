@@ -41,7 +41,7 @@ export async function generateComplianceSummary(
       .map((r) => `${r.rule.name} (${r.rule.regulation})`);
 
     const response = await getOpenAIClient().chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "chatgpt-5.4-mini",
       messages: [
         {
           role: "system",

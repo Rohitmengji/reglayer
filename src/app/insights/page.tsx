@@ -17,12 +17,18 @@ import {
 import Link from "next/link";
 
 interface Insight {
-  explanation: string;
-  userImpact: string;
-  fixStrategy: string;
-  codeExample: string;
-  effort: string;
-  priority: string;
+  explanation: string | object;
+  userImpact: string | object;
+  fixStrategy: string | object;
+  codeExample: string | object;
+  effort: string | object;
+  priority: string | object;
+}
+
+function str(val: unknown): string {
+  if (val == null) return "";
+  if (typeof val === "string") return val;
+  return JSON.stringify(val, null, 2);
 }
 
 interface InsightEntry {
@@ -164,7 +170,7 @@ function InsightsContent() {
                     <p className="text-xs font-semibold text-purple-600 uppercase">What this means</p>
                   </div>
                   <p className="text-sm text-neutral-700 leading-relaxed">
-                    {entry.insight.explanation}
+                    {str(entry.insight.explanation)}
                   </p>
                 </div>
 
@@ -175,7 +181,7 @@ function InsightsContent() {
                     <p className="text-xs font-semibold text-blue-600 uppercase">Who is affected</p>
                   </div>
                   <p className="text-sm text-neutral-700 leading-relaxed">
-                    {entry.insight.userImpact}
+                    {str(entry.insight.userImpact)}
                   </p>
                 </div>
 
@@ -186,7 +192,7 @@ function InsightsContent() {
                     <p className="text-xs font-semibold text-green-600 uppercase">How to fix</p>
                   </div>
                   <p className="text-sm text-neutral-700 leading-relaxed whitespace-pre-line">
-                    {entry.insight.fixStrategy}
+                    {str(entry.insight.fixStrategy)}
                   </p>
                 </div>
 
@@ -198,7 +204,7 @@ function InsightsContent() {
                       <p className="text-xs font-semibold text-orange-600 uppercase">Code fix</p>
                     </div>
                     <pre className="rounded-lg bg-neutral-900 p-4 text-xs text-green-300 overflow-x-auto whitespace-pre-wrap">
-                      {entry.insight.codeExample}
+                      {str(entry.insight.codeExample)}
                     </pre>
                   </div>
                 )}
@@ -208,10 +214,10 @@ function InsightsContent() {
                   <div className="flex items-center gap-2">
                     <Gauge className="h-4 w-4 text-neutral-400" />
                     <span className="text-xs text-neutral-500">Effort:</span>
-                    <Badge variant="secondary">{entry.insight.effort}</Badge>
+                    <Badge variant="secondary">{str(entry.insight.effort)}</Badge>
                   </div>
                   <p className="text-xs text-neutral-500 italic flex-1">
-                    {entry.insight.priority}
+                    {str(entry.insight.priority)}
                   </p>
                 </div>
               </CardContent>

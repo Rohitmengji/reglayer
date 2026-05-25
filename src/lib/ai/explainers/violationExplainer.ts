@@ -43,7 +43,7 @@ export async function explainViolation(
 
   try {
     const response = await getOpenAIClient().chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "chatgpt-5.4-mini",
       messages: [
         {
           role: "system",
