@@ -1,0 +1,100 @@
+/**
+ * ---------------------------------------------------------
+ * RegLayer — Core Type Definitions
+ * ---------------------------------------------------------
+ *
+ * Purpose:
+ * Centralized type system for the entire scanning and
+ * compliance infrastructure.
+ *
+ * Why this exists:
+ * Strong typing across service boundaries ensures
+ * correctness at compile time rather than runtime.
+ *
+ * Engineering Notes:
+ * - All types used across multiple modules live here.
+ * - Domain-specific types stay in their respective modules.
+ * - Prefer interfaces for objects, types for unions/aliases.
+ * ---------------------------------------------------------
+ */
+
+export interface ScanRequest {
+  url: string;
+  options?: ScanOptions;
+}
+
+export interface ScanOptions {
+  includeScreenshot?: boolean;
+  waitForSelector?: string;
+  timeout?: number;
+  tags?: string[];
+}
+
+export interface ScanResult {
+  id: string;
+  url: string;
+  timestamp: string;
+  status: ScanStatus;
+  summary: ScanSummary;
+  violations: AccessibilityViolation[];
+  screenshot?: string;
+  metadata: ScanMetadata;
+}
+
+export type ScanStatus = "pending" | "running" | "completed" | "failed";
+
+export interface ScanSummary {
+  totalViolations: number;
+  critical: number;
+  serious: number;
+  moderate: number;
+  minor: number;
+  score: number;
+}
+
+export interface AccessibilityViolation {
+  id: string;
+  impact: ViolationImpact;
+  description: string;
+  help: string;
+  helpUrl: string;
+  wcagTags: string[];
+  nodes: ViolationNode[];
+}
+
+export type ViolationImpact = "critical" | "serious" | "moderate" | "minor";
+
+export interface ViolationNode {
+  html: string;
+  target: string[];
+  failureSummary: string;
+}
+
+export interface ScanMetadata {
+  scanDuration: number;
+  pageTitle: string;
+  browserEngine: string;
+  axeCoreVersion: string;
+}
+
+export interface ComplianceRule {
+  id: string;
+  name: string;
+  description: string;
+  regulation: string;
+  wcagCriteria: string[];
+  severity: ViolationImpact;
+}
+
+export interface ComplianceReport {
+  scanId: string;
+  timestamp: string;
+  overallCompliance: number;
+  ruleResults: ComplianceRuleResult[];
+}
+
+export interface ComplianceRuleResult {
+  rule: ComplianceRule;
+  passed: boolean;
+  violations: AccessibilityViolation[];
+}
