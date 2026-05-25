@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { cn } from "@/lib/utils/cn";
-import { Shield, LayoutDashboard, Scan, Globe, Zap, Sparkles, BarChart3, GitCompare, Settings, LogOut } from "lucide-react";
+import { Shield, LayoutDashboard, Scan, Globe, Zap, Sparkles, BarChart3, GitCompare, Webhook, Settings, LogOut } from "lucide-react";
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -14,6 +14,7 @@ const navigation = [
   { name: "AI Insights", href: "/insights", icon: Sparkles },
   { name: "Analytics", href: "/analytics", icon: BarChart3 },
   { name: "Compare", href: "/scans/compare", icon: GitCompare },
+  { name: "Webhooks", href: "/webhooks", icon: Webhook },
   { name: "Settings", href: "/settings", icon: Settings },
 ];
 

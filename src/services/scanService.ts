@@ -33,6 +33,7 @@ import { evaluateCompliance } from "@/lib/compliance/policyEvaluator";
 import { logger } from "@/lib/telemetry/logger";
 import { prisma } from "@/lib/database/prisma";
 import { evaluateAlerts } from "@/lib/intelligence/alertEngine";
+import { dispatchWebhookEvent } from "@/lib/integrations/webhookDispatcher";
 import type { ScanRequest, ScanResult, ComplianceReport } from "@/lib/types";
 
 export interface ScanServiceResult {
@@ -90,6 +91,16 @@ export async function performScan(
         error: err instanceof Error ? err.message : "Unknown",
       });
     });
+
+    // Dispatch webhook events (fire-and-forget)
+    dispatchWebhookEvent("scan.completed", {
+      scanId: scanResult.id,
+      url: scanResult.url,
+      score: scanResult.summary.score,
+      violations: scanResult.summary.totalViolations,
+      critical: scanResult.summary.critical,
+      duration: scanResult.metadata.scanDuration,
+    }).catch(() => {/* non-blocking */});
 
     return {
       scan: scanResult,
