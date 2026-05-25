@@ -1,11 +1,31 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/database/prisma";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const limit = Number(request.nextUrl.searchParams.get("limit")) || 50;
+  const url = request.nextUrl.searchParams.get("url");
+
+  const where = url ? { url, status: "COMPLETED" as const } : {};
+
   const scans = await prisma.scan.findMany({
-    select: { id: true, url: true, score: true, pageTitle: true, createdAt: true },
+    where,
+    select: {
+      id: true,
+      url: true,
+      score: true,
+      totalViolations: true,
+      critical: true,
+      serious: true,
+      moderate: true,
+      minor: true,
+      compliance: true,
+      pageTitle: true,
+      duration: true,
+      status: true,
+      createdAt: true,
+    },
     orderBy: { createdAt: "desc" },
-    take: 10,
+    take: limit,
   });
 
   return NextResponse.json({ scans, count: scans.length });

@@ -4,11 +4,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { cn } from "@/lib/utils/cn";
-import { Shield, LayoutDashboard, Scan, Settings, LogOut } from "lucide-react";
+import { Shield, LayoutDashboard, Scan, GitCompare, Settings, LogOut } from "lucide-react";
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Scans", href: "/scans", icon: Scan },
+  { name: "Compare", href: "/scans/compare", icon: GitCompare },
   { name: "Settings", href: "/settings", icon: Settings },
 ];
 
