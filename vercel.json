@@ -1,0 +1,16 @@
+{
+  "functions": {
+    "src/app/api/scan/route.ts": {
+      "maxDuration": 60,
+      "memory": 1024
+    },
+    "src/app/api/scan/async/route.ts": {
+      "maxDuration": 60,
+      "memory": 1024
+    },
+    "src/app/api/scan/crawl/route.ts": {
+      "maxDuration": 60,
+      "memory": 1024
+    }
+  }
+}

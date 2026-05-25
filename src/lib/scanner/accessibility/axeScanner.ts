@@ -47,6 +47,33 @@ import fs from "fs";
 import path from "path";
 
 /**
+ * Determine if running in a serverless environment (Vercel).
+ */
+const IS_SERVERLESS = !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME;
+
+/**
+ * Get the Chromium executable path for the current environment.
+ * Uses @sparticuz/chromium in serverless, local Playwright install otherwise.
+ */
+async function getBrowser(): Promise<Browser> {
+  if (IS_SERVERLESS) {
+    const sparticuzChromium = (await import("@sparticuz/chromium")).default;
+    (sparticuzChromium as unknown as { setHeadlessMode: string }).setHeadlessMode = "shell";
+    (sparticuzChromium as unknown as { setGraphicsMode: boolean }).setGraphicsMode = false;
+
+    const executablePath = await sparticuzChromium.executablePath();
+
+    return chromium.launch({
+      executablePath,
+      headless: true,
+      args: sparticuzChromium.args,
+    });
+  }
+
+  return chromium.launch({ headless: true });
+}
+
+/**
  * Load axe-core source directly from node_modules.
  *
  * Why manual injection instead of @axe-core/playwright:
@@ -116,10 +143,11 @@ export async function runAccessibilityScan(
      * - Stable automation support
      * - Industry-standard rendering engine
      * - Reliable accessibility tree support
+     *
+     * Uses @sparticuz/chromium in serverless (Vercel),
+     * local Playwright Chromium otherwise.
      */
-    browser = await chromium.launch({
-      headless: true,
-    });
+    browser = await getBrowser();
 
     /**
      * Create isolated browser page instance.
