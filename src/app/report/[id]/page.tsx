@@ -55,7 +55,7 @@ export default async function PublicReportPage({ params }: ReportPageProps) {
             <div className="space-y-2 text-sm">
               <div className="flex items-center gap-2 text-neutral-700">
                 <ExternalLink className="h-4 w-4" />
-                <a href={scan.url} target="_blank" rel="noopener noreferrer" className="hover:underline truncate max-w-[300px]">
+                <a href={scan.url} target="_blank" rel="noopener noreferrer" className="hover:underline truncate max-w-75">
                   {scan.url}
                 </a>
               </div>
@@ -88,7 +88,7 @@ export default async function PublicReportPage({ params }: ReportPageProps) {
             </div>
             <div className="mt-3 h-3 rounded-full bg-neutral-100 overflow-hidden">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-green-400 to-green-600 transition-all"
+                className="h-full rounded-full bg-linear-to-r from-green-400 to-green-600 transition-all"
                 style={{ width: `${scan.compliance}%` }}
               />
             </div>

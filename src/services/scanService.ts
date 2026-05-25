@@ -32,6 +32,7 @@ import { executeScanPipeline } from "@/lib/scanner/pipelines/scanPipeline";
 import { evaluateCompliance } from "@/lib/compliance/policyEvaluator";
 import { logger } from "@/lib/telemetry/logger";
 import { prisma } from "@/lib/database/prisma";
+import { evaluateAlerts } from "@/lib/intelligence/alertEngine";
 import type { ScanRequest, ScanResult, ComplianceReport } from "@/lib/types";
 
 export interface ScanServiceResult {
@@ -79,6 +80,13 @@ export async function performScan(
     // Persist to database (fire-and-forget, don't block response)
     persistScan(scanResult, complianceReport).catch((err) => {
       scanLogger.warn("Failed to persist scan to database", {
+        error: err instanceof Error ? err.message : "Unknown",
+      });
+    });
+
+    // Evaluate alert rules (fire-and-forget)
+    evaluateAlerts(scanResult).catch((err) => {
+      scanLogger.warn("Failed to evaluate alerts", {
         error: err instanceof Error ? err.message : "Unknown",
       });
     });
