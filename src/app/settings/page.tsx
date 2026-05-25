@@ -415,13 +415,16 @@ function IntegrationsTab() {
   }
 
   useEffect(() => {
-    const stored = localStorage.getItem("reglayer_github_config");
-    if (stored) {
-      const config = JSON.parse(stored);
-      setGhOwner(config.owner || "");
-      setGhRepo(config.repo || "");
-      setGhToken(config.token || "");
-    }
+    const t = setTimeout(() => {
+      const stored = localStorage.getItem("reglayer_github_config");
+      if (stored) {
+        const config = JSON.parse(stored);
+        setGhOwner(config.owner || "");
+        setGhRepo(config.repo || "");
+        setGhToken(config.token || "");
+      }
+    }, 0);
+    return () => clearTimeout(t);
   }, []);
 
   return (

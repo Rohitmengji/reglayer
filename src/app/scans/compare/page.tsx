@@ -57,9 +57,11 @@ function CompareContent() {
 
   useEffect(() => {
     if (!baseId || !headId) {
-      setError("Both base and head scan IDs are required");
-      setLoading(false);
-      return;
+      const t = setTimeout(() => {
+        setError("Both base and head scan IDs are required");
+        setLoading(false);
+      }, 0);
+      return () => clearTimeout(t);
     }
 
     fetch(`/api/scans/compare?base=${baseId}&head=${headId}`)

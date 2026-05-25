@@ -83,39 +83,44 @@ function InsightsContent() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+    function doFetch(id: string) {
+      fetch(`/api/scans/${id}/insights`)
+        .then((r) => r.json())
+        .then((d) => {
+          if (cancelled) return;
+          if (d.error) {
+            setError(d.error);
+          } else {
+            setData(d);
+          }
+          setLoading(false);
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setError("Failed to generate insights");
+            setLoading(false);
+          }
+        });
+    }
+
     if (!scanId) {
-      // Get latest scan
       fetch("/api/scans?limit=1")
         .then((r) => r.json())
         .then((d) => {
+          if (cancelled) return;
           if (d.scans?.[0]) {
-            fetchInsights(d.scans[0].id);
+            doFetch(d.scans[0].id);
           } else {
             setError("No scans found. Run a scan first.");
             setLoading(false);
           }
         });
     } else {
-      fetchInsights(scanId);
+      doFetch(scanId);
     }
+    return () => { cancelled = true; };
   }, [scanId]);
-
-  function fetchInsights(id: string) {
-    fetch(`/api/scans/${id}/insights`)
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.error) {
-          setError(d.error);
-        } else {
-          setData(d);
-        }
-        setLoading(false);
-      })
-      .catch(() => {
-        setError("Failed to generate insights");
-        setLoading(false);
-      });
-  }
 
   if (loading) {
     return (

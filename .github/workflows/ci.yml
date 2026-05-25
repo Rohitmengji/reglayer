@@ -31,6 +31,8 @@ jobs:
           NEXT_PUBLIC_APP_VERSION: 0.1.0
           NEXTAUTH_SECRET: ci-test-secret
           NEXTAUTH_URL: http://localhost:3000
+          DATABASE_URL: postgresql://user:pass@localhost:5432/db?sslmode=disable
+          OPENAI_API_KEY: sk-fake-ci-key
 
   test:
     runs-on: ubuntu-latest

@@ -65,39 +65,44 @@ function PrioritiesContent() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+    function doFetch(id: string) {
+      fetch(`/api/scans/${id}/priorities`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (cancelled) return;
+          if (data.error) {
+            setError(data.error);
+          } else {
+            setReport(data);
+          }
+          setLoading(false);
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setError("Failed to load priorities");
+            setLoading(false);
+          }
+        });
+    }
+
     if (!scanId) {
-      // Fetch latest scan
       fetch("/api/scans?limit=1")
         .then((r) => r.json())
         .then((data) => {
+          if (cancelled) return;
           if (data.scans?.[0]) {
-            fetchPriorities(data.scans[0].id);
+            doFetch(data.scans[0].id);
           } else {
             setError("No scans found");
             setLoading(false);
           }
         });
     } else {
-      fetchPriorities(scanId);
+      doFetch(scanId);
     }
+    return () => { cancelled = true; };
   }, [scanId]);
-
-  function fetchPriorities(id: string) {
-    fetch(`/api/scans/${id}/priorities`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.error) {
-          setError(data.error);
-        } else {
-          setReport(data);
-        }
-        setLoading(false);
-      })
-      .catch(() => {
-        setError("Failed to load priorities");
-        setLoading(false);
-      });
-  }
 
   if (loading) {
     return (

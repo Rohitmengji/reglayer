@@ -65,14 +65,17 @@ export default function AnalyticsPage() {
   const [period, setPeriod] = useState(30);
 
   useEffect(() => {
-    setLoading(true);
+    let cancelled = false;
     fetch(`/api/analytics?days=${period}`)
       .then((r) => r.json())
       .then((d) => {
-        setData(d);
-        setLoading(false);
+        if (!cancelled) {
+          setData(d);
+          setLoading(false);
+        }
       })
-      .catch(() => setLoading(false));
+      .catch(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, [period]);
 
   if (loading) {
