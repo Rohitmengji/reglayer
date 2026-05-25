@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -13,6 +14,7 @@ import {
   Clock,
   BarChart3,
   Check,
+  Trash2,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -36,6 +38,8 @@ export default function ScansPage() {
   const [scans, setScans] = useState<ScanRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedScans, setSelectedScans] = useState<string[]>([]);
+  const { data: session } = useSession();
+  const isAdmin = (session?.user as unknown as { role?: string })?.role === "admin";
 
   useEffect(() => {
     fetch("/api/scans")
@@ -46,6 +50,15 @@ export default function ScansPage() {
       })
       .catch(() => setLoading(false));
   }, []);
+
+  async function handleDelete(id: string) {
+    if (!confirm("Are you sure you want to delete this scan?")) return;
+    const res = await fetch(`/api/scans/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      setScans((prev) => prev.filter((s) => s.id !== id));
+      setSelectedScans((prev) => prev.filter((s) => s !== id));
+    }
+  }
 
   function toggleSelect(id: string) {
     setSelectedScans((prev) =>
@@ -238,6 +251,15 @@ export default function ScansPage() {
                       <ExternalLink className="h-4 w-4" />
                     </Link>
                     <CopyLinkButton scanId={scan.id} />
+                    {isAdmin && (
+                      <button
+                        onClick={() => handleDelete(scan.id)}
+                        className="rounded-md p-1.5 text-neutral-400 hover:bg-red-50 dark:hover:bg-red-950 hover:text-red-600 transition-colors"
+                        title="Delete Scan (Admin only)"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
