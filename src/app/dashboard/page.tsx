@@ -5,6 +5,10 @@ import { AppShell } from "@/components/layout/app-shell";
 import { ScanForm } from "@/components/scanner/scan-form";
 import { ScoreCard } from "@/components/dashboard/score-card";
 import { ViolationCard } from "@/components/scanner/violation-card";
+import { ComplianceTrend } from "@/components/charts/compliance-trend";
+import { Button } from "@/components/ui/button";
+import { useScanStore } from "@/stores/scanStore";
+import { Download } from "lucide-react";
 import type { ScanResult, ComplianceReport } from "@/lib/types";
 
 interface ScanResponse {
@@ -14,6 +18,33 @@ interface ScanResponse {
 
 export default function DashboardPage() {
   const [scanResult, setScanResult] = useState<ScanResponse | null>(null);
+  const { setScanResult: persistResult } = useScanStore();
+
+  function handleScanComplete(result: unknown) {
+    const data = result as ScanResponse;
+    setScanResult(data);
+    persistResult(data.scan, data.compliance);
+  }
+
+  async function handleExportPDF() {
+    if (!scanResult) return;
+
+    const response = await fetch("/api/reports", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(scanResult),
+    });
+
+    if (response.ok) {
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `reglayer-report-${scanResult.scan.id}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  }
 
   return (
     <AppShell>
@@ -26,12 +57,23 @@ export default function DashboardPage() {
           </p>
         </div>
 
+        {/* Compliance Trend */}
+        <ComplianceTrend />
+
         {/* Scan Form */}
-        <ScanForm onScanComplete={(result) => setScanResult(result as ScanResponse)} />
+        <ScanForm onScanComplete={handleScanComplete} />
 
         {/* Results */}
         {scanResult && (
           <div className="space-y-6">
+            {/* Actions */}
+            <div className="flex justify-end">
+              <Button variant="outline" size="sm" onClick={handleExportPDF}>
+                <Download className="mr-2 h-4 w-4" />
+                Export PDF Report
+              </Button>
+            </div>
+
             {/* Score Overview */}
             <ScoreCard summary={scanResult.scan.summary} />
 
@@ -50,6 +92,20 @@ export default function DashboardPage() {
                 value={`${scanResult.compliance.overallCompliance}%`}
               />
             </div>
+
+            {/* Screenshot */}
+            {scanResult.scan.screenshot && (
+              <div className="rounded-lg border border-neutral-200 bg-white p-4">
+                <p className="mb-2 text-xs font-medium text-neutral-500">
+                  Page Screenshot
+                </p>
+                <img
+                  src={`data:image/png;base64,${scanResult.scan.screenshot}`}
+                  alt="Page screenshot"
+                  className="w-full rounded-md border border-neutral-100"
+                />
+              </div>
+            )}
 
             {/* Violations */}
             {scanResult.scan.violations.length > 0 && (

@@ -1,0 +1,78 @@
+/**
+ * ---------------------------------------------------------
+ * RegLayer — Authentication Configuration
+ * ---------------------------------------------------------
+ *
+ * Purpose:
+ * NextAuth.js configuration for user authentication.
+ *
+ * Why this exists:
+ * Enterprise compliance tools require:
+ * - User identity for audit trails
+ * - Role-based access control
+ * - Session management
+ *
+ * V1: Credentials provider (email/password)
+ * Future: OAuth (Google, GitHub, SAML for enterprise)
+ *
+ * Engineering Notes:
+ * - Uses JWT strategy (stateless, no DB required for V1)
+ * - Easily extensible with additional providers
+ * - Session data available on both client and server
+ * ---------------------------------------------------------
+ */
+
+import type { NextAuthOptions } from "next-auth";
+import CredentialsProvider from "next-auth/providers/credentials";
+
+export const authOptions: NextAuthOptions = {
+  providers: [
+    CredentialsProvider({
+      name: "Credentials",
+      credentials: {
+        email: { label: "Email", type: "email", placeholder: "admin@reglayer.dev" },
+        password: { label: "Password", type: "password" },
+      },
+      async authorize(credentials) {
+        /**
+         * V1: Simple demo authentication.
+         * Production: Replace with database lookup + bcrypt comparison.
+         */
+        if (
+          credentials?.email === "admin@reglayer.dev" &&
+          credentials?.password === "reglayer2024"
+        ) {
+          return {
+            id: "1",
+            name: "Admin",
+            email: "admin@reglayer.dev",
+            role: "admin",
+          };
+        }
+        return null;
+      },
+    }),
+  ],
+  session: {
+    strategy: "jwt",
+    maxAge: 24 * 60 * 60, // 24 hours
+  },
+  pages: {
+    signIn: "/auth/login",
+  },
+  callbacks: {
+    async jwt({ token, user }) {
+      if (user) {
+        token.role = (user as unknown as { role: string }).role;
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      if (session.user) {
+        (session.user as unknown as { role: string }).role = token.role as string;
+      }
+      return session;
+    },
+  },
+  secret: process.env.NEXTAUTH_SECRET ?? "reglayer-dev-secret-change-in-production",
+};

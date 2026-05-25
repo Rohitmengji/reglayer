@@ -41,9 +41,28 @@
  */
 
 import { chromium, type Page, type Browser } from "playwright";
-import AxeBuilder from "@axe-core/playwright";
 import type { ScanOptions } from "@/lib/types";
 import { SCAN_DEFAULTS } from "@/lib/constants";
+import fs from "fs";
+import path from "path";
+
+/**
+ * Load axe-core source directly from node_modules.
+ *
+ * Why manual injection instead of @axe-core/playwright:
+ * - The @axe-core/playwright wrapper has a known bug where
+ *   it injects code using `module.exports` which is undefined
+ *   in browser evaluate() contexts.
+ * - Direct injection of the axe-core bundle avoids this entirely.
+ * - We read the minified source and evaluate it in page context.
+ */
+function getAxeSource(): string {
+  const axePath = path.resolve(
+    process.cwd(),
+    "node_modules/axe-core/axe.min.js"
+  );
+  return fs.readFileSync(axePath, "utf-8");
+}
 
 export interface AxeScanResult {
   violations: AxeViolation[];
@@ -148,22 +167,35 @@ export async function runAccessibilityScan(
     /**
      * Execute accessibility scan using axe-core.
      *
-     * axe-core injects accessibility analysis logic
-     * directly into browser DOM context.
+     * Injects axe-core source directly into page context,
+     * then runs axe.run() to analyze the DOM.
      *
-     * Returned results include:
-     * - violations
-     * - impacted nodes
-     * - WCAG mappings
-     * - severity metadata
+     * This avoids the @axe-core/playwright wrapper bug where
+     * `module` is not defined in browser evaluate context.
      */
-    let axeBuilder = new AxeBuilder({ page });
+    const axeSource = getAxeSource();
+    await page.evaluate(axeSource);
 
-    if (options?.tags && options.tags.length > 0) {
-      axeBuilder = axeBuilder.withTags(options.tags);
-    }
+    const axeOptions = options?.tags?.length
+      ? { runOnly: { type: "tag" as const, values: options.tags } }
+      : {};
 
-    const results = await axeBuilder.analyze();
+    const results = await page.evaluate((opts) => {
+      return (window as unknown as { axe: { run: (opts: unknown) => Promise<unknown> } }).axe.run(opts);
+    }, axeOptions) as {
+      violations: Array<{
+        id: string;
+        impact: string;
+        description: string;
+        help: string;
+        helpUrl: string;
+        tags: string[];
+        nodes: Array<{ html: string; target: string[]; failureSummary?: string }>;
+      }>;
+      passes: unknown[];
+      incomplete: unknown[];
+      inapplicable: unknown[];
+    };
 
     const pageTitle = await page.title();
 

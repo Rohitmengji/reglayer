@@ -20,15 +20,23 @@ interface ScanResponse {
   compliance: ComplianceReport;
 }
 
+interface ScanParams {
+  url: string;
+  includeScreenshot?: boolean;
+}
+
 export function useScan() {
   const { setScanResult, setScanning } = useScanStore();
 
   return useMutation({
-    mutationFn: async (url: string): Promise<ScanResponse> => {
+    mutationFn: async (params: ScanParams): Promise<ScanResponse> => {
       const response = await fetch("/api/scan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url }),
+        body: JSON.stringify({
+          url: params.url,
+          options: { includeScreenshot: params.includeScreenshot },
+        }),
       });
 
       if (!response.ok) {
@@ -46,6 +54,50 @@ export function useScan() {
     },
     onError: () => {
       setScanning(false);
+    },
+  });
+}
+
+/**
+ * Hook for async (queue-based) scanning.
+ */
+export function useAsyncScan() {
+  return useMutation({
+    mutationFn: async (url: string) => {
+      const response = await fetch("/api/scan/async", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message ?? "Failed to queue scan");
+      }
+
+      return response.json();
+    },
+  });
+}
+
+/**
+ * Hook for multi-page crawl scanning.
+ */
+export function useCrawlScan() {
+  return useMutation({
+    mutationFn: async (params: { url: string; maxPages: number }) => {
+      const response = await fetch("/api/scan/crawl", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(params),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message ?? "Crawl scan failed");
+      }
+
+      return response.json();
     },
   });
 }

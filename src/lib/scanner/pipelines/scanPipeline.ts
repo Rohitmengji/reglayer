@@ -28,6 +28,7 @@
 import { runAccessibilityScan } from "../accessibility/axeScanner";
 import { normalizeViolations } from "../accessibility/issueNormalizer";
 import { generateScanSummary } from "../accessibility/severityEngine";
+import { captureScreenshot } from "../browser/screenshot";
 import type { ScanOptions, ScanResult } from "@/lib/types";
 
 /**
@@ -37,7 +38,8 @@ import type { ScanOptions, ScanResult } from "@/lib/types";
  * 1. SCAN: Run axe-core against target URL
  * 2. NORMALIZE: Transform raw results to internal format
  * 3. CLASSIFY: Generate severity summary and scoring
- * 4. PACKAGE: Assemble final scan result
+ * 4. SCREENSHOT: Capture visual evidence (optional)
+ * 5. PACKAGE: Assemble final scan result
  */
 export async function executeScanPipeline(
   url: string,
@@ -54,7 +56,18 @@ export async function executeScanPipeline(
   // Stage 3: Generate severity classification and scoring
   const summary = generateScanSummary(rawResults.violations);
 
-  // Stage 4: Package final result
+  // Stage 4: Screenshot capture (if requested)
+  let screenshot: string | undefined;
+  if (options?.includeScreenshot) {
+    try {
+      const screenshotResult = await captureScreenshot(url, { fullPage: false });
+      screenshot = screenshotResult.data;
+    } catch {
+      // Screenshot failure should not block scan results
+    }
+  }
+
+  // Stage 5: Package final result
   const scanResult: ScanResult = {
     id: generateScanId(),
     url: rawResults.url,
@@ -62,6 +75,7 @@ export async function executeScanPipeline(
     status: "completed",
     summary,
     violations,
+    screenshot,
     metadata: {
       scanDuration: Date.now() - startTime,
       pageTitle: rawResults.pageTitle,
