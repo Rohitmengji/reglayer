@@ -1,0 +1,8 @@
+{
+  "typescript.tsserver.watchOptions": {
+    "excludeDirectories": ["node_modules"]
+  },
+  "files.exclude": {
+    "**/node_modules/**/tsconfig.json": true
+  }
+}
