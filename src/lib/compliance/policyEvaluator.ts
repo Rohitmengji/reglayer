@@ -31,15 +31,21 @@ import type {
   ComplianceRuleResult,
 } from "@/lib/types";
 import { WCAG_21_RULES } from "./rules/wcagRules";
+import { EN_301_549_ALL_RULES } from "./rules/en301549Rules";
+
+export type RegulationStandard = "WCAG 2.1" | "EN 301 549" | "EAA";
 
 /**
  * Evaluate scan violations against WCAG 2.1 rules.
  */
 export function evaluateCompliance(
   scanId: string,
-  violations: AccessibilityViolation[]
+  violations: AccessibilityViolation[],
+  standard: RegulationStandard = "WCAG 2.1"
 ): ComplianceReport {
-  const ruleResults: ComplianceRuleResult[] = WCAG_21_RULES.map((rule) => {
+  const rules = standard === "WCAG 2.1" ? WCAG_21_RULES : EN_301_549_ALL_RULES;
+  
+  const ruleResults: ComplianceRuleResult[] = rules.map((rule) => {
     const matchingViolations = findViolationsForRule(rule, violations);
     return {
       rule,

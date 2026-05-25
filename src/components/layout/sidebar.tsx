@@ -5,12 +5,15 @@ import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { cn } from "@/lib/utils/cn";
 import { useTheme } from "@/components/theme-provider";
-import { Shield, LayoutDashboard, Scan, Globe, Zap, Sparkles, BarChart3, GitCompare, Webhook, Settings, LogOut, Grid3X3, Moon, Sun } from "lucide-react";
+import { Shield, LayoutDashboard, Scan, Globe, Zap, Sparkles, BarChart3, GitCompare, Webhook, Settings, LogOut, Grid3X3, Moon, Sun, FileText, Languages } from "lucide-react";
+import { useI18n } from "@/components/i18n-provider";
+import { SUPPORTED_LOCALES } from "@/lib/i18n/translations";
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Scans", href: "/scans", icon: Scan },
   { name: "Compliance", href: "/compliance", icon: Grid3X3 },
+  { name: "Statement", href: "/statement", icon: FileText },
   { name: "Crawl Site", href: "/crawl", icon: Globe },
   { name: "Priorities", href: "/priorities", icon: Zap },
   { name: "AI Insights", href: "/insights", icon: Sparkles },
@@ -28,6 +31,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
   const pathname = usePathname();
   const { data: session } = useSession();
   const { resolvedTheme, setTheme, mounted } = useTheme();
+  const { locale, setLocale } = useI18n();
 
   return (
     <aside className="flex h-full w-64 flex-col border-r border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-900">
@@ -40,7 +44,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-1 px-3 py-4">
+      <nav className="flex-1 space-y-1 px-3 py-4 overflow-y-auto">
         {navigation.map((item) => {
           const isActive = pathname.startsWith(item.href);
           return (
@@ -64,6 +68,22 @@ export function Sidebar({ onNavigate }: SidebarProps) {
 
       {/* User & Footer */}
       <div className="border-t border-neutral-200 dark:border-neutral-700 px-4 py-4 space-y-3">
+        {/* Language Selector */}
+        <div className="flex items-center gap-2 rounded-md px-3 py-1.5">
+          <Languages className="h-4 w-4 text-neutral-500 dark:text-neutral-400" />
+          <select
+            value={locale}
+            onChange={(e) => setLocale(e.target.value as typeof locale)}
+            className="flex-1 bg-transparent text-xs font-medium text-neutral-600 dark:text-neutral-300 border-none outline-none cursor-pointer"
+          >
+            {SUPPORTED_LOCALES.map((l) => (
+              <option key={l.code} value={l.code}>
+                {l.flag} {l.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
         {/* Theme Toggle */}
         {mounted && (
           <button
