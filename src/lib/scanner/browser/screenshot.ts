@@ -21,8 +21,9 @@
  * ---------------------------------------------------------
  */
 
-import { chromium, type Browser } from "playwright";
+import type { Browser } from "playwright-core";
 import { SCAN_DEFAULTS } from "@/lib/constants";
+import { launchBrowser } from "@/lib/scanner/browser/launch";
 
 export interface ScreenshotOptions {
   fullPage?: boolean;
@@ -47,7 +48,7 @@ export async function captureScreenshot(
   let browser: Browser | null = null;
 
   try {
-    browser = await chromium.launch({ headless: true });
+    browser = await launchBrowser();
     const page = await browser.newPage({
       viewport: { width: 1280, height: 720 },
     });

@@ -21,8 +21,9 @@
  * ---------------------------------------------------------
  */
 
-import { chromium, type Browser, type Page } from "playwright";
+import type { Browser, Page } from "playwright-core";
 import { SCAN_DEFAULTS } from "@/lib/constants";
+import { launchBrowser } from "@/lib/scanner/browser/launch";
 
 export interface CrawlOptions {
   maxPages: number;
@@ -61,7 +62,7 @@ export async function crawlPages(
   let browser: Browser | null = null;
 
   try {
-    browser = await chromium.launch({ headless: true });
+    browser = await launchBrowser();
     const context = await browser.newContext({
       ignoreHTTPSErrors: true,
     });

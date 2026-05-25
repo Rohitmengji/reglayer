@@ -40,38 +40,12 @@
  * ---------------------------------------------------------
  */
 
-import { chromium, type Page, type Browser } from "playwright";
+import type { Page, Browser } from "playwright-core";
 import type { ScanOptions } from "@/lib/types";
 import { SCAN_DEFAULTS } from "@/lib/constants";
+import { launchBrowser } from "@/lib/scanner/browser/launch";
 import fs from "fs";
 import path from "path";
-
-/**
- * Determine if running in a serverless environment (Vercel).
- */
-const IS_SERVERLESS = !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME;
-
-/**
- * Get the Chromium executable path for the current environment.
- * Uses @sparticuz/chromium in serverless, local Playwright install otherwise.
- */
-async function getBrowser(): Promise<Browser> {
-  if (IS_SERVERLESS) {
-    const sparticuzChromium = (await import("@sparticuz/chromium")).default;
-    (sparticuzChromium as unknown as { setHeadlessMode: string }).setHeadlessMode = "shell";
-    (sparticuzChromium as unknown as { setGraphicsMode: boolean }).setGraphicsMode = false;
-
-    const executablePath = await sparticuzChromium.executablePath();
-
-    return chromium.launch({
-      executablePath,
-      headless: true,
-      args: sparticuzChromium.args,
-    });
-  }
-
-  return chromium.launch({ headless: true });
-}
 
 /**
  * Load axe-core source directly from node_modules.
@@ -147,7 +121,7 @@ export async function runAccessibilityScan(
      * Uses @sparticuz/chromium in serverless (Vercel),
      * local Playwright Chromium otherwise.
      */
-    browser = await getBrowser();
+    browser = await launchBrowser();
 
     /**
      * Create isolated browser page instance.

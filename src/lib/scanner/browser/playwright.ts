@@ -18,7 +18,8 @@
  * ---------------------------------------------------------
  */
 
-import { chromium, type Browser, type BrowserContext, type Page } from "playwright";
+import type { Browser, BrowserContext, Page } from "playwright-core";
+import { launchBrowser } from "@/lib/scanner/browser/launch";
 
 let browserInstance: Browser | null = null;
 
@@ -30,9 +31,7 @@ let browserInstance: Browser | null = null;
  */
 export async function getBrowser(): Promise<Browser> {
   if (!browserInstance || !browserInstance.isConnected()) {
-    browserInstance = await chromium.launch({
-      headless: true,
-    });
+    browserInstance = await launchBrowser();
   }
   return browserInstance;
 }
