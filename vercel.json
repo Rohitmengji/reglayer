@@ -2,15 +2,18 @@
   "functions": {
     "src/app/api/scan/route.ts": {
       "maxDuration": 60,
-      "memory": 1024
+      "memory": 1024,
+      "includeFiles": "node_modules/@sparticuz/chromium/bin/**"
     },
     "src/app/api/scan/async/route.ts": {
       "maxDuration": 60,
-      "memory": 1024
+      "memory": 1024,
+      "includeFiles": "node_modules/@sparticuz/chromium/bin/**"
     },
     "src/app/api/scan/crawl/route.ts": {
       "maxDuration": 60,
-      "memory": 1024
+      "memory": 1024,
+      "includeFiles": "node_modules/@sparticuz/chromium/bin/**"
     }
   }
 }
