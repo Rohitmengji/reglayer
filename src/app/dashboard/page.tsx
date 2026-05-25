@@ -72,8 +72,8 @@ export default function DashboardPage() {
       <div className="space-y-8">
         {/* Header */}
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900">Dashboard</h1>
-          <p className="mt-1 text-sm text-neutral-500">
+          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Dashboard</h1>
+          <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
             Scan websites for accessibility compliance issues.
           </p>
         </div>
@@ -111,17 +111,17 @@ export default function DashboardPage() {
             {/* Recent Scans */}
             <Card>
               <CardContent className="p-5">
-                <h3 className="text-sm font-semibold text-neutral-700 mb-3">Recent Scans</h3>
+                <h3 className="text-sm font-semibold text-neutral-700 dark:text-neutral-200 mb-3">Recent Scans</h3>
                 <div className="space-y-2">
                   {stats.recentScans.slice(0, 5).map((scan) => (
                     <Link
                       key={scan.id}
                       href={`/report/${scan.id}`}
-                      className="flex items-center justify-between rounded-lg p-2 hover:bg-neutral-50 transition-colors"
+                      className="flex items-center justify-between rounded-lg p-2 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
                     >
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm text-neutral-800 truncate">{scan.url}</p>
-                        <p className="text-xs text-neutral-400">{new Date(scan.date).toLocaleDateString()}</p>
+                        <p className="text-sm text-neutral-800 dark:text-neutral-200 truncate">{scan.url}</p>
+                        <p className="text-xs text-neutral-400 dark:text-neutral-500">{new Date(scan.date).toLocaleDateString()}</p>
                       </div>
                       <div className="flex items-center gap-2">
                         {scan.violations > 0 && (
@@ -144,7 +144,7 @@ export default function DashboardPage() {
             {/* Top Violations */}
             <Card>
               <CardContent className="p-5">
-                <h3 className="text-sm font-semibold text-neutral-700 mb-3">Top Issues</h3>
+                <h3 className="text-sm font-semibold text-neutral-700 dark:text-neutral-200 mb-3">Top Issues</h3>
                 <div className="space-y-2">
                   {stats.topViolations.slice(0, 5).map((v) => (
                     <div key={v.ruleId} className="flex items-center justify-between rounded-lg p-2">
@@ -152,7 +152,7 @@ export default function DashboardPage() {
                         <Badge variant={v.impact as "critical" | "serious" | "moderate" | "minor"}>
                           {v.impact}
                         </Badge>
-                        <code className="text-xs text-neutral-700 truncate">{v.ruleId}</code>
+                        <code className="text-xs text-neutral-700 dark:text-neutral-300 truncate">{v.ruleId}</code>
                       </div>
                       <span className="text-xs font-medium text-neutral-500">{v.count}×</span>
                     </div>
@@ -201,8 +201,8 @@ export default function DashboardPage() {
 
             {/* Screenshot */}
             {scanResult.scan.screenshot && (
-              <div className="rounded-lg border border-neutral-200 bg-white p-4">
-                <p className="mb-2 text-xs font-medium text-neutral-500">
+              <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4">
+                <p className="mb-2 text-xs font-medium text-neutral-500 dark:text-neutral-400">
                   Page Screenshot
                 </p>
                 <img
@@ -216,7 +216,7 @@ export default function DashboardPage() {
             {/* Violations */}
             {scanResult.scan.violations.length > 0 && (
               <div className="space-y-4">
-                <h2 className="text-lg font-semibold text-neutral-900">
+                <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">
                   Violations ({scanResult.scan.violations.length})
                 </h2>
                 {scanResult.scan.violations.map((violation) => (
@@ -244,9 +244,9 @@ export default function DashboardPage() {
 
 function MetricCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-neutral-200 bg-white p-4">
-      <p className="text-xs font-medium text-neutral-500">{label}</p>
-      <p className="mt-1 truncate text-sm font-semibold text-neutral-900">
+    <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4">
+      <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">{label}</p>
+      <p className="mt-1 truncate text-sm font-semibold text-neutral-900 dark:text-white">
         {value}
       </p>
     </div>
@@ -255,7 +255,7 @@ function MetricCard({ label, value }: { label: string; value: string }) {
 
 function StatCard({ label, value, icon, trend }: { label: string; value: string; icon: React.ReactNode; trend?: number }) {
   return (
-    <div className="rounded-xl border border-neutral-200 bg-white p-4">
+    <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4">
       <div className="flex items-center justify-between mb-2">
         {icon}
         {trend !== undefined && trend !== 0 && (
@@ -265,8 +265,8 @@ function StatCard({ label, value, icon, trend }: { label: string; value: string;
           </span>
         )}
       </div>
-      <p className="text-2xl font-bold text-neutral-900">{value}</p>
-      <p className="text-xs text-neutral-500 mt-0.5">{label}</p>
+      <p className="text-2xl font-bold text-neutral-900 dark:text-white">{value}</p>
+      <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">{label}</p>
     </div>
   );
 }
