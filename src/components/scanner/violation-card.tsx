@@ -1,9 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { AccessibilityViolation } from "@/lib/types";
-import { AlertTriangle, ExternalLink } from "lucide-react";
+import { AlertTriangle, ExternalLink, CheckCircle2, Clock, XCircle, MinusCircle } from "lucide-react";
 
 interface ViolationCardProps {
   violation: AccessibilityViolation;
@@ -70,18 +71,76 @@ export function ViolationCard({ violation }: ViolationCardProps) {
           )}
         </div>
 
-        {/* Help Link */}
-        <a
-          href={violation.helpUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-3 inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
-        >
-          Learn more
-          <ExternalLink className="h-3 w-3" />
-        </a>
+        {/* Help Link + Remediation */}
+        <div className="mt-3 flex items-center justify-between">
+          <a
+            href={violation.helpUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
+          >
+            Learn more
+            <ExternalLink className="h-3 w-3" />
+          </a>
+          <RemediationStatus violationId={violation.id} />
+        </div>
       </CardContent>
     </Card>
+  );
+}
+
+const STATUS_OPTIONS = [
+  { value: "open", label: "Open", icon: AlertTriangle, color: "text-neutral-500" },
+  { value: "in-progress", label: "In Progress", icon: Clock, color: "text-blue-600" },
+  { value: "fixed", label: "Fixed", icon: CheckCircle2, color: "text-green-600" },
+  { value: "ignored", label: "Ignored", icon: MinusCircle, color: "text-neutral-400" },
+  { value: "wont-fix", label: "Won't Fix", icon: XCircle, color: "text-red-400" },
+] as const;
+
+function RemediationStatus({ violationId }: { violationId: string }) {
+  const [status, setStatus] = useState("open");
+  const [open, setOpen] = useState(false);
+
+  async function handleChange(newStatus: string) {
+    setStatus(newStatus);
+    setOpen(false);
+    await fetch("/api/violations/status", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ violationId, status: newStatus }),
+    }).catch(() => {});
+  }
+
+  const current = STATUS_OPTIONS.find((s) => s.value === status) || STATUS_OPTIONS[0];
+  const Icon = current.icon;
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className={`inline-flex items-center gap-1.5 rounded-md border border-neutral-200 px-2 py-1 text-xs font-medium transition-colors hover:bg-neutral-50 ${current.color}`}
+      >
+        <Icon className="h-3 w-3" />
+        {current.label}
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1 z-50 rounded-lg border border-neutral-200 bg-white shadow-lg py-1 min-w-[140px]">
+          {STATUS_OPTIONS.map((opt) => {
+            const OptIcon = opt.icon;
+            return (
+              <button
+                key={opt.value}
+                onClick={() => handleChange(opt.value)}
+                className={`flex w-full items-center gap-2 px-3 py-1.5 text-xs hover:bg-neutral-50 ${opt.color}`}
+              >
+                <OptIcon className="h-3 w-3" />
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 

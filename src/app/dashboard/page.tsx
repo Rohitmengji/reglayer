@@ -1,14 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { ScanForm } from "@/components/scanner/scan-form";
 import { ScoreCard } from "@/components/dashboard/score-card";
 import { ViolationCard } from "@/components/scanner/violation-card";
 import { ComplianceTrend } from "@/components/charts/compliance-trend";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { useScanStore } from "@/stores/scanStore";
-import { Download } from "lucide-react";
+import { Download, Activity, Target, AlertTriangle, Globe, TrendingUp, TrendingDown } from "lucide-react";
+import Link from "next/link";
 import type { ScanResult, ComplianceReport } from "@/lib/types";
 
 interface ScanResponse {
@@ -16,9 +19,27 @@ interface ScanResponse {
   compliance: ComplianceReport;
 }
 
+interface DashboardStats {
+  totalScans: number;
+  avgScore: number;
+  totalViolations: number;
+  sitesMonitored: number;
+  trend: number;
+  recentScans: Array<{ id: string; url: string; score: number; violations: number; date: string }>;
+  topViolations: Array<{ ruleId: string; impact: string; count: number }>;
+}
+
 export default function DashboardPage() {
   const [scanResult, setScanResult] = useState<ScanResponse | null>(null);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
   const { setScanResult: persistResult } = useScanStore();
+
+  useEffect(() => {
+    fetch("/api/dashboard/stats")
+      .then((r) => r.json())
+      .then((d) => setStats(d))
+      .catch(() => {});
+  }, []);
 
   function handleScanComplete(result: unknown) {
     const data = result as ScanResponse;
@@ -56,6 +77,91 @@ export default function DashboardPage() {
             Scan websites for accessibility compliance issues.
           </p>
         </div>
+
+        {/* Stats Overview */}
+        {stats && stats.totalScans > 0 && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <StatCard
+              label="Total Scans"
+              value={stats.totalScans.toString()}
+              icon={<Activity className="h-4 w-4 text-blue-500" />}
+            />
+            <StatCard
+              label="Avg Score"
+              value={stats.avgScore.toString()}
+              icon={<Target className="h-4 w-4 text-green-500" />}
+              trend={stats.trend}
+            />
+            <StatCard
+              label="Violations Found"
+              value={stats.totalViolations.toString()}
+              icon={<AlertTriangle className="h-4 w-4 text-orange-500" />}
+            />
+            <StatCard
+              label="Sites Monitored"
+              value={stats.sitesMonitored.toString()}
+              icon={<Globe className="h-4 w-4 text-purple-500" />}
+            />
+          </div>
+        )}
+
+        {/* Recent Activity + Top Issues */}
+        {stats && stats.recentScans.length > 0 && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Recent Scans */}
+            <Card>
+              <CardContent className="p-5">
+                <h3 className="text-sm font-semibold text-neutral-700 mb-3">Recent Scans</h3>
+                <div className="space-y-2">
+                  {stats.recentScans.slice(0, 5).map((scan) => (
+                    <Link
+                      key={scan.id}
+                      href={`/report/${scan.id}`}
+                      className="flex items-center justify-between rounded-lg p-2 hover:bg-neutral-50 transition-colors"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm text-neutral-800 truncate">{scan.url}</p>
+                        <p className="text-xs text-neutral-400">{new Date(scan.date).toLocaleDateString()}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {scan.violations > 0 && (
+                          <span className="text-xs text-neutral-400">{scan.violations} issues</span>
+                        )}
+                        <span className={`text-sm font-bold ${
+                          scan.score >= 90 ? "text-green-600" :
+                          scan.score >= 70 ? "text-yellow-600" :
+                          "text-red-600"
+                        }`}>
+                          {scan.score}
+                        </span>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Top Violations */}
+            <Card>
+              <CardContent className="p-5">
+                <h3 className="text-sm font-semibold text-neutral-700 mb-3">Top Issues</h3>
+                <div className="space-y-2">
+                  {stats.topViolations.slice(0, 5).map((v) => (
+                    <div key={v.ruleId} className="flex items-center justify-between rounded-lg p-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Badge variant={v.impact as "critical" | "serious" | "moderate" | "minor"}>
+                          {v.impact}
+                        </Badge>
+                        <code className="text-xs text-neutral-700 truncate">{v.ruleId}</code>
+                      </div>
+                      <span className="text-xs font-medium text-neutral-500">{v.count}×</span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Compliance Trend */}
         <ComplianceTrend />
@@ -143,6 +249,24 @@ function MetricCard({ label, value }: { label: string; value: string }) {
       <p className="mt-1 truncate text-sm font-semibold text-neutral-900">
         {value}
       </p>
+    </div>
+  );
+}
+
+function StatCard({ label, value, icon, trend }: { label: string; value: string; icon: React.ReactNode; trend?: number }) {
+  return (
+    <div className="rounded-xl border border-neutral-200 bg-white p-4">
+      <div className="flex items-center justify-between mb-2">
+        {icon}
+        {trend !== undefined && trend !== 0 && (
+          <span className={`flex items-center gap-0.5 text-xs font-medium ${trend > 0 ? "text-green-600" : "text-red-600"}`}>
+            {trend > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+            {Math.abs(trend)}
+          </span>
+        )}
+      </div>
+      <p className="text-2xl font-bold text-neutral-900">{value}</p>
+      <p className="text-xs text-neutral-500 mt-0.5">{label}</p>
     </div>
   );
 }

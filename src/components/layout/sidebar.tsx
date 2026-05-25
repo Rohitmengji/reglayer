@@ -4,11 +4,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { cn } from "@/lib/utils/cn";
-import { Shield, LayoutDashboard, Scan, Globe, Zap, Sparkles, BarChart3, GitCompare, Webhook, Settings, LogOut } from "lucide-react";
+import { useTheme } from "@/components/theme-provider";
+import { Shield, LayoutDashboard, Scan, Globe, Zap, Sparkles, BarChart3, GitCompare, Webhook, Settings, LogOut, Grid3X3, Moon, Sun } from "lucide-react";
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Scans", href: "/scans", icon: Scan },
+  { name: "Compliance", href: "/compliance", icon: Grid3X3 },
   { name: "Crawl Site", href: "/crawl", icon: Globe },
   { name: "Priorities", href: "/priorities", icon: Zap },
   { name: "AI Insights", href: "/insights", icon: Sparkles },
@@ -21,13 +23,14 @@ const navigation = [
 export function Sidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
+  const { resolvedTheme, setTheme } = useTheme();
 
   return (
-    <aside className="flex h-full w-64 flex-col border-r border-neutral-200 bg-white">
+    <aside className="flex h-full w-64 flex-col border-r border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-900">
       {/* Brand */}
-      <div className="flex h-16 items-center gap-2 border-b border-neutral-200 px-6">
-        <Shield className="h-6 w-6 text-neutral-900" />
-        <span className="text-lg font-bold tracking-tight text-neutral-900">
+      <div className="flex h-16 items-center gap-2 border-b border-neutral-200 dark:border-neutral-700 px-6">
+        <Shield className="h-6 w-6 text-neutral-900 dark:text-white" />
+        <span className="text-lg font-bold tracking-tight text-neutral-900 dark:text-white">
           RegLayer
         </span>
       </div>
@@ -43,8 +46,8 @@ export function Sidebar() {
               className={cn(
                 "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                 isActive
-                  ? "bg-neutral-100 text-neutral-900"
-                  : "text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900"
+                  ? "bg-neutral-100 text-neutral-900 dark:bg-neutral-800 dark:text-white"
+                  : "text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-white"
               )}
             >
               <item.icon className="h-4 w-4" />
@@ -55,7 +58,16 @@ export function Sidebar() {
       </nav>
 
       {/* User & Footer */}
-      <div className="border-t border-neutral-200 px-4 py-4 space-y-3">
+      <div className="border-t border-neutral-200 dark:border-neutral-700 px-4 py-4 space-y-3">
+        {/* Theme Toggle */}
+        <button
+          onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+          className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-neutral-600 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
+        >
+          {resolvedTheme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          {resolvedTheme === "dark" ? "Light Mode" : "Dark Mode"}
+        </button>
+
         {session?.user && (
           <div className="flex items-center justify-between">
             <div className="min-w-0">
