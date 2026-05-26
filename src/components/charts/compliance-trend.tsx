@@ -2,6 +2,7 @@
 
 import { useScanStore } from "@/stores/scanStore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useI18n } from "@/components/i18n-provider";
 
 /**
  * Compliance Trend Chart
@@ -11,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
  */
 export function ComplianceTrend() {
   const { scanHistory } = useScanStore();
+  const { t } = useI18n();
 
   if (scanHistory.length < 2) {
     return null;
@@ -61,7 +63,7 @@ export function ComplianceTrend() {
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm font-medium text-neutral-600">
-            Compliance Trend
+            {t("complianceTrend.title")}
           </CardTitle>
           <div className="flex items-center gap-2">
             <span className="text-2xl font-bold text-neutral-900">

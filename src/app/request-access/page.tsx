@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ShieldCheck, Clock, Send, LogOut } from "lucide-react";
+import { useI18n } from "@/components/i18n-provider";
 
 export default function RequestAccessPage() {
   const { data: session, status } = useSession();
@@ -16,6 +17,7 @@ export default function RequestAccessPage() {
   const [loading, setLoading] = useState(false);
   const [checkingAccess, setCheckingAccess] = useState(true);
   const [error, setError] = useState("");
+  const { t } = useI18n();
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -52,7 +54,7 @@ export default function RequestAccessPage() {
     e.preventDefault();
     setLoading(true);
     setError("");
-    const toastId = toast.loading("Submitting request...");
+    const toastId = toast.loading(t("requestAccess.toastSubmitting"));
 
     const res = await fetch("/api/access-request", {
       method: "POST",
@@ -62,15 +64,15 @@ export default function RequestAccessPage() {
 
     const data = await res.json();
     if (res.ok) {
-      toast.success("Access request submitted successfully", { id: toastId });
+      toast.success(t("requestAccess.toastSuccess"), { id: toastId });
       setSubmitted(true);
     } else {
       if (data.error === "You already have a pending request") {
-        toast.info("You already have a pending request", { id: toastId });
+        toast.info(t("requestAccess.toastPending"), { id: toastId });
         setSubmitted(true);
       } else {
-        toast.error(data.error || "Failed to submit request", { id: toastId });
-        setError(data.error || "Failed to submit request");
+        toast.error(data.error || t("requestAccess.toastFailed"), { id: toastId });
+        setError(data.error || t("requestAccess.toastFailed"));
       }
     }
     setLoading(false);
@@ -92,9 +94,9 @@ export default function RequestAccessPage() {
           <div className="mx-auto h-14 w-14 rounded-2xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-4">
             <ShieldCheck className="h-7 w-7 text-blue-600 dark:text-blue-400" />
           </div>
-          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Welcome to RegLayer</h1>
+          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{t("requestAccess.title")}</h1>
           <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400">
-            Signed in as <strong>{session?.user?.email}</strong>
+            {t("requestAccess.signedInAs")} <strong>{session?.user?.email}</strong>
           </p>
         </div>
 
@@ -108,11 +110,10 @@ export default function RequestAccessPage() {
                 </div>
                 <div>
                   <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">
-                    Request Submitted
+                    {t("requestAccess.submitted")}
                   </h2>
                   <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400">
-                    Your access request has been sent to the admin team. You&apos;ll be
-                    granted access once approved. Check back soon!
+                    {t("requestAccess.submittedDesc")}
                   </p>
                 </div>
                 <div className="pt-2 flex flex-col gap-2">
@@ -121,14 +122,14 @@ export default function RequestAccessPage() {
                     className="w-full"
                     onClick={() => window.location.reload()}
                   >
-                    <Clock className="h-4 w-4 mr-2" /> Check Status
+                    <Clock className="h-4 w-4 mr-2" /> {t("requestAccess.checkStatus")}
                   </Button>
                   <Button
                     variant="ghost"
                     className="w-full text-neutral-500"
                     onClick={() => signOut({ callbackUrl: "/auth/login" })}
                   >
-                    <LogOut className="h-4 w-4 mr-2" /> Sign Out
+                    <LogOut className="h-4 w-4 mr-2" /> {t("requestAccess.signOut")}
                   </Button>
                 </div>
               </div>
@@ -137,17 +138,16 @@ export default function RequestAccessPage() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">
-                    Request Access
+                    {t("requestAccess.requestTitle")}
                   </h2>
                   <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-                    You don&apos;t have access to any workspace yet. Submit a request and
-                    your admin will grant you access.
+                    {t("requestAccess.requestDesc")}
                   </p>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1.5">
-                    Message (optional)
+                    {t("requestAccess.message")}
                   </label>
                   <textarea
                     value={message}
@@ -164,7 +164,7 @@ export default function RequestAccessPage() {
 
                 <Button type="submit" className="w-full" disabled={loading}>
                   <Send className="h-4 w-4 mr-2" />
-                  {loading ? "Submitting..." : "Request Access"}
+                  {loading ? t("requestAccess.submitting") : t("requestAccess.submit")}
                 </Button>
               </form>
             )}
@@ -172,7 +172,7 @@ export default function RequestAccessPage() {
         </Card>
 
         <p className="text-center text-xs text-neutral-400 dark:text-neutral-500">
-          Your admin will be notified and can approve your request from the admin panel.
+          {t("requestAccess.adminNotice")}
         </p>
       </div>
     </div>

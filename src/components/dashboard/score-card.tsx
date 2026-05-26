@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { ScanSummary } from "@/lib/types";
 import { ShieldAlert, AlertTriangle, Info } from "lucide-react";
+import { useI18n } from "@/components/i18n-provider";
 
 interface ScoreCardProps {
   summary: ScanSummary;
@@ -10,12 +11,13 @@ interface ScoreCardProps {
 
 export function ScoreCard({ summary }: ScoreCardProps) {
   const scoreColor = getScoreColor(summary.score);
+  const { t } = useI18n();
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-sm font-medium text-neutral-600">
-          Compliance Score
+          {t("scoreCard.title")}
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -54,25 +56,25 @@ export function ScoreCard({ summary }: ScoreCardProps) {
           <div className="grid grid-cols-2 gap-3">
             <SeverityCount
               icon={ShieldAlert}
-              label="Critical"
+              label={t("scoreCard.critical")}
               count={summary.critical}
               color="text-red-600"
             />
             <SeverityCount
               icon={AlertTriangle}
-              label="Serious"
+              label={t("scoreCard.serious")}
               count={summary.serious}
               color="text-orange-600"
             />
             <SeverityCount
               icon={AlertTriangle}
-              label="Moderate"
+              label={t("scoreCard.moderate")}
               count={summary.moderate}
               color="text-yellow-600"
             />
             <SeverityCount
               icon={Info}
-              label="Minor"
+              label={t("scoreCard.minor")}
               count={summary.minor}
               color="text-blue-600"
             />
