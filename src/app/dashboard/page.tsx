@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useScanStore } from "@/stores/scanStore";
-import { Download, Activity, Target, AlertTriangle, Globe, TrendingUp, TrendingDown } from "lucide-react";
+import { Download, Activity, Target, AlertTriangle, Globe, TrendingUp, TrendingDown, Sparkles, Zap } from "lucide-react";
 import Link from "next/link";
 import type { ScanResult, ComplianceReport } from "@/lib/types";
 
@@ -33,6 +33,7 @@ export default function DashboardPage() {
   const [scanResult, setScanResult] = useState<ScanResponse | null>(null);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
+  const [credits, setCredits] = useState<{ used: number; limit: number; remaining: number; daysUntilReset: number; unlimited: boolean } | null>(null);
   const { setScanResult: persistResult } = useScanStore();
 
   useEffect(() => {
@@ -44,6 +45,11 @@ export default function DashboardPage() {
       .then((d) => setStats(d))
       .catch(() => {})
       .finally(() => setStatsLoading(false));
+
+    fetch("/api/credits")
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => d && setCredits(d.credits))
+      .catch(() => {});
   }, []);
 
   function handleScanComplete(result: unknown) {
@@ -121,6 +127,49 @@ export default function DashboardPage() {
               icon={<Globe className="h-4 w-4 text-purple-500" />}
             />
           </div>
+        )}
+
+        {/* AI Credits Usage */}
+        {credits && !credits.unlimited && (
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-violet-500" />
+                  <h3 className="text-sm font-semibold text-neutral-700 dark:text-neutral-200">AI Credits</h3>
+                </div>
+                <span className="text-xs text-neutral-500 dark:text-neutral-400">
+                  Resets in {credits.daysUntilReset} day{credits.daysUntilReset !== 1 ? "s" : ""}
+                </span>
+              </div>
+              <div className="flex items-end justify-between mb-2">
+                <span className="text-2xl font-bold text-neutral-900 dark:text-white">
+                  {credits.remaining}
+                </span>
+                <span className="text-xs text-neutral-500 dark:text-neutral-400">
+                  {credits.used} / {credits.limit} used
+                </span>
+              </div>
+              <div className="w-full h-2 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${
+                    credits.remaining <= 5
+                      ? "bg-red-500"
+                      : credits.remaining <= credits.limit * 0.2
+                      ? "bg-amber-500"
+                      : "bg-violet-500"
+                  }`}
+                  style={{ width: `${Math.min(100, (credits.used / credits.limit) * 100)}%` }}
+                />
+              </div>
+              {credits.remaining <= 5 && (
+                <div className="mt-2 flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
+                  <Zap className="h-3 w-3" />
+                  <span>Credits running low — upgrade your plan for more AI features</span>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         )}
 
         {/* Recent Activity + Top Issues */}

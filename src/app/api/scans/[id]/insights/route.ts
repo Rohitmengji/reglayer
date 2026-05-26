@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
+import { consumeCredits } from "@/lib/credits";
 
 /**
  * AI Insights API
@@ -8,12 +11,38 @@ import { prisma } from "@/lib/database/prisma";
  * 
  * Generates deep AI explanations for each violation
  * using GPT-4o-mini. Caches results in the violation record.
+ * Consumes AI credits (5 per analysis, 1 per cached explanation).
  */
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+
+  // Auth & credit check
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { email: session.user.email },
+    select: { id: true },
+  });
+  if (!user) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+
+  // Consume credits for insights analysis
+  const creditResult = await consumeCredits(user.id, "insightsAnalysis");
+  if (!creditResult.success) {
+    return NextResponse.json(
+      { error: "Insufficient AI credits", creditsRemaining: creditResult.creditsRemaining, cost: creditResult.cost },
+      { status: 429 }
+    );
+  }
+
+  const scan = await prisma.scan.findUnique({
 
   const scan = await prisma.scan.findUnique({
     where: { id },

@@ -21,6 +21,8 @@ model User {
   image         String?
   passwordHash  String?
   plan          Plan      @default(FREE)
+  aiCreditsUsed Int       @default(0)
+  creditResetAt DateTime  @default(now())
   isMasterAdmin Boolean   @default(false)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
