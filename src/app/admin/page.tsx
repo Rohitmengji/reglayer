@@ -19,6 +19,8 @@ import {
   UserPlus,
   UserCheck,
   X,
+  Trash2,
+  KeyRound,
 } from "lucide-react";
 
 interface WorkspaceMemberInfo {
@@ -79,6 +81,8 @@ export default function AdminPage() {
   const [showAddUser, setShowAddUser] = useState<string | null>(null);
   const [addUserEmail, setAddUserEmail] = useState("");
   const [addUserRole, setAddUserRole] = useState("MEMBER");
+  const [resetPasswordUser, setResetPasswordUser] = useState<string | null>(null);
+  const [resetPasswordValue, setResetPasswordValue] = useState("");
   const [pendingRequests, setPendingRequests] = useState<{
     id: string;
     message: string | null;
@@ -206,6 +210,34 @@ export default function AdminPage() {
       body: JSON.stringify({ requestId, action, workspaceId, role: "MEMBER" }),
     });
     fetchData();
+    setActionLoading(false);
+  }
+
+  async function handleDeleteUser(userId: string, email: string) {
+    if (!confirm(`Permanently delete user "${email}"? This cannot be undone.`)) return;
+    setActionLoading(true);
+    await fetch("/api/admin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "deleteUser", userId }),
+    });
+    fetchData();
+    setActionLoading(false);
+  }
+
+  async function handleResetPassword(userId: string) {
+    if (!resetPasswordValue || resetPasswordValue.length < 6) return;
+    setActionLoading(true);
+    const res = await fetch("/api/admin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "resetPassword", userId, newPassword: resetPasswordValue }),
+    });
+    if (res.ok) {
+      setResetPasswordUser(null);
+      setResetPasswordValue("");
+      alert("Password reset successfully");
+    }
     setActionLoading(false);
   }
 
@@ -352,15 +384,67 @@ export default function AdminPage() {
                         </Badge>
                       )}
                       {user.email !== session?.user?.email && (
-                        <Button
-                          size="sm"
-                          variant={user.isMasterAdmin ? "destructive" : "outline"}
-                          onClick={() => handleToggleMasterAdmin(user.id)}
-                          disabled={actionLoading}
-                          className="text-xs"
-                        >
-                          {user.isMasterAdmin ? "Revoke Master" : "Grant Master"}
-                        </Button>
+                        <>
+                          {/* Reset Password */}
+                          {resetPasswordUser === user.id ? (
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="text"
+                                placeholder="New password"
+                                value={resetPasswordValue}
+                                onChange={(e) => setResetPasswordValue(e.target.value)}
+                                className="w-28 rounded border border-neutral-200 dark:border-neutral-700 px-2 py-1 text-xs dark:bg-neutral-800 dark:text-neutral-100"
+                              />
+                              <Button
+                                size="sm"
+                                className="text-xs"
+                                disabled={actionLoading || resetPasswordValue.length < 6}
+                                onClick={() => handleResetPassword(user.id)}
+                              >
+                                Set
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-xs"
+                                onClick={() => { setResetPasswordUser(null); setResetPasswordValue(""); }}
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-xs"
+                              onClick={() => setResetPasswordUser(user.id)}
+                              disabled={actionLoading}
+                              title="Reset Password"
+                            >
+                              <KeyRound className="h-3 w-3 mr-1" /> Reset PW
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            variant={user.isMasterAdmin ? "destructive" : "outline"}
+                            onClick={() => handleToggleMasterAdmin(user.id)}
+                            disabled={actionLoading}
+                            className="text-xs"
+                          >
+                            {user.isMasterAdmin ? "Revoke Master" : "Grant Master"}
+                          </Button>
+                          {/* Delete User */}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30"
+                            onClick={() => handleDeleteUser(user.id, user.email)}
+                            disabled={actionLoading}
+                            title="Delete User"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </>
                       )}
                     </div>
                   </div>

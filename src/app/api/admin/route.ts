@@ -10,6 +10,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
+import bcrypt from "bcryptjs";
 
 type WorkspaceRole = "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
 
@@ -340,6 +341,77 @@ export async function POST(req: Request) {
           target: removeUserId,
           metadata: { workspaceId: wsId },
           workspaceId: wsId,
+        },
+      });
+
+      return NextResponse.json({ success: true });
+    }
+
+    // ── Master Admin: Delete user entirely ───────────────────
+    case "deleteUser": {
+      if (!actor.isMasterAdmin) {
+        return NextResponse.json({ error: "Forbidden: Master Admin required" }, { status: 403 });
+      }
+
+      const { userId: deleteUserId } = body;
+      if (!deleteUserId || deleteUserId === actor.id) {
+        return NextResponse.json({ error: "Cannot delete yourself" }, { status: 400 });
+      }
+
+      const deleteTarget = await prisma.user.findUnique({ where: { id: deleteUserId } });
+      if (!deleteTarget) {
+        return NextResponse.json({ error: "User not found" }, { status: 404 });
+      }
+
+      // Remove all memberships, access requests, then the user
+      await prisma.workspaceMember.deleteMany({ where: { userId: deleteUserId } });
+      await prisma.accessRequest.deleteMany({ where: { userId: deleteUserId } });
+      await prisma.user.delete({ where: { id: deleteUserId } });
+
+      await prisma.auditLog.create({
+        data: {
+          action: "user.deleted",
+          actor: actor.id,
+          target: deleteUserId,
+          metadata: { email: deleteTarget.email },
+        },
+      });
+
+      return NextResponse.json({ success: true });
+    }
+
+    // ── Master Admin: Reset password for any user ────────────
+    case "resetPassword": {
+      if (!actor.isMasterAdmin) {
+        return NextResponse.json({ error: "Forbidden: Master Admin required" }, { status: 403 });
+      }
+
+      const { userId: resetUserId, newPassword } = body;
+      if (!resetUserId || !newPassword) {
+        return NextResponse.json({ error: "Missing userId or newPassword" }, { status: 400 });
+      }
+
+      if (newPassword.length < 6) {
+        return NextResponse.json({ error: "Password must be at least 6 characters" }, { status: 400 });
+      }
+
+      const resetTarget = await prisma.user.findUnique({ where: { id: resetUserId } });
+      if (!resetTarget) {
+        return NextResponse.json({ error: "User not found" }, { status: 404 });
+      }
+
+      const hashedPassword = await bcrypt.hash(newPassword, 12);
+      await prisma.user.update({
+        where: { id: resetUserId },
+        data: { passwordHash: hashedPassword },
+      });
+
+      await prisma.auditLog.create({
+        data: {
+          action: "user.passwordReset",
+          actor: actor.id,
+          target: resetUserId,
+          metadata: { email: resetTarget.email, resetBy: "master" },
         },
       });
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
+import bcrypt from "bcryptjs";
 
 /**
  * GET /api/team — List team members in the current workspace
@@ -210,6 +211,68 @@ export async function DELETE(request: NextRequest) {
   }
 
   await prisma.workspaceMember.delete({ where: { id: memberId } });
+
+  return NextResponse.json({ success: true });
+}
+
+/**
+ * PUT /api/team — Reset password for a workspace member (OWNER/ADMIN only)
+ */
+export async function PUT(request: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const body = await request.json();
+  const { userId, newPassword } = body;
+
+  if (!userId || !newPassword) {
+    return NextResponse.json({ error: "userId and newPassword are required" }, { status: 400 });
+  }
+
+  if (newPassword.length < 6) {
+    return NextResponse.json({ error: "Password must be at least 6 characters" }, { status: 400 });
+  }
+
+  const currentUser = await prisma.user.findUnique({
+    where: { email: session.user.email },
+    include: { memberships: true },
+  });
+
+  if (!currentUser || currentUser.memberships.length === 0) {
+    return NextResponse.json({ error: "No workspace found" }, { status: 404 });
+  }
+
+  const myMembership = currentUser.memberships[0];
+  if (!["OWNER", "ADMIN"].includes(myMembership.role)) {
+    return NextResponse.json({ error: "Only owners and admins can reset passwords" }, { status: 403 });
+  }
+
+  // Verify target user is in the same workspace
+  const targetMember = await prisma.workspaceMember.findFirst({
+    where: { userId, workspaceId: myMembership.workspaceId },
+  });
+
+  if (!targetMember) {
+    return NextResponse.json({ error: "User is not in your workspace" }, { status: 404 });
+  }
+
+  // Cannot reset password for owners or higher-role users
+  if (targetMember.role === "OWNER") {
+    return NextResponse.json({ error: "Cannot reset owner's password" }, { status: 403 });
+  }
+
+  // Admin cannot reset another admin's password
+  if (myMembership.role === "ADMIN" && targetMember.role === "ADMIN") {
+    return NextResponse.json({ error: "Cannot reset password for users with equal role" }, { status: 403 });
+  }
+
+  const hashedPassword = await bcrypt.hash(newPassword, 12);
+  await prisma.user.update({
+    where: { id: userId },
+    data: { passwordHash: hashedPassword },
+  });
 
   return NextResponse.json({ success: true });
 }
