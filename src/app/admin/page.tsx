@@ -17,6 +17,8 @@ import {
   Check,
   Plus,
   UserPlus,
+  UserCheck,
+  X,
 } from "lucide-react";
 
 interface WorkspaceMemberInfo {
@@ -77,6 +79,13 @@ export default function AdminPage() {
   const [showAddUser, setShowAddUser] = useState<string | null>(null);
   const [addUserEmail, setAddUserEmail] = useState("");
   const [addUserRole, setAddUserRole] = useState("MEMBER");
+  const [pendingRequests, setPendingRequests] = useState<{
+    id: string;
+    message: string | null;
+    workspaceId: string | null;
+    createdAt: string;
+    user: { id: string; email: string; name: string | null; image: string | null };
+  }[]>([]);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -96,6 +105,12 @@ export default function AdminPage() {
     }
     if (res.ok) {
       setData(await res.json());
+    }
+    // Fetch pending access requests
+    const reqRes = await fetch("/api/access-request");
+    if (reqRes.ok) {
+      const reqData = await reqRes.json();
+      setPendingRequests(reqData.requests || []);
     }
     setLoading(false);
   }
@@ -183,6 +198,17 @@ export default function AdminPage() {
     setActionLoading(false);
   }
 
+  async function handleAccessRequest(requestId: string, action: "approve" | "deny", workspaceId?: string) {
+    setActionLoading(true);
+    await fetch("/api/access-request", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ requestId, action, workspaceId, role: "MEMBER" }),
+    });
+    fetchData();
+    setActionLoading(false);
+  }
+
   if (loading || !data) {
     return (
       <AppShell>
@@ -228,6 +254,75 @@ export default function AdminPage() {
             </Card>
           ))}
         </div>
+
+        {/* Pending Access Requests */}
+        {pendingRequests.length > 0 && (
+          <div>
+            <h2 className="text-lg font-semibold text-neutral-900 dark:text-white mb-3 flex items-center gap-2">
+              <UserCheck className="h-5 w-5 text-orange-500" /> Pending Requests
+              <span className="ml-1 inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-orange-100 dark:bg-orange-900/50 text-xs font-bold text-orange-700 dark:text-orange-300">
+                {pendingRequests.length}
+              </span>
+            </h2>
+            <Card>
+              <CardContent className="p-0">
+                <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
+                  {pendingRequests.map((req) => (
+                    <div key={req.id} className="flex items-center justify-between px-4 py-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="h-8 w-8 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-xs font-bold text-orange-600 dark:text-orange-300 shrink-0">
+                          {(req.user.name || req.user.email)[0].toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-neutral-900 dark:text-white truncate">
+                            {req.user.name || req.user.email.split("@")[0]}
+                          </p>
+                          <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate">{req.user.email}</p>
+                          {req.message && (
+                            <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5 italic truncate">
+                              &ldquo;{req.message}&rdquo;
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <select
+                          className="text-xs rounded border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-2 py-1 text-neutral-700 dark:text-neutral-200"
+                          defaultValue={data?.workspaces[0]?.id || ""}
+                          id={`ws-select-${req.id}`}
+                        >
+                          {data?.workspaces.map((ws) => (
+                            <option key={ws.id} value={ws.id}>{ws.name}</option>
+                          ))}
+                        </select>
+                        <Button
+                          size="sm"
+                          className="text-xs bg-green-600 hover:bg-green-700 text-white"
+                          disabled={actionLoading}
+                          onClick={() => {
+                            const select = document.getElementById(`ws-select-${req.id}`) as HTMLSelectElement;
+                            handleAccessRequest(req.id, "approve", select?.value);
+                          }}
+                        >
+                          <Check className="h-3 w-3 mr-1" /> Approve
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-xs text-red-600 hover:text-red-700"
+                          disabled={actionLoading}
+                          onClick={() => handleAccessRequest(req.id, "deny")}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Users Section */}
         <div>
