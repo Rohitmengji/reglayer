@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Shield, Loader2 } from "lucide-react";
+import { useI18n } from "@/components/i18n-provider";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -14,6 +15,7 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const { t } = useI18n();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -29,7 +31,7 @@ export default function LoginPage() {
     setLoading(false);
 
     if (result?.error) {
-      setError("Invalid email or password");
+      setError(t("login.invalidCredentials"));
     } else {
       router.push("/dashboard");
     }
@@ -42,16 +44,16 @@ export default function LoginPage() {
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-neutral-900">
             <Shield className="h-6 w-6 text-white" />
           </div>
-          <CardTitle className="text-xl">Sign in to RegLayer</CardTitle>
+          <CardTitle className="text-xl">{t("login.title")}</CardTitle>
           <CardDescription>
-            Developer-native compliance infrastructure
+            {t("login.subtitle")}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <label htmlFor="email" className="text-sm font-medium text-neutral-700">
-                Email
+                {t("login.email")}
               </label>
               <Input
                 id="email"
@@ -64,7 +66,7 @@ export default function LoginPage() {
             </div>
             <div className="space-y-2">
               <label htmlFor="password" className="text-sm font-medium text-neutral-700">
-                Password
+                {t("login.password")}
               </label>
               <Input
                 id="password"
@@ -81,7 +83,7 @@ export default function LoginPage() {
               {loading ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : null}
-              Sign In
+              {t("login.signIn")}
             </Button>
           </form>
 
@@ -90,7 +92,7 @@ export default function LoginPage() {
               <div className="w-full border-t border-neutral-200" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-white px-2 text-neutral-500">Or continue with</span>
+              <span className="bg-white px-2 text-neutral-500">{t("login.orContinueWith")}</span>
             </div>
           </div>
 
@@ -117,7 +119,7 @@ export default function LoginPage() {
                 fill="#EA4335"
               />
             </svg>
-            Continue with Google
+            {t("login.continueGoogle")}
           </Button>
 
           <p className="mt-4 text-center text-xs text-neutral-500">

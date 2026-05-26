@@ -13,6 +13,7 @@ import {
   XCircle,
 } from "lucide-react";
 import Link from "next/link";
+import { useI18n } from "@/components/i18n-provider";
 
 interface ComparisonData {
   base: { id: string; url: string; score: number; totalViolations: number; scannedAt: string };
@@ -48,6 +49,7 @@ export default function ComparePage() {
 
 function CompareContent() {
   const searchParams = useSearchParams();
+  const { t } = useI18n();
   const baseId = searchParams.get("base");
   const headId = searchParams.get("head");
 
@@ -57,11 +59,11 @@ function CompareContent() {
 
   useEffect(() => {
     if (!baseId || !headId) {
-      const t = setTimeout(() => {
-        setError("Both base and head scan IDs are required");
+      const timer = setTimeout(() => {
+        setError(t("compare.idsRequired"));
         setLoading(false);
       }, 0);
-      return () => clearTimeout(t);
+      return () => clearTimeout(timer);
     }
 
     fetch(`/api/scans/compare?base=${baseId}&head=${headId}`)
@@ -75,7 +77,7 @@ function CompareContent() {
         setLoading(false);
       })
       .catch(() => {
-        setError("Failed to fetch comparison");
+        setError(t("compare.fetchFailed"));
         setLoading(false);
       });
   }, [baseId, headId]);
@@ -95,9 +97,9 @@ function CompareContent() {
       <AppShell>
         <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950 p-8 text-center">
           <XCircle className="h-12 w-12 text-red-400 mx-auto mb-3" />
-          <p className="text-lg font-medium text-red-800">{error || "Comparison failed"}</p>
+          <p className="text-lg font-medium text-red-800">{error || t("compare.failed")}</p>
           <Link href="/scans" className="text-sm text-red-600 hover:underline mt-2 inline-block">
-            ← Back to Scans
+            {t("compare.backToScans")}
           </Link>
         </div>
       </AppShell>
@@ -111,9 +113,9 @@ function CompareContent() {
       <div className="space-y-8">
         {/* Header */}
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Scan Comparison</h1>
+          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{t("compare.title")}</h1>
           <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-            See what changed between two scans.
+            {t("compare.subtitle")}
           </p>
         </div>
 
@@ -121,7 +123,7 @@ function CompareContent() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
           {/* Base */}
           <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-6 text-center">
-            <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-2">BASE (Before)</p>
+            <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-2">{t("compare.baseBefore")}</p>
             <p className="text-4xl font-black text-neutral-700 dark:text-neutral-200">{Math.round(base.score)}</p>
             <p className="text-xs text-neutral-400 mt-2 truncate">{base.url}</p>
             <p className="text-xs text-neutral-300">
@@ -144,12 +146,12 @@ function CompareContent() {
               {delta.score > 0 ? "+" : ""}
               {delta.score.toFixed(1)}
             </div>
-            <p className="text-xs text-neutral-400">score change</p>
+            <p className="text-xs text-neutral-400">{t("compare.scoreChange")}</p>
           </div>
 
           {/* Head */}
           <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-6 text-center">
-            <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-2">HEAD (After)</p>
+            <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-2">{t("compare.headAfter")}</p>
             <p className={`text-4xl font-black ${
               delta.score > 0 ? "text-green-600" : delta.score < 0 ? "text-red-600" : "text-neutral-700 dark:text-neutral-200"
             }`}>
@@ -167,16 +169,16 @@ function CompareContent() {
           <div className="rounded-xl border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950 p-4 text-center">
             <CheckCircle2 className="h-5 w-5 text-green-600 mx-auto mb-1" />
             <p className="text-2xl font-bold text-green-700">{summary.totalFixed}</p>
-            <p className="text-xs text-green-600">Fixed</p>
+            <p className="text-xs text-green-600">{t("compare.fixed")}</p>
           </div>
           <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950 p-4 text-center">
             <AlertTriangle className="h-5 w-5 text-red-600 mx-auto mb-1" />
             <p className="text-2xl font-bold text-red-700">{summary.totalIntroduced}</p>
-            <p className="text-xs text-red-600">New Regressions</p>
+            <p className="text-xs text-red-600">{t("compare.newRegressions")}</p>
           </div>
           <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 p-4 text-center">
             <p className="text-2xl font-bold text-neutral-700 dark:text-neutral-200 mt-6">{summary.totalPersistent}</p>
-            <p className="text-xs text-neutral-500 dark:text-neutral-400">Unchanged</p>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400">{t("compare.unchanged")}</p>
           </div>
         </div>
 
@@ -185,7 +187,7 @@ function CompareContent() {
           <div className="space-y-3">
             <h2 className="text-lg font-semibold text-red-700 flex items-center gap-2">
               <TrendingDown className="h-5 w-5" />
-              New Regressions ({regressions.length})
+              {t("compare.newRegressions")} ({regressions.length})
             </h2>
             {regressions.map((v) => (
               <div key={v.ruleId} className="rounded-xl border border-red-100 dark:border-red-800 bg-white dark:bg-neutral-900 p-4">
@@ -207,7 +209,7 @@ function CompareContent() {
           <div className="space-y-3">
             <h2 className="text-lg font-semibold text-green-700 flex items-center gap-2">
               <TrendingUp className="h-5 w-5" />
-              Fixed ({fixes.length})
+              {t("compare.fixed")} ({fixes.length})
             </h2>
             {fixes.map((v) => (
               <div key={v.ruleId} className="rounded-xl border border-green-100 dark:border-green-800 bg-white dark:bg-neutral-900 p-4">
@@ -226,7 +228,7 @@ function CompareContent() {
         {persistent.length > 0 && (
           <div className="space-y-3">
             <h2 className="text-lg font-semibold text-neutral-600 dark:text-neutral-300">
-              Unchanged ({persistent.length})
+              {t("compare.unchanged")} ({persistent.length})
             </h2>
             {persistent.map((v) => (
               <div key={v.ruleId} className="rounded-xl border border-neutral-100 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4">
@@ -243,7 +245,7 @@ function CompareContent() {
         {/* Back */}
         <div className="pt-4 border-t border-neutral-100 dark:border-neutral-700">
           <Link href="/scans" className="text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:text-white">
-            ← Back to Scan History
+            {t("compare.backToHistory")}
           </Link>
         </div>
       </div>

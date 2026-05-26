@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Download, Clock, Globe, Cpu } from "lucide-react";
 import Link from "next/link";
+import { useI18n } from "@/components/i18n-provider";
 
 export default function ScanDetailPage({
   params,
@@ -17,6 +18,7 @@ export default function ScanDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const { t } = useI18n();
   const { getScanById } = useScanStore();
   const storeEntry = getScanById(id);
   const [entry, setEntry] = useState(storeEntry || null);
@@ -56,12 +58,12 @@ export default function ScanDetailPage({
           <Link href="/scans">
             <Button variant="ghost" size="sm">
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Scans
+              {t("scanDetail.backToScans")}
             </Button>
           </Link>
           <div className="rounded-lg border border-neutral-200 bg-white p-12 text-center">
             <p className="text-sm text-neutral-500">
-              Scan not found. It may have been deleted.
+              {t("scanDetail.notFound")}
             </p>
           </div>
         </div>
@@ -80,38 +82,38 @@ export default function ScanDetailPage({
             <Link href="/scans">
               <Button variant="ghost" size="sm" className="mb-2">
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to Scans
+                {t("scanDetail.backToScans")}
               </Button>
             </Link>
             <h1 className="text-2xl font-bold text-neutral-900">
-              {scan.metadata.pageTitle || "Scan Results"}
+              {scan.metadata.pageTitle || t("scanDetail.results")}
             </h1>
             <p className="mt-1 text-sm text-neutral-500">{scan.url}</p>
           </div>
           <a href={`/api/reports/${scan.id}/pdf`} target="_blank" rel="noopener noreferrer">
             <Button variant="outline" size="sm">
               <Download className="mr-2 h-4 w-4" />
-              Export PDF
+              {t("scanDetail.exportPdf")}
             </Button>
           </a>
         </div>
 
         {/* Metadata */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
-          <MetaCard icon={Globe} label="URL" value={scan.url} />
+          <MetaCard icon={Globe} label={t("scanDetail.url")} value={scan.url} />
           <MetaCard
             icon={Clock}
-            label="Scanned"
+            label={t("scanDetail.scanned")}
             value={new Date(scan.timestamp).toLocaleString()}
           />
           <MetaCard
             icon={Cpu}
-            label="Duration"
+            label={t("scanDetail.duration")}
             value={`${scan.metadata.scanDuration}ms`}
           />
           <MetaCard
             icon={Cpu}
-            label="Compliance"
+            label={t("scanDetail.compliance")}
             value={`${compliance.overallCompliance}%`}
           />
         </div>
@@ -123,7 +125,7 @@ export default function ScanDetailPage({
         <Card>
           <CardHeader>
             <CardTitle className="text-sm font-medium">
-              Compliance Rule Results
+              {t("scanDetail.ruleResults")}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -142,7 +144,7 @@ export default function ScanDetailPage({
                     </p>
                   </div>
                   <Badge variant={result.passed ? "success" : "critical"}>
-                    {result.passed ? "Pass" : "Fail"}
+                    {result.passed ? t("scanDetail.pass") : t("scanDetail.fail")}
                   </Badge>
                 </div>
               ))}
@@ -154,7 +156,7 @@ export default function ScanDetailPage({
         {scan.violations.length > 0 && (
           <div className="space-y-4">
             <h2 className="text-lg font-semibold text-neutral-900">
-              Violations ({scan.violations.length})
+              {t("scanDetail.violations", { count: String(scan.violations.length) })}
             </h2>
             {scan.violations.map((violation) => (
               <ViolationCard key={violation.id} violation={violation} />
@@ -165,7 +167,7 @@ export default function ScanDetailPage({
         {scan.violations.length === 0 && (
           <div className="rounded-lg border border-green-200 bg-green-50 p-6 text-center">
             <p className="text-lg font-medium text-green-800">
-              No violations found!
+              {t("scanDetail.noViolations")}
             </p>
           </div>
         )}
