@@ -42,6 +42,13 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/auth/") ||
     pathname.startsWith("/pricing") ||
     pathname.startsWith("/privacy") ||
+    pathname.startsWith("/terms") ||
+    pathname.startsWith("/cookie-policy") ||
+    pathname.startsWith("/features") ||
+    pathname.startsWith("/standards") ||
+    pathname.startsWith("/docs") ||
+    pathname.startsWith("/api-reference") ||
+    pathname.startsWith("/contact") ||
     pathname.startsWith("/request-access") ||
     pathname.startsWith("/api/auth/") ||
     pathname.startsWith("/api/health") ||
