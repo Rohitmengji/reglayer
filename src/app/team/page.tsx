@@ -142,6 +142,23 @@ export default function TeamPage() {
     }
   }
 
+  async function handleChangePlan(newPlan: string) {
+    if (!workspace || workspace.plan === newPlan) return;
+    const toastId = toast.loading("Updating plan...");
+    const res = await fetch("/api/team", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ plan: newPlan }),
+    });
+    if (res.ok) {
+      toast.success(`Plan upgraded to ${newPlan}`, { id: toastId });
+      setWorkspace({ ...workspace, plan: newPlan });
+    } else {
+      const data = await res.json();
+      toast.error(data.error || "Failed to change plan", { id: toastId });
+    }
+  }
+
   const isAdmin = ["OWNER", "ADMIN"].includes(currentUserRole);
 
   return (
@@ -180,9 +197,21 @@ export default function TeamPage() {
                     <p className="text-xs text-neutral-500 dark:text-neutral-400">{workspace.slug} · {members.length} member{members.length !== 1 ? "s" : ""}</p>
                   </div>
                 </div>
-                <Badge variant={workspace.plan === "ENTERPRISE" ? "success" : workspace.plan === "PRO" ? "default" : "secondary"}>
-                  {workspace.plan}
-                </Badge>
+                {isAdmin ? (
+                  <select
+                    value={workspace.plan}
+                    onChange={(e) => handleChangePlan(e.target.value)}
+                    className="rounded-lg border border-neutral-200 dark:border-neutral-700 px-3 py-1.5 text-xs font-semibold dark:bg-neutral-800 dark:text-neutral-100 cursor-pointer"
+                  >
+                    <option value="FREE">FREE</option>
+                    <option value="PRO">PRO</option>
+                    <option value="ENTERPRISE">ENTERPRISE</option>
+                  </select>
+                ) : (
+                  <Badge variant={workspace.plan === "ENTERPRISE" ? "success" : workspace.plan === "PRO" ? "default" : "secondary"}>
+                    {workspace.plan}
+                  </Badge>
+                )}
               </div>
             </CardContent>
           </Card>
