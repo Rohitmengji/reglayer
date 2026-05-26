@@ -332,6 +332,7 @@ function SchedulesTab() {
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
   const [cron, setCron] = useState("0 9 * * *");
+  const [useCustomCron, setUseCustomCron] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -362,6 +363,7 @@ function SchedulesTab() {
         setName("");
         setUrl("");
         setCron("0 9 * * *");
+        setUseCustomCron(false);
         setShowForm(false);
         fetchSchedules();
       } else {
@@ -414,9 +416,15 @@ function SchedulesTab() {
                 <label className="text-xs font-medium text-neutral-600 dark:text-neutral-300 mb-1 block">Frequency</label>
                 <select
                   className="w-full rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm text-neutral-900 dark:text-white"
-                  value={CRON_PRESETS.find((p) => p.value === cron) ? cron : "custom"}
+                  value={useCustomCron ? "custom" : cron}
                   onChange={(e) => {
-                    if (e.target.value !== "custom") setCron(e.target.value);
+                    if (e.target.value === "custom") {
+                      setUseCustomCron(true);
+                      setCron("");
+                    } else {
+                      setUseCustomCron(false);
+                      setCron(e.target.value);
+                    }
                   }}
                 >
                   {CRON_PRESETS.map((preset) => (
@@ -424,7 +432,7 @@ function SchedulesTab() {
                   ))}
                   <option value="custom">Custom cron expression</option>
                 </select>
-                {!CRON_PRESETS.find((p) => p.value === cron) && (
+                {useCustomCron && (
                   <Input className="mt-2" placeholder="Custom cron (e.g., 0 9 * * 1)" value={cron} onChange={(e) => setCron(e.target.value)} required />
                 )}
                 <p className="mt-1.5 text-xs text-neutral-500 dark:text-neutral-400">
