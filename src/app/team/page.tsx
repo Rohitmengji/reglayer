@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -73,6 +74,7 @@ export default function TeamPage() {
     e.preventDefault();
     setInviting(true);
     setError("");
+    const toastId = toast.loading("Inviting member...");
     try {
       const res = await fetch("/api/team", {
         method: "POST",
@@ -82,8 +84,10 @@ export default function TeamPage() {
       const data = await res.json();
       if (!res.ok) {
         setError(data.error || "Failed to invite");
+        toast.error(data.error || "Failed to invite member", { id: toastId });
         return;
       }
+      toast.success(`${inviteEmail} invited as ${inviteRole}`, { id: toastId });
       setMembers([...members, data]);
       setInviteEmail("");
       setShowInvite(false);
@@ -93,38 +97,48 @@ export default function TeamPage() {
   }
 
   async function handleRoleChange(memberId: string, newRole: string) {
+    const toastId = toast.loading("Updating role...");
     const res = await fetch("/api/team", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ memberId, role: newRole }),
     });
     if (res.ok) {
+      toast.success(`Role changed to ${newRole}`, { id: toastId });
       setMembers(members.map((m) => (m.id === memberId ? { ...m, role: newRole } : m)));
+    } else {
+      const data = await res.json();
+      toast.error(data.error || "Failed to change role", { id: toastId });
     }
   }
 
   async function handleRemove(memberId: string, email: string) {
     if (!confirm(`Remove ${email} from the team?`)) return;
+    const toastId = toast.loading("Removing member...");
     const res = await fetch(`/api/team?id=${memberId}`, { method: "DELETE" });
     if (res.ok) {
+      toast.success(`${email} removed from team`, { id: toastId });
       setMembers(members.filter((m) => m.id !== memberId));
+    } else {
+      toast.error("Failed to remove member", { id: toastId });
     }
   }
 
   async function handleResetPassword(userId: string) {
     if (!resetPwValue || resetPwValue.length < 6) return;
+    const toastId = toast.loading("Resetting password...");
     const res = await fetch("/api/team", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId, newPassword: resetPwValue }),
     });
     if (res.ok) {
+      toast.success("Password reset successfully", { id: toastId });
       setResetPwUser(null);
       setResetPwValue("");
-      alert("Password reset successfully");
     } else {
       const data = await res.json();
-      alert(data.error || "Failed to reset password");
+      toast.error(data.error || "Failed to reset password", { id: toastId });
     }
   }
 
