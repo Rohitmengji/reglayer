@@ -1,0 +1,72 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "20"
+
+jobs:
+  deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_APP_NAME: RegLayer
+          NEXT_PUBLIC_APP_VERSION: 0.1.0
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+          NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+      # ── Vercel deployment (uncomment when ready) ──────────────────────────
+      # - name: Deploy to Vercel
+      #   uses: amondnet/vercel-action@v25
+      #   with:
+      #     vercel-token: ${{ secrets.VERCEL_TOKEN }}
+      #     vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+      #     vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+      #     vercel-args: '--prod'
+
+      # ── Alternative: Docker / VPS deploy ──────────────────────────────────
+      # - name: Deploy via SSH
+      #   uses: appleboy/ssh-action@v1
+      #   with:
+      #     host: ${{ secrets.DEPLOY_HOST }}
+      #     username: ${{ secrets.DEPLOY_USER }}
+      #     key: ${{ secrets.DEPLOY_KEY }}
+      #     script: |
+      #       cd /app/reglayer
+      #       git pull origin main
+      #       npm ci --production
+      #       npm run build
+      #       pm2 restart reglayer
+
+      - name: Deploy summary
+        run: |
+          echo "## 🚀 Deploy" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** \`$(git log -1 --format='%h %s')\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Time:** $(date -u '+%Y-%m-%d %H:%M UTC')" >> $GITHUB_STEP_SUMMARY
