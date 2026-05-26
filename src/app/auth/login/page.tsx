@@ -121,7 +121,8 @@ export default function LoginPage() {
           </Button>
 
           <p className="mt-4 text-center text-xs text-neutral-500">
-            Demo: admin@reglayer.dev / reglayer2024
+            Master: master@reglayer.dev / reglayer2024<br />
+            Admin: admin@reglayer.dev / reglayer2024
           </p>
         </CardContent>
       </Card>

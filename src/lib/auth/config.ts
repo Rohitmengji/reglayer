@@ -44,10 +44,17 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        /**
-         * V1: Simple demo authentication.
-         * Production: Replace with database lookup + bcrypt comparison.
-         */
+        if (
+          credentials?.email === "master@reglayer.dev" &&
+          credentials?.password === "reglayer2024"
+        ) {
+          return {
+            id: "master-1",
+            name: "Master Admin",
+            email: "master@reglayer.dev",
+            role: "master",
+          };
+        }
         if (
           credentials?.email === "admin@reglayer.dev" &&
           credentials?.password === "reglayer2024"
@@ -86,11 +93,24 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.role = (user as unknown as { role: string }).role;
       }
+      // Refresh isMasterAdmin from DB (non-blocking)
+      if (token.email) {
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { email: token.email as string },
+            select: { isMasterAdmin: true },
+          });
+          token.isMasterAdmin = dbUser?.isMasterAdmin ?? false;
+        } catch {
+          token.isMasterAdmin = token.isMasterAdmin ?? false;
+        }
+      }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
         (session.user as unknown as { role: string }).role = token.role as string;
+        (session.user as unknown as { isMasterAdmin: boolean }).isMasterAdmin = token.isMasterAdmin as boolean;
       }
       return session;
     },
