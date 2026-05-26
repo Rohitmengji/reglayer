@@ -296,25 +296,25 @@ export default function Home() {
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-3">Product</p>
               <ul className="space-y-2">
-                <li><a href="#features" className="text-sm text-neutral-600 hover:text-neutral-900">Features</a></li>
+                <li><Link href="/features" className="text-sm text-neutral-600 hover:text-neutral-900">Features</Link></li>
                 <li><Link href="/pricing" className="text-sm text-neutral-600 hover:text-neutral-900">Pricing</Link></li>
-                <li><a href="#compliance" className="text-sm text-neutral-600 hover:text-neutral-900">Standards</a></li>
+                <li><Link href="/standards" className="text-sm text-neutral-600 hover:text-neutral-900">Standards</Link></li>
               </ul>
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-3">Legal</p>
               <ul className="space-y-2">
                 <li><Link href="/privacy" className="text-sm text-neutral-600 hover:text-neutral-900">Privacy Policy</Link></li>
-                <li><a href="#" className="text-sm text-neutral-600 hover:text-neutral-900">Terms of Service</a></li>
-                <li><a href="#" className="text-sm text-neutral-600 hover:text-neutral-900">Cookie Policy</a></li>
+                <li><Link href="/terms" className="text-sm text-neutral-600 hover:text-neutral-900">Terms of Service</Link></li>
+                <li><Link href="/cookie-policy" className="text-sm text-neutral-600 hover:text-neutral-900">Cookie Policy</Link></li>
               </ul>
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-3">Support</p>
               <ul className="space-y-2">
-                <li><a href="#" className="text-sm text-neutral-600 hover:text-neutral-900">Documentation</a></li>
-                <li><a href="#" className="text-sm text-neutral-600 hover:text-neutral-900">API Reference</a></li>
-                <li><a href="#" className="text-sm text-neutral-600 hover:text-neutral-900">Contact</a></li>
+                <li><Link href="/docs" className="text-sm text-neutral-600 hover:text-neutral-900">Documentation</Link></li>
+                <li><Link href="/api-reference" className="text-sm text-neutral-600 hover:text-neutral-900">API Reference</Link></li>
+                <li><Link href="/contact" className="text-sm text-neutral-600 hover:text-neutral-900">Contact</Link></li>
               </ul>
             </div>
           </div>
