@@ -55,7 +55,7 @@ export default function ScanningPage() {
             <div className="space-y-3">
               <div className="rounded-lg border border-neutral-200 dark:border-neutral-800 p-4">
                 <p className="font-medium text-sm text-neutral-900 dark:text-white">WCAG 2.1 Level AA</p>
-                <p className="text-xs text-neutral-500 mt-1">International standard. Required by most accessibility laws worldwide. Default for most scans.</p>
+                <p className="text-xs text-neutral-500 mt-1">International standard (W3C Recommendation, 06 May 2025). Required by most accessibility laws worldwide. Default for most scans.</p>
               </div>
               <div className="rounded-lg border border-neutral-200 dark:border-neutral-800 p-4">
                 <p className="font-medium text-sm text-neutral-900 dark:text-white">EN 301 549 V3.2.1</p>
