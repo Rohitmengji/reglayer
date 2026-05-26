@@ -25,9 +25,10 @@ model User {
   updatedAt     DateTime  @updatedAt
 
   // Relations
-  memberships   WorkspaceMember[]
-  scans         Scan[]
-  apiKeys       ApiKey[]
+  memberships    WorkspaceMember[]
+  scans          Scan[]
+  apiKeys        ApiKey[]
+  accessRequests AccessRequest[]
 
   @@map("users")
 }
@@ -248,6 +249,32 @@ model AuditLog {
 
   @@index([workspaceId, createdAt])
   @@map("audit_logs")
+}
+
+// ─────────────────────────────────────────────
+// Access Requests (for Google/OAuth onboarding)
+// ─────────────────────────────────────────────
+
+model AccessRequest {
+  id          String        @id @default(cuid())
+  status      RequestStatus @default(PENDING)
+  message     String?       // Optional message from the user
+  workspaceId String?       // If they request a specific workspace
+  resolvedBy  String?       // User ID of who approved/denied
+  resolvedAt  DateTime?
+  createdAt   DateTime      @default(now())
+
+  userId      String
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@map("access_requests")
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  DENIED
 }
 
 // ─────────────────────────────────────────────

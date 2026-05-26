@@ -1,11 +1,50 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
+import { useRouter, usePathname } from "next/navigation";
 import { Sidebar } from "./sidebar";
 import { Menu, X } from "lucide-react";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { data: session } = useSession();
+  const router = useRouter();
+  const pathname = usePathname();
+  const [accessChecked, setAccessChecked] = useState(false);
+
+  useEffect(() => {
+    // Skip check for master admins and admin panel
+    const isMasterAdmin = (session?.user as { isMasterAdmin?: boolean } | undefined)?.isMasterAdmin;
+    if (isMasterAdmin || pathname === "/admin") {
+      setAccessChecked(true);
+      return;
+    }
+
+    // Check if user has workspace access
+    if (session?.user?.email) {
+      fetch("/api/team")
+        .then((r) => r.json())
+        .then((data) => {
+          if (!data.workspace) {
+            router.replace("/request-access");
+          } else {
+            setAccessChecked(true);
+          }
+        })
+        .catch(() => setAccessChecked(true));
+    } else {
+      setAccessChecked(true);
+    }
+  }, [session, pathname, router]);
+
+  if (!accessChecked) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-neutral-50 dark:bg-neutral-950">
+        <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-neutral-50 dark:bg-neutral-950">
