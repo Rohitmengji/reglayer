@@ -138,15 +138,11 @@ export async function PATCH(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { memberId, role } = body;
-
-  if (!memberId || !role) {
-    return NextResponse.json({ error: "memberId and role are required" }, { status: 400 });
-  }
+  const { memberId, role, plan } = body;
 
   const currentUser = await prisma.user.findUnique({
     where: { email: session.user.email },
-    include: { memberships: true },
+    include: { memberships: { include: { workspace: true } } },
   });
 
   if (!currentUser || currentUser.memberships.length === 0) {
@@ -154,6 +150,28 @@ export async function PATCH(request: NextRequest) {
   }
 
   const myMembership = currentUser.memberships[0];
+
+  // ── Change workspace plan ──────────────────────────────────
+  if (plan) {
+    if (!["OWNER", "ADMIN"].includes(myMembership.role)) {
+      return NextResponse.json({ error: "Only owners and admins can change the plan" }, { status: 403 });
+    }
+    const validPlans = ["FREE", "PRO", "ENTERPRISE"];
+    if (!validPlans.includes(plan)) {
+      return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
+    }
+    const updated = await prisma.workspace.update({
+      where: { id: myMembership.workspaceId },
+      data: { plan },
+    });
+    return NextResponse.json({ success: true, plan: updated.plan });
+  }
+
+  // ── Change member role ─────────────────────────────────────
+  if (!memberId || !role) {
+    return NextResponse.json({ error: "memberId and role are required" }, { status: 400 });
+  }
+
   if (!["OWNER", "ADMIN"].includes(myMembership.role)) {
     return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
   }
