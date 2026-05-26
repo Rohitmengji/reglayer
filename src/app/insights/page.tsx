@@ -64,7 +64,7 @@ export default function InsightsPage() {
     <Suspense
       fallback={
         <AppShell>
-          <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="flex-1 flex items-center justify-center">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-neutral-300 dark:border-neutral-600 border-t-neutral-900 dark:border-t-white" />
           </div>
         </AppShell>
@@ -125,7 +125,7 @@ function InsightsContent() {
   if (loading) {
     return (
       <AppShell>
-        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
+        <div className="flex-1 flex flex-col items-center justify-center gap-3">
           <Loader2 className="h-8 w-8 animate-spin text-neutral-400" />
           <p className="text-sm text-neutral-500 dark:text-neutral-400">Generating AI insights...</p>
           <p className="text-xs text-neutral-400">This may take 10-30 seconds</p>

@@ -44,7 +44,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <span className="text-sm font-bold text-neutral-900 dark:text-white">RegLayer</span>
         </div>
 
-        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 flex-1 w-full">{children}</div>
+        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 flex-1 w-full flex flex-col">{children}</div>
       </main>
     </div>
   );

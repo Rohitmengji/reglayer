@@ -30,7 +30,7 @@ export default function CompliancePage() {
     <Suspense
       fallback={
         <AppShell>
-          <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="flex-1 flex items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-neutral-300" />
           </div>
         </AppShell>
@@ -81,7 +81,7 @@ function ComplianceContent() {
   if (loading) {
     return (
       <AppShell>
-        <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="flex-1 flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-neutral-300" />
         </div>
       </AppShell>

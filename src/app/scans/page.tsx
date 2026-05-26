@@ -144,7 +144,7 @@ export default function ScansPage() {
 
         {/* Scan List */}
         {loading ? (
-          <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="flex-1 flex items-center justify-center">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-neutral-300 dark:border-neutral-600 border-t-neutral-900 dark:border-t-white" />
           </div>
         ) : scans.length === 0 ? (
