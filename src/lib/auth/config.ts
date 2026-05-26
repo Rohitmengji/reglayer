@@ -45,25 +45,33 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
+        // Dev seed accounts — credentials from env vars (NOT hardcoded)
+        const masterEmail = process.env.SEED_MASTER_EMAIL;
+        const masterPass = process.env.SEED_MASTER_PASSWORD;
+        const adminEmail = process.env.SEED_ADMIN_EMAIL;
+        const adminPass = process.env.SEED_ADMIN_PASSWORD;
+
         if (
-          credentials?.email === "master@reglayer.dev" &&
-          credentials?.password === "reglayer2024"
+          masterEmail && masterPass &&
+          credentials?.email === masterEmail &&
+          credentials?.password === masterPass
         ) {
           return {
             id: "master-1",
             name: "Master Admin",
-            email: "master@reglayer.dev",
+            email: masterEmail,
             role: "master",
           };
         }
         if (
-          credentials?.email === "admin@reglayer.dev" &&
-          credentials?.password === "reglayer2024"
+          adminEmail && adminPass &&
+          credentials?.email === adminEmail &&
+          credentials?.password === adminPass
         ) {
           return {
             id: "1",
             name: "Admin",
-            email: "admin@reglayer.dev",
+            email: adminEmail,
             role: "admin",
           };
         }

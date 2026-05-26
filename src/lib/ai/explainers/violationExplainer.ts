@@ -24,6 +24,7 @@
 import OpenAI from "openai";
 import { aiExplanationSchema, type AIExplanation } from "../structuredOutput";
 import type { AccessibilityViolation } from "@/lib/types";
+import { withRetry } from "@/lib/retry";
 
 function getOpenAIClient() {
   return new OpenAI({
@@ -42,9 +43,10 @@ export async function explainViolation(
   }
 
   try {
-    const response = await getOpenAIClient().chat.completions.create({
-      model: "chatgpt-5.4-mini",
-      messages: [
+    const response = await withRetry(
+      () => getOpenAIClient().chat.completions.create({
+        model: "chatgpt-5.4-mini",
+        messages: [
         {
           role: "system",
           content: `You are an accessibility compliance expert. Explain web accessibility violations in clear, non-technical language. Respond with JSON matching this schema: { summary: string (max 500 chars), impact: string (max 300 chars), recommendation: string (max 500 chars), technicalDetail: string (max 1000 chars, optional), confidence: number 0-1 }`,
@@ -65,7 +67,9 @@ export async function explainViolation(
       response_format: { type: "json_object" },
       temperature: 0.3,
       max_tokens: 500,
-    });
+    }),
+      { maxAttempts: 3, baseDelayMs: 1000 }
+    );
 
     const content = response.choices[0]?.message?.content;
     if (!content) return null;

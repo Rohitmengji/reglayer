@@ -26,9 +26,20 @@ import { performScan } from "@/services/scanService";
 import { authOptions } from "@/lib/auth/config";
 import { logger } from "@/lib/telemetry/logger";
 import { getPlanContext, getMonthlyScansCount } from "@/lib/credits/plan-context";
+import { rateLimit, RATE_LIMITS, rateLimitHeaders } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
   const apiLogger = logger.withContext({ route: "POST /api/scan" });
+
+  // Rate limit by IP
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const rl = rateLimit(`scan:${ip}`, RATE_LIMITS.scan);
+  if (!rl.success) {
+    return NextResponse.json(
+      { error: "Too many requests. Please wait before scanning again." },
+      { status: 429, headers: rateLimitHeaders(rl) }
+    );
+  }
 
   try {
     const body = await request.json();

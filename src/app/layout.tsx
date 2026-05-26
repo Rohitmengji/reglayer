@@ -21,8 +21,32 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "RegLayer — Accessibility Scanner",
-  description: "Developer-native compliance infrastructure. Scan websites for accessibility issues, compliance risks, and frontend semantic problems.",
+  title: {
+    default: "RegLayer — Accessibility Scanner",
+    template: "%s | RegLayer",
+  },
+  description: "Developer-native compliance infrastructure. Scan websites for accessibility issues, generate WCAG reports, and ship inclusive products.",
+  metadataBase: new URL(process.env.NEXTAUTH_URL || "https://reglayer.vercel.app"),
+  openGraph: {
+    title: "RegLayer — Accessibility Scanner",
+    description: "Developer-native compliance infrastructure. Scan websites for WCAG violations, generate audit reports, and build accessible products.",
+    url: "/",
+    siteName: "RegLayer",
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "RegLayer — Accessibility Scanner",
+    description: "Developer-native compliance infrastructure for WCAG accessibility.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+  icons: {
+    icon: "/favicon.ico",
+  },
 };
 
 export default function RootLayout({
