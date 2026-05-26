@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -121,47 +122,73 @@ export default function AdminPage() {
 
   async function handleChangePlan(workspaceId: string, plan: string) {
     setActionLoading(true);
+    const toastId = toast.loading("Changing plan...");
     const res = await fetch("/api/admin", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "changePlan", workspaceId, plan }),
     });
     if (res.ok) {
+      toast.success(`Plan changed to ${plan}`, { id: toastId });
       setChangingPlan(null);
       fetchData();
+    } else {
+      const data = await res.json();
+      toast.error(data.error || "Failed to change plan", { id: toastId });
     }
     setActionLoading(false);
   }
 
   async function handleToggleMasterAdmin(userId: string) {
     setActionLoading(true);
-    await fetch("/api/admin", {
+    const toastId = toast.loading("Updating admin status...");
+    const res = await fetch("/api/admin", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "toggleMasterAdmin", userId }),
     });
+    if (res.ok) {
+      toast.success("Admin status updated", { id: toastId });
+    } else {
+      const data = await res.json();
+      toast.error(data.error || "Failed to update", { id: toastId });
+    }
     fetchData();
     setActionLoading(false);
   }
 
   async function handleChangeRole(workspaceId: string, targetUserId: string, role: string) {
     setActionLoading(true);
-    await fetch("/api/admin", {
+    const toastId = toast.loading("Updating role...");
+    const res = await fetch("/api/admin", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "assignRole", workspaceId, targetUserId, role }),
     });
+    if (res.ok) {
+      toast.success(`Role changed to ${role}`, { id: toastId });
+    } else {
+      const data = await res.json();
+      toast.error(data.error || "Failed to change role", { id: toastId });
+    }
     fetchData();
     setActionLoading(false);
   }
 
   async function handleRemoveUser(workspaceId: string, targetUserId: string) {
     setActionLoading(true);
-    await fetch("/api/admin", {
+    const toastId = toast.loading("Removing user...");
+    const res = await fetch("/api/admin", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "removeUser", workspaceId, targetUserId }),
     });
+    if (res.ok) {
+      toast.success("User removed from workspace", { id: toastId });
+    } else {
+      const data = await res.json();
+      toast.error(data.error || "Failed to remove user", { id: toastId });
+    }
     fetchData();
     setActionLoading(false);
   }
@@ -170,17 +197,22 @@ export default function AdminPage() {
     e.preventDefault();
     if (!newWsName || !newWsOwnerEmail) return;
     setActionLoading(true);
+    const toastId = toast.loading("Creating workspace...");
     const res = await fetch("/api/admin", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "createWorkspace", name: newWsName, ownerEmail: newWsOwnerEmail, plan: newWsPlan }),
     });
     if (res.ok) {
+      toast.success(`Workspace "${newWsName}" created`, { id: toastId });
       setShowCreateWorkspace(false);
       setNewWsName("");
       setNewWsOwnerEmail("");
       setNewWsPlan("FREE");
       fetchData();
+    } else {
+      const data = await res.json();
+      toast.error(data.error || "Failed to create workspace", { id: toastId });
     }
     setActionLoading(false);
   }
@@ -188,27 +220,39 @@ export default function AdminPage() {
   async function handleAddUserToWorkspace(workspaceId: string) {
     if (!addUserEmail) return;
     setActionLoading(true);
+    const toastId = toast.loading("Adding user...");
     const res = await fetch("/api/admin", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "addUserToWorkspace", workspaceId, email: addUserEmail, role: addUserRole }),
     });
     if (res.ok) {
+      toast.success(`${addUserEmail} added to workspace`, { id: toastId });
       setShowAddUser(null);
       setAddUserEmail("");
       setAddUserRole("MEMBER");
       fetchData();
+    } else {
+      const data = await res.json();
+      toast.error(data.error || "Failed to add user", { id: toastId });
     }
     setActionLoading(false);
   }
 
   async function handleAccessRequest(requestId: string, action: "approve" | "deny", workspaceId?: string) {
     setActionLoading(true);
-    await fetch("/api/access-request", {
+    const toastId = toast.loading(action === "approve" ? "Approving request..." : "Denying request...");
+    const res = await fetch("/api/access-request", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ requestId, action, workspaceId, role: "MEMBER" }),
     });
+    if (res.ok) {
+      toast.success(action === "approve" ? "Request approved — user now has access" : "Request denied", { id: toastId });
+    } else {
+      const data = await res.json();
+      toast.error(data.error || "Failed to process request", { id: toastId });
+    }
     fetchData();
     setActionLoading(false);
   }
@@ -216,11 +260,18 @@ export default function AdminPage() {
   async function handleDeleteUser(userId: string, email: string) {
     if (!confirm(`Permanently delete user "${email}"? This cannot be undone.`)) return;
     setActionLoading(true);
-    await fetch("/api/admin", {
+    const toastId = toast.loading("Deleting user...");
+    const res = await fetch("/api/admin", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "deleteUser", userId }),
     });
+    if (res.ok) {
+      toast.success(`User "${email}" deleted`, { id: toastId });
+    } else {
+      const data = await res.json();
+      toast.error(data.error || "Failed to delete user", { id: toastId });
+    }
     fetchData();
     setActionLoading(false);
   }
@@ -228,15 +279,19 @@ export default function AdminPage() {
   async function handleResetPassword(userId: string) {
     if (!resetPasswordValue || resetPasswordValue.length < 6) return;
     setActionLoading(true);
+    const toastId = toast.loading("Resetting password...");
     const res = await fetch("/api/admin", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "resetPassword", userId, newPassword: resetPasswordValue }),
     });
     if (res.ok) {
+      toast.success("Password reset successfully", { id: toastId });
       setResetPasswordUser(null);
       setResetPasswordValue("");
-      alert("Password reset successfully");
+    } else {
+      const data = await res.json();
+      toast.error(data.error || "Failed to reset password", { id: toastId });
     }
     setActionLoading(false);
   }

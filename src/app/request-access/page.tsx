@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ShieldCheck, Clock, Send, LogOut } from "lucide-react";
@@ -51,6 +52,7 @@ export default function RequestAccessPage() {
     e.preventDefault();
     setLoading(true);
     setError("");
+    const toastId = toast.loading("Submitting request...");
 
     const res = await fetch("/api/access-request", {
       method: "POST",
@@ -60,11 +62,14 @@ export default function RequestAccessPage() {
 
     const data = await res.json();
     if (res.ok) {
+      toast.success("Access request submitted successfully", { id: toastId });
       setSubmitted(true);
     } else {
       if (data.error === "You already have a pending request") {
+        toast.info("You already have a pending request", { id: toastId });
         setSubmitted(true);
       } else {
+        toast.error(data.error || "Failed to submit request", { id: toastId });
         setError(data.error || "Failed to submit request");
       }
     }
