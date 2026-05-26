@@ -333,7 +333,33 @@ function SchedulesTab() {
   const [url, setUrl] = useState("");
   const [cron, setCron] = useState("0 9 * * *");
   const [useCustomCron, setUseCustomCron] = useState(false);
+  const [customHour, setCustomHour] = useState("09");
+  const [customMinute, setCustomMinute] = useState("00");
+  const [customDays, setCustomDays] = useState<string[]>(["*"]);
   const [error, setError] = useState("");
+
+  // Build cron from custom picker
+  function buildCustomCron(hour: string, minute: string, days: string[]) {
+    const dow = days.includes("*") ? "*" : days.join(",");
+    return `${parseInt(minute)} ${parseInt(hour)} * * ${dow}`;
+  }
+
+  function toggleDay(day: string) {
+    if (day === "*") {
+      setCustomDays(["*"]);
+      setCron(buildCustomCron(customHour, customMinute, ["*"]));
+      return;
+    }
+    let newDays = customDays.filter((d) => d !== "*");
+    if (newDays.includes(day)) {
+      newDays = newDays.filter((d) => d !== day);
+    } else {
+      newDays.push(day);
+    }
+    if (newDays.length === 0) newDays = ["*"];
+    setCustomDays(newDays);
+    setCron(buildCustomCron(customHour, customMinute, newDays));
+  }
 
   useEffect(() => {
     fetchSchedules();
@@ -420,7 +446,10 @@ function SchedulesTab() {
                   onChange={(e) => {
                     if (e.target.value === "custom") {
                       setUseCustomCron(true);
-                      setCron("");
+                      setCustomHour("09");
+                      setCustomMinute("00");
+                      setCustomDays(["*"]);
+                      setCron("0 9 * * *");
                     } else {
                       setUseCustomCron(false);
                       setCron(e.target.value);
@@ -433,7 +462,60 @@ function SchedulesTab() {
                   <option value="custom">Custom cron expression</option>
                 </select>
                 {useCustomCron && (
-                  <Input className="mt-2" placeholder="Custom cron (e.g., 0 9 * * 1)" value={cron} onChange={(e) => setCron(e.target.value)} required />
+                  <div className="mt-3 space-y-3 rounded-lg border border-neutral-200 dark:border-neutral-700 p-3 bg-neutral-50 dark:bg-neutral-800/50">
+                    <div>
+                      <label className="text-xs font-medium text-neutral-600 dark:text-neutral-300 mb-1.5 block">Time</label>
+                      <div className="flex items-center gap-2">
+                        <select
+                          className="rounded-md border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-2 py-1.5 text-sm text-neutral-900 dark:text-white"
+                          value={customHour}
+                          onChange={(e) => { setCustomHour(e.target.value); setCron(buildCustomCron(e.target.value, customMinute, customDays)); }}
+                        >
+                          {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0")).map((h) => (
+                            <option key={h} value={h}>{h}</option>
+                          ))}
+                        </select>
+                        <span className="text-sm font-medium text-neutral-500">:</span>
+                        <select
+                          className="rounded-md border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-2 py-1.5 text-sm text-neutral-900 dark:text-white"
+                          value={customMinute}
+                          onChange={(e) => { setCustomMinute(e.target.value); setCron(buildCustomCron(customHour, e.target.value, customDays)); }}
+                        >
+                          {["00", "15", "30", "45"].map((m) => (
+                            <option key={m} value={m}>{m}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-neutral-600 dark:text-neutral-300 mb-1.5 block">Days</label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {[
+                          { label: "Every day", value: "*" },
+                          { label: "Mon", value: "1" },
+                          { label: "Tue", value: "2" },
+                          { label: "Wed", value: "3" },
+                          { label: "Thu", value: "4" },
+                          { label: "Fri", value: "5" },
+                          { label: "Sat", value: "6" },
+                          { label: "Sun", value: "0" },
+                        ].map((day) => (
+                          <button
+                            key={day.value}
+                            type="button"
+                            onClick={() => toggleDay(day.value)}
+                            className={`px-2.5 py-1 text-xs rounded-md border transition-colors ${
+                              customDays.includes(day.value)
+                                ? "bg-blue-600 text-white border-blue-600"
+                                : "bg-white dark:bg-neutral-900 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-neutral-700 hover:border-blue-400"
+                            }`}
+                          >
+                            {day.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                 )}
                 <p className="mt-1.5 text-xs text-neutral-500 dark:text-neutral-400">
                   Will scan: <strong className="text-neutral-700 dark:text-neutral-200">{cronToHuman(cron)}</strong>
