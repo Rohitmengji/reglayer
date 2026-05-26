@@ -46,6 +46,8 @@ interface UserInfo {
   name: string | null;
   isMasterAdmin: boolean;
   createdAt: string;
+  role: string | null;
+  canGrantMaster: boolean;
 }
 
 interface AdminData {
@@ -479,15 +481,17 @@ export default function AdminPage() {
                               <KeyRound className="h-3 w-3 mr-1" /> Reset PW
                             </Button>
                           )}
-                          <Button
-                            size="sm"
-                            variant={user.isMasterAdmin ? "destructive" : "outline"}
-                            onClick={() => handleToggleMasterAdmin(user.id)}
-                            disabled={actionLoading}
-                            className="text-xs"
-                          >
-                            {user.isMasterAdmin ? "Revoke Master" : "Grant Master"}
-                          </Button>
+                          {user.canGrantMaster && (
+                            <Button
+                              size="sm"
+                              variant={user.isMasterAdmin ? "destructive" : "outline"}
+                              onClick={() => handleToggleMasterAdmin(user.id)}
+                              disabled={actionLoading}
+                              className="text-xs"
+                            >
+                              {user.isMasterAdmin ? "Revoke Master" : "Grant Master"}
+                            </Button>
+                          )}
                           {/* Delete User */}
                           <Button
                             size="sm"
