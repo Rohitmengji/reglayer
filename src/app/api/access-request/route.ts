@@ -187,6 +187,15 @@ export async function PATCH(req: Request) {
     },
   });
 
+  // Google/OAuth users should remain on FREE plan after access approval.
+  // Credits and AI limits are enforced from user.plan, not workspace.plan.
+  if (!accessRequest.user.passwordHash) {
+    await prisma.user.update({
+      where: { id: accessRequest.userId },
+      data: { plan: "FREE" },
+    });
+  }
+
   // Mark request as approved
   await prisma.accessRequest.update({
     where: { id: requestId },
@@ -199,7 +208,12 @@ export async function PATCH(req: Request) {
       action: "accessRequest.approved",
       actor: actor.id,
       target: accessRequest.userId,
-      metadata: { email: accessRequest.user.email, role: assignRole, workspaceId: targetWorkspaceId },
+      metadata: {
+        email: accessRequest.user.email,
+        role: assignRole,
+        workspaceId: targetWorkspaceId,
+        enforcedFreePlan: !accessRequest.user.passwordHash,
+      },
       workspaceId: targetWorkspaceId,
     },
   });
