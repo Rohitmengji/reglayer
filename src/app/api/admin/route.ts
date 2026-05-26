@@ -63,7 +63,28 @@ export async function GET() {
         orderBy: { createdAt: "desc" },
       }),
       prisma.user.findMany({
-        select: { id: true, email: true, name: true, isMasterAdmin: true, createdAt: true },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          isMasterAdmin: true,
+          createdAt: true,
+          memberships: {
+            select: {
+              role: true,
+              workspace: {
+                select: {
+                  id: true,
+                  members: {
+                    where: { role: "OWNER" },
+                    select: { user: { select: { isMasterAdmin: true } } },
+                    take: 1,
+                  },
+                },
+              },
+            },
+          },
+        },
         orderBy: { createdAt: "desc" },
       }),
       prisma.scan.count(),
@@ -72,7 +93,23 @@ export async function GET() {
 
     return NextResponse.json({
       workspaces,
-      users,
+      users: users.map((u) => {
+        // A user can be granted master if they are an OWNER/ADMIN themselves,
+        // or if their workspace owner is already a master admin
+        const isOwnerOrAdmin = u.memberships.some((m) => m.role === "OWNER" || m.role === "ADMIN");
+        const ownerIsMaster = u.memberships.some(
+          (m) => m.workspace.members.some((om) => om.user.isMasterAdmin)
+        );
+        return {
+          id: u.id,
+          email: u.email,
+          name: u.name,
+          isMasterAdmin: u.isMasterAdmin,
+          createdAt: u.createdAt,
+          role: u.memberships[0]?.role || null,
+          canGrantMaster: isOwnerOrAdmin || ownerIsMaster,
+        };
+      }),
       stats: { totalWorkspaces: workspaces.length, totalUsers: users.length, totalScans, totalSchedules },
     });
   } catch (err) {
