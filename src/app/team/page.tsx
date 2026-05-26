@@ -13,6 +13,7 @@ interface TeamMember {
   name: string | null;
   email: string;
   role: string;
+  plan: string;
   isMasterAdmin?: boolean;
   joinedAt: string;
 }
@@ -142,17 +143,16 @@ export default function TeamPage() {
     }
   }
 
-  async function handleChangePlan(newPlan: string) {
-    if (!workspace || workspace.plan === newPlan) return;
+  async function handleChangePlan(userId: string, newPlan: string) {
     const toastId = toast.loading("Updating plan...");
     const res = await fetch("/api/team", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ plan: newPlan }),
+      body: JSON.stringify({ userId, plan: newPlan }),
     });
     if (res.ok) {
-      toast.success(`Plan upgraded to ${newPlan}`, { id: toastId });
-      setWorkspace({ ...workspace, plan: newPlan });
+      toast.success(`Plan changed to ${newPlan}`, { id: toastId });
+      setMembers(members.map((m) => (m.userId === userId ? { ...m, plan: newPlan } : m)));
     } else {
       const data = await res.json();
       toast.error(data.error || "Failed to change plan", { id: toastId });
@@ -197,21 +197,9 @@ export default function TeamPage() {
                     <p className="text-xs text-neutral-500 dark:text-neutral-400">{workspace.slug} · {members.length} member{members.length !== 1 ? "s" : ""}</p>
                   </div>
                 </div>
-                {isAdmin ? (
-                  <select
-                    value={workspace.plan}
-                    onChange={(e) => handleChangePlan(e.target.value)}
-                    className="rounded-lg border border-neutral-200 dark:border-neutral-700 px-3 py-1.5 text-xs font-semibold dark:bg-neutral-800 dark:text-neutral-100 cursor-pointer"
-                  >
-                    <option value="FREE">FREE</option>
-                    <option value="PRO">PRO</option>
-                    <option value="ENTERPRISE">ENTERPRISE</option>
-                  </select>
-                ) : (
-                  <Badge variant={workspace.plan === "ENTERPRISE" ? "success" : workspace.plan === "PRO" ? "default" : "secondary"}>
-                    {workspace.plan}
-                  </Badge>
-                )}
+                <Badge variant={workspace.plan === "ENTERPRISE" ? "success" : workspace.plan === "PRO" ? "default" : "secondary"}>
+                  {workspace.plan}
+                </Badge>
               </div>
             </CardContent>
           </Card>
@@ -300,18 +288,29 @@ export default function TeamPage() {
                         </span>
 
                         {isAdmin && member.role !== "OWNER" && !member.isMasterAdmin ? (
-                          <div className="relative">
+                          <>
+                            <div className="relative">
+                              <select
+                                value={member.role}
+                                onChange={(e) => handleRoleChange(member.id, e.target.value)}
+                                className={`appearance-none rounded-full px-2.5 py-1 text-xs font-semibold border-none cursor-pointer pr-6 ${roleColors[member.role]}`}
+                              >
+                                <option value="VIEWER">Viewer</option>
+                                <option value="MEMBER">Member</option>
+                                <option value="ADMIN">Admin</option>
+                              </select>
+                              <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 h-3 w-3 pointer-events-none" />
+                            </div>
                             <select
-                              value={member.role}
-                              onChange={(e) => handleRoleChange(member.id, e.target.value)}
-                              className={`appearance-none rounded-full px-2.5 py-1 text-xs font-semibold border-none cursor-pointer pr-6 ${roleColors[member.role]}`}
+                              value={member.plan}
+                              onChange={(e) => handleChangePlan(member.userId, e.target.value)}
+                              className="rounded-full px-2.5 py-1 text-xs font-semibold border border-neutral-200 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 cursor-pointer"
                             >
-                              <option value="VIEWER">Viewer</option>
-                              <option value="MEMBER">Member</option>
-                              <option value="ADMIN">Admin</option>
+                              <option value="FREE">Free</option>
+                              <option value="PRO">Pro</option>
+                              <option value="ENTERPRISE">Enterprise</option>
                             </select>
-                            <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 h-3 w-3 pointer-events-none" />
-                          </div>
+                          </>
                         ) : (
                           <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${roleColors[displayRole]}`}>
                             <RoleIcon className="h-3 w-3" />
