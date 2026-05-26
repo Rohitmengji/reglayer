@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { cn } from "@/lib/utils/cn";
 import { useTheme } from "@/components/theme-provider";
-import { Shield, LayoutDashboard, Scan, Globe, Zap, Sparkles, BarChart3, GitCompare, Webhook, Settings, LogOut, Grid3X3, Moon, Sun, FileText, Languages, Users, ClipboardList, Bell, Plug } from "lucide-react";
+import { Shield, LayoutDashboard, Scan, Globe, Zap, Sparkles, BarChart3, GitCompare, Webhook, Settings, LogOut, Grid3X3, Moon, Sun, FileText, Languages, Users, ClipboardList, Bell, Plug, Crown } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 import { SUPPORTED_LOCALES } from "@/lib/i18n/translations";
 
@@ -68,6 +68,23 @@ export function Sidebar({ onNavigate }: SidebarProps) {
             </Link>
           );
         })}
+
+        {/* Master Admin Panel — only visible to master admins */}
+        {(session?.user as unknown as { isMasterAdmin?: boolean })?.isMasterAdmin && (
+          <Link
+            href="/admin"
+            onClick={onNavigate}
+            className={cn(
+              "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors mt-2 border-t border-neutral-200 dark:border-neutral-700 pt-3",
+              pathname === "/admin"
+                ? "bg-red-50 text-red-800 dark:bg-red-900/30 dark:text-red-200"
+                : "text-red-600 hover:bg-red-50 hover:text-red-800 dark:text-red-400 dark:hover:bg-red-900/20 dark:hover:text-red-200"
+            )}
+          >
+            <Crown className="h-4 w-4" />
+            Admin Panel
+          </Link>
+        )}
       </nav>
 
       {/* User & Footer */}
