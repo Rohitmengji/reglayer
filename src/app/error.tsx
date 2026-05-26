@@ -1,0 +1,52 @@
+"use client";
+
+import Link from "next/link";
+
+/**
+ * Route-level error boundary — catches errors in page components.
+ * Renders within the root layout (header/sidebar still visible).
+ */
+export default function Error({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string };
+  reset: () => void;
+}) {
+  return (
+    <div className="flex flex-1 items-center justify-center p-6">
+      <div className="max-w-md text-center space-y-4">
+        <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-red-50 dark:bg-red-950/30">
+          <svg className="h-8 w-8 text-red-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+          </svg>
+        </div>
+        <h2 className="text-xl font-semibold text-neutral-900 dark:text-white">
+          Something went wrong
+        </h2>
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+          We encountered an error loading this page. Please try again.
+        </p>
+        {error.digest && (
+          <p className="text-xs text-neutral-400 font-mono">
+            Reference: {error.digest}
+          </p>
+        )}
+        <div className="flex items-center justify-center gap-3">
+          <button
+            onClick={reset}
+            className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200 transition-colors"
+          >
+            Try again
+          </button>
+          <Link
+            href="/dashboard"
+            className="rounded-lg border border-neutral-200 dark:border-neutral-700 px-4 py-2 text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
+          >
+            Go to Dashboard
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
