@@ -25,6 +25,7 @@ import { scanRequestSchema } from "@/lib/validations/scan";
 import { performScan } from "@/services/scanService";
 import { authOptions } from "@/lib/auth/config";
 import { logger } from "@/lib/telemetry/logger";
+import { getPlanContext, getMonthlyScansCount } from "@/lib/credits/plan-context";
 
 export async function POST(request: NextRequest) {
   const apiLogger = logger.withContext({ route: "POST /api/scan" });
@@ -53,6 +54,21 @@ export async function POST(request: NextRequest) {
 
     // Get user session for notification context
     const session = await getServerSession(authOptions);
+
+    // Enforce scan limit
+    const planCtx = await getPlanContext();
+    if (planCtx && !planCtx.isMasterAdmin) {
+      const limit = planCtx.limits.scansPerMonth;
+      if (limit !== -1) {
+        const used = await getMonthlyScansCount(planCtx.userId);
+        if (used >= limit) {
+          return NextResponse.json(
+            { error: `Scan limit reached (${limit}/month on ${planCtx.plan} plan). Upgrade for more scans.`, upgradeRequired: true },
+            { status: 429 }
+          );
+        }
+      }
+    }
 
     // Delegate to service layer
     const result = await performScan({ url, options, userEmail: session?.user?.email || undefined });

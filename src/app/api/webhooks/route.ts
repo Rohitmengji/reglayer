@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
 import { z } from "zod";
 import crypto from "crypto";
+import { PLAN_LIMITS, type PlanType } from "@/lib/credits/plan-limits";
 
 const webhookSchema = z.object({
   name: z.string().min(1).max(100),
@@ -68,6 +71,40 @@ export async function GET() {
  * POST /api/webhooks — Register a new webhook endpoint
  */
 export async function POST(request: NextRequest) {
+  // Auth & plan check
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { email: session.user.email },
+    select: { plan: true, isMasterAdmin: true },
+  });
+
+  if (!user?.isMasterAdmin) {
+    const plan = (user?.plan || "FREE") as PlanType;
+    const webhookLimit = PLAN_LIMITS[plan].features.webhooks;
+    if (webhookLimit === 0) {
+      return NextResponse.json(
+        { error: "Webhooks are not available on the Free plan. Upgrade to Pro or Enterprise.", upgradeRequired: true },
+        { status: 403 }
+      );
+    }
+    // Check count limit
+    if (webhookLimit !== -1) {
+      const existingCount = await prisma.auditLog.count({
+        where: { action: "webhook.registered" },
+      });
+      if (existingCount >= webhookLimit) {
+        return NextResponse.json(
+          { error: `Webhook limit reached (${webhookLimit} on ${plan} plan). Upgrade for more.`, upgradeRequired: true },
+          { status: 429 }
+        );
+      }
+    }
+  }
+
   let body: unknown;
   try {
     body = await request.json();

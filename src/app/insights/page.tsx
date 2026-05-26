@@ -15,6 +15,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import Link from "next/link";
+import { handleUpgradeResponse } from "@/lib/upgrade-prompt";
 
 interface Insight {
   explanation: string | object;
@@ -90,6 +91,7 @@ function InsightsContent() {
         .then((d) => {
           if (cancelled) return;
           if (d.error) {
+            handleUpgradeResponse(d);
             setError(d.error);
           } else {
             setData(d);
