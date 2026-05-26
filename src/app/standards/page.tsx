@@ -11,7 +11,7 @@ const standards = [
     name: "WCAG 2.1 Level AA",
     org: "W3C Web Accessibility Initiative",
     description:
-      "The international standard for web accessibility. WCAG 2.1 defines how to make web content more accessible to people with disabilities. Level AA is the required conformance level for most regulations.",
+      "The international standard for web accessibility (W3C Recommendation, 06 May 2025). WCAG 2.1 defines how to make web content more accessible to people with disabilities. Level AA is the required conformance level for most regulations.",
     criteria: ["Perceivable", "Operable", "Understandable", "Robust"],
     link: "https://www.w3.org/TR/WCAG21/",
   },

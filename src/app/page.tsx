@@ -318,9 +318,8 @@ export default function Home() {
               </ul>
             </div>
           </div>
-          <div className="border-t border-neutral-200 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p className="text-xs text-neutral-500">© 2025 RegLayer. All rights reserved.</p>
-            <p className="text-xs text-neutral-400">Made in the EU 🇪🇺 · Data hosted in Frankfurt, Germany</p>
+          <div className="border-t border-neutral-200 pt-8 text-center">
+            <p className="text-xs text-neutral-500">© {new Date().getFullYear()} RegLayer. All rights reserved.</p>
           </div>
         </div>
       </footer>
