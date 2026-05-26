@@ -12,6 +12,7 @@ interface TeamMember {
   name: string | null;
   email: string;
   role: string;
+  isMasterAdmin?: boolean;
   joinedAt: string;
 }
 
@@ -23,6 +24,7 @@ interface WorkspaceInfo {
 }
 
 const roleColors: Record<string, string> = {
+  MASTER_ADMIN: "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200",
   OWNER: "bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200",
   ADMIN: "bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200",
   MEMBER: "bg-neutral-100 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200",
@@ -211,7 +213,9 @@ export default function TeamPage() {
             ) : (
               <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
                 {members.map((member) => {
-                  const RoleIcon = roleIcons[member.role] || Users;
+                  const displayRole = member.isMasterAdmin ? "MASTER_ADMIN" : member.role;
+                  const displayLabel = member.isMasterAdmin ? "MASTER ADMIN" : member.role;
+                  const RoleIcon = member.isMasterAdmin ? Crown : (roleIcons[member.role] || Users);
                   return (
                     <div key={member.id} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
                       <div className="flex items-center gap-3 min-w-0">
@@ -233,7 +237,7 @@ export default function TeamPage() {
                           {new Date(member.joinedAt).toLocaleDateString()}
                         </span>
 
-                        {isAdmin && member.role !== "OWNER" ? (
+                        {isAdmin && member.role !== "OWNER" && !member.isMasterAdmin ? (
                           <div className="relative">
                             <select
                               value={member.role}
@@ -247,13 +251,13 @@ export default function TeamPage() {
                             <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 h-3 w-3 pointer-events-none" />
                           </div>
                         ) : (
-                          <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${roleColors[member.role]}`}>
+                          <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${roleColors[displayRole]}`}>
                             <RoleIcon className="h-3 w-3" />
-                            {member.role}
+                            {displayLabel}
                           </span>
                         )}
 
-                        {isAdmin && member.role !== "OWNER" && (
+                        {isAdmin && member.role !== "OWNER" && !member.isMasterAdmin && (
                           <button
                             onClick={() => handleRemove(member.id, member.email)}
                             className="rounded-md p-1.5 text-neutral-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
