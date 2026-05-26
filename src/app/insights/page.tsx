@@ -125,7 +125,7 @@ function InsightsContent() {
   if (loading) {
     return (
       <AppShell>
-        <div className="flex flex-col items-center justify-center py-20 gap-3">
+        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
           <Loader2 className="h-8 w-8 animate-spin text-neutral-400" />
           <p className="text-sm text-neutral-500 dark:text-neutral-400">Generating AI insights...</p>
           <p className="text-xs text-neutral-400">This may take 10-30 seconds</p>

@@ -32,7 +32,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Main content */}
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 flex flex-col overflow-y-auto">
         {/* Mobile header */}
         <div className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-4 lg:hidden">
           <button
@@ -44,7 +44,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <span className="text-sm font-bold text-neutral-900 dark:text-white">RegLayer</span>
         </div>
 
-        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">{children}</div>
+        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 flex-1 w-full">{children}</div>
       </main>
     </div>
   );
