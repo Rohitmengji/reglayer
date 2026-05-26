@@ -58,6 +58,11 @@ export default function DashboardPage() {
     const data = result as ScanResponse;
     setScanResult(data);
     persistResult(data.scan, data.compliance);
+    // Refresh stats after successful scan
+    fetch("/api/dashboard/stats")
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => d && setStats(d))
+      .catch(() => {});
   }
 
   async function handleExportPDF() {
