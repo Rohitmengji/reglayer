@@ -19,8 +19,6 @@ export const SUPPORTED_LOCALES: { code: Locale; name: string; flag: string }[] =
 
 export const DEFAULT_LOCALE: Locale = "en";
 
-type TranslationKeys = typeof translations.en;
-
 const translations = {
   en: {
     // Navigation
@@ -36,6 +34,10 @@ const translations = {
     "nav.settings": "Settings",
     "nav.statement": "Statement",
     "nav.darkMode": "Dark Mode",
+    "nav.team": "Team",
+    "nav.auditLog": "Audit Log",
+    "nav.notifications": "Notifications",
+    "nav.integrations": "Integrations",
     // Dashboard
     "dashboard.title": "Dashboard",
     "dashboard.subtitle": "Scan websites for accessibility compliance issues.",
@@ -88,6 +90,10 @@ const translations = {
     "nav.settings": "Einstellungen",
     "nav.statement": "Erklärung",
     "nav.darkMode": "Dunkler Modus",
+    "nav.team": "Team",
+    "nav.auditLog": "Audit-Protokoll",
+    "nav.notifications": "Benachrichtigungen",
+    "nav.integrations": "Integrationen",
     "dashboard.title": "Übersicht",
     "dashboard.subtitle": "Websites auf Barrierefreiheit scannen.",
     "dashboard.newScan": "Neuer Barrierefreiheits-Scan",
@@ -135,6 +141,10 @@ const translations = {
     "nav.settings": "Paramètres",
     "nav.statement": "Déclaration",
     "nav.darkMode": "Mode sombre",
+    "nav.team": "Équipe",
+    "nav.auditLog": "Journal d'audit",
+    "nav.notifications": "Notifications",
+    "nav.integrations": "Intégrations",
     "dashboard.title": "Tableau de bord",
     "dashboard.subtitle": "Scanner les sites web pour la conformité d'accessibilité.",
     "dashboard.newScan": "Nouveau scan d'accessibilité",
@@ -182,6 +192,10 @@ const translations = {
     "nav.settings": "Configuración",
     "nav.statement": "Declaración",
     "nav.darkMode": "Modo oscuro",
+    "nav.team": "Equipo",
+    "nav.auditLog": "Registro de auditoría",
+    "nav.notifications": "Notificaciones",
+    "nav.integrations": "Integraciones",
     "dashboard.title": "Panel",
     "dashboard.subtitle": "Escanear sitios web para conformidad de accesibilidad.",
     "dashboard.newScan": "Nuevo escaneo de accesibilidad",
@@ -229,6 +243,10 @@ const translations = {
     "nav.settings": "Impostazioni",
     "nav.statement": "Dichiarazione",
     "nav.darkMode": "Modalità scura",
+    "nav.team": "Team",
+    "nav.auditLog": "Registro audit",
+    "nav.notifications": "Notifiche",
+    "nav.integrations": "Integrazioni",
     "dashboard.title": "Pannello",
     "dashboard.subtitle": "Scansiona i siti web per la conformità all'accessibilità.",
     "dashboard.newScan": "Nuova scansione di accessibilità",
@@ -276,6 +294,10 @@ const translations = {
     "nav.settings": "Instellingen",
     "nav.statement": "Verklaring",
     "nav.darkMode": "Donkere modus",
+    "nav.team": "Team",
+    "nav.auditLog": "Auditlogboek",
+    "nav.notifications": "Meldingen",
+    "nav.integrations": "Integraties",
     "dashboard.title": "Dashboard",
     "dashboard.subtitle": "Scan websites op toegankelijkheidsconformiteit.",
     "dashboard.newScan": "Nieuwe toegankelijkheidsscan",
@@ -323,6 +345,10 @@ const translations = {
     "nav.settings": "Configurações",
     "nav.statement": "Declaração",
     "nav.darkMode": "Modo escuro",
+    "nav.team": "Equipa",
+    "nav.auditLog": "Registo de auditoria",
+    "nav.notifications": "Notificações",
+    "nav.integrations": "Integrações",
     "dashboard.title": "Painel",
     "dashboard.subtitle": "Verificar sites para conformidade de acessibilidade.",
     "dashboard.newScan": "Nova varredura de acessibilidade",

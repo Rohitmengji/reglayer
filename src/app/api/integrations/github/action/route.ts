@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 
 /**
  * GET /api/integrations/github/action?url=<site>&threshold=80

@@ -23,11 +23,7 @@ export default function ScanDetailPage({
   const [loading, setLoading] = useState(!storeEntry);
 
   useEffect(() => {
-    if (storeEntry) {
-      setEntry(storeEntry);
-      setLoading(false);
-      return;
-    }
+    if (storeEntry || entry) return;
     // Fallback: fetch from API/DB
     fetch(`/api/scans/${id}`)
       .then((r) => {
@@ -41,7 +37,7 @@ export default function ScanDetailPage({
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [id, storeEntry]);
+  }, [id, storeEntry, entry]);
 
   if (loading) {
     return (

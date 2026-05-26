@@ -21,7 +21,7 @@
  * ---------------------------------------------------------
  */
 
-import type { Browser, Page } from "playwright-core";
+import type { Browser } from "playwright-core";
 import { SCAN_DEFAULTS } from "@/lib/constants";
 import { launchBrowser, isServerless } from "@/lib/scanner/browser/launch";
 

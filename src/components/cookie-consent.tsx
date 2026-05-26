@@ -1,9 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Shield } from "lucide-react";
-
-type ConsentLevel = "essential" | "analytics" | "marketing";
 
 interface ConsentState {
   essential: boolean;
@@ -14,24 +12,22 @@ interface ConsentState {
 
 const CONSENT_KEY = "reglayer-gdpr-consent";
 
-export function CookieConsent() {
-  const [visible, setVisible] = useState(false);
-  const [showDetails, setShowDetails] = useState(false);
-  const [consent, setConsent] = useState<ConsentState>({
-    essential: true,
-    analytics: false,
-    marketing: false,
-    timestamp: null,
-  });
+function getInitialVisible(): boolean {
+  if (typeof window === "undefined") return false;
+  return !localStorage.getItem(CONSENT_KEY);
+}
 
-  useEffect(() => {
-    const stored = localStorage.getItem(CONSENT_KEY);
-    if (!stored) {
-      setVisible(true);
-    } else {
-      setConsent(JSON.parse(stored));
-    }
-  }, []);
+function getInitialConsent(): ConsentState {
+  if (typeof window === "undefined") return { essential: true, analytics: false, marketing: false, timestamp: null };
+  const stored = localStorage.getItem(CONSENT_KEY);
+  if (stored) return JSON.parse(stored);
+  return { essential: true, analytics: false, marketing: false, timestamp: null };
+}
+
+export function CookieConsent() {
+  const [visible, setVisible] = useState(getInitialVisible);
+  const [showDetails, setShowDetails] = useState(false);
+  const [consent, setConsent] = useState<ConsentState>(getInitialConsent);
 
   function saveConsent(state: ConsentState) {
     const updated = { ...state, timestamp: new Date().toISOString() };
@@ -153,17 +149,7 @@ export function CookieConsent() {
 
 /** Hook to check consent status */
 export function useConsent(): ConsentState & { hasConsented: boolean } {
-  const [state, setState] = useState<ConsentState>({
-    essential: true,
-    analytics: false,
-    marketing: false,
-    timestamp: null,
-  });
-
-  useEffect(() => {
-    const stored = localStorage.getItem(CONSENT_KEY);
-    if (stored) setState(JSON.parse(stored));
-  }, []);
+  const [state] = useState<ConsentState>(getInitialConsent);
 
   return { ...state, hasConsented: !!state.timestamp };
 }

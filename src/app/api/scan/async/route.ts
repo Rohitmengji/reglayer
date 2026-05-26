@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
       },
       { status: 202 }
     );
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Failed to enqueue scan" },
       { status: 500 }

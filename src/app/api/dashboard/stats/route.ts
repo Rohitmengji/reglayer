@@ -70,7 +70,7 @@ export async function GET() {
       count: v._count.ruleId,
     })),
   });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Failed to load dashboard stats", totalScans: 0, avgScore: 0, totalViolations: 0, sitesMonitored: 0, trend: 0, recentScans: [], topViolations: [] },
       { status: 500 }

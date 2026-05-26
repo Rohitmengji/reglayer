@@ -48,23 +48,22 @@ export default function TeamPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    fetchTeam();
+    let cancelled = false;
+    fetch("/api/team")
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed");
+        return res.json();
+      })
+      .then((data) => {
+        if (cancelled) return;
+        setMembers(data.members || []);
+        setWorkspace(data.workspace);
+        setCurrentUserRole(data.currentUserRole || "");
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, []);
-
-  async function fetchTeam() {
-    try {
-      const res = await fetch("/api/team");
-      if (!res.ok) return;
-      const data = await res.json();
-      setMembers(data.members || []);
-      setWorkspace(data.workspace);
-      setCurrentUserRole(data.currentUserRole || "");
-    } catch {
-      // Network error
-    } finally {
-      setLoading(false);
-    }
-  }
 
   async function handleInvite(e: React.FormEvent) {
     e.preventDefault();

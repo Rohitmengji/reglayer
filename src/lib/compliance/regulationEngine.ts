@@ -19,7 +19,7 @@
  * ---------------------------------------------------------
  */
 
-import type { AccessibilityViolation, ComplianceReport, ComplianceRule } from "@/lib/types";
+import type { ComplianceRule } from "@/lib/types";
 import { WCAG_21_RULES } from "./rules/wcagRules";
 import { EU_ACCESSIBILITY_RULES } from "./rules/euAccessibilityRules";
 

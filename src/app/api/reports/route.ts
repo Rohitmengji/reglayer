@@ -161,7 +161,7 @@ export async function POST(request: NextRequest) {
         "Content-Disposition": `attachment; filename="reglayer-report-${scan.id}.pdf"`,
       },
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Failed to generate report" },
       { status: 500 }

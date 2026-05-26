@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
 
     const schedule = createSchedule(parseResult.data);
     return NextResponse.json({ schedule }, { status: 201 });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Failed to process schedule request" },
       { status: 500 }

@@ -208,6 +208,7 @@ export default function DashboardPage() {
                 <p className="mb-2 text-xs font-medium text-neutral-500 dark:text-neutral-400">
                   Page Screenshot
                 </p>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={`data:image/png;base64,${scanResult.scan.screenshot}`}
                   alt="Page screenshot"

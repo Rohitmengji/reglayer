@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { ScanSummary } from "@/lib/types";
-import { ShieldCheck, ShieldAlert, AlertTriangle, Info } from "lucide-react";
+import { ShieldAlert, AlertTriangle, Info } from "lucide-react";
 
 interface ScoreCardProps {
   summary: ScanSummary;

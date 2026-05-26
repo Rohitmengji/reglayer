@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
       { error: "Missing required fields for the specified type" },
       { status: 400 }
     );
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "AI explanation failed" },
       { status: 500 }

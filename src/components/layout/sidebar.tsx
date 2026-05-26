@@ -10,21 +10,21 @@ import { useI18n } from "@/components/i18n-provider";
 import { SUPPORTED_LOCALES } from "@/lib/i18n/translations";
 
 const navigation = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Scans", href: "/scans", icon: Scan },
-  { name: "Compliance", href: "/compliance", icon: Grid3X3 },
-  { name: "Statement", href: "/statement", icon: FileText },
-  { name: "Crawl Site", href: "/crawl", icon: Globe },
-  { name: "Priorities", href: "/priorities", icon: Zap },
-  { name: "AI Insights", href: "/insights", icon: Sparkles },
-  { name: "Analytics", href: "/analytics", icon: BarChart3 },
-  { name: "Compare", href: "/scans/compare", icon: GitCompare },
-  { name: "Team", href: "/team", icon: Users },
-  { name: "Audit Log", href: "/audit-log", icon: ClipboardList },
-  { name: "Notifications", href: "/notifications", icon: Bell },
-  { name: "Integrations", href: "/integrations", icon: Plug },
-  { name: "Webhooks", href: "/webhooks", icon: Webhook },
-  { name: "Settings", href: "/settings", icon: Settings },
+  { name: "Dashboard", key: "nav.dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Scans", key: "nav.scans", href: "/scans", icon: Scan },
+  { name: "Compliance", key: "nav.compliance", href: "/compliance", icon: Grid3X3 },
+  { name: "Statement", key: "nav.statement", href: "/statement", icon: FileText },
+  { name: "Crawl Site", key: "nav.crawl", href: "/crawl", icon: Globe },
+  { name: "Priorities", key: "nav.priorities", href: "/priorities", icon: Zap },
+  { name: "AI Insights", key: "nav.insights", href: "/insights", icon: Sparkles },
+  { name: "Analytics", key: "nav.analytics", href: "/analytics", icon: BarChart3 },
+  { name: "Compare", key: "nav.compare", href: "/scans/compare", icon: GitCompare },
+  { name: "Team", key: "nav.team", href: "/team", icon: Users },
+  { name: "Audit Log", key: "nav.auditLog", href: "/audit-log", icon: ClipboardList },
+  { name: "Notifications", key: "nav.notifications", href: "/notifications", icon: Bell },
+  { name: "Integrations", key: "nav.integrations", href: "/integrations", icon: Plug },
+  { name: "Webhooks", key: "nav.webhooks", href: "/webhooks", icon: Webhook },
+  { name: "Settings", key: "nav.settings", href: "/settings", icon: Settings },
 ];
 
 interface SidebarProps {
@@ -35,7 +35,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
   const pathname = usePathname();
   const { data: session } = useSession();
   const { resolvedTheme, setTheme, mounted } = useTheme();
-  const { locale, setLocale } = useI18n();
+  const { locale, setLocale, t } = useI18n();
 
   return (
     <aside className="flex h-full w-64 flex-col border-r border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-900">
@@ -64,7 +64,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
               )}
             >
               <item.icon className="h-4 w-4" />
-              {item.name}
+              {item.key ? t(item.key as Parameters<typeof t>[0]) : item.name}
             </Link>
           );
         })}

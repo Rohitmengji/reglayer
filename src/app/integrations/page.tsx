@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/layout/app-shell";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plug, CheckCircle2, ExternalLink, X, AlertCircle } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Plug, CheckCircle2, AlertCircle } from "lucide-react";
 
 interface IntegrationDef {
   id: string;

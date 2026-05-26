@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useCallback, useSyncExternalStore } from "react";
 import { type Locale, type TranslationKey, getTranslation, detectLocale, DEFAULT_LOCALE } from "@/lib/i18n/translations";
 
 interface I18nContextValue {
@@ -15,22 +15,35 @@ const I18nContext = createContext<I18nContextValue>({
   t: (key) => key,
 });
 
+let currentLocale: Locale = typeof window !== "undefined" ? detectLocale() : DEFAULT_LOCALE;
+const listeners = new Set<() => void>();
+
+function subscribe(listener: () => void) {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+function getSnapshot(): Locale {
+  return currentLocale;
+}
+
+function getServerSnapshot(): Locale {
+  return DEFAULT_LOCALE;
+}
+
 export function I18nProvider({ children }: { children: React.ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>(DEFAULT_LOCALE);
+  const locale = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
-  useEffect(() => {
-    setLocaleState(detectLocale());
-  }, []);
-
-  function setLocale(newLocale: Locale) {
-    setLocaleState(newLocale);
+  const setLocale = useCallback((newLocale: Locale) => {
+    currentLocale = newLocale;
     localStorage.setItem("reglayer-locale", newLocale);
     document.documentElement.lang = newLocale;
-  }
+    listeners.forEach((l) => l());
+  }, []);
 
-  function t(key: TranslationKey): string {
+  const t = useCallback((key: TranslationKey): string => {
     return getTranslation(locale, key);
-  }
+  }, [locale]);
 
   return (
     <I18nContext value={{ locale, setLocale, t }}>
