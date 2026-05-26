@@ -275,12 +275,64 @@ function ApiKeysTab() {
 }
 
 /* ─────────────── Schedules Tab ─────────────── */
+
+/** Convert cron expression to human-readable text */
+function cronToHuman(cron: string): string {
+  const parts = cron.trim().split(/\s+/);
+  if (parts.length < 5) return cron;
+  const [min, hour, , , dow] = parts;
+
+  const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const timeStr = `${hour.padStart(2, "0")}:${min.padStart(2, "0")}`;
+
+  // Every X hours
+  if (hour.startsWith("*/")) return `Every ${hour.slice(2)} hours`;
+  // Every day at specific time
+  if (dow === "*") return `Daily at ${timeStr}`;
+  // Specific day of week
+  if (/^\d$/.test(dow)) return `Every ${dayNames[parseInt(dow)]} at ${timeStr}`;
+  // Comma-separated days
+  if (/^[\d,]+$/.test(dow)) {
+    const days = dow.split(",").map((d) => dayNames[parseInt(d)]?.slice(0, 3)).join(", ");
+    return `${days} at ${timeStr}`;
+  }
+  return cron;
+}
+
+/** Format relative time (e.g., "in 2 days", "in 5 hours") */
+function relativeTime(date: string | Date): string {
+  const now = new Date();
+  const target = new Date(date);
+  const diffMs = target.getTime() - now.getTime();
+  if (diffMs < 0) return "overdue";
+
+  const minutes = Math.floor(diffMs / 60000);
+  if (minutes < 60) return `in ${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `in ${hours}h`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return "tomorrow";
+  return `in ${days} days`;
+}
+
+/** Preset cron options for the dropdown */
+const CRON_PRESETS = [
+  { label: "Daily at 9:00 AM", value: "0 9 * * *" },
+  { label: "Every Monday at 9:00 AM", value: "0 9 * * 1" },
+  { label: "Every weekday at 8:00 AM", value: "0 8 * * 1,2,3,4,5" },
+  { label: "Every 6 hours", value: "0 */6 * * *" },
+  { label: "Twice daily (9am & 5pm)", value: "0 9,17 * * *" },
+  { label: "Every Sunday at midnight", value: "0 0 * * 0" },
+];
+
 function SchedulesTab() {
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
-  const [cron, setCron] = useState("0 9 * * 1");
+  const [cron, setCron] = useState("0 9 * * *");
+  const [error, setError] = useState("");
 
   useEffect(() => {
     fetchSchedules();
@@ -296,17 +348,28 @@ function SchedulesTab() {
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
-    const res = await fetch("/api/schedules", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, url, cron }),
-    });
-    if (res.ok) {
-      setName("");
-      setUrl("");
-      setCron("0 9 * * 1");
-      setShowForm(false);
-      fetchSchedules();
+    if (submitting) return;
+    setSubmitting(true);
+    setError("");
+
+    try {
+      const res = await fetch("/api/schedules", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, url, cron }),
+      });
+      if (res.ok) {
+        setName("");
+        setUrl("");
+        setCron("0 9 * * *");
+        setShowForm(false);
+        fetchSchedules();
+      } else {
+        const data = await res.json();
+        setError(data.error || "Failed to create schedule");
+      }
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -333,7 +396,7 @@ function SchedulesTab() {
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-medium text-neutral-700 dark:text-neutral-200">Scheduled Scans</p>
-          <p className="text-xs text-neutral-500 dark:text-neutral-400">Recurring accessibility monitoring</p>
+          <p className="text-xs text-neutral-500 dark:text-neutral-400">Automated recurring accessibility monitoring</p>
         </div>
         <Button size="sm" onClick={() => setShowForm(!showForm)}>
           <Plus className="mr-2 h-3 w-3" />
@@ -345,17 +408,35 @@ function SchedulesTab() {
         <Card>
           <CardContent className="p-4">
             <form onSubmit={handleCreate} className="space-y-3">
-              <Input placeholder="Schedule name" value={name} onChange={(e) => setName(e.target.value)} required />
+              <Input placeholder="Schedule name (e.g., Production Homepage)" value={name} onChange={(e) => setName(e.target.value)} required />
               <Input type="url" placeholder="https://example.com" value={url} onChange={(e) => setUrl(e.target.value)} required />
               <div>
-                <Input placeholder="Cron expression" value={cron} onChange={(e) => setCron(e.target.value)} required />
-                <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-                  0 9 * * 1 (Mon 9am) | 0 0 * * * (daily) | 0 */6 * * * (every 6h)
+                <label className="text-xs font-medium text-neutral-600 dark:text-neutral-300 mb-1 block">Frequency</label>
+                <select
+                  className="w-full rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm text-neutral-900 dark:text-white"
+                  value={CRON_PRESETS.find((p) => p.value === cron) ? cron : "custom"}
+                  onChange={(e) => {
+                    if (e.target.value !== "custom") setCron(e.target.value);
+                  }}
+                >
+                  {CRON_PRESETS.map((preset) => (
+                    <option key={preset.value} value={preset.value}>{preset.label}</option>
+                  ))}
+                  <option value="custom">Custom cron expression</option>
+                </select>
+                {!CRON_PRESETS.find((p) => p.value === cron) && (
+                  <Input className="mt-2" placeholder="Custom cron (e.g., 0 9 * * 1)" value={cron} onChange={(e) => setCron(e.target.value)} required />
+                )}
+                <p className="mt-1.5 text-xs text-neutral-500 dark:text-neutral-400">
+                  Will scan: <strong className="text-neutral-700 dark:text-neutral-200">{cronToHuman(cron)}</strong>
                 </p>
               </div>
+              {error && <p className="text-xs text-red-600">{error}</p>}
               <div className="flex gap-2">
-                <Button type="submit" size="sm">Create</Button>
-                <Button type="button" variant="ghost" size="sm" onClick={() => setShowForm(false)}>Cancel</Button>
+                <Button type="submit" size="sm" disabled={submitting}>
+                  {submitting ? "Creating..." : "Create Schedule"}
+                </Button>
+                <Button type="button" variant="ghost" size="sm" onClick={() => { setShowForm(false); setError(""); }}>Cancel</Button>
               </div>
             </form>
           </CardContent>
@@ -365,52 +446,82 @@ function SchedulesTab() {
       {schedules.length === 0 ? (
         <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-8 text-center">
           <Clock className="mx-auto h-8 w-8 text-neutral-300" />
-          <p className="mt-3 text-sm text-neutral-500 dark:text-neutral-400">No schedules configured.</p>
+          <p className="mt-3 text-sm font-medium text-neutral-600 dark:text-neutral-300">No schedules configured</p>
+          <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+            Set up automated monitoring to detect accessibility regressions after deploys.
+          </p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {schedules.map((schedule) => (
-            <div key={schedule.id} className="flex items-center justify-between rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4">
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium text-neutral-900 dark:text-white truncate">{schedule.name}</p>
-                  <Badge variant={schedule.enabled ? "success" : "secondary"}>
-                    {schedule.enabled ? "Active" : "Paused"}
-                  </Badge>
-                  {schedule.lastScore != null && (
-                    <span className={`text-xs font-semibold ${schedule.lastScore >= 90 ? "text-green-600" : schedule.lastScore >= 70 ? "text-yellow-600" : "text-red-600"}`}>
-                      {schedule.lastScore}%
+            <div key={schedule.id} className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4">
+              <div className="flex items-start justify-between">
+                <div className="min-w-0 flex-1">
+                  {/* Header row */}
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold text-neutral-900 dark:text-white truncate">{schedule.name}</p>
+                    <Badge variant={schedule.enabled ? "success" : "secondary"}>
+                      {schedule.enabled ? "Active" : "Paused"}
+                    </Badge>
+                  </div>
+
+                  {/* URL */}
+                  <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400 truncate">
+                    {schedule.site?.url || "—"}
+                  </p>
+
+                  {/* Schedule info row */}
+                  <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+                    <span className="inline-flex items-center gap-1 text-xs text-neutral-600 dark:text-neutral-300">
+                      <Clock className="h-3 w-3" />
+                      {cronToHuman(schedule.cron)}
                     </span>
+
+                    {schedule.nextRunAt && schedule.enabled && (
+                      <span className="text-xs text-neutral-500 dark:text-neutral-400">
+                        Next run: <strong className="text-neutral-700 dark:text-neutral-200">{relativeTime(schedule.nextRunAt)}</strong>
+                        <span className="ml-1 text-neutral-400">
+                          ({new Date(schedule.nextRunAt).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })} at {new Date(schedule.nextRunAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })})
+                        </span>
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Last run + score info */}
+                  {(schedule.lastRunAt || schedule.lastScore != null) && (
+                    <div className="mt-2 flex items-center gap-3">
+                      {schedule.lastRunAt && (
+                        <span className="text-xs text-neutral-400">
+                          Last ran {relativeTime(new Date(Date.now() - (Date.now() - new Date(schedule.lastRunAt).getTime())))} — {new Date(schedule.lastRunAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })} at {new Date(schedule.lastRunAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                      )}
+                      {schedule.lastScore != null && (
+                        <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${
+                          schedule.lastScore >= 90 ? "bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400" :
+                          schedule.lastScore >= 70 ? "bg-yellow-50 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400" :
+                          "bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                        }`}>
+                          Score: {schedule.lastScore}%
+                        </span>
+                      )}
+                      {schedule.lastViolations != null && (
+                        <span className="text-xs text-neutral-400">
+                          {schedule.lastViolations} violation{schedule.lastViolations !== 1 ? "s" : ""}
+                        </span>
+                      )}
+                    </div>
                   )}
                 </div>
-                <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400 truncate">
-                  {schedule.site?.url || "—"} • <code className="text-neutral-600 dark:text-neutral-300">{schedule.cron}</code>
-                </p>
-                <div className="flex items-center gap-3 mt-1">
-                  {schedule.lastRunAt && (
-                    <p className="text-xs text-neutral-400">
-                      Last ran: {new Date(schedule.lastRunAt).toLocaleDateString()} {new Date(schedule.lastRunAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                    </p>
-                  )}
-                  {schedule.nextRunAt && schedule.enabled && (
-                    <p className="text-xs text-neutral-400">
-                      Next: {new Date(schedule.nextRunAt).toLocaleDateString()} {new Date(schedule.nextRunAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                    </p>
-                  )}
-                  {schedule.lastViolations != null && (
-                    <p className="text-xs text-neutral-400">
-                      {schedule.lastViolations} violation{schedule.lastViolations !== 1 ? "s" : ""}
-                    </p>
-                  )}
+
+                {/* Actions */}
+                <div className="flex items-center gap-1 ml-3 shrink-0">
+                  <Button variant="ghost" size="icon" title={schedule.enabled ? "Pause" : "Resume"} onClick={() => handleToggle(schedule.id)}>
+                    {schedule.enabled ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                  </Button>
+                  <Button variant="ghost" size="icon" title="Delete" onClick={() => handleDelete(schedule.id)}>
+                    <Trash2 className="h-4 w-4 text-neutral-400 hover:text-red-500" />
+                  </Button>
                 </div>
-              </div>
-              <div className="flex items-center gap-1 ml-2">
-                <Button variant="ghost" size="icon" onClick={() => handleToggle(schedule.id)}>
-                  {schedule.enabled ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                </Button>
-                <Button variant="ghost" size="icon" onClick={() => handleDelete(schedule.id)}>
-                  <Trash2 className="h-4 w-4 text-neutral-400" />
-                </Button>
               </div>
             </div>
           ))}
