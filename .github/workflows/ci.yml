@@ -4,6 +4,8 @@ on:
   # Only run CI on PRs and manual triggers to conserve minutes
   pull_request:
     branches: [main]
+  push:
+    branches: [main]
   workflow_dispatch:
   # Scheduled daily check at 6am UTC
   schedule:
