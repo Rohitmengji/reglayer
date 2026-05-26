@@ -70,6 +70,15 @@ export async function GET() {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
+  // Regular user with no workspace: return their own request status
+  if (!user.isMasterAdmin && user.memberships.length === 0) {
+    const myRequest = await prisma.accessRequest.findFirst({
+      where: { userId: user.id },
+      orderBy: { createdAt: "desc" },
+    });
+    return NextResponse.json({ myRequest: myRequest || null, requests: [] });
+  }
+
   // Master admin sees all requests
   if (user.isMasterAdmin) {
     const requests = await prisma.accessRequest.findMany({

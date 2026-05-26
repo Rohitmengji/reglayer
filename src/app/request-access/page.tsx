@@ -22,7 +22,7 @@ export default function RequestAccessPage() {
       return;
     }
 
-    // Check if user already has workspace access
+    // Check if user already has workspace access or a pending request
     if (status === "authenticated") {
       fetch("/api/team")
         .then((res) => res.json())
@@ -31,7 +31,16 @@ export default function RequestAccessPage() {
             // User has access, redirect to dashboard
             router.push("/dashboard");
           } else {
-            setCheckingAccess(false);
+            // Check if user already has a pending request
+            fetch("/api/access-request")
+              .then((res) => res.json())
+              .then((reqData) => {
+                if (reqData.myRequest && reqData.myRequest.status === "PENDING") {
+                  setSubmitted(true);
+                }
+                setCheckingAccess(false);
+              })
+              .catch(() => setCheckingAccess(false));
           }
         })
         .catch(() => setCheckingAccess(false));
