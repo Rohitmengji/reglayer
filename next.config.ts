@@ -7,11 +7,23 @@ const nextConfig: NextConfig = {
     "/api/scan/async": ["./node_modules/@sparticuz/chromium/bin/**"],
     "/api/scan/crawl": ["./node_modules/@sparticuz/chromium/bin/**"],
   },
+
   experimental: {
     serverActions: {
       bodySizeLimit: "10mb",
     },
+    // Optimize barrel file re-exports — transforms barrel imports into direct file imports
+    // e.g. import { Scan } from "lucide-react" → import Scan from "lucide-react/dist/esm/icons/scan"
+    optimizePackageImports: [
+      "lucide-react",
+      "@tanstack/react-query",
+      "zod",
+      "sonner",
+    ],
   },
+
+  // Turbopack config (Next.js 16 default bundler)
+  turbopack: {},
 };
 
 export default nextConfig;

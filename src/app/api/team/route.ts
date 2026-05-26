@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
 import bcrypt from "bcryptjs";
+import { PLAN_LIMITS, type PlanType } from "@/lib/credits/plan-limits";
 
 /**
  * GET /api/team — List team members in the current workspace
@@ -88,6 +89,23 @@ export async function POST(request: NextRequest) {
   const membership = currentUser.memberships[0];
   if (!["OWNER", "ADMIN"].includes(membership.role)) {
     return NextResponse.json({ error: "Only owners and admins can invite members" }, { status: 403 });
+  }
+
+  // Enforce team member limit based on user's plan
+  if (!currentUser.isMasterAdmin) {
+    const plan = currentUser.plan as PlanType;
+    const memberLimit = PLAN_LIMITS[plan].teamMembers;
+    if (memberLimit !== -1) {
+      const currentCount = await prisma.workspaceMember.count({
+        where: { workspaceId: membership.workspaceId },
+      });
+      if (currentCount >= memberLimit) {
+        return NextResponse.json(
+          { error: `Team member limit reached (${memberLimit} on ${plan} plan). Upgrade for more seats.`, upgradeRequired: true },
+          { status: 429 }
+        );
+      }
+    }
   }
 
   // Find or create the invited user

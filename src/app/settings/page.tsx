@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Clock, Play, Pause, Key, GitBranch, Bell, Copy, Eye, EyeOff } from "lucide-react";
+import { Plus, Trash2, Clock, Play, Pause, Key, GitBranch, Bell, Copy, Eye, EyeOff, Sparkles, Zap } from "lucide-react";
 
 interface Schedule {
   id: string;
@@ -31,12 +31,13 @@ interface ApiKeyRecord {
   expiresAt: string | null;
 }
 
-type Tab = "general" | "api-keys" | "schedules" | "integrations" | "alerts";
+type Tab = "plan" | "general" | "api-keys" | "schedules" | "integrations" | "alerts";
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState<Tab>("general");
+  const [activeTab, setActiveTab] = useState<Tab>("plan");
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
+    { id: "plan", label: "Plan & Usage", icon: <Sparkles className="h-3.5 w-3.5" /> },
     { id: "general", label: "General", icon: null },
     { id: "api-keys", label: "API Keys", icon: <Key className="h-3.5 w-3.5" /> },
     { id: "schedules", label: "Schedules", icon: <Clock className="h-3.5 w-3.5" /> },
@@ -73,6 +74,7 @@ export default function SettingsPage() {
         </div>
 
         {/* Tab Content */}
+        {activeTab === "plan" && <PlanUsageTab />}
         {activeTab === "general" && <GeneralTab />}
         {activeTab === "api-keys" && <ApiKeysTab />}
         {activeTab === "schedules" && <SchedulesTab />}
@@ -80,6 +82,179 @@ export default function SettingsPage() {
         {activeTab === "alerts" && <AlertsTab />}
       </div>
     </AppShell>
+  );
+}
+
+/* ─────────────── Plan & Usage Tab ─────────────── */
+function PlanUsageTab() {
+  const [data, setData] = useState<{
+    plan: string;
+    credits: { used: number; limit: number; remaining: number; daysUntilReset: number; unlimited: boolean };
+    limits: { scansPerMonth: number; pagesPerScan: number; teamMembers: number; auditLogDays: number };
+    features: Record<string, boolean | string | number>;
+    costs: Record<string, number>;
+  } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/credits")
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => d && setData(d))
+      .catch(() => {});
+  }, []);
+
+  if (!data) {
+    return <div className="text-center py-8 text-sm text-neutral-500">Loading plan details...</div>;
+  }
+
+  const planLabels: Record<string, string> = { FREE: "Free", PRO: "Pro", ENTERPRISE: "Enterprise" };
+  const planColors: Record<string, string> = {
+    FREE: "bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300",
+    PRO: "bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200",
+    ENTERPRISE: "bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-200",
+  };
+
+  const creditPercent = data.credits.unlimited ? 0 : Math.min(100, (data.credits.used / data.credits.limit) * 100);
+
+  return (
+    <div className="space-y-6">
+      {/* Current Plan */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm">Current Plan</CardTitle>
+            <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${planColors[data.plan]}`}>
+              {planLabels[data.plan] || data.plan}
+            </span>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">AI Credits</p>
+              <p className="text-lg font-bold text-neutral-900 dark:text-white">
+                {data.credits.unlimited ? "∞" : `${data.credits.remaining}/${data.credits.limit}`}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">Scans/Month</p>
+              <p className="text-lg font-bold text-neutral-900 dark:text-white">
+                {data.limits.scansPerMonth === -1 ? "∞" : data.limits.scansPerMonth}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">Pages/Scan</p>
+              <p className="text-lg font-bold text-neutral-900 dark:text-white">
+                {data.limits.pagesPerScan === -1 ? "∞" : data.limits.pagesPerScan}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">Team Members</p>
+              <p className="text-lg font-bold text-neutral-900 dark:text-white">
+                {data.limits.teamMembers === -1 ? "∞" : data.limits.teamMembers}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* AI Credits Usage */}
+      {!data.credits.unlimited && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-violet-500" /> AI Credits Usage
+              </CardTitle>
+              <span className="text-xs text-neutral-500 dark:text-neutral-400">
+                Resets in {data.credits.daysUntilReset} day{data.credits.daysUntilReset !== 1 ? "s" : ""}
+              </span>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-neutral-600 dark:text-neutral-300">{data.credits.used} credits used</span>
+                <span className="text-neutral-600 dark:text-neutral-300">{data.credits.remaining} remaining</span>
+              </div>
+              <div className="w-full h-3 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${
+                    data.credits.remaining <= 5 ? "bg-red-500" :
+                    creditPercent > 80 ? "bg-amber-500" : "bg-violet-500"
+                  }`}
+                  style={{ width: `${creditPercent}%` }}
+                />
+              </div>
+              {data.credits.remaining <= 5 && (
+                <div className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
+                  <Zap className="h-3 w-3" />
+                  <span>Credits running low — contact your admin to upgrade your plan</span>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Credit Costs */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Credit Costs Per Action</CardTitle>
+          <CardDescription>Each AI-powered action consumes credits from your monthly allowance</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {Object.entries(data.costs).map(([action, cost]) => (
+              <div key={action} className="flex items-center justify-between rounded-lg border border-neutral-100 dark:border-neutral-800 p-3">
+                <span className="text-sm text-neutral-700 dark:text-neutral-300 capitalize">
+                  {action.replace(/([A-Z])/g, " $1").trim()}
+                </span>
+                <Badge variant="secondary" className="text-xs">{cost} credit{cost !== 1 ? "s" : ""}</Badge>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Features */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Plan Features</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {[
+              { label: "AI Explanations", key: "aiExplanations" },
+              { label: "AI Fix Suggestions", key: "aiFixSuggestions" },
+              { label: "AI Insights", key: "aiInsights" },
+              { label: "Compliance Reports", key: "complianceReports" },
+              { label: "Scheduled Scans", key: "scheduledScans" },
+              { label: "Webhooks", key: "webhooks" },
+            ].map((f) => {
+              const val = data.features[f.key];
+              const available = val === true || val === "full" || (typeof val === "number" && val > 0);
+              return (
+                <div key={f.key} className="flex items-center justify-between rounded-lg p-2">
+                  <span className="text-sm text-neutral-700 dark:text-neutral-300">{f.label}</span>
+                  {available ? (
+                    <span className="text-xs font-medium text-green-600 dark:text-green-400">
+                      {val === true || val === "full" ? "✓ Included" : typeof val === "number" ? `${val === -1 ? "∞" : val}` : String(val)}
+                    </span>
+                  ) : (
+                    <span className="text-xs font-medium text-neutral-400">
+                      {val === "basic" || val === "summary" ? `${String(val)} only` : "✗ Not included"}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-4">
+            Audit log retention: {data.limits.auditLogDays} days
+          </p>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 

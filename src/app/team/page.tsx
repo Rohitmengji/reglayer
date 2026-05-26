@@ -6,6 +6,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Users, UserPlus, Shield, Crown, Trash2, ChevronDown, KeyRound, X } from "lucide-react";
+import { handleUpgradeResponse } from "@/lib/upgrade-prompt";
 
 interface TeamMember {
   id: string;
@@ -84,6 +85,7 @@ export default function TeamPage() {
       });
       const data = await res.json();
       if (!res.ok) {
+        handleUpgradeResponse(data);
         setError(data.error || "Failed to invite");
         toast.error(data.error || "Failed to invite member", { id: toastId });
         return;

@@ -6,54 +6,316 @@ on:
   pull_request:
     branches: [main]
 
+# Cancel in-flight runs for the same branch/PR — no wasted minutes
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "20"
+  NEXT_PUBLIC_APP_NAME: RegLayer
+  NEXT_PUBLIC_APP_VERSION: 0.1.0
+  NEXTAUTH_SECRET: ci-test-secret
+  NEXTAUTH_URL: http://localhost:3000
+  DATABASE_URL: postgresql://user:pass@localhost:5432/db?sslmode=disable
+  OPENAI_API_KEY: sk-fake-ci-key
+
 jobs:
-  lint-and-build:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Stage 1: Fast feedback — lint + typecheck (< 60s)
+  # ─────────────────────────────────────────────────────────────────────────────
+  lint:
+    name: Lint & Type Check
     runs-on: ubuntu-latest
+    timeout-minutes: 5
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Lint
+      - name: ESLint
         run: npm run lint
 
-      - name: Type check & build
-        run: npx next build
-        env:
-          NEXT_PUBLIC_APP_NAME: RegLayer
-          NEXT_PUBLIC_APP_VERSION: 0.1.0
-          NEXTAUTH_SECRET: ci-test-secret
-          NEXTAUTH_URL: http://localhost:3000
-          DATABASE_URL: postgresql://user:pass@localhost:5432/db?sslmode=disable
-          OPENAI_API_KEY: sk-fake-ci-key
+      - name: TypeScript
+        run: npx tsc --noEmit
 
-  test:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Stage 2: Build (runs in parallel with tests after lint passes)
+  # ─────────────────────────────────────────────────────────────────────────────
+  build:
+    name: Production Build
     runs-on: ubuntu-latest
-    needs: lint-and-build
+    needs: lint
+    timeout-minutes: 10
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
 
       - name: Install dependencies
         run: npm ci
 
+      - name: Build
+        run: npm run build
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nextjs-build
+          path: .next/
+          retention-days: 1
+
+      # ── Bundle size budget ──────────────────────────────────────────────────
+      - name: Bundle size check
+        run: |
+          TOTAL_SIZE=$(du -sb .next/static | cut -f1)
+          MAX_SIZE=5242880  # 5 MB budget for static assets
+          echo "Static bundle: $(du -sh .next/static | cut -f1)"
+          echo "## 📦 Bundle Size" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Asset | Size |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|------|" >> $GITHUB_STEP_SUMMARY
+          echo "| \`.next/static\` | $(du -sh .next/static | cut -f1) |" >> $GITHUB_STEP_SUMMARY
+          echo "| \`.next/\` total | $(du -sh .next | cut -f1) |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Top 10 chunks" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          find .next -name '*.js' -path '*/chunks/*' -exec du -sh {} + | sort -rh | head -10 >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          if [ "$TOTAL_SIZE" -gt "$MAX_SIZE" ]; then
+            echo "::error::Static bundle exceeds 5 MB budget (${TOTAL_SIZE} bytes). Optimize imports or split chunks."
+            exit 1
+          fi
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Stage 2: Unit & integration tests (parallel with build)
+  # ─────────────────────────────────────────────────────────────────────────────
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    needs: lint
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Cache Playwright browsers (~150MB download without cache)
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
       - name: Install Playwright Chromium
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: npx playwright install chromium --with-deps
 
-      - name: Run unit tests
-        run: npm test -- --run
+      - name: Install Playwright deps (cached)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+
+      - name: Run tests with coverage
+        run: npx vitest run --coverage --coverage.reporter=text --coverage.reporter=json-summary
         env:
           NEXT_PUBLIC_APP_NAME: RegLayer
           NEXTAUTH_SECRET: ci-test-secret
+
+      - name: Coverage threshold check
+        run: |
+          if [ -f coverage/coverage-summary.json ]; then
+            LINES=$(node -e "console.log(require('./coverage/coverage-summary.json').total.lines.pct)")
+            echo "Line coverage: ${LINES}%"
+            # Enforce minimum 40% line coverage (increase as coverage grows)
+            if (( $(echo "$LINES < 40" | bc -l) )); then
+              echo "::error::Line coverage ${LINES}% is below 40% threshold"
+              exit 1
+            fi
+          fi
+
+      - name: Coverage summary
+        if: always()
+        run: |
+          if [ -f coverage/coverage-summary.json ]; then
+            echo "## 🧪 Test Coverage" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            node -e "
+              const c = require('./coverage/coverage-summary.json').total;
+              const fmt = (v) => v.pct + '%';
+              console.log('| Metric | Coverage |');
+              console.log('|--------|----------|');
+              console.log('| Statements | ' + fmt(c.statements) + ' |');
+              console.log('| Branches | ' + fmt(c.branches) + ' |');
+              console.log('| Functions | ' + fmt(c.functions) + ' |');
+              console.log('| Lines | ' + fmt(c.lines) + ' |');
+            " >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Stage 3: Security & code quality (parallel with build+test)
+  # ─────────────────────────────────────────────────────────────────────────────
+  security:
+    name: Security
+    runs-on: ubuntu-latest
+    needs: lint
+    timeout-minutes: 8
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Only audit production deps — dev deps don't ship to users
+      - name: Dependency audit (production)
+        run: npm audit --omit=dev --audit-level=high
+
+      # License compliance — block copyleft in production deps
+      - name: License check
+        run: |
+          npx license-checker@25 --production --failOn "GPL-2.0;GPL-3.0;AGPL-1.0;AGPL-3.0" --summary
+
+      # Comprehensive secret scanning (OWASP)
+      - name: Secret scan
+        run: |
+          echo "Scanning for potential secrets in source..."
+          FOUND=0
+          # AWS keys
+          if grep -rn --include='*.ts' --include='*.tsx' --include='*.js' --include='*.env*' \
+            -E 'AKIA[0-9A-Z]{16}' src/ .env* 2>/dev/null; then FOUND=1; fi
+          # Generic API keys/tokens (long hex or base64 strings assigned to variables)
+          if grep -rn --include='*.ts' --include='*.tsx' --include='*.js' \
+            -E '(sk-[a-zA-Z0-9]{20,}|npg_[a-zA-Z0-9]{20,}|ghp_[a-zA-Z0-9]{36,}|gho_[a-zA-Z0-9]{36,})' \
+            src/ ; then FOUND=1; fi
+          # Private keys
+          if grep -rn --include='*.ts' --include='*.tsx' --include='*.js' --include='*.pem' \
+            -l 'PRIVATE KEY' src/ 2>/dev/null; then FOUND=1; fi
+          # Connection strings with embedded passwords
+          if grep -rn --include='*.ts' --include='*.tsx' --include='*.js' \
+            -E '(postgres|mysql|mongodb)://[^:]+:[^@]{8,}@[^/]+' src/ | grep -v 'process\.env' | grep -v 'localhost'; then FOUND=1; fi
+
+          if [ "$FOUND" -eq 1 ]; then
+            echo "::error::Potential secrets detected in source code. Use environment variables instead."
+            exit 1
+          fi
+          echo "✓ No secrets detected"
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Stage 3: Code quality metrics (parallel)
+  # ─────────────────────────────────────────────────────────────────────────────
+  code-quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    needs: lint
+    timeout-minutes: 8
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for diff analysis
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Dead code / unused exports detection
+      - name: Unused exports check
+        run: npx knip@5 --no-exit-code
+
+      # Complexity analysis
+      - name: Code complexity
+        run: |
+          npx ts-complexity@1 src/ --threshold 15 --format summary 2>/dev/null || true
+
+      # PR size guardrail (only on PRs)
+      - name: PR size check
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch origin main --depth=1
+          ADDITIONS=$(git diff --numstat origin/main...HEAD | awk '{s+=$1} END {print s+0}')
+          DELETIONS=$(git diff --numstat origin/main...HEAD | awk '{s+=$2} END {print s+0}')
+          FILES_CHANGED=$(git diff --name-only origin/main...HEAD | wc -l)
+          echo "## 📊 PR Size" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Count |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Files changed | $FILES_CHANGED |" >> $GITHUB_STEP_SUMMARY
+          echo "| Additions | +$ADDITIONS |" >> $GITHUB_STEP_SUMMARY
+          echo "| Deletions | -$DELETIONS |" >> $GITHUB_STEP_SUMMARY
+          TOTAL=$((ADDITIONS + DELETIONS))
+          if [ "$TOTAL" -gt 1000 ]; then
+            echo "::warning::Large PR detected ($TOTAL lines changed). Consider splitting."
+          fi
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Gate: All required checks must pass before merge
+  # ─────────────────────────────────────────────────────────────────────────────
+  ci-gate:
+    name: CI Gate
+    runs-on: ubuntu-latest
+    needs: [build, test, security, code-quality]
+    if: always()
+    timeout-minutes: 1
+
+    steps:
+      - name: Evaluate results
+        run: |
+          echo "build: ${{ needs.build.result }}"
+          echo "test: ${{ needs.test.result }}"
+          echo "security: ${{ needs.security.result }}"
+          echo "code-quality: ${{ needs.code-quality.result }}"
+          # Required gates (hard fail)
+          if [ "${{ needs.build.result }}" != "success" ]; then
+            echo "::error::Build failed"
+            exit 1
+          fi
+          if [ "${{ needs.test.result }}" != "success" ]; then
+            echo "::error::Tests failed"
+            exit 1
+          fi
+          if [ "${{ needs.security.result }}" != "success" ]; then
+            echo "::error::Security checks failed"
+            exit 1
+          fi
+          # Informational gate (warn only)
+          if [ "${{ needs.code-quality.result }}" != "success" ]; then
+            echo "::warning::Code quality checks had issues — review the report"
+          fi
+          echo "✓ All required checks passed"

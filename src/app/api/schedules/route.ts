@@ -25,6 +25,7 @@ import {
 } from "@/lib/scheduling/scheduleService";
 import { getOrCreateWorkspace } from "@/lib/database/workspace";
 import { prisma } from "@/lib/database/prisma";
+import { PLAN_LIMITS, type PlanType } from "@/lib/credits/plan-limits";
 
 const createScheduleSchema = z.object({
   name: z.string().min(1).max(100),
@@ -82,6 +83,15 @@ export async function POST(request: NextRequest) {
   const user = await prisma.user.findUnique({ where: { email: session.user.email } });
   if (!user) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+
+  // Feature gate: scheduled scans not available on FREE plan
+  const userPlan = user.plan as PlanType;
+  if (!user.isMasterAdmin && !PLAN_LIMITS[userPlan].features.scheduledScans) {
+    return NextResponse.json(
+      { error: "Scheduled scans are not available on the Free plan. Upgrade to Pro or Enterprise.", upgradeRequired: true },
+      { status: 403 }
+    );
   }
 
   const workspaceId = await getOrCreateWorkspace(user.id, user.email);

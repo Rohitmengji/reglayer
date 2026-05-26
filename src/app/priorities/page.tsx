@@ -13,6 +13,7 @@ import {
   ArrowUpRight,
 } from "lucide-react";
 import Link from "next/link";
+import { handleUpgradeResponse } from "@/lib/upgrade-prompt";
 
 interface PrioritizedFix {
   rank: number;
@@ -72,6 +73,7 @@ function PrioritiesContent() {
         .then((data) => {
           if (cancelled) return;
           if (data.error) {
+            handleUpgradeResponse(data);
             setError(data.error);
           } else {
             setReport(data);

@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { z } from "zod";
 import { crawlSite } from "@/lib/scanner/crawler/siteCrawler";
+import { getPlanContext } from "@/lib/credits/plan-context";
 
 const crawlSchema = z.object({
   url: z.string().url(),
@@ -34,7 +35,17 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { url, maxPages, maxDepth, concurrency, includePatterns, excludePatterns } = parsed.data;
+  const { url, maxDepth, concurrency, includePatterns, excludePatterns } = parsed.data;
+  let { maxPages } = parsed.data;
+
+  // Enforce page limit based on plan
+  const planCtx = await getPlanContext();
+  if (planCtx && !planCtx.isMasterAdmin) {
+    const pageLimit = planCtx.limits.pagesPerScan;
+    if (pageLimit !== -1 && maxPages > pageLimit) {
+      maxPages = pageLimit;
+    }
+  }
 
   try {
     const result = await crawlSite({

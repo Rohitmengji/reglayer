@@ -14,6 +14,7 @@
 import { useMutation } from "@tanstack/react-query";
 import type { ScanResult, ComplianceReport } from "@/lib/types";
 import { useScanStore } from "@/stores/scanStore";
+import { handleUpgradeResponse } from "@/lib/upgrade-prompt";
 
 interface ScanResponse {
   scan: ScanResult;
@@ -41,6 +42,7 @@ export function useScan() {
 
       if (!response.ok) {
         const error = await response.json();
+        handleUpgradeResponse(error);
         throw new Error(error.message ?? "Scan failed");
       }
 

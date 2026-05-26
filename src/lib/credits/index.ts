@@ -1,3 +1,5 @@
+import "server-only";
+
 import { prisma } from "@/lib/database/prisma";
 import { PLAN_LIMITS, AI_CREDIT_COSTS, type PlanType, type AiAction } from "./plan-limits";
 

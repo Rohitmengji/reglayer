@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Scan, Loader2 } from "lucide-react";
+import { handleUpgradeResponse } from "@/lib/upgrade-prompt";
 
 interface ScanFormProps {
   onScanComplete?: (result: unknown) => void;
@@ -29,6 +30,9 @@ export function ScanForm({ onScanComplete }: ScanFormProps) {
 
       if (!response.ok) {
         const data = await response.json();
+        if (handleUpgradeResponse(data)) {
+          return;
+        }
         throw new Error(data.message ?? "Scan failed");
       }
 
