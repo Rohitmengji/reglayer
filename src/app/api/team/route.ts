@@ -23,7 +23,7 @@ export async function GET() {
           workspace: {
             include: {
               members: {
-                include: { user: { select: { id: true, name: true, email: true } } },
+                include: { user: { select: { id: true, name: true, email: true, isMasterAdmin: true } } },
                 orderBy: { joinedAt: "asc" },
               },
             },
@@ -54,6 +54,7 @@ export async function GET() {
       name: m.user.name,
       email: m.user.email,
       role: m.role,
+      isMasterAdmin: m.user.isMasterAdmin || false,
       joinedAt: m.joinedAt,
     })),
   });
