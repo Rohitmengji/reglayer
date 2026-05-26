@@ -5,12 +5,14 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { AccessibilityViolation } from "@/lib/types";
 import { AlertTriangle, ExternalLink, CheckCircle2, Clock, XCircle, MinusCircle } from "lucide-react";
+import { useI18n } from "@/components/i18n-provider";
 
 interface ViolationCardProps {
   violation: AccessibilityViolation;
 }
 
 export function ViolationCard({ violation }: ViolationCardProps) {
+  const { t } = useI18n();
   return (
     <Card className="border-l-4 border-l-transparent" style={{
       borderLeftColor: getImpactColor(violation.impact),
@@ -49,7 +51,7 @@ export function ViolationCard({ violation }: ViolationCardProps) {
         {/* Affected Nodes */}
         <div className="space-y-2">
           <p className="text-xs font-medium text-neutral-700">
-            Affected Elements ({violation.nodes.length})
+            {t("violationCard.affectedElements", { count: String(violation.nodes.length) })}
           </p>
           {violation.nodes.slice(0, 3).map((node, i) => (
             <div
@@ -66,7 +68,7 @@ export function ViolationCard({ violation }: ViolationCardProps) {
           ))}
           {violation.nodes.length > 3 && (
             <p className="text-xs text-neutral-500">
-              +{violation.nodes.length - 3} more elements
+              {t("violationCard.moreElements", { count: String(violation.nodes.length - 3) })}
             </p>
           )}
         </div>
@@ -79,7 +81,7 @@ export function ViolationCard({ violation }: ViolationCardProps) {
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
           >
-            Learn more
+            {t("violationCard.learnMore")}
             <ExternalLink className="h-3 w-3" />
           </a>
           <RemediationStatus violationId={violation.id} />

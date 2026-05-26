@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Shield } from "lucide-react";
+import { useI18n } from "@/components/i18n-provider";
 
 interface ConsentState {
   essential: boolean;
@@ -28,6 +29,7 @@ export function CookieConsent() {
   const [visible, setVisible] = useState(getInitialVisible);
   const [showDetails, setShowDetails] = useState(false);
   const [consent, setConsent] = useState<ConsentState>(getInitialConsent);
+  const { t } = useI18n();
 
   function saveConsent(state: ConsentState) {
     const updated = { ...state, timestamp: new Date().toISOString() };
@@ -58,12 +60,10 @@ export function CookieConsent() {
             <Shield className="h-5 w-5 text-blue-600 mt-0.5 shrink-0" />
             <div className="flex-1">
               <h3 className="font-semibold text-neutral-900 dark:text-white text-sm">
-                Privacy & Cookie Settings
+                {t("cookie.title")}
               </h3>
               <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-300">
-                We use cookies to provide essential functionality and improve your experience. 
-                In accordance with GDPR (Regulation 2016/679) and the ePrivacy Directive, 
-                we need your consent for non-essential cookies.
+                {t("cookie.description")}
               </p>
 
               {showDetails && (
@@ -71,8 +71,8 @@ export function CookieConsent() {
                   <label className="flex items-center gap-3 rounded-lg border border-neutral-100 dark:border-neutral-800 p-3">
                     <input type="checkbox" checked disabled className="rounded" />
                     <div>
-                      <p className="text-sm font-medium text-neutral-900 dark:text-white">Essential</p>
-                      <p className="text-xs text-neutral-500">Required for authentication and core functionality</p>
+                      <p className="text-sm font-medium text-neutral-900 dark:text-white">{t("cookie.essential")}</p>
+                      <p className="text-xs text-neutral-500">{t("cookie.essentialDesc")}</p>
                     </div>
                   </label>
                   <label className="flex items-center gap-3 rounded-lg border border-neutral-100 dark:border-neutral-800 p-3 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800">
@@ -83,8 +83,8 @@ export function CookieConsent() {
                       className="rounded"
                     />
                     <div>
-                      <p className="text-sm font-medium text-neutral-900 dark:text-white">Analytics</p>
-                      <p className="text-xs text-neutral-500">Help us understand usage patterns to improve the platform</p>
+                      <p className="text-sm font-medium text-neutral-900 dark:text-white">{t("cookie.analytics")}</p>
+                      <p className="text-xs text-neutral-500">{t("cookie.analyticsDesc")}</p>
                     </div>
                   </label>
                   <label className="flex items-center gap-3 rounded-lg border border-neutral-100 dark:border-neutral-800 p-3 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800">
@@ -95,8 +95,8 @@ export function CookieConsent() {
                       className="rounded"
                     />
                     <div>
-                      <p className="text-sm font-medium text-neutral-900 dark:text-white">Marketing</p>
-                      <p className="text-xs text-neutral-500">Personalized content and communications</p>
+                      <p className="text-sm font-medium text-neutral-900 dark:text-white">{t("cookie.marketing")}</p>
+                      <p className="text-xs text-neutral-500">{t("cookie.marketingDesc")}</p>
                     </div>
                   </label>
                 </div>
@@ -107,37 +107,33 @@ export function CookieConsent() {
                   onClick={acceptAll}
                   className="rounded-lg bg-neutral-900 px-4 py-2 text-xs font-medium text-white hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-100 transition-colors"
                 >
-                  Accept All
+                  {t("cookie.acceptAll")}
                 </button>
                 <button
                   onClick={acceptEssential}
                   className="rounded-lg border border-neutral-200 px-4 py-2 text-xs font-medium text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800 transition-colors"
                 >
-                  Essential Only
+                  {t("cookie.essentialOnly")}
                 </button>
                 {showDetails ? (
                   <button
                     onClick={saveCustom}
                     className="rounded-lg border border-neutral-200 px-4 py-2 text-xs font-medium text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800 transition-colors"
                   >
-                    Save Preferences
+                    {t("cookie.save")}
                   </button>
                 ) : (
                   <button
                     onClick={() => setShowDetails(true)}
                     className="text-xs font-medium text-blue-600 hover:underline"
                   >
-                    Customize
+                    {t("cookie.customize")}
                   </button>
                 )}
               </div>
 
               <p className="mt-3 text-[10px] text-neutral-400">
-                By continuing, you agree to our{" "}
-                <a href="/privacy" className="underline hover:text-neutral-600">Privacy Policy</a>
-                {" "}and{" "}
-                <a href="/terms" className="underline hover:text-neutral-600">Terms of Service</a>.
-                Data processed in EU (Frankfurt). You can change your preferences anytime in Settings.
+                {t("cookie.footer")}
               </p>
             </div>
           </div>
