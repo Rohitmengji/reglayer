@@ -215,7 +215,7 @@ export default function TeamPage() {
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
                 <UserPlus className="h-4 w-4" />
-                Invite Team Member
+                {t("team.inviteTitle")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -242,7 +242,7 @@ export default function TeamPage() {
                   disabled={inviting}
                   className="rounded-lg bg-neutral-900 dark:bg-white px-4 py-2 text-sm font-medium text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 disabled:opacity-50 transition-colors"
                 >
-                  {inviting ? "Inviting..." : "Send Invite"}
+                  {inviting ? t("team.inviting") : t("team.sendInvite")}
                 </button>
               </form>
               {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
@@ -253,16 +253,16 @@ export default function TeamPage() {
         {/* Members List */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Members ({members.length})</CardTitle>
+            <CardTitle className="text-base">{t("team.membersHeading", { count: String(members.length) })}</CardTitle>
           </CardHeader>
           <CardContent>
             {loading ? (
-              <p className="text-sm text-neutral-500 py-8 text-center">Loading team...</p>
+              <p className="text-sm text-neutral-500 py-8 text-center">{t("team.loading")}</p>
             ) : members.length === 0 ? (
               <div className="text-center py-8">
                 <Users className="h-10 w-10 text-neutral-300 dark:text-neutral-600 mx-auto mb-3" />
-                <p className="text-sm text-neutral-500 dark:text-neutral-400">No team members yet.</p>
-                <p className="text-xs text-neutral-400 mt-1">Invite colleagues to collaborate on accessibility compliance.</p>
+                <p className="text-sm text-neutral-500 dark:text-neutral-400">{t("team.noMembers")}</p>
+                <p className="text-xs text-neutral-400 mt-1">{t("team.noMembersSubtitle")}</p>
               </div>
             ) : (
               <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
@@ -381,15 +381,15 @@ export default function TeamPage() {
         {/* Role Descriptions */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Role Permissions</CardTitle>
+            <CardTitle className="text-base">{t("team.rolePermissions")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {[
-                { role: "Owner", desc: "Full access, billing, can delete workspace", color: "border-amber-200 dark:border-amber-800" },
-                { role: "Admin", desc: "Manage team, settings, all scans", color: "border-blue-200 dark:border-blue-800" },
-                { role: "Member", desc: "Run scans, view reports, manage own data", color: "border-neutral-200 dark:border-neutral-700" },
-                { role: "Viewer", desc: "View reports and analytics only", color: "border-neutral-200 dark:border-neutral-700" },
+                { role: t("team.ownerRole"), desc: t("team.ownerDesc"), color: "border-amber-200 dark:border-amber-800" },
+                { role: t("team.adminRole"), desc: t("team.adminDesc"), color: "border-blue-200 dark:border-blue-800" },
+                { role: t("team.memberRole"), desc: t("team.memberDesc"), color: "border-neutral-200 dark:border-neutral-700" },
+                { role: t("team.viewerRole"), desc: t("team.viewerDesc"), color: "border-neutral-200 dark:border-neutral-700" },
               ].map((r) => (
                 <div key={r.role} className={`rounded-lg border ${r.color} p-3`}>
                   <p className="text-sm font-semibold text-neutral-900 dark:text-white">{r.role}</p>

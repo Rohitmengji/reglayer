@@ -96,6 +96,7 @@ function PlanUsageTab() {
     features: Record<string, boolean | string | number>;
     costs: Record<string, number>;
   } | null>(null);
+  const { t } = useI18n();
 
   useEffect(() => {
     fetch("/api/credits")
@@ -105,7 +106,7 @@ function PlanUsageTab() {
   }, []);
 
   if (!data) {
-    return <div className="text-center py-8 text-sm text-neutral-500">Loading plan details...</div>;
+    return <div className="text-center py-8 text-sm text-neutral-500">{t("common.loading")}</div>;
   }
 
   const planLabels: Record<string, string> = { FREE: "Free", PRO: "Pro", ENTERPRISE: "Enterprise" };
@@ -123,7 +124,7 @@ function PlanUsageTab() {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="text-sm">Current Plan</CardTitle>
+            <CardTitle className="text-sm">{t("settings.currentPlan")}</CardTitle>
             <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${planColors[data.plan]}`}>
               {planLabels[data.plan] || data.plan}
             </span>
@@ -132,25 +133,25 @@ function PlanUsageTab() {
         <CardContent>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400">AI Credits</p>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">{t("settings.aiCredits")}</p>
               <p className="text-lg font-bold text-neutral-900 dark:text-white">
                 {data.credits.unlimited ? "∞" : `${data.credits.remaining}/${data.credits.limit}`}
               </p>
             </div>
             <div>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400">Scans/Month</p>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">{t("settings.scansPerMonth")}</p>
               <p className="text-lg font-bold text-neutral-900 dark:text-white">
                 {data.limits.scansPerMonth === -1 ? "∞" : data.limits.scansPerMonth}
               </p>
             </div>
             <div>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400">Pages/Scan</p>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">{t("settings.pagesPerScan")}</p>
               <p className="text-lg font-bold text-neutral-900 dark:text-white">
                 {data.limits.pagesPerScan === -1 ? "∞" : data.limits.pagesPerScan}
               </p>
             </div>
             <div>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400">Team Members</p>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">{t("settings.teamMembers")}</p>
               <p className="text-lg font-bold text-neutral-900 dark:text-white">
                 {data.limits.teamMembers === -1 ? "∞" : data.limits.teamMembers}
               </p>
@@ -165,18 +166,18 @@ function PlanUsageTab() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-violet-500" /> AI Credits Usage
+                <Sparkles className="h-4 w-4 text-violet-500" /> {t("settings.aiCreditsUsage")}
               </CardTitle>
               <span className="text-xs text-neutral-500 dark:text-neutral-400">
-                Resets in {data.credits.daysUntilReset} day{data.credits.daysUntilReset !== 1 ? "s" : ""}
+                {t("settings.resetsIn", { days: String(data.credits.daysUntilReset) })}
               </span>
             </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
               <div className="flex justify-between text-sm">
-                <span className="text-neutral-600 dark:text-neutral-300">{data.credits.used} credits used</span>
-                <span className="text-neutral-600 dark:text-neutral-300">{data.credits.remaining} remaining</span>
+                <span className="text-neutral-600 dark:text-neutral-300">{t("settings.creditsUsed", { used: String(data.credits.used) })}</span>
+                <span className="text-neutral-600 dark:text-neutral-300">{t("settings.remaining", { remaining: String(data.credits.remaining) })}</span>
               </div>
               <div className="w-full h-3 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
                 <div
@@ -190,7 +191,7 @@ function PlanUsageTab() {
               {data.credits.remaining <= 5 && (
                 <div className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
                   <Zap className="h-3 w-3" />
-                  <span>Credits running low — contact your admin to upgrade your plan</span>
+                  <span>{t("settings.creditsLow")}</span>
                 </div>
               )}
             </div>
@@ -201,8 +202,8 @@ function PlanUsageTab() {
       {/* Credit Costs */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">Credit Costs Per Action</CardTitle>
-          <CardDescription>Each AI-powered action consumes credits from your monthly allowance</CardDescription>
+          <CardTitle className="text-sm">{t("settings.creditCosts")}</CardTitle>
+          <CardDescription>{t("settings.creditCostsSubtitle")}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -221,7 +222,7 @@ function PlanUsageTab() {
       {/* Features */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">Plan Features</CardTitle>
+          <CardTitle className="text-sm">{t("settings.planFeatures")}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -262,28 +263,29 @@ function PlanUsageTab() {
 
 /* ─────────────── General Tab ─────────────── */
 function GeneralTab() {
+  const { t } = useI18n();
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">Platform Info</CardTitle>
+          <CardTitle className="text-sm">{t("settings.platformInfo")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <p className="text-neutral-500 dark:text-neutral-400">Version</p>
+              <p className="text-neutral-500 dark:text-neutral-400">{t("settings.version")}</p>
               <p className="font-medium">0.2.0</p>
             </div>
             <div>
-              <p className="text-neutral-500 dark:text-neutral-400">Engine</p>
+              <p className="text-neutral-500 dark:text-neutral-400">{t("settings.engine")}</p>
               <p className="font-medium">Chromium + axe-core 4.x</p>
             </div>
             <div>
-              <p className="text-neutral-500 dark:text-neutral-400">Database</p>
+              <p className="text-neutral-500 dark:text-neutral-400">{t("settings.database")}</p>
               <p className="font-medium">PostgreSQL (Neon)</p>
             </div>
             <div>
-              <p className="text-neutral-500 dark:text-neutral-400">AI Model</p>
+              <p className="text-neutral-500 dark:text-neutral-400">{t("settings.aiModel")}</p>
               <p className="font-medium">ChatGPT-5.4 Mini</p>
             </div>
           </div>
@@ -292,8 +294,8 @@ function GeneralTab() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">Endpoints</CardTitle>
-          <CardDescription>Available API endpoints for integration</CardDescription>
+          <CardTitle className="text-sm">{t("settings.endpoints")}</CardTitle>
+          <CardDescription>{t("settings.endpointsSubtitle")}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-2 text-xs font-mono">
@@ -329,6 +331,7 @@ function ApiKeysTab() {
   const [keyName, setKeyName] = useState("");
   const [newKey, setNewKey] = useState<string | null>(null);
   const [showKey, setShowKey] = useState(false);
+  const { t } = useI18n();
 
   useEffect(() => {
     fetchKeys();
@@ -373,7 +376,7 @@ function ApiKeysTab() {
       {newKey && (
         <div className="rounded-xl border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950 p-4">
           <p className="text-sm font-medium text-green-800 mb-2">
-            API Key Created — copy it now, you won&apos;t see it again!
+            {t("settings.newKeyMessage")}
           </p>
           <div className="flex items-center gap-2">
             <code className="flex-1 rounded bg-white dark:bg-neutral-900 px-3 py-2 text-sm text-neutral-900 dark:text-white border border-green-200 dark:border-green-800 font-mono">
@@ -398,12 +401,12 @@ function ApiKeysTab() {
 
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-medium text-neutral-700 dark:text-neutral-200">API Keys</p>
-          <p className="text-xs text-neutral-500 dark:text-neutral-400">Used for CI/CD gate and programmatic access</p>
+          <p className="text-sm font-medium text-neutral-700 dark:text-neutral-200">{t("settings.apiKeysTitle")}</p>
+          <p className="text-xs text-neutral-500 dark:text-neutral-400">{t("settings.apiKeysSubtitle")}</p>
         </div>
         <Button size="sm" onClick={() => setShowCreate(!showCreate)}>
           <Plus className="mr-2 h-3 w-3" />
-          Create Key
+          {t("settings.createKey")}
         </Button>
       </div>
 
@@ -424,7 +427,7 @@ function ApiKeysTab() {
       {keys.length === 0 ? (
         <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-8 text-center">
           <Key className="h-8 w-8 text-neutral-300 mx-auto mb-3" />
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">No API keys yet.</p>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">{t("settings.noApiKeys")}</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -504,6 +507,7 @@ const CRON_PRESETS = [
 
 function SchedulesTab() {
   const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const { t } = useI18n();
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [name, setName] = useState("");
@@ -600,8 +604,8 @@ function SchedulesTab() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-medium text-neutral-700 dark:text-neutral-200">Scheduled Scans</p>
-          <p className="text-xs text-neutral-500 dark:text-neutral-400">Automated recurring accessibility monitoring</p>
+          <p className="text-sm font-medium text-neutral-700 dark:text-neutral-200">{t("settings.schedulesTitle")}</p>
+          <p className="text-xs text-neutral-500 dark:text-neutral-400">{t("settings.schedulesSubtitle")}</p>
         </div>
         <Button size="sm" onClick={() => setShowForm(!showForm)}>
           <Plus className="mr-2 h-3 w-3" />
@@ -895,6 +899,7 @@ function AlertsTab() {
   const [threshold, setThreshold] = useState("80");
   const [webhookUrl, setWebhookUrl] = useState("");
   const [created, setCreated] = useState(false);
+  const { t } = useI18n();
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -922,8 +927,8 @@ function AlertsTab() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">Create Alert Rule</CardTitle>
-          <CardDescription>Get notified when accessibility degrades</CardDescription>
+          <CardTitle className="text-sm">{t("settings.createAlert")}</CardTitle>
+          <CardDescription>{t("settings.alertsSubtitle")}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleCreate} className="space-y-3">

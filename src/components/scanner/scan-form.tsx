@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Scan, Loader2 } from "lucide-react";
 import { handleUpgradeResponse } from "@/lib/upgrade-prompt";
+import { useI18n } from "@/components/i18n-provider";
 
 interface ScanFormProps {
   onScanComplete?: (result: unknown) => void;
@@ -15,6 +16,7 @@ export function ScanForm({ onScanComplete }: ScanFormProps) {
   const [url, setUrl] = useState("");
   const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useI18n();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -50,7 +52,7 @@ export function ScanForm({ onScanComplete }: ScanFormProps) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Scan className="h-5 w-5" />
-          New Accessibility Scan
+          {t("scanForm.title")}
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -68,12 +70,12 @@ export function ScanForm({ onScanComplete }: ScanFormProps) {
             {isScanning ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Scanning...
+                {t("scanForm.scanning")}
               </>
             ) : (
               <>
                 <Scan className="mr-2 h-4 w-4" />
-                Scan
+                {t("scanForm.scan")}
               </>
             )}
           </Button>
