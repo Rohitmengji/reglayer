@@ -9,6 +9,7 @@ export const metadata = {
 const sections = [
   {
     icon: Rocket,
+    slug: "getting-started",
     title: "Getting Started",
     description: "Create your account, configure your first workspace, and run your first accessibility scan in under 5 minutes.",
     items: [
@@ -20,6 +21,7 @@ const sections = [
   },
   {
     icon: ScanLine,
+    slug: "scanning",
     title: "Scanning",
     description: "Run accessibility scans against any public URL. Understand scan results and remediation guidance.",
     items: [
@@ -31,6 +33,7 @@ const sections = [
   },
   {
     icon: Bell,
+    slug: "monitoring",
     title: "Monitoring & Alerts",
     description: "Set up recurring scans and get notified when your compliance status changes.",
     items: [
@@ -42,6 +45,7 @@ const sections = [
   },
   {
     icon: FileText,
+    slug: "reports",
     title: "Reports & Statements",
     description: "Generate compliance documentation required by the European Accessibility Act.",
     items: [
@@ -53,6 +57,7 @@ const sections = [
   },
   {
     icon: Users,
+    slug: "team-management",
     title: "Team Management",
     description: "Collaborate with your team using role-based access control and assignment workflows.",
     items: [
@@ -64,6 +69,7 @@ const sections = [
   },
   {
     icon: Code2,
+    slug: "integrations",
     title: "Integrations",
     description: "Connect RegLayer to your development workflow with our API and webhook system.",
     items: [
@@ -98,13 +104,14 @@ export default function DocsPage() {
 
         <div className="grid gap-8 sm:grid-cols-2">
           {sections.map((section) => (
-            <div
+            <Link
               key={section.title}
-              className="rounded-xl border border-neutral-200 dark:border-neutral-800 p-6"
+              href={`/docs/${section.slug}`}
+              className="rounded-xl border border-neutral-200 dark:border-neutral-800 p-6 hover:border-neutral-400 dark:hover:border-neutral-600 hover:shadow-md transition-all group"
             >
               <div className="flex items-center gap-3 mb-3">
                 <section.icon className="h-5 w-5 text-neutral-700 dark:text-neutral-300" />
-                <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">{section.title}</h2>
+                <h2 className="text-lg font-semibold text-neutral-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{section.title}</h2>
               </div>
               <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4 leading-relaxed">
                 {section.description}
@@ -117,7 +124,7 @@ export default function DocsPage() {
                   </li>
                 ))}
               </ul>
-            </div>
+            </Link>
           ))}
         </div>
 
