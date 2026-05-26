@@ -122,10 +122,12 @@ export default function LoginPage() {
             {t("login.continueGoogle")}
           </Button>
 
+          {/*
           <p className="mt-4 text-center text-xs text-neutral-500">
             Master: master@reglayer.dev / reglayer2024<br />
             Admin: admin@reglayer.dev / reglayer2024
           </p>
+          */}
         </CardContent>
       </Card>
     </div>
