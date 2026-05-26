@@ -8,12 +8,21 @@ import { Menu, X } from "lucide-react";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
   const pathname = usePathname();
   const [accessChecked, setAccessChecked] = useState(false);
 
   useEffect(() => {
+    // Wait for session to load before checking access
+    if (status === "loading") return;
+
+    // Not authenticated — proxy will handle redirect to login
+    if (status === "unauthenticated") {
+      setAccessChecked(true);
+      return;
+    }
+
     // Skip check for master admins and admin panel
     const isMasterAdmin = (session?.user as { isMasterAdmin?: boolean } | undefined)?.isMasterAdmin;
     if (isMasterAdmin || pathname === "/admin") {
@@ -33,10 +42,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           }
         })
         .catch(() => setAccessChecked(true));
-    } else {
-      setAccessChecked(true);
     }
-  }, [session, pathname, router]);
+  }, [session, status, pathname, router]);
 
   if (!accessChecked) {
     return (
