@@ -352,7 +352,7 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
-          NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
+          NEXTAUTH_URL: https://reglayer.vercel.app
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
       # Deploy with Vercel (uncomment and configure if using Vercel)

@@ -20,13 +20,24 @@ const mono = JetBrains_Mono({
   display: "swap",
 });
 
+const DEFAULT_SITE_URL = "https://reglayer.vercel.app";
+
+function getMetadataBase(): URL {
+  const rawUrl = (process.env.NEXTAUTH_URL ?? "").trim();
+  try {
+    return new URL(rawUrl || DEFAULT_SITE_URL);
+  } catch {
+    return new URL(DEFAULT_SITE_URL);
+  }
+}
+
 export const metadata: Metadata = {
   title: {
     default: "RegLayer — Accessibility Scanner",
     template: "%s | RegLayer",
   },
   description: "Developer-native compliance infrastructure. Scan websites for accessibility issues, generate WCAG reports, and ship inclusive products.",
-  metadataBase: new URL(process.env.NEXTAUTH_URL || "https://reglayer.vercel.app"),
+  metadataBase: getMetadataBase(),
   openGraph: {
     title: "RegLayer — Accessibility Scanner",
     description: "Developer-native compliance infrastructure. Scan websites for WCAG violations, generate audit reports, and build accessible products.",
