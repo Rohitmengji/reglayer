@@ -107,11 +107,11 @@ export const authOptions: NextAuthOptions = {
         // They'll be added to a workspace by an Owner/Admin or Master Admin
         // No auto-workspace creation for OAuth users
         if (account?.provider === "google") {
-          const membership = await prisma.workspaceMember.findFirst({
+          // Google/OAuth users: allow sign-in even without workspace
+          // They'll see "request access" state until invited
+          void prisma.workspaceMember.findFirst({
             where: { userId: dbUser.id },
           });
-          // Allow sign-in even without workspace — they'll see a "no access" state
-          // until invited
         }
       }
       return true;

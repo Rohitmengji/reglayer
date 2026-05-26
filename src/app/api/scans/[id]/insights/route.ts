@@ -43,8 +43,6 @@ export async function GET(
   }
 
   const scan = await prisma.scan.findUnique({
-
-  const scan = await prisma.scan.findUnique({
     where: { id },
     include: { violations: true },
   });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter, usePathname } from "next/navigation";
 import { Sidebar } from "./sidebar";
@@ -11,41 +11,44 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
   const router = useRouter();
   const pathname = usePathname();
-  const [accessChecked, setAccessChecked] = useState(false);
+  const [workspaceVerified, setWorkspaceVerified] = useState(false);
+
+  const handleWorkspaceCheck = useCallback(() => {
+    setWorkspaceVerified(true);
+  }, []);
+
+  const handleNoAccess = useCallback(() => {
+    router.replace("/request-access");
+  }, [router]);
 
   useEffect(() => {
-    // Wait for session to load before checking access
-    if (status === "loading") return;
+    if (status === "loading" || workspaceVerified) return;
+    if (status === "unauthenticated") return;
 
-    // Not authenticated — proxy will handle redirect to login
-    if (status === "unauthenticated") {
-      setAccessChecked(true);
-      return;
-    }
-
-    // Skip check for master admins and admin panel
     const isMasterAdmin = (session?.user as { isMasterAdmin?: boolean } | undefined)?.isMasterAdmin;
     if (isMasterAdmin || pathname === "/admin") {
-      setAccessChecked(true);
+      // Use queueMicrotask to avoid synchronous setState in effect
+      queueMicrotask(handleWorkspaceCheck);
       return;
     }
 
-    // Check if user has workspace access
     if (session?.user?.email) {
       fetch("/api/team")
         .then((r) => r.json())
         .then((data) => {
           if (!data.workspace) {
-            router.replace("/request-access");
+            handleNoAccess();
           } else {
-            setAccessChecked(true);
+            handleWorkspaceCheck();
           }
         })
-        .catch(() => setAccessChecked(true));
+        .catch(handleWorkspaceCheck);
     }
-  }, [session, status, pathname, router]);
+  }, [session, status, pathname, workspaceVerified, handleWorkspaceCheck, handleNoAccess]);
 
-  if (!accessChecked) {
+  const showLoading = status === "loading" || (status === "authenticated" && !workspaceVerified);
+
+  if (showLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-neutral-50 dark:bg-neutral-950">
         <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full" />
