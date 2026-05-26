@@ -78,14 +78,25 @@ export const authOptions: NextAuthOptions = {
     signIn: "/auth/login",
   },
   callbacks: {
-    async signIn({ user }) {
+    async signIn({ user, account }) {
       // Ensure user exists in the database
       if (user?.email) {
-        await prisma.user.upsert({
+        const dbUser = await prisma.user.upsert({
           where: { email: user.email },
           update: { name: user.name || undefined, image: user.image || undefined },
           create: { email: user.email, name: user.name || null, image: user.image || null },
         });
+
+        // Google/OAuth users: if they have no workspace, they stay in "pending" state
+        // They'll be added to a workspace by an Owner/Admin or Master Admin
+        // No auto-workspace creation for OAuth users
+        if (account?.provider === "google") {
+          const membership = await prisma.workspaceMember.findFirst({
+            where: { userId: dbUser.id },
+          });
+          // Allow sign-in even without workspace — they'll see a "no access" state
+          // until invited
+        }
       }
       return true;
     },

@@ -214,6 +214,96 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true });
     }
 
+    // ── Master Admin: Create workspace ───────────────────────
+    case "createWorkspace": {
+      if (!actor.isMasterAdmin) {
+        return NextResponse.json({ error: "Forbidden: Master Admin required" }, { status: 403 });
+      }
+
+      const { name: wsName, ownerEmail, plan: wsPlan } = body;
+      if (!wsName || !ownerEmail) {
+        return NextResponse.json({ error: "Missing name or ownerEmail" }, { status: 400 });
+      }
+
+      const validPlans = ["FREE", "PRO", "ENTERPRISE"];
+      const selectedPlan = validPlans.includes(wsPlan) ? wsPlan : "FREE";
+
+      // Find or create the owner user
+      let ownerUser = await prisma.user.findUnique({ where: { email: ownerEmail } });
+      if (!ownerUser) {
+        ownerUser = await prisma.user.create({
+          data: { email: ownerEmail, name: ownerEmail.split("@")[0] },
+        });
+      }
+
+      const slug = wsName.replace(/[^a-z0-9-]/gi, "-").toLowerCase().slice(0, 30) + "-" + Date.now().toString(36);
+      const newWorkspace = await prisma.workspace.create({
+        data: {
+          name: wsName,
+          slug,
+          plan: selectedPlan,
+          members: { create: { userId: ownerUser.id, role: "OWNER" } },
+        },
+      });
+
+      await prisma.auditLog.create({
+        data: {
+          action: "workspace.created",
+          actor: actor.id,
+          target: newWorkspace.id,
+          metadata: { name: wsName, ownerEmail, plan: selectedPlan },
+          workspaceId: newWorkspace.id,
+        },
+      });
+
+      return NextResponse.json({ success: true, workspace: newWorkspace });
+    }
+
+    // ── Master Admin: Add user to workspace ──────────────────
+    case "addUserToWorkspace": {
+      if (!actor.isMasterAdmin) {
+        return NextResponse.json({ error: "Forbidden: Master Admin required" }, { status: 403 });
+      }
+
+      const { workspaceId: addWsId, email: addEmail, role: addRole } = body;
+      if (!addWsId || !addEmail) {
+        return NextResponse.json({ error: "Missing workspaceId or email" }, { status: 400 });
+      }
+
+      const memberRole = ["OWNER", "ADMIN", "MEMBER", "VIEWER"].includes(addRole) ? addRole : "MEMBER";
+
+      let targetUser = await prisma.user.findUnique({ where: { email: addEmail } });
+      if (!targetUser) {
+        targetUser = await prisma.user.create({
+          data: { email: addEmail, name: addEmail.split("@")[0] },
+        });
+      }
+
+      // Check if already a member
+      const existingMember = await prisma.workspaceMember.findUnique({
+        where: { userId_workspaceId: { userId: targetUser.id, workspaceId: addWsId } },
+      });
+      if (existingMember) {
+        return NextResponse.json({ error: "User is already a member of this workspace" }, { status: 400 });
+      }
+
+      await prisma.workspaceMember.create({
+        data: { userId: targetUser.id, workspaceId: addWsId, role: memberRole },
+      });
+
+      await prisma.auditLog.create({
+        data: {
+          action: "member.added",
+          actor: actor.id,
+          target: targetUser.id,
+          metadata: { email: addEmail, role: memberRole, workspaceId: addWsId },
+          workspaceId: addWsId,
+        },
+      });
+
+      return NextResponse.json({ success: true });
+    }
+
     // ── Owner/Admin: Remove user from workspace ──────────────
     case "removeUser": {
       const { workspaceId: wsId, targetUserId: removeUserId } = body;

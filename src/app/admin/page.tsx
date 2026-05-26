@@ -15,6 +15,8 @@ import {
   BarChart3,
   ChevronDown,
   Check,
+  Plus,
+  UserPlus,
 } from "lucide-react";
 
 interface WorkspaceMemberInfo {
@@ -68,6 +70,13 @@ export default function AdminPage() {
   const [expandedWorkspace, setExpandedWorkspace] = useState<string | null>(null);
   const [changingPlan, setChangingPlan] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [showCreateWorkspace, setShowCreateWorkspace] = useState(false);
+  const [newWsName, setNewWsName] = useState("");
+  const [newWsOwnerEmail, setNewWsOwnerEmail] = useState("");
+  const [newWsPlan, setNewWsPlan] = useState("FREE");
+  const [showAddUser, setShowAddUser] = useState<string | null>(null);
+  const [addUserEmail, setAddUserEmail] = useState("");
+  const [addUserRole, setAddUserRole] = useState("MEMBER");
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -135,6 +144,42 @@ export default function AdminPage() {
       body: JSON.stringify({ action: "removeUser", workspaceId, targetUserId }),
     });
     fetchData();
+    setActionLoading(false);
+  }
+
+  async function handleCreateWorkspace(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newWsName || !newWsOwnerEmail) return;
+    setActionLoading(true);
+    const res = await fetch("/api/admin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "createWorkspace", name: newWsName, ownerEmail: newWsOwnerEmail, plan: newWsPlan }),
+    });
+    if (res.ok) {
+      setShowCreateWorkspace(false);
+      setNewWsName("");
+      setNewWsOwnerEmail("");
+      setNewWsPlan("FREE");
+      fetchData();
+    }
+    setActionLoading(false);
+  }
+
+  async function handleAddUserToWorkspace(workspaceId: string) {
+    if (!addUserEmail) return;
+    setActionLoading(true);
+    const res = await fetch("/api/admin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "addUserToWorkspace", workspaceId, email: addUserEmail, role: addUserRole }),
+    });
+    if (res.ok) {
+      setShowAddUser(null);
+      setAddUserEmail("");
+      setAddUserRole("MEMBER");
+      fetchData();
+    }
     setActionLoading(false);
   }
 
@@ -232,9 +277,64 @@ export default function AdminPage() {
 
         {/* Workspaces Section */}
         <div>
-          <h2 className="text-lg font-semibold text-neutral-900 dark:text-white mb-3 flex items-center gap-2">
-            <Building2 className="h-5 w-5" /> All Workspaces
-          </h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-semibold text-neutral-900 dark:text-white flex items-center gap-2">
+              <Building2 className="h-5 w-5" /> All Workspaces
+            </h2>
+            <Button
+              size="sm"
+              onClick={() => setShowCreateWorkspace(!showCreateWorkspace)}
+              className="text-xs"
+            >
+              <Plus className="h-3.5 w-3.5 mr-1" /> Create Workspace
+            </Button>
+          </div>
+
+          {/* Create Workspace Form */}
+          {showCreateWorkspace && (
+            <Card className="mb-4">
+              <CardContent className="p-4">
+                <form onSubmit={handleCreateWorkspace} className="space-y-3">
+                  <p className="text-sm font-medium text-neutral-700 dark:text-neutral-200">New Workspace</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <input
+                      type="text"
+                      placeholder="Workspace name"
+                      value={newWsName}
+                      onChange={(e) => setNewWsName(e.target.value)}
+                      required
+                      className="rounded-lg border border-neutral-200 dark:border-neutral-700 px-3 py-2 text-sm dark:bg-neutral-800 dark:text-neutral-100"
+                    />
+                    <input
+                      type="email"
+                      placeholder="Owner email"
+                      value={newWsOwnerEmail}
+                      onChange={(e) => setNewWsOwnerEmail(e.target.value)}
+                      required
+                      className="rounded-lg border border-neutral-200 dark:border-neutral-700 px-3 py-2 text-sm dark:bg-neutral-800 dark:text-neutral-100"
+                    />
+                    <select
+                      value={newWsPlan}
+                      onChange={(e) => setNewWsPlan(e.target.value)}
+                      className="rounded-lg border border-neutral-200 dark:border-neutral-700 px-3 py-2 text-sm dark:bg-neutral-800 dark:text-neutral-100"
+                    >
+                      <option value="FREE">Free</option>
+                      <option value="PRO">Pro</option>
+                      <option value="ENTERPRISE">Enterprise</option>
+                    </select>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button type="submit" size="sm" disabled={actionLoading} className="text-xs">
+                      Create
+                    </Button>
+                    <Button type="button" size="sm" variant="ghost" onClick={() => setShowCreateWorkspace(false)} className="text-xs">
+                      Cancel
+                    </Button>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+          )}
           <div className="space-y-3">
             {data.workspaces.map((ws) => (
               <Card key={ws.id}>
@@ -291,9 +391,50 @@ export default function AdminPage() {
                   {/* Members (expanded) */}
                   {expandedWorkspace === ws.id && (
                     <div className="mt-4 border-t border-neutral-100 dark:border-neutral-800 pt-3">
-                      <p className="text-xs font-medium text-neutral-600 dark:text-neutral-300 mb-2">
-                        Members ({ws.members.length})
-                      </p>
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-xs font-medium text-neutral-600 dark:text-neutral-300">
+                          Members ({ws.members.length})
+                        </p>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs"
+                          onClick={() => setShowAddUser(showAddUser === ws.id ? null : ws.id)}
+                        >
+                          <UserPlus className="h-3 w-3 mr-1" /> Add User
+                        </Button>
+                      </div>
+
+                      {/* Add User Form */}
+                      {showAddUser === ws.id && (
+                        <div className="flex items-center gap-2 mb-3 p-2 rounded-lg bg-neutral-50 dark:bg-neutral-800/50">
+                          <input
+                            type="email"
+                            placeholder="user@email.com"
+                            value={addUserEmail}
+                            onChange={(e) => setAddUserEmail(e.target.value)}
+                            className="flex-1 rounded border border-neutral-200 dark:border-neutral-700 px-2 py-1.5 text-xs dark:bg-neutral-800 dark:text-neutral-100"
+                          />
+                          <select
+                            value={addUserRole}
+                            onChange={(e) => setAddUserRole(e.target.value)}
+                            className="rounded border border-neutral-200 dark:border-neutral-700 px-2 py-1.5 text-xs dark:bg-neutral-800 dark:text-neutral-100"
+                          >
+                            <option value="OWNER">Owner</option>
+                            <option value="ADMIN">Admin</option>
+                            <option value="MEMBER">Member</option>
+                            <option value="VIEWER">Viewer</option>
+                          </select>
+                          <Button
+                            size="sm"
+                            className="text-xs"
+                            onClick={() => handleAddUserToWorkspace(ws.id)}
+                            disabled={actionLoading || !addUserEmail}
+                          >
+                            Add
+                          </Button>
+                        </div>
+                      )}
                       <div className="space-y-2">
                         {ws.members.map((member) => (
                           <div key={member.id} className="flex items-center justify-between py-1.5">
