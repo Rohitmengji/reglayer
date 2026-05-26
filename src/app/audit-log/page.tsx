@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ClipboardList, ChevronLeft, ChevronRight, Scan, Users, Settings, Webhook, Key, Globe } from "lucide-react";
+import { useI18n } from "@/components/i18n-provider";
 
 interface AuditEntry {
   id: string;
@@ -55,6 +56,7 @@ export default function AuditLogPage() {
   const [logs, setLogs] = useState<AuditEntry[]>([]);
   const [pagination, setPagination] = useState<Pagination>({ page: 1, limit: 50, total: 0, pages: 0 });
   const [loading, setLoading] = useState(true);
+  const { t } = useI18n();
 
   useEffect(() => {
     fetchLogs(1);
@@ -79,9 +81,9 @@ export default function AuditLogPage() {
     <AppShell>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Audit Log</h1>
+          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{t("auditLog.title")}</h1>
           <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-            Activity history for compliance evidence and regulatory audits.
+            {t("auditLog.subtitle")}
           </p>
         </div>
 

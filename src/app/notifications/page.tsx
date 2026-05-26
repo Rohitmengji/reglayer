@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Bell, Mail, CheckCircle2, AlertTriangle, BarChart3, Users, Calendar, Send } from "lucide-react";
+import { useI18n } from "@/components/i18n-provider";
 
 interface NotificationPrefs {
   scanComplete: boolean;
@@ -67,6 +68,7 @@ export default function NotificationsPage() {
   const [saved, setSaved] = useState(false);
   const [testSending, setTestSending] = useState(false);
   const [testResult, setTestResult] = useState<string | null>(null);
+  const { t } = useI18n();
 
   useEffect(() => {
     fetch("/api/notifications")
@@ -104,14 +106,14 @@ export default function NotificationsPage() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Notifications</h1>
+            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{t("notifications.title")}</h1>
             <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-              Configure email alerts for accessibility events and compliance updates.
+              {t("notifications.subtitle")}
             </p>
           </div>
           {saved && (
             <span className="text-xs text-green-600 dark:text-green-400 font-medium flex items-center gap-1">
-              <CheckCircle2 className="h-3.5 w-3.5" /> Saved
+              <CheckCircle2 className="h-3.5 w-3.5" /> {t("notifications.saved")}
             </span>
           )}
         </div>
@@ -120,12 +122,12 @@ export default function NotificationsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Mail className="h-4 w-4" />
-              Email Preferences
+              {t("notifications.preferencesTitle")}
             </CardTitle>
           </CardHeader>
           <CardContent>
             {loading ? (
-              <p className="text-sm text-neutral-500 text-center py-8">Loading preferences...</p>
+              <p className="text-sm text-neutral-500 text-center py-8">{t("notifications.loading")}</p>
             ) : (
               <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
                 {notificationSettings.map((item) => {
@@ -170,10 +172,9 @@ export default function NotificationsPage() {
             <div className="flex items-start gap-3">
               <Bell className="h-5 w-5 text-neutral-400 shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-medium text-neutral-900 dark:text-white">GDPR Compliant</p>
+                <p className="text-sm font-medium text-neutral-900 dark:text-white">{t("notifications.gdprTitle")}</p>
                 <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-                  Email notifications comply with EU data regulations. You can unsubscribe at any time.
-                  Data is processed within the EU and not shared with third parties.
+                  {t("notifications.gdprDesc")}
                 </p>
               </div>
             </div>
@@ -187,9 +188,9 @@ export default function NotificationsPage() {
               <div className="flex items-start gap-3">
                 <Send className="h-5 w-5 text-neutral-400 shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-sm font-medium text-neutral-900 dark:text-white">Send Test Email</p>
+                  <p className="text-sm font-medium text-neutral-900 dark:text-white">{t("notifications.testTitle")}</p>
                   <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-                    Verify your email notifications are working correctly.
+                    {t("notifications.testDesc")}
                   </p>
                   {testResult && (
                     <div className={`text-xs mt-2 p-2 rounded-md ${testResult.startsWith("✓") ? "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400" : "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-400"}`}>

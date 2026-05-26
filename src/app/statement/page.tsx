@@ -5,6 +5,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FileText, Download, Copy, Check, Globe, Mail, Building2, ExternalLink } from "lucide-react";
+import { useI18n } from "@/components/i18n-provider";
 
 interface StatementResult {
   html: string;
@@ -34,6 +35,7 @@ export default function StatementPage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<StatementResult | null>(null);
   const [copied, setCopied] = useState<"html" | "markdown" | null>(null);
+  const { t } = useI18n();
 
   async function handleGenerate(e: React.FormEvent) {
     e.preventDefault();
@@ -84,10 +86,10 @@ export default function StatementPage() {
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">
-            Accessibility Statement Generator
+            {t("statement.title")}
           </h1>
           <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-            Generate an EU-compliant accessibility statement as required by Directive 2016/2102 and the European Accessibility Act.
+            {t("statement.subtitle")}
           </p>
         </div>
 

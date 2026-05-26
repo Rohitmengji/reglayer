@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useScanStore } from "@/stores/scanStore";
+import { useI18n } from "@/components/i18n-provider";
 import { Download, Activity, Target, AlertTriangle, Globe, TrendingUp, TrendingDown, Sparkles, Zap } from "lucide-react";
 import Link from "next/link";
 import type { ScanResult, ComplianceReport } from "@/lib/types";
@@ -35,6 +36,7 @@ export default function DashboardPage() {
   const [statsLoading, setStatsLoading] = useState(true);
   const [credits, setCredits] = useState<{ used: number; limit: number; remaining: number; daysUntilReset: number; unlimited: boolean } | null>(null);
   const { setScanResult: persistResult } = useScanStore();
+  const { t } = useI18n();
 
   useEffect(() => {
     fetch("/api/dashboard/stats")
@@ -83,9 +85,9 @@ export default function DashboardPage() {
       <div className="space-y-8">
         {/* Header */}
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Dashboard</h1>
+          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{t("dashboard.title")}</h1>
           <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-            Scan websites for accessibility compliance issues.
+            {t("dashboard.subtitle")}
           </p>
         </div>
 
@@ -106,23 +108,23 @@ export default function DashboardPage() {
         {!statsLoading && stats && stats.totalScans > 0 && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <StatCard
-              label="Total Scans"
+              label={t("dashboard.totalScans")}
               value={stats.totalScans.toString()}
               icon={<Activity className="h-4 w-4 text-blue-500" />}
             />
             <StatCard
-              label="Avg Score"
+              label={t("dashboard.avgScore")}
               value={stats.avgScore.toString()}
               icon={<Target className="h-4 w-4 text-green-500" />}
               trend={stats.trend}
             />
             <StatCard
-              label="Violations Found"
+              label={t("dashboard.violationsFound")}
               value={stats.totalViolations.toString()}
               icon={<AlertTriangle className="h-4 w-4 text-orange-500" />}
             />
             <StatCard
-              label="Sites Monitored"
+              label={t("dashboard.sitesMonitored")}
               value={stats.sitesMonitored.toString()}
               icon={<Globe className="h-4 w-4 text-purple-500" />}
             />
@@ -136,10 +138,10 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <Sparkles className="h-4 w-4 text-violet-500" />
-                  <h3 className="text-sm font-semibold text-neutral-700 dark:text-neutral-200">AI Credits</h3>
+                  <h3 className="text-sm font-semibold text-neutral-700 dark:text-neutral-200">{t("dashboard.aiCredits")}</h3>
                 </div>
                 <span className="text-xs text-neutral-500 dark:text-neutral-400">
-                  Resets in {credits.daysUntilReset} day{credits.daysUntilReset !== 1 ? "s" : ""}
+                  {t("dashboard.resetsIn", { days: credits.daysUntilReset })}
                 </span>
               </div>
               <div className="flex items-end justify-between mb-2">
@@ -147,7 +149,7 @@ export default function DashboardPage() {
                   {credits.remaining}
                 </span>
                 <span className="text-xs text-neutral-500 dark:text-neutral-400">
-                  {credits.used} / {credits.limit} used
+                  {t("dashboard.creditsUsed", { used: credits.used, limit: credits.limit })}
                 </span>
               </div>
               <div className="w-full h-2 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
@@ -165,7 +167,7 @@ export default function DashboardPage() {
               {credits.remaining <= 5 && (
                 <div className="mt-2 flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
                   <Zap className="h-3 w-3" />
-                  <span>Credits running low — upgrade your plan for more AI features</span>
+                  <span>{t("dashboard.creditsLow")}</span>
                 </div>
               )}
             </CardContent>
@@ -195,7 +197,7 @@ export default function DashboardPage() {
             {/* Recent Scans */}
             <Card>
               <CardContent className="p-5">
-                <h3 className="text-sm font-semibold text-neutral-700 dark:text-neutral-200 mb-3">Recent Scans</h3>
+                <h3 className="text-sm font-semibold text-neutral-700 dark:text-neutral-200 mb-3">{t("dashboard.recentScans")}</h3>
                 <div className="space-y-2">
                   {stats.recentScans.slice(0, 5).map((scan) => (
                     <Link
@@ -209,7 +211,7 @@ export default function DashboardPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         {scan.violations > 0 && (
-                          <span className="text-xs text-neutral-500 dark:text-neutral-400">{scan.violations} issues</span>
+                          <span className="text-xs text-neutral-500 dark:text-neutral-400">{t("dashboard.issues", { count: scan.violations })}</span>
                         )}
                         <span className={`text-sm font-bold ${
                           scan.score >= 90 ? "text-green-600" :
@@ -228,7 +230,7 @@ export default function DashboardPage() {
             {/* Top Violations */}
             <Card>
               <CardContent className="p-5">
-                <h3 className="text-sm font-semibold text-neutral-700 dark:text-neutral-200 mb-3">Top Issues</h3>
+                <h3 className="text-sm font-semibold text-neutral-700 dark:text-neutral-200 mb-3">{t("dashboard.topIssues")}</h3>
                 <div className="space-y-2">
                   {stats.topViolations.slice(0, 5).map((v) => (
                     <div key={v.ruleId} className="flex items-center justify-between rounded-lg p-2">
@@ -257,7 +259,7 @@ export default function DashboardPage() {
             <div className="flex justify-end">
               <Button variant="outline" size="sm" onClick={handleExportPDF}>
                 <Download className="mr-2 h-4 w-4" />
-                Export PDF Report
+                {t("dashboard.exportPdf")}
               </Button>
             </div>
 
@@ -267,15 +269,15 @@ export default function DashboardPage() {
             {/* Scan Metadata */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <MetricCard
-                label="Page"
+                label={t("dashboard.page")}
                 value={scanResult.scan.metadata.pageTitle || scanResult.scan.url}
               />
               <MetricCard
-                label="Scan Duration"
+                label={t("dashboard.scanDuration")}
                 value={`${scanResult.scan.metadata.scanDuration}ms`}
               />
               <MetricCard
-                label="Compliance"
+                label={t("dashboard.compliance")}
                 value={`${scanResult.compliance.overallCompliance}%`}
               />
             </div>
@@ -284,7 +286,7 @@ export default function DashboardPage() {
             {scanResult.scan.screenshot && (
               <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4">
                 <p className="mb-2 text-xs font-medium text-neutral-500 dark:text-neutral-400">
-                  Page Screenshot
+                  {t("dashboard.pageScreenshot")}
                 </p>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -299,7 +301,7 @@ export default function DashboardPage() {
             {scanResult.scan.violations.length > 0 && (
               <div className="space-y-4">
                 <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">
-                  Violations ({scanResult.scan.violations.length})
+                  {t("dashboard.violations", { count: scanResult.scan.violations.length })}
                 </h2>
                 {scanResult.scan.violations.map((violation) => (
                   <ViolationCard key={violation.id} violation={violation} />
@@ -310,10 +312,10 @@ export default function DashboardPage() {
             {scanResult.scan.violations.length === 0 && (
               <div className="rounded-lg border border-green-200 bg-green-50 p-6 text-center">
                 <p className="text-lg font-medium text-green-800">
-                  No violations found!
+                  {t("dashboard.noViolationsTitle")}
                 </p>
                 <p className="mt-1 text-sm text-green-600">
-                  This page passes all automated accessibility checks.
+                  {t("dashboard.noViolationsSubtitle")}
                 </p>
               </div>
             )}

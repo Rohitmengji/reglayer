@@ -23,6 +23,7 @@ import {
   Trash2,
   KeyRound,
 } from "lucide-react";
+import { useI18n } from "@/components/i18n-provider";
 
 interface WorkspaceMemberInfo {
   id: string;
@@ -86,6 +87,7 @@ export default function AdminPage() {
   const [addUserRole, setAddUserRole] = useState("MEMBER");
   const [resetPasswordUser, setResetPasswordUser] = useState<string | null>(null);
   const [resetPasswordValue, setResetPasswordValue] = useState("");
+  const { t } = useI18n();
   const [pendingRequests, setPendingRequests] = useState<{
     id: string;
     message: string | null;
@@ -318,9 +320,9 @@ export default function AdminPage() {
             <Shield className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Master Admin Panel</h1>
+            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{t("admin.title")}</h1>
             <p className="text-sm text-neutral-500 dark:text-neutral-400">
-              System-wide control — manage workspaces, plans, and access
+              {t("admin.subtitle")}
             </p>
           </div>
         </div>
@@ -328,10 +330,10 @@ export default function AdminPage() {
         {/* Stats Overview */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
-            { label: "Workspaces", value: data.stats.totalWorkspaces, icon: Building2 },
-            { label: "Users", value: data.stats.totalUsers, icon: Users },
-            { label: "Total Scans", value: data.stats.totalScans, icon: BarChart3 },
-            { label: "Schedules", value: data.stats.totalSchedules, icon: Shield },
+            { label: t("admin.workspaces"), value: data.stats.totalWorkspaces, icon: Building2 },
+            { label: t("admin.users"), value: data.stats.totalUsers, icon: Users },
+            { label: t("admin.totalScans"), value: data.stats.totalScans, icon: BarChart3 },
+            { label: t("admin.schedules"), value: data.stats.totalSchedules, icon: Shield },
           ].map((stat) => (
             <Card key={stat.label}>
               <CardContent className="p-4">
@@ -349,7 +351,7 @@ export default function AdminPage() {
         {pendingRequests.length > 0 && (
           <div>
             <h2 className="text-lg font-semibold text-neutral-900 dark:text-white mb-3 flex items-center gap-2">
-              <UserCheck className="h-5 w-5 text-orange-500" /> Pending Requests
+              <UserCheck className="h-5 w-5 text-orange-500" /> {t("admin.pendingRequests")}
               <span className="ml-1 inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-orange-100 dark:bg-orange-900/50 text-xs font-bold text-orange-700 dark:text-orange-300">
                 {pendingRequests.length}
               </span>
@@ -394,7 +396,7 @@ export default function AdminPage() {
                             handleAccessRequest(req.id, "approve", select?.value);
                           }}
                         >
-                          <Check className="h-3 w-3 mr-1" /> Approve
+                          <Check className="h-3 w-3 mr-1" /> {t("admin.approve")}
                         </Button>
                         <Button
                           size="sm"
@@ -417,7 +419,7 @@ export default function AdminPage() {
         {/* Users Section */}
         <div>
           <h2 className="text-lg font-semibold text-neutral-900 dark:text-white mb-3 flex items-center gap-2">
-            <Users className="h-5 w-5" /> All Users
+            <Users className="h-5 w-5" /> {t("admin.allUsers")}
           </h2>
           <Card>
             <CardContent className="p-0">
@@ -438,7 +440,7 @@ export default function AdminPage() {
                     <div className="flex items-center gap-2">
                       {user.isMasterAdmin && (
                         <Badge className="bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200 text-xs">
-                          <Crown className="h-3 w-3 mr-1" /> Master Admin
+                          <Crown className="h-3 w-3 mr-1" /> {t("admin.masterAdmin")}
                         </Badge>
                       )}
                       {user.email !== session?.user?.email && (
@@ -448,7 +450,7 @@ export default function AdminPage() {
                             <div className="flex items-center gap-1">
                               <input
                                 type="text"
-                                placeholder="New password"
+                                placeholder={t("admin.newPassword")}
                                 value={resetPasswordValue}
                                 onChange={(e) => setResetPasswordValue(e.target.value)}
                                 className="w-28 rounded border border-neutral-200 dark:border-neutral-700 px-2 py-1 text-xs dark:bg-neutral-800 dark:text-neutral-100"
@@ -459,7 +461,7 @@ export default function AdminPage() {
                                 disabled={actionLoading || resetPasswordValue.length < 6}
                                 onClick={() => handleResetPassword(user.id)}
                               >
-                                Set
+                                {t("admin.set")}
                               </Button>
                               <Button
                                 size="sm"
@@ -479,7 +481,7 @@ export default function AdminPage() {
                               disabled={actionLoading}
                               title="Reset Password"
                             >
-                              <KeyRound className="h-3 w-3 mr-1" /> Reset PW
+                              <KeyRound className="h-3 w-3 mr-1" /> {t("admin.resetPw")}
                             </Button>
                           )}
                           {user.canGrantMaster && (
@@ -490,7 +492,7 @@ export default function AdminPage() {
                               disabled={actionLoading}
                               className="text-xs"
                             >
-                              {user.isMasterAdmin ? "Revoke Master" : "Grant Master"}
+                              {user.isMasterAdmin ? t("admin.revokeMaster") : t("admin.grantMaster")}
                             </Button>
                           )}
                           {/* Delete User */}
@@ -518,14 +520,14 @@ export default function AdminPage() {
         <div>
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-semibold text-neutral-900 dark:text-white flex items-center gap-2">
-              <Building2 className="h-5 w-5" /> All Workspaces
+              <Building2 className="h-5 w-5" /> {t("admin.allWorkspaces")}
             </h2>
             <Button
               size="sm"
               onClick={() => setShowCreateWorkspace(!showCreateWorkspace)}
               className="text-xs"
             >
-              <Plus className="h-3.5 w-3.5 mr-1" /> Create Workspace
+              <Plus className="h-3.5 w-3.5 mr-1" /> {t("admin.createWorkspace")}
             </Button>
           </div>
 
@@ -534,11 +536,11 @@ export default function AdminPage() {
             <Card className="mb-4">
               <CardContent className="p-4">
                 <form onSubmit={handleCreateWorkspace} className="space-y-3">
-                  <p className="text-sm font-medium text-neutral-700 dark:text-neutral-200">New Workspace</p>
+                  <p className="text-sm font-medium text-neutral-700 dark:text-neutral-200">{t("admin.newWorkspace")}</p>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <input
                       type="text"
-                      placeholder="Workspace name"
+                      placeholder={t("admin.workspaceName")}
                       value={newWsName}
                       onChange={(e) => setNewWsName(e.target.value)}
                       required
@@ -546,7 +548,7 @@ export default function AdminPage() {
                     />
                     <input
                       type="email"
-                      placeholder="Owner email"
+                      placeholder={t("admin.ownerEmail")}
                       value={newWsOwnerEmail}
                       onChange={(e) => setNewWsOwnerEmail(e.target.value)}
                       required
@@ -564,10 +566,10 @@ export default function AdminPage() {
                   </div>
                   <div className="flex gap-2">
                     <Button type="submit" size="sm" disabled={actionLoading} className="text-xs">
-                      Create
+                      {t("admin.create")}
                     </Button>
                     <Button type="button" size="sm" variant="ghost" onClick={() => setShowCreateWorkspace(false)} className="text-xs">
-                      Cancel
+                      {t("admin.cancel")}
                     </Button>
                   </div>
                 </form>
@@ -584,7 +586,7 @@ export default function AdminPage() {
                       <div>
                         <p className="text-sm font-semibold text-neutral-900 dark:text-white">{ws.name}</p>
                         <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                          {ws._count.sites} sites · {ws._count.scans} scans · {ws._count.schedules} schedules
+                          {ws._count.sites} {t("admin.sites")} · {ws._count.scans} {t("admin.scans")} · {ws._count.schedules} {t("admin.schedulesLabel")}
                         </p>
                       </div>
                     </div>
@@ -606,14 +608,14 @@ export default function AdminPage() {
                             </Button>
                           ))}
                           <Button size="sm" variant="ghost" onClick={() => setChangingPlan(null)} className="text-xs">
-                            Cancel
+                            {t("admin.cancel")}
                           </Button>
                         </div>
                       ) : (
                         <>
                           <Badge className={`text-xs ${planColors[ws.plan]}`}>{ws.plan}</Badge>
                           <Button size="sm" variant="outline" onClick={() => setChangingPlan(ws.id)} className="text-xs">
-                            Change Plan
+                            {t("admin.changePlan")}
                           </Button>
                         </>
                       )}
@@ -632,7 +634,7 @@ export default function AdminPage() {
                     <div className="mt-4 border-t border-neutral-100 dark:border-neutral-800 pt-3">
                       <div className="flex items-center justify-between mb-2">
                         <p className="text-xs font-medium text-neutral-600 dark:text-neutral-300">
-                          Members ({ws.members.length})
+                          {t("admin.members")} ({ws.members.length})
                         </p>
                         <Button
                           size="sm"
@@ -640,7 +642,7 @@ export default function AdminPage() {
                           className="text-xs"
                           onClick={() => setShowAddUser(showAddUser === ws.id ? null : ws.id)}
                         >
-                          <UserPlus className="h-3 w-3 mr-1" /> Add User
+                          <UserPlus className="h-3 w-3 mr-1" /> {t("admin.addUser")}
                         </Button>
                       </div>
 
@@ -670,7 +672,7 @@ export default function AdminPage() {
                             onClick={() => handleAddUserToWorkspace(ws.id)}
                             disabled={actionLoading || !addUserEmail}
                           >
-                            Add
+                            {t("admin.add")}
                           </Button>
                         </div>
                       )}

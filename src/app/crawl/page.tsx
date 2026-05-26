@@ -14,6 +14,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import Link from "next/link";
+import { useI18n } from "@/components/i18n-provider";
 
 interface CrawlPageResult {
   url: string;
@@ -46,6 +47,7 @@ export default function CrawlPage() {
   const [crawling, setCrawling] = useState(false);
   const [result, setResult] = useState<CrawlResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useI18n();
 
   async function handleCrawl(e: React.FormEvent) {
     e.preventDefault();
@@ -84,9 +86,9 @@ export default function CrawlPage() {
       <div className="space-y-8">
         {/* Header */}
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Site Crawler</h1>
+          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{t("crawl.title")}</h1>
           <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-            Scan an entire site — discovers pages automatically and evaluates each one.
+            {t("crawl.subtitle")}
           </p>
         </div>
 
@@ -95,10 +97,10 @@ export default function CrawlPage() {
           <CardContent className="p-6">
             <form onSubmit={handleCrawl} className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-neutral-700 dark:text-neutral-200">Start URL</label>
+                <label className="text-sm font-medium text-neutral-700 dark:text-neutral-200">{t("crawl.startUrl")}</label>
                 <Input
                   type="url"
-                  placeholder="https://example.com"
+                  placeholder={t("crawl.startUrlPlaceholder")}
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
                   required
@@ -108,7 +110,7 @@ export default function CrawlPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium text-neutral-700 dark:text-neutral-200">Max Pages</label>
+                  <label className="text-sm font-medium text-neutral-700 dark:text-neutral-200">{t("crawl.maxPages")}</label>
                   <Input
                     type="number"
                     min="1"
@@ -120,7 +122,7 @@ export default function CrawlPage() {
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-neutral-700 dark:text-neutral-200">Max Depth</label>
+                  <label className="text-sm font-medium text-neutral-700 dark:text-neutral-200">{t("crawl.maxDepth")}</label>
                   <Input
                     type="number"
                     min="1"
@@ -136,18 +138,18 @@ export default function CrawlPage() {
                 {crawling ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Crawling & Scanning...
+                    {t("crawl.crawling")}
                   </>
                 ) : (
                   <>
                     <Globe className="mr-2 h-4 w-4" />
-                    Start Site Crawl
+                    {t("crawl.startCrawl")}
                   </>
                 )}
               </Button>
               {crawling && (
                 <p className="text-xs text-neutral-400 text-center">
-                  This may take a few minutes depending on site size.
+                  {t("crawl.durationNote")}
                 </p>
               )}
             </form>

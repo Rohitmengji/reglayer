@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { handleUpgradeResponse } from "@/lib/upgrade-prompt";
+import { useI18n } from "@/components/i18n-provider";
 
 interface PrioritizedFix {
   rank: number;
@@ -64,6 +65,7 @@ function PrioritiesContent() {
   const [report, setReport] = useState<PriorityReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useI18n();
 
   useEffect(() => {
     let cancelled = false;
@@ -131,7 +133,7 @@ function PrioritiesContent() {
         <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-12 text-center">
           <p className="text-lg font-medium text-neutral-700 dark:text-neutral-200">{error || "No data"}</p>
           <Link href="/dashboard" className="text-sm text-blue-600 hover:underline mt-2 inline-block">
-            Run a scan first
+            {t("priorities.runScanFirst")}
           </Link>
         </div>
       </AppShell>
@@ -146,9 +148,9 @@ function PrioritiesContent() {
       <div className="space-y-8">
         {/* Header */}
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Fix Priorities</h1>
+          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{t("priorities.title")}</h1>
           <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-            Optimal fix order to maximize your accessibility score improvement.
+            {t("priorities.subtitle")}
           </p>
         </div>
 
@@ -156,18 +158,18 @@ function PrioritiesContent() {
         <div className="rounded-2xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 items-center">
             <div className="text-center">
-              <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Current Score</p>
+              <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">{t("priorities.currentScore")}</p>
               <p className="text-4xl font-black text-neutral-700 dark:text-neutral-200">{Math.round(report.currentScore)}</p>
             </div>
             <div className="text-center">
               <ArrowUpRight className="h-8 w-8 text-green-500 mx-auto" />
             </div>
             <div className="text-center">
-              <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">After All Fixes</p>
+              <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">{t("priorities.afterFixes")}</p>
               <p className="text-4xl font-black text-green-600">{Math.round(report.projectedScoreAfterAll)}</p>
             </div>
             <div className="text-center">
-              <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">Estimated Effort</p>
+              <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">{t("priorities.estimatedEffort")}</p>
               <p className="text-2xl font-bold text-neutral-900 dark:text-white">
                 {hours > 0 ? `${hours}h ` : ""}{mins}m
               </p>
@@ -181,11 +183,11 @@ function PrioritiesContent() {
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <Zap className="h-5 w-5 text-yellow-500" />
-              <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">Quick Wins</h2>
+              <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">{t("priorities.quickWins")}</h2>
               <Badge variant="secondary">{report.quickWins.length}</Badge>
             </div>
             <p className="text-sm text-neutral-500 dark:text-neutral-400">
-              High-impact fixes that take minimal effort. Fix these first.
+              {t("priorities.quickWinsDesc")}
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {report.quickWins.map((fix) => (
@@ -200,10 +202,10 @@ function PrioritiesContent() {
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <Target className="h-5 w-5 text-red-500" />
-              <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">High Impact</h2>
+              <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">{t("priorities.highImpact")}</h2>
             </div>
             <p className="text-sm text-neutral-500 dark:text-neutral-400">
-              These fixes will give you the biggest score improvement.
+              {t("priorities.highImpactDesc")}
             </p>
             <div className="space-y-3">
               {report.highImpact.map((fix) => (
@@ -217,7 +219,7 @@ function PrioritiesContent() {
         <div className="space-y-4">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="h-5 w-5 text-neutral-500 dark:text-neutral-400" />
-            <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">All Fixes (Ranked)</h2>
+            <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">{t("priorities.allFixes")}</h2>
           </div>
           <div className="space-y-2">
             {report.allFixes.map((fix) => (

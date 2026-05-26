@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2, Clock, Play, Pause, Key, GitBranch, Bell, Copy, Eye, EyeOff, Sparkles, Zap } from "lucide-react";
+import { useI18n } from "@/components/i18n-provider";
 
 interface Schedule {
   id: string;
@@ -35,23 +36,24 @@ type Tab = "plan" | "general" | "api-keys" | "schedules" | "integrations" | "ale
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<Tab>("plan");
+  const { t } = useI18n();
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
-    { id: "plan", label: "Plan & Usage", icon: <Sparkles className="h-3.5 w-3.5" /> },
-    { id: "general", label: "General", icon: null },
-    { id: "api-keys", label: "API Keys", icon: <Key className="h-3.5 w-3.5" /> },
-    { id: "schedules", label: "Schedules", icon: <Clock className="h-3.5 w-3.5" /> },
-    { id: "integrations", label: "Integrations", icon: <GitBranch className="h-3.5 w-3.5" /> },
-    { id: "alerts", label: "Alerts", icon: <Bell className="h-3.5 w-3.5" /> },
+    { id: "plan", label: t("settings.tabPlan"), icon: <Sparkles className="h-3.5 w-3.5" /> },
+    { id: "general", label: t("settings.tabGeneral"), icon: null },
+    { id: "api-keys", label: t("settings.tabApiKeys"), icon: <Key className="h-3.5 w-3.5" /> },
+    { id: "schedules", label: t("settings.tabSchedules"), icon: <Clock className="h-3.5 w-3.5" /> },
+    { id: "integrations", label: t("settings.tabIntegrations"), icon: <GitBranch className="h-3.5 w-3.5" /> },
+    { id: "alerts", label: t("settings.tabAlerts"), icon: <Bell className="h-3.5 w-3.5" /> },
   ];
 
   return (
     <AppShell>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Settings</h1>
+          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{t("settings.title")}</h1>
           <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-            Manage API keys, integrations, schedules, and alerts.
+            {t("settings.subtitle")}
           </p>
         </div>
 

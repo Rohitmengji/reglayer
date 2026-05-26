@@ -124,7 +124,7 @@ function RemediationStatus({ violationId }: { violationId: string }) {
         {current.label}
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-1 z-50 rounded-lg border border-neutral-200 bg-white shadow-lg py-1 min-w-[140px]">
+        <div className="absolute right-0 top-full mt-1 z-50 rounded-lg border border-neutral-200 bg-white shadow-lg py-1 min-w-35">
           {STATUS_OPTIONS.map((opt) => {
             const OptIcon = opt.icon;
             return (
