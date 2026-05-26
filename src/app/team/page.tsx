@@ -307,8 +307,12 @@ export default function TeamPage() {
                               className="rounded-full px-2.5 py-1 text-xs font-semibold border border-neutral-200 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 cursor-pointer"
                             >
                               <option value="FREE">Free</option>
-                              <option value="PRO">Pro</option>
-                              <option value="ENTERPRISE">Enterprise</option>
+                              {["PRO", "ENTERPRISE"].indexOf(workspace?.plan || "FREE") >= 0 && (
+                                <option value="PRO">Pro</option>
+                              )}
+                              {workspace?.plan === "ENTERPRISE" && (
+                                <option value="ENTERPRISE">Enterprise</option>
+                              )}
                             </select>
                           </>
                         ) : (

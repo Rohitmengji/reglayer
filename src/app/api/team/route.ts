@@ -165,6 +165,12 @@ export async function PATCH(request: NextRequest) {
     if (!validPlans.includes(plan)) {
       return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
     }
+    // Enforce: user plan cannot exceed workspace plan (unless master admin)
+    const planHierarchy = { FREE: 0, PRO: 1, ENTERPRISE: 2 };
+    const workspacePlan = myMembership.workspace.plan as keyof typeof planHierarchy;
+    if (!currentUser.isMasterAdmin && planHierarchy[plan as keyof typeof planHierarchy] > planHierarchy[workspacePlan]) {
+      return NextResponse.json({ error: `Cannot assign ${plan} — workspace plan is ${workspacePlan}` }, { status: 403 });
+    }
     // Verify target user is in the same workspace
     const targetMember = await prisma.workspaceMember.findFirst({
       where: { userId, workspaceId: myMembership.workspaceId },
