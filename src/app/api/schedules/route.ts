@@ -1,72 +1,106 @@
 /**
  * ---------------------------------------------------------
- * RegLayer — Schedules API
+ * RegLayer — Schedules API (Database-Backed)
  * ---------------------------------------------------------
  *
- * Purpose:
- * CRUD for scan schedules + trigger endpoint for cron.
+ * CRUD for scan schedules. All schedules are stored in PostgreSQL
+ * and executed by the Vercel Cron runner (/api/cron/run-schedules).
  *
  * Endpoints:
- * GET  /api/schedules         → List all schedules
- * POST /api/schedules         → Create new schedule
- * POST /api/schedules/trigger → Execute due schedules (called by cron)
+ * GET  /api/schedules → List all schedules for workspace
+ * POST /api/schedules → Create / Toggle / Delete schedule
  * ---------------------------------------------------------
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth/config";
 import { z } from "zod";
 import {
-  createSchedule,
-  getSchedules,
-  toggleSchedule,
-  deleteSchedule,
-  executeDueSchedules,
-} from "@/lib/queue/scheduler";
+  createScheduleInDB,
+  toggleScheduleInDB,
+  deleteScheduleFromDB,
+  listSchedulesForWorkspace,
+  validateCronForPlan,
+} from "@/lib/scheduling/scheduleService";
+import { getOrCreateWorkspace } from "@/lib/database/workspace";
+import { prisma } from "@/lib/database/prisma";
 
 const createScheduleSchema = z.object({
   name: z.string().min(1).max(100),
   url: z.string().url(),
   cron: z.string().min(9).max(100),
-  options: z
-    .object({
-      includeScreenshot: z.boolean().optional(),
-      timeout: z.number().optional(),
-    })
-    .optional(),
 });
 
+/**
+ * GET /api/schedules — List all schedules for the current workspace.
+ */
 export async function GET() {
-  const schedules = getSchedules();
-  return NextResponse.json({ schedules });
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+  if (!user) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+
+  const workspaceId = await getOrCreateWorkspace(user.id, user.email);
+  const schedules = await listSchedulesForWorkspace(workspaceId);
+
+  // Enrich with recent execution results
+  const enriched = await Promise.all(
+    schedules.map(async (s) => {
+      const lastScan = await prisma.scan.findFirst({
+        where: { siteId: s.siteId, status: "COMPLETED" },
+        orderBy: { completedAt: "desc" },
+        select: { score: true, totalViolations: true, completedAt: true },
+      });
+
+      return {
+        ...s,
+        lastScore: lastScan?.score ?? null,
+        lastViolations: lastScan?.totalViolations ?? null,
+        lastScanAt: lastScan?.completedAt ?? null,
+      };
+    })
+  );
+
+  return NextResponse.json({ schedules: enriched });
 }
 
+/**
+ * POST /api/schedules — Create, toggle, or delete a schedule.
+ */
 export async function POST(request: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+  if (!user) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+
+  const workspaceId = await getOrCreateWorkspace(user.id, user.email);
+
   try {
     const body = await request.json();
 
-    // Check if this is a trigger request
-    if (body.action === "trigger") {
-      const executed = executeDueSchedules();
-      return NextResponse.json({
-        message: "Schedules checked",
-        executed: executed.length,
-        scheduleIds: executed,
-      });
-    }
-
+    // Toggle schedule
     if (body.action === "toggle" && body.id) {
-      const schedule = toggleSchedule(body.id);
+      const schedule = await toggleScheduleInDB(body.id);
       if (!schedule) {
         return NextResponse.json({ error: "Schedule not found" }, { status: 404 });
       }
       return NextResponse.json({ schedule });
     }
 
+    // Delete schedule
     if (body.action === "delete" && body.id) {
-      const deleted = deleteSchedule(body.id);
-      if (!deleted) {
-        return NextResponse.json({ error: "Schedule not found" }, { status: 404 });
-      }
+      await deleteScheduleFromDB(body.id, workspaceId);
       return NextResponse.json({ message: "Deleted" });
     }
 
@@ -79,9 +113,35 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const schedule = createSchedule(parseResult.data);
+    // Validate cron against plan limits
+    const workspace = await prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { plan: true },
+    });
+
+    const planError = validateCronForPlan(parseResult.data.cron, workspace?.plan || "FREE");
+    if (planError) {
+      return NextResponse.json({ error: planError }, { status: 403 });
+    }
+
+    // Check schedule count limits
+    const existingCount = await prisma.schedule.count({ where: { workspaceId } });
+    const maxSchedules = workspace?.plan === "ENTERPRISE" ? 50 : workspace?.plan === "PRO" ? 10 : 2;
+    if (existingCount >= maxSchedules) {
+      return NextResponse.json(
+        { error: `Schedule limit reached (${maxSchedules}). Upgrade your plan for more.` },
+        { status: 403 }
+      );
+    }
+
+    const schedule = await createScheduleInDB({
+      ...parseResult.data,
+      workspaceId,
+    });
+
     return NextResponse.json({ schedule }, { status: 201 });
-  } catch {
+  } catch (error) {
+    console.error("[schedules] Error:", error);
     return NextResponse.json(
       { error: "Failed to process schedule request" },
       { status: 500 }

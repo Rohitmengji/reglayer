@@ -11,12 +11,15 @@ import { Plus, Trash2, Clock, Play, Pause, Key, GitBranch, Bell, Copy, Eye, EyeO
 interface Schedule {
   id: string;
   name: string;
-  url: string;
   cron: string;
   enabled: boolean;
   createdAt: string;
   lastRunAt?: string;
   nextRunAt?: string;
+  site?: { url: string; name: string | null };
+  lastScore?: number | null;
+  lastViolations?: number | null;
+  lastScanAt?: string | null;
 }
 
 interface ApiKeyRecord {
@@ -368,23 +371,40 @@ function SchedulesTab() {
         <div className="space-y-2">
           {schedules.map((schedule) => (
             <div key={schedule.id} className="flex items-center justify-between rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4">
-              <div>
+              <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium text-neutral-900 dark:text-white">{schedule.name}</p>
+                  <p className="text-sm font-medium text-neutral-900 dark:text-white truncate">{schedule.name}</p>
                   <Badge variant={schedule.enabled ? "success" : "secondary"}>
                     {schedule.enabled ? "Active" : "Paused"}
                   </Badge>
+                  {schedule.lastScore != null && (
+                    <span className={`text-xs font-semibold ${schedule.lastScore >= 90 ? "text-green-600" : schedule.lastScore >= 70 ? "text-yellow-600" : "text-red-600"}`}>
+                      {schedule.lastScore}%
+                    </span>
+                  )}
                 </div>
-                <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-                  {schedule.url} • <code className="text-neutral-600 dark:text-neutral-300">{schedule.cron}</code>
+                <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400 truncate">
+                  {schedule.site?.url || "—"} • <code className="text-neutral-600 dark:text-neutral-300">{schedule.cron}</code>
                 </p>
-                {schedule.nextRunAt && (
-                  <p className="text-xs text-neutral-400">
-                    Next: {new Date(schedule.nextRunAt).toLocaleString()}
-                  </p>
-                )}
+                <div className="flex items-center gap-3 mt-1">
+                  {schedule.lastRunAt && (
+                    <p className="text-xs text-neutral-400">
+                      Last ran: {new Date(schedule.lastRunAt).toLocaleDateString()} {new Date(schedule.lastRunAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    </p>
+                  )}
+                  {schedule.nextRunAt && schedule.enabled && (
+                    <p className="text-xs text-neutral-400">
+                      Next: {new Date(schedule.nextRunAt).toLocaleDateString()} {new Date(schedule.nextRunAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    </p>
+                  )}
+                  {schedule.lastViolations != null && (
+                    <p className="text-xs text-neutral-400">
+                      {schedule.lastViolations} violation{schedule.lastViolations !== 1 ? "s" : ""}
+                    </p>
+                  )}
+                </div>
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 ml-2">
                 <Button variant="ghost" size="icon" onClick={() => handleToggle(schedule.id)}>
                   {schedule.enabled ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
                 </Button>

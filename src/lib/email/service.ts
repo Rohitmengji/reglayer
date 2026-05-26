@@ -224,3 +224,71 @@ export async function sendComplianceAlertEmail(to: string, data: {
     `,
   });
 }
+
+/**
+ * Send regression alert from scheduled monitoring.
+ * Rich email with score delta, new violations, and fixed violations.
+ */
+export async function sendRegressionAlert(to: string, data: {
+  url: string;
+  previousScore: number;
+  currentScore: number;
+  scoreDelta: number;
+  newViolations: Array<{ ruleId: string; impact: string; help: string }>;
+  fixedViolations: Array<{ ruleId: string; impact: string; help: string }>;
+  reportUrl: string;
+  scheduleName: string;
+}) {
+  const impactBadge = (impact: string) => {
+    const colors: Record<string, string> = { critical: "#991b1b", serious: "#c2410c", moderate: "#a16207", minor: "#525252" };
+    return `<span style="display:inline-block;padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;color:#fff;background:${colors[impact] || "#525252"};">${impact}</span>`;
+  };
+
+  const newViolationRows = data.newViolations.slice(0, 5).map((v) =>
+    `<tr><td style="padding:8px 12px;border-bottom:1px solid #f5f5f5;font-size:13px;">${impactBadge(v.impact)} ${v.help}</td></tr>`
+  ).join("");
+
+  const fixedViolationRows = data.fixedViolations.slice(0, 5).map((v) =>
+    `<tr><td style="padding:8px 12px;border-bottom:1px solid #f5f5f5;font-size:13px;">✅ ${v.help}</td></tr>`
+  ).join("");
+
+  return sendEmail({
+    to,
+    subject: `🚨 Regression detected: ${new URL(data.url).hostname} (${data.previousScore}% → ${data.currentScore}%)`,
+    html: `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="border-bottom: 1px solid #e5e5e5; padding: 20px 0;">
+          <h2 style="margin: 0; font-size: 18px; color: #171717;">🚨 Accessibility Regression Detected</h2>
+          <p style="margin: 4px 0 0; font-size: 13px; color: #737373;">Triggered by: ${data.scheduleName}</p>
+        </div>
+        <div style="padding: 24px 0;">
+          <p style="color: #525252; margin: 0 0 16px;">A scheduled scan of <strong>${data.url}</strong> detected a regression.</p>
+
+          <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 20px; margin-bottom: 20px; text-align: center;">
+            <div style="font-size: 28px; font-weight: 700; color: #991b1b;">${data.previousScore}% → ${data.currentScore}%</div>
+            <div style="font-size: 13px; color: #991b1b; margin-top: 4px;">${data.scoreDelta} points</div>
+          </div>
+
+          ${data.newViolations.length > 0 ? `
+          <h3 style="font-size: 14px; color: #171717; margin: 0 0 8px;">⚠️ New Violations (${data.newViolations.length})</h3>
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; background: #fef2f2; border-radius: 6px;">
+            ${newViolationRows}
+            ${data.newViolations.length > 5 ? `<tr><td style="padding:8px 12px;font-size:12px;color:#737373;">...and ${data.newViolations.length - 5} more</td></tr>` : ""}
+          </table>` : ""}
+
+          ${data.fixedViolations.length > 0 ? `
+          <h3 style="font-size: 14px; color: #171717; margin: 0 0 8px;">✅ Fixed (${data.fixedViolations.length})</h3>
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; background: #f0fdf4; border-radius: 6px;">
+            ${fixedViolationRows}
+          </table>` : ""}
+
+          <a href="${data.reportUrl}" style="display: inline-block; background: #171717; color: #fff; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-size: 14px; font-weight: 500;">View Scan Details</a>
+        </div>
+        <div style="border-top: 1px solid #e5e5e5; padding: 16px 0; font-size: 12px; color: #a3a3a3;">
+          <p style="margin: 0;">This alert was triggered by your scheduled monitoring rule. <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://reglayer.vercel.app"}/settings" style="color: #525252;">Manage schedules</a></p>
+        </div>
+      </div>
+    `,
+    text: `Regression detected on ${data.url}\nScore: ${data.previousScore}% → ${data.currentScore}% (${data.scoreDelta})\nNew violations: ${data.newViolations.length}\nFixed: ${data.fixedViolations.length}\nView details: ${data.reportUrl}`,
+  });
+}
