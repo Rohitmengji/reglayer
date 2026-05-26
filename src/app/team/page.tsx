@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Users, UserPlus, Shield, Crown, Trash2, ChevronDown } from "lucide-react";
+import { Users, UserPlus, Shield, Crown, Trash2, ChevronDown, KeyRound, X } from "lucide-react";
 
 interface TeamMember {
   id: string;
@@ -48,6 +48,8 @@ export default function TeamPage() {
   const [showInvite, setShowInvite] = useState(false);
   const [inviting, setInviting] = useState(false);
   const [error, setError] = useState("");
+  const [resetPwUser, setResetPwUser] = useState<string | null>(null);
+  const [resetPwValue, setResetPwValue] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -106,6 +108,23 @@ export default function TeamPage() {
     const res = await fetch(`/api/team?id=${memberId}`, { method: "DELETE" });
     if (res.ok) {
       setMembers(members.filter((m) => m.id !== memberId));
+    }
+  }
+
+  async function handleResetPassword(userId: string) {
+    if (!resetPwValue || resetPwValue.length < 6) return;
+    const res = await fetch("/api/team", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, newPassword: resetPwValue }),
+    });
+    if (res.ok) {
+      setResetPwUser(null);
+      setResetPwValue("");
+      alert("Password reset successfully");
+    } else {
+      const data = await res.json();
+      alert(data.error || "Failed to reset password");
     }
   }
 
@@ -258,13 +277,47 @@ export default function TeamPage() {
                         )}
 
                         {isAdmin && member.role !== "OWNER" && !member.isMasterAdmin && (
-                          <button
-                            onClick={() => handleRemove(member.id, member.email)}
-                            className="rounded-md p-1.5 text-neutral-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
-                            title="Remove member"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
+                          <div className="flex items-center gap-1">
+                            {resetPwUser === member.userId ? (
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="text"
+                                  placeholder="New password"
+                                  value={resetPwValue}
+                                  onChange={(e) => setResetPwValue(e.target.value)}
+                                  className="w-24 rounded border border-neutral-200 dark:border-neutral-700 px-2 py-1 text-xs dark:bg-neutral-800 dark:text-neutral-100"
+                                />
+                                <button
+                                  onClick={() => handleResetPassword(member.userId)}
+                                  disabled={resetPwValue.length < 6}
+                                  className="rounded-md px-2 py-1 text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                                >
+                                  Set
+                                </button>
+                                <button
+                                  onClick={() => { setResetPwUser(null); setResetPwValue(""); }}
+                                  className="rounded-md p-1 text-neutral-400 hover:text-neutral-600"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => setResetPwUser(member.userId)}
+                                className="rounded-md p-1.5 text-neutral-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors"
+                                title="Reset Password"
+                              >
+                                <KeyRound className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleRemove(member.id, member.email)}
+                              className="rounded-md p-1.5 text-neutral-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                              title="Remove member"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
                         )}
                       </div>
                     </div>

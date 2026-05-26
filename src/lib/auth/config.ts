@@ -25,6 +25,7 @@
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
+import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/database/prisma";
 
 export const authOptions: NextAuthOptions = {
@@ -66,6 +67,21 @@ export const authOptions: NextAuthOptions = {
             role: "admin",
           };
         }
+
+        // Check database passwordHash for any user
+        if (credentials?.email && credentials?.password) {
+          const dbUser = await prisma.user.findUnique({
+            where: { email: credentials.email },
+            select: { id: true, name: true, email: true, passwordHash: true },
+          });
+          if (dbUser?.passwordHash) {
+            const valid = await bcrypt.compare(credentials.password, dbUser.passwordHash);
+            if (valid) {
+              return { id: dbUser.id, name: dbUser.name || dbUser.email.split("@")[0], email: dbUser.email };
+            }
+          }
+        }
+
         return null;
       },
     }),
