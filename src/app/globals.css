@@ -2,32 +2,151 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   Design Tokens — Color
+   ───────────────────────────────────────────────────────────────────────────── */
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #111827;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --accent: #2563eb;
+  --accent-foreground: #ffffff;
+  --surface: #f9fafb;
 }
 
 .dark {
-  --background: #0a0a0a;
-  --foreground: #ededed;
+  --background: #09090b;
+  --foreground: #f4f4f5;
+  --muted: #a1a1aa;
+  --border: #27272a;
+  --accent: #3b82f6;
+  --accent-foreground: #ffffff;
+  --surface: #18181b;
 }
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   Tailwind Theme Bindings
+   ───────────────────────────────────────────────────────────────────────────── */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-surface: var(--surface);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not(.light) {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #09090b;
+    --foreground: #f4f4f5;
+    --muted: #a1a1aa;
+    --border: #27272a;
+    --accent: #3b82f6;
+    --accent-foreground: #ffffff;
+    --surface: #18181b;
   }
 }
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   Typography System
+   
+   Type scale: Minor Third (1.2) — balanced for dense UIs
+   Base: 16px (1rem)
+   Scale: 0.833rem → 1rem → 1.2rem → 1.44rem → 1.728rem → 2.074rem
+   ───────────────────────────────────────────────────────────────────────────── */
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 1rem;
+  line-height: 1.6;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";  /* Inter stylistic alternates */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Headings — tighter tracking, heavier weight */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.025em;
+  color: var(--foreground);
+}
+
+h1 { font-size: 2.074rem; font-weight: 700; letter-spacing: -0.04em; }
+h2 { font-size: 1.728rem; font-weight: 700; letter-spacing: -0.035em; }
+h3 { font-size: 1.44rem; }
+h4 { font-size: 1.2rem; }
+h5 { font-size: 1rem; font-weight: 600; }
+h6 { font-size: 0.875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+
+/* Body text */
+p {
+  line-height: 1.6;
+  max-width: 65ch;  /* Optimal reading width */
+}
+
+/* Small/label text */
+small, .text-sm {
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.text-xs {
+  font-size: 0.75rem;
+  line-height: 1.4;
+  letter-spacing: 0.01em;
+}
+
+/* Monospace — code, data, IDs */
+code, kbd, pre, samp, .font-mono {
+  font-family: var(--font-mono), ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 0.875em;
+  font-feature-settings: "liga" 1, "calt" 1;  /* JetBrains Mono ligatures */
+}
+
+/* Tabular numbers for data-heavy UIs (tables, stats, dashboards) */
+.tabular-nums, table, [data-metric] {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Selection & Focus
+   ───────────────────────────────────────────────────────────────────────────── */
+::selection {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Scrollbar (Webkit/Blink)
+   ───────────────────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
 }
