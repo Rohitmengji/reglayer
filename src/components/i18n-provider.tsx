@@ -6,13 +6,13 @@ import { type Locale, type TranslationKey, getTranslation, detectLocale, DEFAULT
 interface I18nContextValue {
   locale: Locale;
   setLocale: (locale: Locale) => void;
-  t: (key: TranslationKey) => string;
+  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
 }
 
 const I18nContext = createContext<I18nContextValue>({
   locale: DEFAULT_LOCALE,
   setLocale: () => {},
-  t: (key) => key,
+  t: (key) => key as string,
 });
 
 let currentLocale: Locale = typeof window !== "undefined" ? detectLocale() : DEFAULT_LOCALE;
@@ -41,8 +41,8 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     listeners.forEach((l) => l());
   }, []);
 
-  const t = useCallback((key: TranslationKey): string => {
-    return getTranslation(locale, key);
+  const t = useCallback((key: TranslationKey, params?: Record<string, string | number>): string => {
+    return getTranslation(locale, key, params);
   }, [locale]);
 
   return (

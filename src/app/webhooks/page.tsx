@@ -19,6 +19,7 @@ import {
   EyeOff,
   Clock,
 } from "lucide-react";
+import { useI18n } from "@/components/i18n-provider";
 
 interface WebhookEntry {
   id: string;
@@ -67,6 +68,7 @@ export default function WebhooksPage() {
   // Testing
   const [testing, setTesting] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<{ id: string; status: string; statusCode: number } | null>(null);
+  const { t } = useI18n();
 
   useEffect(() => {
     fetchWebhooks();
@@ -145,9 +147,9 @@ export default function WebhooksPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Webhooks</h1>
+            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{t("webhooks.title")}</h1>
             <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-              Receive real-time notifications when events happen in RegLayer.
+              {t("webhooks.subtitle")}
             </p>
           </div>
           <Button onClick={() => setShowCreate(!showCreate)}>

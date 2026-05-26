@@ -6,6 +6,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, XCircle, Minus, Loader2, Grid3X3 } from "lucide-react";
+import { useI18n } from "@/components/i18n-provider";
 
 interface MatrixEntry {
   criterion: string;
@@ -47,6 +48,7 @@ function ComplianceContent() {
   const [data, setData] = useState<MatrixData | null>(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "pass" | "fail" | "not-tested">("all");
+  const { t } = useI18n();
 
   useEffect(() => {
     let cancelled = false;
@@ -93,7 +95,7 @@ function ComplianceContent() {
       <AppShell>
         <div className="text-center py-20">
           <Grid3X3 className="h-12 w-12 text-neutral-200 mx-auto mb-4" />
-          <p className="text-neutral-600 dark:text-neutral-300">No scan data available. Run a scan first.</p>
+          <p className="text-neutral-600 dark:text-neutral-300">{t("compliance.emptyState")}</p>
         </div>
       </AppShell>
     );
@@ -117,11 +119,10 @@ function ComplianceContent() {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <Grid3X3 className="h-5 w-5 text-indigo-500" />
-            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">WCAG Compliance Matrix</h1>
+            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{t("compliance.title")}</h1>
           </div>
           <p className="text-sm text-neutral-500 dark:text-neutral-400">
-            WCAG 2.1 AA criterion status for{" "}
-            <span className="font-medium">{data.url}</span>
+            {t("compliance.subtitle", { url: data.url })}
           </p>
         </div>
 

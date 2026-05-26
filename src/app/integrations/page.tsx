@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Plug, CheckCircle2, AlertCircle } from "lucide-react";
+import { useI18n } from "@/components/i18n-provider";
 
 interface IntegrationDef {
   id: string;
@@ -125,6 +126,7 @@ export default function IntegrationsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const { t } = useI18n();
 
   useEffect(() => {
     fetchIntegrations();
@@ -223,9 +225,9 @@ export default function IntegrationsPage() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Integrations</h1>
+            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{t("integrations.title")}</h1>
             <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-              Connect RegLayer with your tools to automate accessibility workflows.
+              {t("integrations.subtitle")}
             </p>
           </div>
           {success && (

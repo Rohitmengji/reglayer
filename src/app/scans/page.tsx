@@ -17,6 +17,7 @@ import {
   Trash2,
 } from "lucide-react";
 import Link from "next/link";
+import { useI18n } from "@/components/i18n-provider";
 
 interface ScanRecord {
   id: string;
@@ -39,6 +40,7 @@ export default function ScansPage() {
   const [loading, setLoading] = useState(true);
   const [selectedScans, setSelectedScans] = useState<string[]>([]);
   const { data: session } = useSession();
+  const { t } = useI18n();
   const isAdmin = (session?.user as unknown as { role?: string })?.role === "admin";
 
   useEffect(() => {
@@ -92,9 +94,9 @@ export default function ScansPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Scan History</h1>
+            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{t("scans.title")}</h1>
             <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-              All accessibility scans stored in your database.
+              {t("scans.subtitle")}
             </p>
           </div>
           {selectedScans.length === 2 && (
@@ -103,7 +105,7 @@ export default function ScansPage() {
               className="inline-flex items-center gap-2 rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800 transition-colors"
             >
               <GitCompare className="h-4 w-4" />
-              Compare Selected
+              {t("scans.compareSelected")}
             </Link>
           )}
         </div>
@@ -112,22 +114,22 @@ export default function ScansPage() {
         {scans.length > 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
             <SummaryCard
-              label="Total Scans"
+              label={t("scans.totalScans")}
               value={scans.length.toString()}
               icon={<BarChart3 className="h-4 w-4 text-blue-500" />}
             />
             <SummaryCard
-              label="Avg Score"
+              label={t("scans.avgScore")}
               value={averageScore.toString()}
               icon={<TrendingUp className="h-4 w-4 text-green-500" />}
             />
             <SummaryCard
-              label="Total Violations"
+              label={t("scans.totalViolations")}
               value={totalViolationsAll.toString()}
               icon={<Clock className="h-4 w-4 text-orange-500" />}
             />
             <SummaryCard
-              label="Latest Score"
+              label={t("scans.latestScore")}
               value={scans[0]?.score?.toString() ?? "—"}
               icon={
                 getTrend(0) === "up" ? (
@@ -150,11 +152,11 @@ export default function ScansPage() {
         ) : scans.length === 0 ? (
           <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-12 text-center">
             <BarChart3 className="h-12 w-12 text-neutral-300 mx-auto mb-4" />
-            <p className="text-lg font-medium text-neutral-700 dark:text-neutral-200">No scans yet</p>
+            <p className="text-lg font-medium text-neutral-700 dark:text-neutral-200">{t("scans.noScansTitle")}</p>
             <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-              Run your first scan from the{" "}
+              {t("scans.noScansSubtitle")}{" "}
               <Link href="/dashboard" className="text-blue-600 hover:underline">
-                Dashboard
+                {t("scans.dashboard")}
               </Link>
               .
             </p>
@@ -162,7 +164,7 @@ export default function ScansPage() {
         ) : (
           <div className="space-y-3">
             <p className="text-xs text-neutral-400">
-              Select 2 scans to compare them side by side
+              {t("scans.selectHint")}
             </p>
             {scans.map((scan, index) => (
               <div

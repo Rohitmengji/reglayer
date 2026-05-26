@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { handleUpgradeResponse } from "@/lib/upgrade-prompt";
+import { useI18n } from "@/components/i18n-provider";
 
 interface Insight {
   explanation: string | object;
@@ -82,6 +83,7 @@ function InsightsContent() {
   const [data, setData] = useState<InsightsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useI18n();
 
   useEffect(() => {
     let cancelled = false;
@@ -129,8 +131,8 @@ function InsightsContent() {
       <AppShell>
         <div className="flex-1 flex flex-col items-center justify-center gap-3">
           <Loader2 className="h-8 w-8 animate-spin text-neutral-400" />
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">Generating AI insights...</p>
-          <p className="text-xs text-neutral-400">This may take 10-30 seconds</p>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">{t("insights.loading")}</p>
+          <p className="text-xs text-neutral-400">{t("insights.loadingSubtitle")}</p>
         </div>
       </AppShell>
     );
@@ -143,7 +145,7 @@ function InsightsContent() {
           <Brain className="h-12 w-12 text-neutral-300 mx-auto mb-4" />
           <p className="text-lg font-medium text-neutral-700 dark:text-neutral-200">{error || "No data"}</p>
           <Link href="/dashboard" className="text-sm text-blue-600 hover:underline mt-2 inline-block">
-            Run a scan first
+            {t("insights.runScanFirst")}
           </Link>
         </div>
       </AppShell>
@@ -157,7 +159,7 @@ function InsightsContent() {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <Sparkles className="h-5 w-5 text-purple-500" />
-            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">AI Insights</h1>
+            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{t("insights.title")}</h1>
           </div>
           <p className="text-sm text-neutral-500 dark:text-neutral-400">
             Deep analysis of {data.insights.length} violations on{" "}
@@ -187,7 +189,7 @@ function InsightsContent() {
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <Brain className="h-4 w-4 text-purple-500" />
-                    <p className="text-xs font-semibold text-purple-600 uppercase">What this means</p>
+                    <p className="text-xs font-semibold text-purple-600 uppercase">{t("insights.explanation")}</p>
                   </div>
                   <p className="text-sm text-neutral-700 dark:text-neutral-200 leading-relaxed">
                     {str(entry.insight.explanation)}
@@ -198,7 +200,7 @@ function InsightsContent() {
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <Users className="h-4 w-4 text-blue-500" />
-                    <p className="text-xs font-semibold text-blue-600 uppercase">Who is affected</p>
+                    <p className="text-xs font-semibold text-blue-600 uppercase">{t("insights.userImpact")}</p>
                   </div>
                   <p className="text-sm text-neutral-700 dark:text-neutral-200 leading-relaxed">
                     {str(entry.insight.userImpact)}
@@ -209,7 +211,7 @@ function InsightsContent() {
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <Wrench className="h-4 w-4 text-green-500" />
-                    <p className="text-xs font-semibold text-green-600 uppercase">How to fix</p>
+                    <p className="text-xs font-semibold text-green-600 uppercase">{t("insights.fixStrategy")}</p>
                   </div>
                   <p className="text-sm text-neutral-700 dark:text-neutral-200 leading-relaxed whitespace-pre-line">
                     {str(entry.insight.fixStrategy)}
@@ -221,7 +223,7 @@ function InsightsContent() {
                   <div>
                     <div className="flex items-center gap-2 mb-2">
                       <Code2 className="h-4 w-4 text-orange-500" />
-                      <p className="text-xs font-semibold text-orange-600 uppercase">Code fix</p>
+                      <p className="text-xs font-semibold text-orange-600 uppercase">{t("insights.codeExample")}</p>
                     </div>
                     <pre className="rounded-lg bg-neutral-900 p-4 text-xs text-green-300 overflow-x-auto whitespace-pre-wrap">
                       {codeStr(entry.insight.codeExample)}
@@ -233,7 +235,7 @@ function InsightsContent() {
                 <div className="flex items-center gap-6 pt-3 border-t border-neutral-100 dark:border-neutral-700">
                   <div className="flex items-center gap-2">
                     <Gauge className="h-4 w-4 text-neutral-400" />
-                    <span className="text-xs text-neutral-500 dark:text-neutral-400">Effort:</span>
+                    <span className="text-xs text-neutral-500 dark:text-neutral-400">{t("insights.effort")}</span>
                     <Badge variant="secondary">{str(entry.insight.effort)}</Badge>
                   </div>
                   <p className="text-xs text-neutral-500 dark:text-neutral-400 italic flex-1">

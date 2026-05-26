@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Users, UserPlus, Shield, Crown, Trash2, ChevronDown, KeyRound, X } from "lucide-react";
 import { handleUpgradeResponse } from "@/lib/upgrade-prompt";
+import { useI18n } from "@/components/i18n-provider";
 
 interface TeamMember {
   id: string;
@@ -53,6 +54,7 @@ export default function TeamPage() {
   const [error, setError] = useState("");
   const [resetPwUser, setResetPwUser] = useState<string | null>(null);
   const [resetPwValue, setResetPwValue] = useState("");
+  const { t } = useI18n();
 
   useEffect(() => {
     let cancelled = false;
@@ -169,9 +171,9 @@ export default function TeamPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Team</h1>
+            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{t("team.title")}</h1>
             <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-              Manage workspace members and their access levels.
+              {t("team.subtitle")}
             </p>
           </div>
           {isAdmin && (
@@ -180,7 +182,7 @@ export default function TeamPage() {
               className="flex items-center gap-2 rounded-lg bg-neutral-900 dark:bg-white px-4 py-2.5 text-sm font-medium text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors"
             >
               <UserPlus className="h-4 w-4" />
-              Invite Member
+              {t("team.inviteMember")}
             </button>
           )}
         </div>

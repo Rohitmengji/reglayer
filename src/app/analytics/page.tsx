@@ -15,6 +15,7 @@ import {
   Zap,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useI18n } from "@/components/i18n-provider";
 
 interface AnalyticsData {
   period: { start: string; end: string; days: number };
@@ -63,6 +64,7 @@ export default function AnalyticsPage() {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState(30);
+  const { t } = useI18n();
 
   useEffect(() => {
     let cancelled = false;
@@ -95,12 +97,12 @@ export default function AnalyticsPage() {
     return (
       <AppShell>
         <div className="space-y-6">
-          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Analytics</h1>
+          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{t("analytics.title")}</h1>
           <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-12 text-center">
             <BarChart3 className="h-12 w-12 text-neutral-300 mx-auto mb-4" />
-            <p className="text-lg font-medium text-neutral-700 dark:text-neutral-200">No data yet</p>
+            <p className="text-lg font-medium text-neutral-700 dark:text-neutral-200">{t("analytics.empty")}</p>
             <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-              Run some scans to see analytics and trends.
+              {t("analytics.emptySubtitle")}
             </p>
           </div>
         </div>
@@ -114,9 +116,9 @@ export default function AnalyticsPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Analytics</h1>
+            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{t("analytics.title")}</h1>
             <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-              Accessibility intelligence and trend analysis.
+              {t("analytics.subtitle")}
             </p>
           </div>
           <div className="flex items-center gap-2">
