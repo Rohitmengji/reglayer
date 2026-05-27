@@ -19,6 +19,8 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth/config";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import type { ScanResult, ComplianceReport } from "@/lib/types";
@@ -29,6 +31,11 @@ interface ReportRequest {
 }
 
 export async function POST(request: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+  }
+
   try {
     const body: ReportRequest = await request.json();
     const { scan, compliance } = body;

@@ -14,10 +14,13 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth/config";
 import { z } from "zod";
 import { crawlPages } from "@/lib/scanner/browser/crawler";
 import { executeScanPipeline } from "@/lib/scanner/pipelines/scanPipeline";
 import { logger } from "@/lib/telemetry/logger";
+import { rateLimit, RATE_LIMITS, rateLimitHeaders } from "@/lib/rate-limit";
 import type { ScanResult } from "@/lib/types";
 
 const crawlScanSchema = z.object({
@@ -27,6 +30,21 @@ const crawlScanSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+  }
+
+  // Rate limit by IP
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const rl = rateLimit(`crawl:${ip}`, RATE_LIMITS.scan);
+  if (!rl.success) {
+    return NextResponse.json(
+      { error: "Too many requests. Please wait before scanning again." },
+      { status: 429, headers: rateLimitHeaders(rl) }
+    );
+  }
+
   const apiLogger = logger.withContext({ route: "POST /api/scan/crawl" });
 
   try {

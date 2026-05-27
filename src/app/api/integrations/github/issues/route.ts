@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth/config";
 import { z } from "zod";
 import { createBatchIssue, createIssueFromViolation } from "@/lib/integrations/github";
 import { prisma } from "@/lib/database/prisma";
@@ -20,6 +22,11 @@ const createIssueSchema = z.object({
  * Mode "individual" creates one issue per violation.
  */
 export async function POST(request: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+  }
+
   let body: unknown;
   try {
     body = await request.json();

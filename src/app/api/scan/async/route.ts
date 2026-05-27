@@ -14,8 +14,11 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth/config";
 import { z } from "zod";
 import { enqueueScanJob, getJob, getAllJobs } from "@/lib/queue/scanQueue";
+import { rateLimit, RATE_LIMITS, rateLimitHeaders } from "@/lib/rate-limit";
 
 const asyncScanSchema = z.object({
   url: z.string().url(),
@@ -28,6 +31,21 @@ const asyncScanSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+  }
+
+  // Rate limit by IP
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const rl = rateLimit(`async-scan:${ip}`, RATE_LIMITS.scan);
+  if (!rl.success) {
+    return NextResponse.json(
+      { error: "Too many requests. Please wait before scanning again." },
+      { status: 429, headers: rateLimitHeaders(rl) }
+    );
+  }
+
   try {
     const body = await request.json();
     const parseResult = asyncScanSchema.safeParse(body);
@@ -59,6 +77,11 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+  }
+
   const jobId = request.nextUrl.searchParams.get("jobId");
 
   if (jobId) {
