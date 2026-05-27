@@ -1,4 +1,16 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+
+vi.mock("server-only", () => ({}));
+vi.mock("@/lib/database/prisma", () => ({
+  prisma: {
+    user: { findUnique: vi.fn().mockResolvedValue(null) },
+    scan: { create: vi.fn().mockResolvedValue({}) },
+  },
+}));
+vi.mock("@/lib/database/workspace", () => ({
+  getOrCreateWorkspace: vi.fn().mockResolvedValue("ws_1"),
+}));
+
 import {
   createSchedule,
   getSchedules,

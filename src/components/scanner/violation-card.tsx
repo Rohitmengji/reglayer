@@ -50,17 +50,17 @@ export function ViolationCard({ violation }: ViolationCardProps) {
 
         {/* Affected Nodes */}
         <div className="space-y-2">
-          <p className="text-xs font-medium text-neutral-700">
+          <p className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
             {t("violationCard.affectedElements", { count: String(violation.nodes.length) })}
           </p>
           {violation.nodes.slice(0, 3).map((node, i) => (
             <div
               key={i}
-              className="rounded-md bg-neutral-50 p-2 font-mono text-xs"
+              className="rounded-md bg-neutral-50 dark:bg-neutral-800 p-2 font-mono text-xs"
             >
-              <code className="text-neutral-700">{node.html}</code>
+              <code className="text-neutral-700 dark:text-neutral-300">{node.html}</code>
               {node.failureSummary && (
-                <p className="mt-1 font-sans text-neutral-500">
+                <p className="mt-1 font-sans text-neutral-500 dark:text-neutral-400">
                   {node.failureSummary}
                 </p>
               )}
@@ -120,20 +120,20 @@ function RemediationStatus({ violationId }: { violationId: string }) {
     <div className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className={`inline-flex items-center gap-1.5 rounded-md border border-neutral-200 px-2 py-1 text-xs font-medium transition-colors hover:bg-neutral-50 ${current.color}`}
+        className={`inline-flex items-center gap-1.5 rounded-md border border-neutral-200 dark:border-neutral-700 px-2 py-1 text-xs font-medium transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800 ${current.color}`}
       >
         <Icon className="h-3 w-3" />
         {current.label}
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-1 z-50 rounded-lg border border-neutral-200 bg-white shadow-lg py-1 min-w-35">
+        <div className="absolute right-0 top-full mt-1 z-50 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-lg py-1 min-w-35">
           {STATUS_OPTIONS.map((opt) => {
             const OptIcon = opt.icon;
             return (
               <button
                 key={opt.value}
                 onClick={() => handleChange(opt.value)}
-                className={`flex w-full items-center gap-2 px-3 py-1.5 text-xs hover:bg-neutral-50 ${opt.color}`}
+                className={`flex w-full items-center gap-2 px-3 py-1.5 text-xs hover:bg-neutral-50 dark:hover:bg-neutral-800 ${opt.color}`}
               >
                 <OptIcon className="h-3 w-3" />
                 {opt.label}

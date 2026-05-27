@@ -98,6 +98,17 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: "Key ID required" }, { status: 400 });
   }
 
+  // Verify ownership — prevent IDOR
+  const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+  if (!user) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+
+  const key = await prisma.apiKey.findUnique({ where: { id: body.id } });
+  if (!key || key.userId !== user.id) {
+    return NextResponse.json({ error: "Key not found" }, { status: 404 });
+  }
+
   await prisma.apiKey.delete({ where: { id: body.id } });
   return NextResponse.json({ deleted: true });
 }

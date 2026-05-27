@@ -16,7 +16,7 @@ export function ScoreCard({ summary }: ScoreCardProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-sm font-medium text-neutral-600">
+        <CardTitle className="text-sm font-medium text-neutral-600 dark:text-neutral-400">
           {t("scoreCard.title")}
         </CardTitle>
       </CardHeader>
@@ -30,8 +30,9 @@ export function ScoreCard({ summary }: ScoreCardProps) {
                 cy="50"
                 r="40"
                 fill="none"
-                stroke="#e5e7eb"
+                stroke="currentColor"
                 strokeWidth="8"
+                className="text-neutral-200 dark:text-neutral-700"
               />
               <circle
                 cx="50"
@@ -100,8 +101,8 @@ function SeverityCount({
     <div className="flex items-center gap-2">
       <Icon className={`h-4 w-4 ${color}`} />
       <div>
-        <p className="text-lg font-semibold text-neutral-900">{count}</p>
-        <p className="text-xs text-neutral-500">{label}</p>
+        <p className="text-lg font-semibold text-neutral-900 dark:text-white">{count}</p>
+        <p className="text-xs text-neutral-500 dark:text-neutral-400">{label}</p>
       </div>
     </div>
   );

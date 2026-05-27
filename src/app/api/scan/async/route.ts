@@ -17,7 +17,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { z } from "zod";
-import { enqueueScanJob, getJob, getAllJobs } from "@/lib/queue/scanQueue";
+import { enqueueScanJob, getJob, getJobsForUser } from "@/lib/queue/scanQueue";
+import { validateScanUrl } from "@/lib/validations/ssrf";
+import { getPlanContext, getMonthlyScansCount } from "@/lib/credits/plan-context";
 import { rateLimit, RATE_LIMITS, rateLimitHeaders } from "@/lib/rate-limit";
 
 const asyncScanSchema = z.object({
@@ -58,7 +60,29 @@ export async function POST(request: NextRequest) {
     }
 
     const { url, options } = parseResult.data;
-    const job = enqueueScanJob(url, options);
+
+    // SSRF protection — block internal/private addresses
+    const ssrfError = validateScanUrl(url);
+    if (ssrfError) {
+      return NextResponse.json({ error: ssrfError }, { status: 400 });
+    }
+
+    // Enforce plan scan limit
+    const planCtx = await getPlanContext();
+    if (planCtx && !planCtx.isMasterAdmin) {
+      const limit = planCtx.limits.scansPerMonth;
+      if (limit !== -1) {
+        const used = await getMonthlyScansCount(planCtx.userId);
+        if (used >= limit) {
+          return NextResponse.json(
+            { error: `Scan limit reached (${limit}/month on ${planCtx.plan} plan). Upgrade for more scans.`, upgradeRequired: true },
+            { status: 429 }
+          );
+        }
+      }
+    }
+
+    const job = enqueueScanJob(url, options, session.user.email);
 
     return NextResponse.json(
       {
@@ -89,10 +113,14 @@ export async function GET(request: NextRequest) {
     if (!job) {
       return NextResponse.json({ error: "Job not found" }, { status: 404 });
     }
+    // Only allow access to own jobs (prevent IDOR)
+    if (job.userEmail !== session.user.email) {
+      return NextResponse.json({ error: "Job not found" }, { status: 404 });
+    }
     return NextResponse.json(job);
   }
 
-  // Return all jobs
-  const jobs = getAllJobs();
+  // Return only user's own jobs
+  const jobs = getJobsForUser(session.user.email);
   return NextResponse.json({ jobs });
 }

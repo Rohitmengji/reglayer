@@ -45,7 +45,7 @@ export default function ScanDetailPage({
     return (
       <AppShell>
         <div className="flex-1 flex items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-neutral-300 border-t-neutral-900" />
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-neutral-300 dark:border-neutral-600 border-t-neutral-900 dark:border-t-white" />
         </div>
       </AppShell>
     );
@@ -61,7 +61,7 @@ export default function ScanDetailPage({
               {t("scanDetail.backToScans")}
             </Button>
           </Link>
-          <div className="rounded-lg border border-neutral-200 bg-white p-12 text-center">
+          <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-12 text-center">
             <p className="text-sm text-neutral-500">
               {t("scanDetail.notFound")}
             </p>
@@ -85,7 +85,7 @@ export default function ScanDetailPage({
                 {t("scanDetail.backToScans")}
               </Button>
             </Link>
-            <h1 className="text-2xl font-bold text-neutral-900">
+            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">
               {scan.metadata.pageTitle || t("scanDetail.results")}
             </h1>
             <p className="mt-1 text-sm text-neutral-500">{scan.url}</p>
@@ -133,10 +133,10 @@ export default function ScanDetailPage({
               {compliance.ruleResults.map((result) => (
                 <div
                   key={result.rule.id}
-                  className="flex items-center justify-between rounded-md border border-neutral-100 px-3 py-2"
+                  className="flex items-center justify-between rounded-md border border-neutral-100 dark:border-neutral-700 px-3 py-2"
                 >
                   <div>
-                    <p className="text-sm font-medium text-neutral-900">
+                    <p className="text-sm font-medium text-neutral-900 dark:text-white">
                       {result.rule.name}
                     </p>
                     <p className="text-xs text-neutral-500">
@@ -155,7 +155,7 @@ export default function ScanDetailPage({
         {/* Violations */}
         {scan.violations.length > 0 && (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-neutral-900">
+            <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">
               {t("scanDetail.violations", { count: String(scan.violations.length) })}
             </h2>
             {scan.violations.map((violation) => (
@@ -165,8 +165,8 @@ export default function ScanDetailPage({
         )}
 
         {scan.violations.length === 0 && (
-          <div className="rounded-lg border border-green-200 bg-green-50 p-6 text-center">
-            <p className="text-lg font-medium text-green-800">
+          <div className="rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950 p-6 text-center">
+            <p className="text-lg font-medium text-green-800 dark:text-green-200">
               {t("scanDetail.noViolations")}
             </p>
           </div>
@@ -186,12 +186,12 @@ function MetaCard({
   value: string;
 }) {
   return (
-    <div className="rounded-lg border border-neutral-200 bg-white p-4">
+    <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4">
       <div className="flex items-center gap-2">
         <Icon className="h-4 w-4 text-neutral-400" />
-        <p className="text-xs font-medium text-neutral-500">{label}</p>
+        <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">{label}</p>
       </div>
-      <p className="mt-1 truncate text-sm font-semibold text-neutral-900">
+      <p className="mt-1 truncate text-sm font-semibold text-neutral-900 dark:text-white">
         {value}
       </p>
     </div>
