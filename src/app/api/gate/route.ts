@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/database/prisma";
+import { createHash } from "crypto";
+import { validateScanUrl } from "@/lib/validations/ssrf";
 import { z } from "zod";
 
 /**
@@ -40,15 +42,22 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // For now, validate API key exists in DB (prefix match for quick lookup)
+  // Validate API key — hash and compare against stored key hash
   const prefix = apiKey.substring(0, 8);
+  const keyHash = createHash("sha256").update(apiKey).digest("hex");
   const keyRecord = await prisma.apiKey.findFirst({
-    where: { prefix, expiresAt: { gt: new Date() } },
+    where: { prefix, keyHash, expiresAt: { gt: new Date() } },
   });
 
   if (!keyRecord) {
     return NextResponse.json({ error: "Invalid API key" }, { status: 403 });
   }
+
+  // Update last used timestamp
+  await prisma.apiKey.update({
+    where: { id: keyRecord.id },
+    data: { lastUsedAt: new Date() },
+  }).catch(() => {/* non-critical */});
 
   let body: unknown;
   try {
@@ -66,6 +75,12 @@ export async function POST(request: NextRequest) {
   }
 
   const { url, threshold, failOn, maxCritical, maxSerious } = parsed.data;
+
+  // SSRF protection
+  const ssrfError = validateScanUrl(url);
+  if (ssrfError) {
+    return NextResponse.json({ error: ssrfError, passed: false }, { status: 400 });
+  }
 
   // Trigger scan via internal service
   const { performScan } = await import("@/services/scanService");

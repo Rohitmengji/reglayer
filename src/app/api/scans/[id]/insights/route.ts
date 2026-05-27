@@ -33,15 +33,7 @@ export async function GET(
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
-  // Consume credits for insights analysis
-  const creditResult = await consumeCredits(user.id, "insightsAnalysis");
-  if (!creditResult.success) {
-    return NextResponse.json(
-      { error: "Insufficient AI credits", creditsRemaining: creditResult.creditsRemaining, cost: creditResult.cost },
-      { status: 429 }
-    );
-  }
-
+  // Verify scan exists BEFORE consuming credits
   const scan = await prisma.scan.findUnique({
     where: { id },
     include: { violations: true },
@@ -56,6 +48,15 @@ export async function GET(
     return NextResponse.json(
       { error: "OpenAI API key not configured" },
       { status: 503 }
+    );
+  }
+
+  // Consume credits for insights analysis
+  const creditResult = await consumeCredits(user.id, "insightsAnalysis");
+  if (!creditResult.success) {
+    return NextResponse.json(
+      { error: "Insufficient AI credits", creditsRemaining: creditResult.creditsRemaining, cost: creditResult.cost },
+      { status: 429 }
     );
   }
 

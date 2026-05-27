@@ -19,7 +19,7 @@ const SECURITY_HEADERS: Record<string, string> = {
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com data:",
     "img-src 'self' data: https: blob:",
-    "connect-src 'self' https://api.openai.com https://*.neon.tech",
+    "connect-src 'self' https://api.openai.com https://*.neon.tech https://*.ingest.sentry.io",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -50,9 +50,13 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/api-reference") ||
     pathname.startsWith("/contact") ||
     pathname.startsWith("/request-access") ||
+    pathname.startsWith("/report/") ||
     pathname.startsWith("/api/auth/") ||
     pathname.startsWith("/api/health") ||
     pathname.startsWith("/api/badge") ||
+    pathname.startsWith("/api/certificate/") ||
+    pathname.startsWith("/api/gate") ||
+    pathname.startsWith("/api/cron/") ||
     pathname.startsWith("/_next/") ||
     pathname.startsWith("/favicon");
 

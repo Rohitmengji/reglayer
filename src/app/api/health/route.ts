@@ -11,16 +11,27 @@
  */
 
 import { NextResponse } from "next/server";
+import { prisma } from "@/lib/database/prisma";
 
 export async function GET() {
+  let dbStatus = "healthy";
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+  } catch {
+    dbStatus = "unhealthy";
+  }
+
+  const status = dbStatus === "healthy" ? "healthy" : "degraded";
+
   return NextResponse.json(
     {
-      status: "healthy",
+      status,
       service: "reglayer",
       version: "0.1.0",
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
+      dependencies: { database: dbStatus },
     },
-    { status: 200 }
+    { status: status === "healthy" ? 200 : 503 }
   );
 }
