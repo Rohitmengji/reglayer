@@ -183,7 +183,7 @@ export default async function PublicReportPage({ params }: ReportPageProps) {
                 {/* Affected elements */}
                 {Array.isArray(v.affectedElements) && (v.affectedElements as Array<{ html: string; target: string[] }>).length > 0 && (
                   <details className="text-sm">
-                    <summary className="cursor-pointer text-neutral-500 hover:text-neutral-700">
+                    <summary className="cursor-pointer text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200">
                       {(v.affectedElements as Array<{ html: string }>).length} affected element(s)
                     </summary>
                     <div className="mt-2 space-y-2">

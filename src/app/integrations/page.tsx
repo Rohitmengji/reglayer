@@ -303,7 +303,7 @@ export default function IntegrationsPage() {
                                   </button>
                                   <button
                                     onClick={() => { setConfiguring(null); setFormData({}); setError(""); }}
-                                    className="rounded-lg px-3 py-1.5 text-xs font-medium text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+                                    className="rounded-lg px-3 py-1.5 text-xs font-medium text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
                                   >
                                     Cancel
                                   </button>

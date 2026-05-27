@@ -379,7 +379,7 @@ export default function ScansPage() {
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <Link
                       href={`/report/${scan.id}`}
-                      className="rounded-md p-1.5 text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-600 dark:text-neutral-300"
+                      className="rounded-md p-1.5 text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-600 dark:hover:text-white dark:text-neutral-300"
                       title="View Report"
                     >
                       <ExternalLink className="h-4 w-4" />
@@ -388,7 +388,7 @@ export default function ScansPage() {
                     {isAdmin && (
                       <button
                         onClick={() => handleDelete(scan.id)}
-                        className="rounded-md p-1.5 text-neutral-400 hover:bg-red-50 dark:hover:bg-red-950 hover:text-red-600 transition-colors"
+                        className="rounded-md p-1.5 text-neutral-400 dark:text-neutral-300 hover:bg-red-50 dark:hover:bg-red-950 hover:text-red-600 dark:hover:text-red-400 transition-colors"
                         title="Delete Scan (Admin only)"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -438,7 +438,7 @@ function CopyLinkButton({ scanId }: { scanId: string }) {
     <div className="relative">
       <button
         onClick={handleCopy}
-        className="rounded-md p-1.5 text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-600 dark:text-neutral-300 transition-colors"
+        className="rounded-md p-1.5 text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-600 dark:hover:text-white dark:text-neutral-300 transition-colors"
         title="Copy Share Link"
       >
         {copied ? <Check className="h-4 w-4 text-green-500" /> : <Share2 className="h-4 w-4" />}

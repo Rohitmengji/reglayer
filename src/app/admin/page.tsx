@@ -401,7 +401,7 @@ export default function AdminPage() {
                         <Button
                           size="sm"
                           variant="ghost"
-                          className="text-xs text-red-600 hover:text-red-700"
+                          className="text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
                           disabled={actionLoading}
                           onClick={() => handleAccessRequest(req.id, "deny")}
                         >
@@ -499,7 +499,7 @@ export default function AdminPage() {
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30"
+                            className="text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-950/30"
                             onClick={() => handleDeleteUser(user.id, user.email)}
                             disabled={actionLoading}
                             title="Delete User"
@@ -703,7 +703,7 @@ export default function AdminPage() {
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                className="text-xs text-red-600 hover:text-red-700 px-2"
+                                className="text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 px-2"
                                 onClick={() => handleRemoveUser(ws.id, member.user.id)}
                                 disabled={actionLoading}
                               >
