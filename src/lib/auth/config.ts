@@ -111,15 +111,42 @@ export const authOptions: NextAuthOptions = {
           create: { email: user.email, name: user.name || null, image: user.image || null },
         });
 
-        // Google/OAuth users: if they have no workspace, they stay in "pending" state
-        // They'll be added to a workspace by an Owner/Admin or Master Admin
-        // No auto-workspace creation for OAuth users
-        if (account?.provider === "google") {
-          // Google/OAuth users: allow sign-in even without workspace
-          // They'll see "request access" state until invited
-          void prisma.workspaceMember.findFirst({
+        // Early access: auto-add first 100 users to default workspace until July 31, 2026
+        const EARLY_ACCESS_DEADLINE = new Date("2026-07-31T23:59:59Z");
+        const EARLY_ACCESS_LIMIT = 100;
+
+        if (new Date() <= EARLY_ACCESS_DEADLINE) {
+          const existingMembership = await prisma.workspaceMember.findFirst({
             where: { userId: dbUser.id },
           });
+
+          if (!existingMembership) {
+            // Check total workspace members to enforce 100-user cap
+            const defaultWorkspace = await prisma.workspace.findFirst({
+              orderBy: { createdAt: "asc" },
+            });
+
+            if (defaultWorkspace) {
+              const memberCount = await prisma.workspaceMember.count({
+                where: { workspaceId: defaultWorkspace.id },
+              });
+
+              if (memberCount < EARLY_ACCESS_LIMIT) {
+                await prisma.workspaceMember.create({
+                  data: {
+                    userId: dbUser.id,
+                    workspaceId: defaultWorkspace.id,
+                    role: "MEMBER",
+                  },
+                });
+                // Set plan to FREE for auto-added users
+                await prisma.user.update({
+                  where: { id: dbUser.id },
+                  data: { plan: "FREE" },
+                });
+              }
+            }
+          }
         }
       }
       return true;
