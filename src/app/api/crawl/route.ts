@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth/config";
 import { z } from "zod";
 import { crawlSite } from "@/lib/scanner/crawler/siteCrawler";
 import { getPlanContext } from "@/lib/credits/plan-context";
+import { validateScanUrl } from "@/lib/validations/ssrf";
 
 const crawlSchema = z.object({
   url: z.string().url(),
@@ -37,6 +38,12 @@ export async function POST(request: NextRequest) {
 
   const { url, maxDepth, concurrency, includePatterns, excludePatterns } = parsed.data;
   let { maxPages } = parsed.data;
+
+  // SSRF protection
+  const ssrfError = validateScanUrl(url);
+  if (ssrfError) {
+    return NextResponse.json({ error: ssrfError }, { status: 400 });
+  }
 
   // Enforce page limit based on plan
   const planCtx = await getPlanContext();
