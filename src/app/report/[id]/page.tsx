@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/database/prisma";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { Shield, ExternalLink, Clock, AlertTriangle, CheckCircle2, ArrowLeft, Download } from "lucide-react";
+import { Shield, ExternalLink, Clock, AlertTriangle, CheckCircle2, ArrowLeft, Award } from "lucide-react";
 
 interface ReportPageProps {
   params: Promise<{ id: string }>;
@@ -56,8 +56,8 @@ export default async function PublicReportPage({ params }: ReportPageProps) {
               href={`/certificate/${scan.id}`}
               className="flex items-center gap-1.5 rounded-lg bg-neutral-900 dark:bg-white px-3 py-1.5 text-xs font-medium text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors"
             >
-              <Download className="h-3.5 w-3.5" />
-              Certificate
+              <Award className="h-3.5 w-3.5" />
+              View Certificate
             </Link>
           </div>
         </div>

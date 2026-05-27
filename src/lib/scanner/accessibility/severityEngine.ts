@@ -1,4 +1,4 @@
-/**
+`/**
  * ---------------------------------------------------------
  * RegLayer — Severity Engine
  * ---------------------------------------------------------
@@ -27,23 +27,36 @@ import type { AxeViolation } from "./axeScanner";
  * Calculate compliance score from violations.
  *
  * Scoring algorithm:
- * 1. Sum weighted violation counts
- * 2. Apply logarithmic penalty curve
- * 3. Normalize to 0-100 scale
+ * 1. For each violation rule, compute penalty based on severity
+ *    and affected node count (with diminishing returns for nodes)
+ * 2. Subtract total penalty from 100
+ * 3. Clamp to 0-100
+ *
+ * Penalty per rule = severityBase * (1 + log2(nodeCount) / 4)
+ * This ensures multiple affected nodes increase penalty
+ * but don't dominate the score unfairly.
  *
  * Higher score = better compliance.
  */
 export function calculateComplianceScore(violations: AxeViolation[]): number {
   if (violations.length === 0) return 100;
 
+  const severityBase: Record<string, number> = {
+    critical: 10,
+    serious: 5,
+    moderate: 2,
+    minor: 0.5,
+  };
+
   const totalPenalty = violations.reduce((sum, violation) => {
-    const weight = SEVERITY_WEIGHTS[violation.impact] ?? 1;
-    const nodeCount = violation.nodes.length;
-    return sum + weight * nodeCount;
+    const base = severityBase[violation.impact] ?? 1;
+    const nodeCount = Math.max(1, violation.nodes.length);
+    // Diminishing returns for multiple nodes of same rule
+    const nodeMultiplier = 1 + Math.log2(nodeCount) / 4;
+    return sum + base * nodeMultiplier;
   }, 0);
 
-  // Logarithmic decay prevents single violations from tanking score
-  const score = Math.max(0, 100 - Math.log2(totalPenalty + 1) * 10);
+  const score = Math.max(0, Math.min(100, 100 - totalPenalty));
   return Math.round(score * 10) / 10;
 }
 
