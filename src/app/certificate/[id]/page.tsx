@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
-import { Shield, CheckCircle2, Award, ExternalLink, Calendar, Globe } from "lucide-react";
+import { Shield, CheckCircle2, Award, ExternalLink, Calendar, Globe, Download } from "lucide-react";
 
 interface CertificateData {
   id: string;
@@ -97,12 +97,28 @@ export default function CertificatePage() {
 
   const config = levelConfig[cert.level];
   const isExpired = new Date(cert.expiresAt) < new Date();
+  const certRef = useRef<HTMLDivElement>(null);
+
+  function handleDownloadPdf() {
+    window.print();
+  }
 
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 py-8 px-4">
       <div className="mx-auto max-w-2xl">
+        {/* Download Button */}
+        <div className="flex justify-end mb-4 print:hidden">
+          <button
+            onClick={handleDownloadPdf}
+            className="flex items-center gap-2 rounded-lg bg-neutral-900 dark:bg-white px-4 py-2 text-sm font-medium text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors"
+          >
+            <Download className="h-4 w-4" />
+            Download as PDF
+          </button>
+        </div>
+
         {/* Certificate Card */}
-        <div className={`rounded-2xl border-2 ${config.border} bg-white dark:bg-neutral-900 overflow-hidden shadow-lg`}>
+        <div ref={certRef} className={`rounded-2xl border-2 ${config.border} bg-white dark:bg-neutral-900 overflow-hidden shadow-lg`}>
           {/* Header Gradient */}
           <div className={`h-2 bg-linear-to-r ${config.color}`} />
           

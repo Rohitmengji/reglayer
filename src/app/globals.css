@@ -2,6 +2,12 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Print styles for certificate PDF download */
+@media print {
+  body { background: white !important; color: black !important; }
+  .print\:hidden { display: none !important; }
+}
+
 /* ─────────────────────────────────────────────────────────────────────────────
    Design Tokens — Color
    ───────────────────────────────────────────────────────────────────────────── */
