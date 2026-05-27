@@ -128,7 +128,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
             </div>
             <button
               onClick={() => signOut({ callbackUrl: "/auth/login" })}
-              className="rounded-md p-0.8 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-600 dark:text-neutral-400 dark:hover:bg-neutral-800 transition-colors"
+              className="rounded-md p-0.8 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-600 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200 transition-colors"
               title="Sign out"
             >
               <LogOut className="h-3.5 w-3.5" />
