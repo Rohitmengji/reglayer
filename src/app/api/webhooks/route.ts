@@ -127,6 +127,30 @@ export async function POST(request: NextRequest) {
 
   const { name, url, events, secret, enabled } = parsed.data;
 
+  // SSRF protection — block internal URLs as webhook targets
+  try {
+    const parsedUrl = new URL(url);
+    const hostname = parsedUrl.hostname.toLowerCase();
+    if (
+      hostname === "localhost" ||
+      hostname === "metadata.google.internal" ||
+      /^(127\.|10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|169\.254\.)/.test(hostname)
+    ) {
+      return NextResponse.json(
+        { error: "Webhook URLs cannot target internal/private addresses" },
+        { status: 400 }
+      );
+    }
+    if (parsedUrl.protocol !== "https:") {
+      return NextResponse.json(
+        { error: "Webhook URLs must use HTTPS" },
+        { status: 400 }
+      );
+    }
+  } catch {
+    return NextResponse.json({ error: "Invalid webhook URL" }, { status: 400 });
+  }
+
   // Generate signing secret if not provided
   const signingSecret = secret || crypto.randomBytes(32).toString("hex");
 
@@ -161,12 +185,23 @@ export async function POST(request: NextRequest) {
  * DELETE /api/webhooks?id=xxx — Remove a webhook
  */
 export async function DELETE(request: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const id = request.nextUrl.searchParams.get("id");
   if (!id) {
     return NextResponse.json({ error: "Missing id" }, { status: 400 });
   }
 
-  await prisma.auditLog.delete({ where: { id } }).catch(() => null);
+  // Verify the audit log entry is actually a webhook registration
+  const entry = await prisma.auditLog.findUnique({ where: { id } });
+  if (!entry || entry.action !== "webhook.registered") {
+    return NextResponse.json({ error: "Webhook not found" }, { status: 404 });
+  }
+
+  await prisma.auditLog.delete({ where: { id } });
 
   return NextResponse.json({ deleted: true });
 }

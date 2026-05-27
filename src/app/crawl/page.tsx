@@ -158,7 +158,7 @@ export default function CrawlPage() {
 
         {/* Error */}
         {error && (
-          <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950 p-4 text-sm text-red-700">
+          <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950 p-4 text-sm text-red-700 dark:text-red-300">
             <AlertTriangle className="h-4 w-4 inline mr-2" />
             {error}
           </div>
@@ -179,14 +179,14 @@ export default function CrawlPage() {
             {/* Critical Pages Alert */}
             {result.criticalPages.length > 0 && (
               <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950 p-5">
-                <h3 className="text-sm font-semibold text-red-800 flex items-center gap-2 mb-3">
+                <h3 className="text-sm font-semibold text-red-800 dark:text-red-200 flex items-center gap-2 mb-3">
                   <AlertTriangle className="h-4 w-4" />
                   Pages with Critical Violations ({result.criticalPages.length})
                 </h3>
                 <div className="space-y-2">
                   {result.criticalPages.map((p) => (
                     <div key={p.url} className="flex items-center justify-between text-sm">
-                      <span className="truncate text-red-700">{p.url}</span>
+                      <span className="truncate text-red-700 dark:text-red-300">{p.url}</span>
                       <div className="flex items-center gap-2">
                         <Badge variant="critical">{p.critical} critical</Badge>
                         <span className="text-red-600 font-bold">{p.score}</span>
@@ -256,9 +256,9 @@ export default function CrawlPage() {
             <div className="rounded-xl border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950 p-5">
               <div className="flex items-center gap-2 mb-2">
                 <TrendingDown className="h-5 w-5 text-orange-600" />
-                <h3 className="text-sm font-semibold text-orange-800">Weakest Page</h3>
+                <h3 className="text-sm font-semibold text-orange-800 dark:text-orange-200">Weakest Page</h3>
               </div>
-              <p className="text-sm text-orange-700">{result.lowestScore.url}</p>
+              <p className="text-sm text-orange-700 dark:text-orange-300">{result.lowestScore.url}</p>
               <p className="text-2xl font-bold text-orange-600 mt-1">
                 Score: {result.lowestScore.score}
               </p>

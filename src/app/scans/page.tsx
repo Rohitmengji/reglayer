@@ -172,7 +172,7 @@ export default function ScansPage() {
           {selectedScans.length === 2 && (
             <Link
               href={`/scans/compare?base=${selectedScans[0]}&head=${selectedScans[1]}`}
-              className="inline-flex items-center gap-2 rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800 transition-colors"
+              className="inline-flex items-center gap-2 rounded-lg bg-neutral-900 dark:bg-white px-4 py-2 text-sm font-medium text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors"
             >
               <GitCompare className="h-4 w-4" />
               {t("scans.compareSelected")}
@@ -303,7 +303,7 @@ export default function ScansPage() {
                 key={scan.id}
                 className={`group rounded-xl border bg-white dark:bg-neutral-900 p-4 sm:p-5 transition-all hover:shadow-md ${
                   selectedScans.includes(scan.id)
-                    ? "border-blue-300 dark:border-blue-700 ring-2 ring-blue-100"
+                    ? "border-blue-300 dark:border-blue-700 ring-2 ring-blue-100 dark:ring-blue-900"
                     : "border-neutral-200 dark:border-neutral-700"
                 }`}
               >
