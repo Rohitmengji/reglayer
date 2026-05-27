@@ -7,6 +7,32 @@ interface ReportPageProps {
   params: Promise<{ id: string }>;
 }
 
+/**
+ * Recalculate accessibility score from stored violations using accurate algorithm.
+ * Ensures historical scans display correct scores even if stored score used old formula.
+ */
+function recalculateScore(violations: { impact: string; affectedElements: unknown }[]): number {
+  if (violations.length === 0) return 100;
+
+  const severityBase: Record<string, number> = {
+    CRITICAL: 10, critical: 10,
+    SERIOUS: 5, serious: 5,
+    MODERATE: 2, moderate: 2,
+    MINOR: 0.5, minor: 0.5,
+  };
+
+  const totalPenalty = violations.reduce((sum, violation) => {
+    const base = severityBase[violation.impact] ?? 1;
+    const elements = Array.isArray(violation.affectedElements) ? violation.affectedElements : [];
+    const nodeCount = Math.max(1, elements.length);
+    const nodeMultiplier = 1 + Math.log2(nodeCount) / 4;
+    return sum + base * nodeMultiplier;
+  }, 0);
+
+  const score = Math.max(0, Math.min(100, 100 - totalPenalty));
+  return Math.round(score * 10) / 10;
+}
+
 export default async function PublicReportPage({ params }: ReportPageProps) {
   const { id } = await params;
 
@@ -19,7 +45,8 @@ export default async function PublicReportPage({ params }: ReportPageProps) {
     notFound();
   }
 
-  const score = scan.score ?? 0;
+  // Recalculate score from violations for accuracy
+  const score = recalculateScore(scan.violations);
   const scoreColor =
     score >= 90 ? "text-green-600" : score >= 70 ? "text-yellow-600" : score >= 50 ? "text-orange-600" : "text-red-600";
   const scoreBg =
@@ -161,8 +188,8 @@ export default async function PublicReportPage({ params }: ReportPageProps) {
                     </summary>
                     <div className="mt-2 space-y-2">
                       {(v.affectedElements as Array<{ html: string; target: string[]; failureSummary: string }>).slice(0, 5).map((el, i) => (
-                        <div key={i} className="rounded bg-neutral-50 p-3 border border-neutral-100">
-                          <code className="text-xs text-neutral-700 break-all block">{el.html}</code>
+                        <div key={i} className="rounded bg-neutral-50 dark:bg-neutral-800 p-3 border border-neutral-100 dark:border-neutral-700">
+                          <code className="text-xs text-neutral-700 dark:text-neutral-300 break-all block">{el.html}</code>
                           {el.target && (
                             <p className="text-xs text-neutral-400 mt-1">{el.target.join(" > ")}</p>
                           )}
@@ -190,7 +217,7 @@ export default async function PublicReportPage({ params }: ReportPageProps) {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={`/api/badge?url=${encodeURIComponent(scan.url)}`} alt="Accessibility Score" />
           </div>
-          <code className="block rounded bg-neutral-50 p-3 text-xs text-neutral-600 break-all border border-neutral-100">
+          <code className="block rounded bg-neutral-50 dark:bg-neutral-800 p-3 text-xs text-neutral-600 dark:text-neutral-300 break-all border border-neutral-100 dark:border-neutral-700">
             {`![Accessibility](https://reglayer.vercel.app/api/badge?url=${encodeURIComponent(scan.url)})`}
           </code>
         </div>
