@@ -241,7 +241,7 @@ export default function CrawlPage() {
                       {page.scanId && (
                         <Link
                           href={`/report/${page.scanId}`}
-                          className="text-neutral-400 hover:text-neutral-600 dark:text-neutral-300"
+                          className="text-neutral-400 hover:text-neutral-600 dark:text-neutral-300 dark:hover:text-white"
                         >
                           <ExternalLink className="h-4 w-4" />
                         </Link>
