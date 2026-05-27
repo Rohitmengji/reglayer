@@ -66,7 +66,7 @@ export default function SettingsPage() {
               className={`flex items-center gap-1.5 rounded-t-lg px-4 py-2 text-sm font-medium transition-colors ${
                 activeTab === tab.id
                   ? "border-b-2 border-neutral-900 text-neutral-900 dark:text-white"
-                  : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:text-neutral-200"
+                  : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-white"
               }`}
             >
               {tab.icon}
@@ -264,8 +264,90 @@ function PlanUsageTab() {
 /* ─────────────── General Tab ─────────────── */
 function GeneralTab() {
   const { t } = useI18n();
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordStatus, setPasswordStatus] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  async function handlePasswordChange(e: React.FormEvent) {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) {
+      setPasswordStatus({ type: "error", message: "Passwords do not match" });
+      return;
+    }
+    if (newPassword.length < 8) {
+      setPasswordStatus({ type: "error", message: "Password must be at least 8 characters" });
+      return;
+    }
+    setSaving(true);
+    setPasswordStatus(null);
+    try {
+      const res = await fetch("/api/auth/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+      if (res.ok) {
+        setPasswordStatus({ type: "success", message: "Password updated successfully" });
+        setCurrentPassword("");
+        setNewPassword("");
+        setConfirmPassword("");
+      } else {
+        const data = await res.json();
+        setPasswordStatus({ type: "error", message: data.error || "Failed to update password" });
+      }
+    } catch {
+      setPasswordStatus({ type: "error", message: "Network error" });
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
+      {/* Change Password */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Change Password</CardTitle>
+          <CardDescription>Update your account password. Only applies to email/password accounts.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handlePasswordChange} className="space-y-3 max-w-sm">
+            <Input
+              type="password"
+              placeholder="Current password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              required
+            />
+            <Input
+              type="password"
+              placeholder="New password (min 8 characters)"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              required
+            />
+            <Input
+              type="password"
+              placeholder="Confirm new password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+            />
+            {passwordStatus && (
+              <p className={`text-xs ${passwordStatus.type === "success" ? "text-green-600" : "text-red-600"}`}>
+                {passwordStatus.message}
+              </p>
+            )}
+            <Button type="submit" size="sm" disabled={saving}>
+              {saving ? "Updating..." : "Update Password"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      {/* Platform Info */}
       <Card>
         <CardHeader>
           <CardTitle className="text-sm">{t("settings.platformInfo")}</CardTitle>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +15,9 @@ import {
   BarChart3,
   Check,
   Trash2,
+  Search,
+  Download,
+  Filter,
 } from "lucide-react";
 import Link from "next/link";
 import { useI18n } from "@/components/i18n-provider";
@@ -39,6 +42,9 @@ export default function ScansPage() {
   const [scans, setScans] = useState<ScanRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedScans, setSelectedScans] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [severityFilter, setSeverityFilter] = useState<string>("all");
+  const [dateFilter, setDateFilter] = useState<string>("all");
   const { data: session } = useSession();
   const { t } = useI18n();
   const isAdmin = (session?.user as unknown as { role?: string })?.role === "admin";
@@ -52,6 +58,70 @@ export default function ScansPage() {
       })
       .catch(() => setLoading(false));
   }, []);
+
+  // Filtered scans
+  // eslint-disable-next-line react-hooks/purity
+  const filteredScans = useMemo(() => {
+    let result = scans;
+
+    // Text search (URL or page title)
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(
+        (s) =>
+          s.url.toLowerCase().includes(q) ||
+          (s.pageTitle && s.pageTitle.toLowerCase().includes(q))
+      );
+    }
+
+    // Severity filter
+    if (severityFilter !== "all") {
+      result = result.filter((s) => {
+        if (severityFilter === "critical") return s.critical > 0;
+        if (severityFilter === "serious") return s.serious > 0;
+        if (severityFilter === "clean") return s.totalViolations === 0;
+        if (severityFilter === "failing") return (s.score ?? 0) < 70;
+        return true;
+      });
+    }
+
+    // Date filter
+    if (dateFilter !== "all") {
+      const now = new Date();
+      const cutoff = new Date(
+        dateFilter === "today" ? now.getTime() - 86400000 :
+        dateFilter === "week" ? now.getTime() - 7 * 86400000 :
+        dateFilter === "month" ? now.getTime() - 30 * 86400000 : 0
+      );
+      result = result.filter((s) => new Date(s.createdAt) >= cutoff);
+    }
+
+    return result;
+  }, [scans, searchQuery, severityFilter, dateFilter]);
+
+  // CSV export
+  function handleExportCSV() {
+    const headers = ["URL", "Page Title", "Score", "Critical", "Serious", "Moderate", "Minor", "Total Violations", "Date"];
+    const rows = filteredScans.map((s) => [
+      s.url,
+      s.pageTitle || "",
+      s.score?.toString() ?? "",
+      s.critical.toString(),
+      s.serious.toString(),
+      s.moderate.toString(),
+      s.minor.toString(),
+      s.totalViolations.toString(),
+      new Date(s.createdAt).toISOString(),
+    ]);
+    const csv = [headers, ...rows].map((r) => r.map((c) => `"${c.replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `reglayer-scans-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   async function handleDelete(id: string) {
     if (!confirm("Are you sure you want to delete this scan?")) return;
@@ -73,20 +143,20 @@ export default function ScansPage() {
   }
 
   function getTrend(index: number): "up" | "down" | "flat" {
-    if (index >= scans.length - 1) return "flat";
-    const current = scans[index].score ?? 0;
-    const previous = scans[index + 1].score ?? 0;
+    if (index >= filteredScans.length - 1) return "flat";
+    const current = filteredScans[index].score ?? 0;
+    const previous = filteredScans[index + 1].score ?? 0;
     if (current > previous) return "up";
     if (current < previous) return "down";
     return "flat";
   }
 
   const averageScore =
-    scans.length > 0
-      ? Math.round(scans.reduce((sum, s) => sum + (s.score ?? 0), 0) / scans.length)
+    filteredScans.length > 0
+      ? Math.round(filteredScans.reduce((sum, s) => sum + (s.score ?? 0), 0) / filteredScans.length)
       : 0;
 
-  const totalViolationsAll = scans.reduce((sum, s) => sum + s.totalViolations, 0);
+  const totalViolationsAll = filteredScans.reduce((sum, s) => sum + s.totalViolations, 0);
 
   return (
     <AppShell>
@@ -115,7 +185,7 @@ export default function ScansPage() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
             <SummaryCard
               label={t("scans.totalScans")}
-              value={scans.length.toString()}
+              value={filteredScans.length.toString()}
               icon={<BarChart3 className="h-4 w-4 text-blue-500" />}
             />
             <SummaryCard
@@ -144,6 +214,60 @@ export default function ScansPage() {
           </div>
         )}
 
+        {/* Search, Filter & Export Bar */}
+        {scans.length > 0 && (
+          <div className="flex flex-col sm:flex-row gap-3">
+            {/* Search */}
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search by URL or page title..."
+                className="w-full rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 pl-9 pr-3 py-2 text-sm text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+              />
+            </div>
+
+            {/* Severity Filter */}
+            <div className="relative">
+              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
+              <select
+                value={severityFilter}
+                onChange={(e) => setSeverityFilter(e.target.value)}
+                className="appearance-none rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 pl-9 pr-8 py-2 text-sm text-neutral-900 dark:text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+              >
+                <option value="all">All Severities</option>
+                <option value="critical">Has Critical</option>
+                <option value="serious">Has Serious</option>
+                <option value="failing">Score &lt; 70</option>
+                <option value="clean">Clean (0 violations)</option>
+              </select>
+            </div>
+
+            {/* Date Filter */}
+            <select
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+              className="appearance-none rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm text-neutral-900 dark:text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+            >
+              <option value="all">All Time</option>
+              <option value="today">Last 24h</option>
+              <option value="week">Last 7 days</option>
+              <option value="month">Last 30 days</option>
+            </select>
+
+            {/* Export CSV */}
+            <button
+              onClick={handleExportCSV}
+              className="inline-flex items-center gap-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
+            >
+              <Download className="h-4 w-4" />
+              Export CSV
+            </button>
+          </div>
+        )}
+
         {/* Scan List */}
         {loading ? (
           <div className="flex-1 flex items-center justify-center">
@@ -161,12 +285,20 @@ export default function ScansPage() {
               .
             </p>
           </div>
+        ) : filteredScans.length === 0 ? (
+          <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-12 text-center">
+            <Search className="h-12 w-12 text-neutral-300 mx-auto mb-4" />
+            <p className="text-lg font-medium text-neutral-700 dark:text-neutral-200">No matching scans</p>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
+              Try adjusting your search or filter criteria.
+            </p>
+          </div>
         ) : (
           <div className="space-y-3">
             <p className="text-xs text-neutral-400">
               {t("scans.selectHint")}
             </p>
-            {scans.map((scan, index) => (
+            {filteredScans.map((scan, index) => (
               <div
                 key={scan.id}
                 className={`group rounded-xl border bg-white dark:bg-neutral-900 p-4 sm:p-5 transition-all hover:shadow-md ${

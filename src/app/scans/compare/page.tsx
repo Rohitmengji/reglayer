@@ -244,7 +244,7 @@ function CompareContent() {
 
         {/* Back */}
         <div className="pt-4 border-t border-neutral-100 dark:border-neutral-700">
-          <Link href="/scans" className="text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:text-white">
+          <Link href="/scans" className="text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white">
             {t("compare.backToHistory")}
           </Link>
         </div>
