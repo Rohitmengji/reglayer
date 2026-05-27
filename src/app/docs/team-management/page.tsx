@@ -17,7 +17,7 @@ export default function TeamManagementPage() {
           </Link>
         </div>
 
-        <Link href="/docs" className="inline-flex items-center gap-1 text-sm text-neutral-500 hover:text-neutral-900 dark:hover:text-white mb-6">
+        <Link href="/docs" className="inline-flex items-center gap-1 text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white mb-6">
           <ArrowLeft className="h-4 w-4" /> Back to Documentation
         </Link>
 

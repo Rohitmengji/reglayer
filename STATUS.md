@@ -88,9 +88,7 @@ src/
 | Email delivery | Requires Gmail App Password | SMTP_PASS env var must be set |
 | Jira/GitHub integrations | UI ready, not yet tested | Needs real API tokens to verify |
 | Teams integration | UI ready, not yet tested | Needs webhook URL from Teams |
-| Scheduled scans | DB model exists, no cron runner | Needs background worker (e.g., Vercel Cron) |
-| PDF export auth | No auth check | Anyone with report URL can export |
-| Rate limiting | Not implemented | Needed for production |
+| Payment/Billing | Not implemented | Users can't upgrade plans (Stripe needed) |
 | Multi-workspace switching | Not implemented | Users currently see only first workspace |
 
 ---
@@ -98,19 +96,17 @@ src/
 ## Roadmap (Suggested Next Steps)
 
 ### High Priority
-1. **Background scan worker** — Vercel Cron or external worker for scheduled scans
-2. **Rate limiting** — Protect scan/crawl endpoints from abuse
-3. **Jira/GitHub integration testing** — Verify issue creation with real tokens
-4. **User settings page** — Profile editing, password change, workspace management
+1. **Stripe checkout** — Payment flow for Pro/Enterprise upgrades
+2. **Jira/GitHub integration testing** — Verify issue creation with real tokens
+3. **User settings page** — Profile editing, password change
 
 ### Medium Priority
-5. **CSV/Excel export** — Compliance matrix & violations data export
-6. **Historical compliance tracking** — Store matrix snapshots, show trend over time
-7. **Custom WCAG rule sets** — Let users enable/disable specific criteria
-8. **Bulk scanning** — Upload list of URLs, process in batch
+4. **CSV/Excel export** — Violations data export
+5. **Historical compliance tracking** — Store matrix snapshots, show trend over time
+6. **Custom WCAG rule sets** — Let users enable/disable specific criteria
+7. **Bulk scanning** — Upload list of URLs, process in batch
 
 ### Nice to Have
-9. **Browser extension** — Scan current page from Chrome toolbar
-10. **Slack bot commands** — `/reglayer scan https://example.com` slash command
-11. **Accessibility score badges** — Embeddable SVG badges for READMEs
-12. **White-label reports** — Custom branding on PDFs/certificates
+8. **Browser extension** — Scan current page from Chrome toolbar
+9. **Slack bot commands** — `/reglayer scan https://example.com` slash command
+10. **White-label reports** — Custom branding on PDFs/certificates
