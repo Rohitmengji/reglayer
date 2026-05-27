@@ -38,11 +38,11 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-neutral-50">
-      <Card className="w-full max-w-md">
+    <div className="flex min-h-screen items-start pt-[15vh] sm:items-center sm:pt-0 justify-center px-4 py-8 bg-neutral-50 dark:bg-neutral-950">
+      <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-neutral-900">
-            <Shield className="h-6 w-6 text-white" />
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-neutral-900 dark:bg-neutral-100">
+            <Shield className="h-6 w-6 text-white dark:text-neutral-900" />
           </div>
           <CardTitle className="text-xl">{t("login.title")}</CardTitle>
           <CardDescription>
@@ -52,7 +52,7 @@ export default function LoginPage() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <label htmlFor="email" className="text-sm font-medium text-neutral-700">
+              <label htmlFor="email" className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
                 {t("login.email")}
               </label>
               <Input
@@ -65,7 +65,7 @@ export default function LoginPage() {
               />
             </div>
             <div className="space-y-2">
-              <label htmlFor="password" className="text-sm font-medium text-neutral-700">
+              <label htmlFor="password" className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
                 {t("login.password")}
               </label>
               <Input
@@ -89,10 +89,10 @@ export default function LoginPage() {
 
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-neutral-200" />
+              <div className="w-full border-t border-neutral-200 dark:border-neutral-700" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-white px-2 text-neutral-500">{t("login.orContinueWith")}</span>
+              <span className="bg-white dark:bg-neutral-900 px-2 text-neutral-500 dark:text-neutral-400">{t("login.orContinueWith")}</span>
             </div>
           </div>
 
