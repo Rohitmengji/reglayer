@@ -72,19 +72,20 @@ export default async function PublicReportPage({ params }: ReportPageProps) {
               <span className="text-xs text-neutral-500 dark:text-neutral-400 ml-1">Report</span>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <Link
               href="/dashboard"
-              className="text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors"
+              className="hidden sm:block text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors"
             >
               Dashboard
             </Link>
             <Link
               href={`/certificate/${scan.id}`}
-              className="flex items-center gap-1.5 rounded-lg bg-neutral-900 dark:bg-white px-3 py-1.5 text-xs font-medium text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors"
+              className="flex items-center gap-1.5 rounded-lg bg-neutral-900 dark:bg-white px-2.5 sm:px-3 py-1.5 text-xs font-medium text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors"
             >
               <Award className="h-3.5 w-3.5" />
-              View Certificate
+              <span className="hidden sm:inline">View Certificate</span>
+              <span className="sm:hidden">Certificate</span>
             </Link>
           </div>
         </div>

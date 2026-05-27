@@ -81,12 +81,16 @@ export async function performScan(
       overallCompliance: complianceReport.overallCompliance,
     });
 
-    // Persist to database (fire-and-forget, don't block response)
-    persistScan(scanResult, complianceReport).catch((err) => {
-      scanLogger.warn("Failed to persist scan to database", {
+    // Persist to database — blocking, scan data is the product
+    try {
+      await persistScan(scanResult, complianceReport);
+    } catch (err) {
+      scanLogger.error("Failed to persist scan to database", {
+        scanId: scanResult.id,
         error: err instanceof Error ? err.message : "Unknown",
       });
-    });
+      // Continue — return result even if DB write fails
+    }
 
     // Evaluate alert rules (fire-and-forget)
     evaluateAlerts(scanResult).catch((err) => {
