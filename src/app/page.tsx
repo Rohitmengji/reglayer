@@ -5,11 +5,11 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-white">
       {/* Navigation */}
-      <header className="sticky top-0 z-50 border-b border-neutral-100 bg-white/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+      <header className="sticky top-0 z-50 border-b border-neutral-100 bg-white/80 backdrop-blur-md dark:bg-neutral-950/80 dark:border-neutral-800">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 sm:px-6 py-3 sm:py-4">
           <div className="flex items-center gap-2">
-            <Shield className="h-6 w-6 text-neutral-900" />
-            <span className="text-lg font-bold tracking-tight">RegLayer</span>
+            <Shield className="h-6 w-6 text-neutral-900 dark:text-white" />
+            <span className="text-lg font-bold tracking-tight text-neutral-900 dark:text-white">RegLayer</span>
           </div>
           <nav className="hidden md:flex items-center gap-6">
             <a href="#features" className="text-sm text-neutral-600 hover:text-neutral-900 transition-colors">Features</a>
@@ -17,36 +17,28 @@ export default function Home() {
             <a href="#testimonials" className="text-sm text-neutral-600 hover:text-neutral-900 transition-colors">Testimonials</a>
             <Link href="/pricing" className="text-sm text-neutral-600 hover:text-neutral-900 transition-colors">Pricing</Link>
           </nav>
-          <div className="flex items-center gap-3">
-            <Link
-              href="/auth/login"
-              className="rounded-md px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 transition-colors"
-            >
-              Sign In
-            </Link>
-            <Link
-              href="/auth/login"
-              className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800 transition-colors"
-            >
-              Start Free Trial
-            </Link>
-          </div>
+          <Link
+            href="/auth/login"
+            className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800 transition-colors dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200"
+          >
+            Get Started
+          </Link>
         </div>
       </header>
 
       <main>
         {/* Hero Section */}
-        <section className="mx-auto max-w-5xl px-6 py-24 sm:py-32 text-center">
+        <section className="mx-auto max-w-5xl px-6 py-16 sm:py-32 text-center">
           <div className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1 text-xs font-medium text-neutral-600 mb-8">
             <Zap className="h-3 w-3" />
             EAA deadline: June 28, 2025 — Is your site ready?
           </div>
-          <h1 className="text-4xl font-bold tracking-tight text-neutral-900 sm:text-6xl leading-[1.1]">
+          <h1 className="text-3xl font-bold tracking-tight text-neutral-900 sm:text-6xl leading-[1.1]">
             EU Accessibility compliance,
             <br />
-            <span className="text-neutral-400">fully automated.</span>
+            <span className="text-neutral-600 sm:text-neutral-400">fully automated.</span>
           </h1>
-          <p className="mx-auto mt-6 max-w-2xl text-lg text-neutral-600 leading-relaxed">
+          <p className="mx-auto mt-5 max-w-2xl text-base sm:text-lg text-neutral-600 leading-relaxed">
             RegLayer scans your websites against WCAG 2.1 AA and EN 301 549, generates audit-ready 
             compliance reports, and monitors regressions — helping you avoid up to €100,000 in EAA fines.
           </p>
@@ -75,7 +67,7 @@ export default function Home() {
         {/* Social Proof */}
         <section className="border-y border-neutral-100 bg-neutral-50/50 py-12">
           <div className="mx-auto max-w-6xl px-6">
-            <p className="text-center text-xs font-medium uppercase tracking-wider text-neutral-400 mb-8">
+            <p className="text-center text-xs font-medium uppercase tracking-wider text-neutral-500 mb-8">
               Trusted by compliance teams across the EU
             </p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-8 items-center">
@@ -90,13 +82,13 @@ export default function Home() {
         </section>
 
         {/* Features Grid */}
-        <section id="features" className="py-24">
+        <section id="features" className="py-16 sm:py-24">
           <div className="mx-auto max-w-6xl px-6">
-            <div className="text-center mb-16">
-              <h2 className="text-3xl font-bold text-neutral-900">
+            <div className="text-center mb-10 sm:mb-16">
+              <h2 className="text-2xl sm:text-3xl font-bold text-neutral-900">
                 Everything you need for EAA compliance
               </h2>
-              <p className="mt-3 text-neutral-500 max-w-xl mx-auto">
+              <p className="mt-3 text-neutral-600 max-w-xl mx-auto">
                 Built for developers and compliance officers who need to meet the European Accessibility Act deadline.
               </p>
             </div>
@@ -136,11 +128,11 @@ export default function Home() {
         </section>
 
         {/* Compliance Standards */}
-        <section id="compliance" className="bg-neutral-50 border-y border-neutral-100 py-24">
+        <section id="compliance" className="bg-neutral-50 border-y border-neutral-100 py-16 sm:py-24">
           <div className="mx-auto max-w-6xl px-6">
-            <div className="grid lg:grid-cols-2 gap-16 items-center">
+            <div className="grid lg:grid-cols-2 gap-10 sm:gap-16 items-center">
               <div>
-                <h2 className="text-3xl font-bold text-neutral-900">
+                <h2 className="text-2xl sm:text-3xl font-bold text-neutral-900">
                   Built for the European Accessibility Act
                 </h2>
                 <p className="mt-4 text-neutral-600 leading-relaxed">
@@ -188,9 +180,9 @@ export default function Home() {
         </section>
 
         {/* Testimonials */}
-        <section id="testimonials" className="py-24">
+        <section id="testimonials" className="py-16 sm:py-24">
           <div className="mx-auto max-w-6xl px-6">
-            <h2 className="text-center text-3xl font-bold text-neutral-900 mb-12">
+            <h2 className="text-center text-2xl sm:text-3xl font-bold text-neutral-900 mb-10 sm:mb-12">
               What compliance teams say
             </h2>
             <div className="grid gap-6 md:grid-cols-3">
@@ -252,12 +244,12 @@ export default function Home() {
         </section>
 
         {/* Final CTA */}
-        <section className="py-24">
+        <section className="py-16 sm:py-24">
           <div className="mx-auto max-w-3xl px-6 text-center">
-            <h2 className="text-3xl font-bold text-neutral-900">
+            <h2 className="text-2xl sm:text-3xl font-bold text-neutral-900">
               Don&apos;t wait for the EAA deadline
             </h2>
-            <p className="mt-4 text-lg text-neutral-500 leading-relaxed">
+            <p className="mt-4 text-base sm:text-lg text-neutral-600 leading-relaxed">
               Start scanning your website today. Get a full compliance report in minutes, not weeks.
               Free tier includes 10 scans per month — no credit card required.
             </p>
@@ -281,7 +273,7 @@ export default function Home() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-neutral-100 bg-neutral-50 py-12">
+      <footer className="border-t border-neutral-100 bg-neutral-50 py-8 sm:py-12">
         <div className="mx-auto max-w-6xl px-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
             <div>
