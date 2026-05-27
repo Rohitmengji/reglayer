@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
 
 /**
@@ -9,6 +11,11 @@ import { prisma } from "@/lib/database/prisma";
  * Returns a diff of two scans: what improved, what regressed, what's new.
  */
 export async function GET(request: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+  }
+
   const baseId = request.nextUrl.searchParams.get("base");
   const headId = request.nextUrl.searchParams.get("head");
 

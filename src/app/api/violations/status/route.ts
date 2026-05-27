@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
 import { z } from "zod";
 
@@ -13,6 +15,11 @@ const updateSchema = z.object({
  * Query: ?scanId=xxx or ?ruleId=xxx
  */
 export async function GET(request: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+  }
+
   const scanId = request.nextUrl.searchParams.get("scanId");
   const ruleId = request.nextUrl.searchParams.get("ruleId");
 
@@ -48,6 +55,11 @@ export async function GET(request: NextRequest) {
  * POST /api/violations/status — Update a violation's remediation status
  */
 export async function POST(request: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+  }
+
   let body: unknown;
   try {
     body = await request.json();
