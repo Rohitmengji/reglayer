@@ -35,9 +35,14 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions);
-  const role = (session?.user as unknown as { role?: string })?.role;
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+  }
 
-  if (!session || role !== "admin") {
+  const role = (session.user as unknown as { role?: string })?.role;
+  const isMasterAdmin = (session.user as unknown as { isMasterAdmin?: boolean })?.isMasterAdmin;
+
+  if (role !== "admin" && !isMasterAdmin) {
     return NextResponse.json(
       { error: "Forbidden: only admins can delete scans" },
       { status: 403 }

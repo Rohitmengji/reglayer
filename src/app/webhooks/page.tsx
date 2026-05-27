@@ -75,11 +75,15 @@ export default function WebhooksPage() {
   }, []);
 
   async function fetchWebhooks() {
-    const res = await fetch("/api/webhooks");
-    if (res.ok) {
-      const data = await res.json();
-      setWebhooks(data.webhooks || []);
-      setDeliveries(data.deliveries || []);
+    try {
+      const res = await fetch("/api/webhooks");
+      if (res.ok) {
+        const data = await res.json();
+        setWebhooks(data.webhooks || []);
+        setDeliveries(data.deliveries || []);
+      }
+    } catch {
+      // Network error — show empty state rather than infinite spinner
     }
     setLoading(false);
   }

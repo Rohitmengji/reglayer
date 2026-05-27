@@ -25,6 +25,12 @@ export async function GET(
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
+  // Verify scan exists before consuming credits
+  const scan = await prisma.scan.findUnique({ where: { id }, select: { id: true } });
+  if (!scan) {
+    return NextResponse.json({ error: "Scan not found" }, { status: 404 });
+  }
+
   const creditResult = await consumeCredits(user.id, "priorityRanking");
   if (!creditResult.success) {
     return NextResponse.json(
