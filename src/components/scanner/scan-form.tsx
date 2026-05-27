@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Scan, Loader2, RotateCcw } from "lucide-react";
+import { Scan, Loader2, RotateCcw, Clock } from "lucide-react";
 import { handleUpgradeResponse } from "@/lib/upgrade-prompt";
 import { useI18n } from "@/components/i18n-provider";
 import { toast } from "sonner";
@@ -34,11 +34,14 @@ interface ScanFormProps {
 
 export function ScanForm({ onScanComplete }: ScanFormProps) {
   const [url, setUrl] = useState("");
+  const [scanUrl, setScanUrl] = useState(""); // Track URL being scanned for retry
   const [isScanning, setIsScanning] = useState(false);
   const [progress, setProgress] = useState(0);
   const [stage, setStage] = useState("");
+  const [isSlow, setIsSlow] = useState(false);
   const [errorInfo, setErrorInfo] = useState<{ message: string; retryable: boolean } | null>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const slowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { t } = useI18n();
 
   const stopPolling = useCallback(() => {
@@ -46,26 +49,51 @@ export function ScanForm({ onScanComplete }: ScanFormProps) {
       clearInterval(pollingRef.current);
       pollingRef.current = null;
     }
+    if (slowTimerRef.current) {
+      clearTimeout(slowTimerRef.current);
+      slowTimerRef.current = null;
+    }
+    setIsSlow(false);
+  }, []);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+      if (slowTimerRef.current) clearTimeout(slowTimerRef.current);
+    };
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const targetUrl = url || scanUrl; // Use current input or saved scan URL (for retry)
+    if (!targetUrl) return;
+
     setIsScanning(true);
     setProgress(0);
     setStage("queued");
     setErrorInfo(null);
+    setIsSlow(false);
+    setScanUrl(targetUrl);
+
+    // Show "taking longer than usual" after 20 seconds
+    slowTimerRef.current = setTimeout(() => setIsSlow(true), 20_000);
 
     try {
       // Enqueue the scan (returns immediately)
       const enqueueRes = await fetch("/api/scan/async", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url }),
+        body: JSON.stringify({ url: targetUrl }),
       });
 
       if (!enqueueRes.ok) {
         const data = await enqueueRes.json();
-        if (handleUpgradeResponse(data)) return;
+        if (handleUpgradeResponse(data)) {
+          setIsScanning(false);
+          stopPolling();
+          return;
+        }
         throw new Error(data.error ?? "Failed to start scan");
       }
 
@@ -120,7 +148,7 @@ export function ScanForm({ onScanComplete }: ScanFormProps) {
     setErrorInfo(null);
     setProgress(0);
     setStage("");
-    // Re-submit with current URL
+    // Re-submit with the URL that was scanned (not current input)
     const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
     handleSubmit(fakeEvent);
   }
@@ -172,6 +200,12 @@ export function ScanForm({ onScanComplete }: ScanFormProps) {
                 style={{ width: `${progress}%` }}
               />
             </div>
+            {isSlow && (
+              <div className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
+                <Clock className="h-3 w-3" />
+                <span>Taking longer than usual — complex sites can take up to 30s</span>
+              </div>
+            )}
           </div>
         )}
 
