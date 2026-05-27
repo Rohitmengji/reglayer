@@ -29,7 +29,10 @@ import { runAccessibilityScan } from "../accessibility/axeScanner";
 import { normalizeViolations } from "../accessibility/issueNormalizer";
 import { generateScanSummary } from "../accessibility/severityEngine";
 import { captureScreenshot } from "../browser/screenshot";
+import * as Sentry from "@sentry/nextjs";
 import type { ScanOptions, ScanResult } from "@/lib/types";
+
+export type ProgressCallback = (stage: string, percent: number) => void;
 
 /**
  * Execute the full scan pipeline.
@@ -43,48 +46,68 @@ import type { ScanOptions, ScanResult } from "@/lib/types";
  */
 export async function executeScanPipeline(
   url: string,
-  options?: ScanOptions
+  options?: ScanOptions,
+  onProgress?: ProgressCallback
 ): Promise<ScanResult> {
   const startTime = Date.now();
 
-  // Stage 1: Execute raw accessibility scan
-  const rawResults = await runAccessibilityScan(url, options);
+  return Sentry.startSpan({ name: "scan.pipeline", op: "scan", attributes: { url } }, async () => {
+    // Stage 1: Execute raw accessibility scan
+    onProgress?.("launching", 10);
+    const rawResults = await Sentry.startSpan(
+      { name: "scan.axe_run", op: "scan.stage" },
+      () => runAccessibilityScan(url, options)
+    );
 
-  // Stage 2: Normalize violations to internal format
-  const violations = normalizeViolations(rawResults.violations);
+    // Stage 2: Normalize violations to internal format
+    onProgress?.("analyzing", 60);
+    const violations = Sentry.startSpan(
+      { name: "scan.normalize", op: "scan.stage" },
+      () => normalizeViolations(rawResults.violations)
+    );
 
-  // Stage 3: Generate severity classification and scoring
-  const summary = generateScanSummary(rawResults.violations);
+    // Stage 3: Generate severity classification and scoring
+    onProgress?.("scoring", 70);
+    const summary = Sentry.startSpan(
+      { name: "scan.classify", op: "scan.stage" },
+      () => generateScanSummary(rawResults.violations)
+    );
 
-  // Stage 4: Screenshot capture (if requested)
-  let screenshot: string | undefined;
-  if (options?.includeScreenshot) {
-    try {
-      const screenshotResult = await captureScreenshot(url, { fullPage: false });
-      screenshot = screenshotResult.data;
-    } catch {
-      // Screenshot failure should not block scan results
+    // Stage 4: Screenshot capture (if requested)
+    let screenshot: string | undefined;
+    if (options?.includeScreenshot) {
+      onProgress?.("screenshot", 80);
+      try {
+        const screenshotResult = await Sentry.startSpan(
+          { name: "scan.screenshot", op: "scan.stage" },
+          () => captureScreenshot(url, { fullPage: false })
+        );
+        screenshot = screenshotResult.data;
+      } catch {
+        // Screenshot failure should not block scan results
+      }
     }
-  }
 
-  // Stage 5: Package final result
-  const scanResult: ScanResult = {
-    id: generateScanId(),
-    url: rawResults.url,
-    timestamp: rawResults.timestamp,
-    status: "completed",
-    summary,
-    violations,
-    screenshot,
-    metadata: {
-      scanDuration: Date.now() - startTime,
-      pageTitle: rawResults.pageTitle,
-      browserEngine: "chromium",
-      axeCoreVersion: "4.x",
-    },
-  };
+    // Stage 5: Package final result
+    onProgress?.("complete", 100);
+    const scanResult: ScanResult = {
+      id: generateScanId(),
+      url: rawResults.url,
+      timestamp: rawResults.timestamp,
+      status: "completed",
+      summary,
+      violations,
+      screenshot,
+      metadata: {
+        scanDuration: Date.now() - startTime,
+        pageTitle: rawResults.pageTitle,
+        browserEngine: "chromium",
+        axeCoreVersion: "4.x",
+      },
+    };
 
-  return scanResult;
+    return scanResult;
+  });
 }
 
 /**
