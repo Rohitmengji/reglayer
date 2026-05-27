@@ -63,6 +63,7 @@ export default function CertificatePage() {
   const [cert, setCert] = useState<CertificateData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const certRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetch(`/api/certificate/${params.id}`)
@@ -97,7 +98,6 @@ export default function CertificatePage() {
 
   const config = levelConfig[cert.level];
   const isExpired = new Date(cert.expiresAt) < new Date();
-  const certRef = useRef<HTMLDivElement>(null);
 
   function handleDownloadPdf() {
     window.print();

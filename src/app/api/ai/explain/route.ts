@@ -9,9 +9,12 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth/config";
 import { z } from "zod";
 import { explainViolation } from "@/lib/ai/explainers/violationExplainer";
 import { generateComplianceSummary } from "@/lib/ai/summaries/complianceSummary";
+import { rateLimit, RATE_LIMITS, rateLimitHeaders } from "@/lib/rate-limit";
 
 const explainSchema = z.object({
   type: z.enum(["violation", "summary"]),
@@ -36,6 +39,21 @@ const explainSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+  }
+
+  // Rate limit AI requests
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const rl = rateLimit(`ai:${ip}`, RATE_LIMITS.ai);
+  if (!rl.success) {
+    return NextResponse.json(
+      { error: "Too many AI requests. Please wait." },
+      { status: 429, headers: rateLimitHeaders(rl) }
+    );
+  }
+
   if (!process.env.OPENAI_API_KEY) {
     return NextResponse.json(
       { error: "OpenAI API key not configured. Set OPENAI_API_KEY in .env" },

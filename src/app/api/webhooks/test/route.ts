@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
 import crypto from "crypto";
 
@@ -6,6 +8,11 @@ import crypto from "crypto";
  * POST /api/webhooks/test — Send a test payload to a webhook endpoint
  */
 export async function POST(request: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+  }
+
   let body: { webhookId: string };
   try {
     body = await request.json();

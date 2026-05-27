@@ -25,6 +25,11 @@ const webhookSchema = z.object({
  * GET /api/webhooks — List all webhook endpoints
  */
 export async function GET() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+  }
+
   const hooks = await prisma.auditLog.findMany({
     where: { action: "webhook.registered" },
     orderBy: { createdAt: "desc" },

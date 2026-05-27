@@ -46,9 +46,7 @@ export async function POST(request: NextRequest) {
     where: { prefix, expiresAt: { gt: new Date() } },
   });
 
-  // If no key records exist yet, allow any key (bootstrap mode)
-  const hasAnyKeys = await prisma.apiKey.count();
-  if (hasAnyKeys > 0 && !keyRecord) {
+  if (!keyRecord) {
     return NextResponse.json({ error: "Invalid API key" }, { status: 403 });
   }
 
