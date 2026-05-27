@@ -13,7 +13,12 @@ export async function GET(request: NextRequest) {
     const limit = Number(request.nextUrl.searchParams.get("limit")) || 50;
     const url = request.nextUrl.searchParams.get("url");
 
-    // Scope to user's workspace
+    // Scope to user's workspace or userId
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { id: true },
+    });
+
     const membership = await prisma.workspaceMember.findFirst({
       where: { user: { email: session.user.email } },
       select: { workspaceId: true },
@@ -21,7 +26,10 @@ export async function GET(request: NextRequest) {
 
     const where = {
       ...(url ? { url, status: "COMPLETED" as const } : {}),
-      ...(membership ? { workspaceId: membership.workspaceId } : {}),
+      OR: [
+        ...(membership ? [{ workspaceId: membership.workspaceId }] : []),
+        ...(user ? [{ userId: user.id }] : []),
+      ],
     };
 
     const scans = await prisma.scan.findMany({

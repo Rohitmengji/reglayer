@@ -22,6 +22,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { scanRequestSchema } from "@/lib/validations/scan";
+import { validateScanUrl } from "@/lib/validations/ssrf";
 import { performScan } from "@/services/scanService";
 import { authOptions } from "@/lib/auth/config";
 import { logger } from "@/lib/telemetry/logger";
@@ -30,6 +31,12 @@ import { rateLimit, RATE_LIMITS, rateLimitHeaders } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
   const apiLogger = logger.withContext({ route: "POST /api/scan" });
+
+  // Authentication required
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+  }
 
   // Rate limit by IP
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
@@ -63,8 +70,11 @@ export async function POST(request: NextRequest) {
 
     const { url, options } = parseResult.data;
 
-    // Get user session for notification context
-    const session = await getServerSession(authOptions);
+    // SSRF protection — block internal/private addresses
+    const ssrfError = validateScanUrl(url);
+    if (ssrfError) {
+      return NextResponse.json({ error: ssrfError }, { status: 400 });
+    }
 
     // Enforce scan limit
     const planCtx = await getPlanContext();

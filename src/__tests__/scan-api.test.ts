@@ -36,10 +36,15 @@ vi.mock("@/lib/rate-limit", () => ({
   rateLimitHeaders: vi.fn(() => ({})),
 }));
 
+vi.mock("@/lib/validations/ssrf", () => ({
+  validateScanUrl: vi.fn(() => null),
+}));
+
 import { getServerSession } from "next-auth";
 import { performScan } from "@/services/scanService";
 import { getPlanContext, getMonthlyScansCount } from "@/lib/credits/plan-context";
 import { rateLimit } from "@/lib/rate-limit";
+import { validateScanUrl } from "@/lib/validations/ssrf";
 import { POST } from "@/app/api/scan/route";
 
 function makeRequest(body: unknown): Request {
@@ -53,6 +58,10 @@ function makeRequest(body: unknown): Request {
 describe("POST /api/scan", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default: authenticated user
+    vi.mocked(getServerSession).mockResolvedValue({
+      user: { email: "test@example.com" },
+    } as any);
     vi.mocked(rateLimit).mockReturnValue({
       success: true,
       limit: 10,
@@ -60,6 +69,18 @@ describe("POST /api/scan", () => {
       resetAt: Date.now() + 60000,
     });
     vi.mocked(getPlanContext).mockResolvedValue(null);
+    vi.mocked(validateScanUrl).mockReturnValue(null);
+  });
+
+  it("returns 401 when not authenticated", async () => {
+    vi.mocked(getServerSession).mockResolvedValue(null);
+
+    const req = makeRequest({ url: "https://example.com" });
+    const res = await POST(req as any);
+
+    expect(res.status).toBe(401);
+    const body = await res.json();
+    expect(body.error).toContain("Authentication required");
   });
 
   it("returns 429 when rate limited", async () => {
@@ -101,6 +122,17 @@ describe("POST /api/scan", () => {
     expect(res.status).toBe(400);
   });
 
+  it("returns 400 for SSRF attempt (private IP)", async () => {
+    vi.mocked(validateScanUrl).mockReturnValue("Scanning private/internal IP addresses is not allowed");
+
+    const req = makeRequest({ url: "http://169.254.169.254/latest/meta-data/" });
+    const res = await POST(req as any);
+
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toContain("private/internal");
+  });
+
   it("returns 429 when scan limit reached", async () => {
     vi.mocked(getPlanContext).mockResolvedValue({
       userId: "user1",
@@ -119,9 +151,6 @@ describe("POST /api/scan", () => {
   });
 
   it("returns 200 with scan result on success", async () => {
-    vi.mocked(getServerSession).mockResolvedValue({
-      user: { email: "test@example.com" },
-    } as any);
     vi.mocked(performScan).mockResolvedValue({
       scan: { id: "scan_1", url: "https://example.com", status: "completed", summary: { score: 85 } },
       compliance: { overallCompliance: 90 },
@@ -141,7 +170,6 @@ describe("POST /api/scan", () => {
   });
 
   it("passes scan options through", async () => {
-    vi.mocked(getServerSession).mockResolvedValue(null);
     vi.mocked(performScan).mockResolvedValue({ scan: {}, compliance: {} } as any);
 
     const req = makeRequest({
@@ -153,7 +181,7 @@ describe("POST /api/scan", () => {
     expect(performScan).toHaveBeenCalledWith({
       url: "https://example.com",
       options: { includeScreenshot: true, timeout: 15000 },
-      userEmail: undefined,
+      userEmail: "test@example.com",
     });
   });
 

@@ -57,8 +57,26 @@ export async function dispatchWebhookEvent(
     subscribedHooks.map(async (hook) => {
       const meta = hook.metadata as Record<string, unknown>;
       const url = meta.url as string;
+
+      // SSRF protection: skip webhooks targeting private/internal addresses
+      try {
+        const parsed = new URL(url);
+        const hostname = parsed.hostname.toLowerCase();
+        if (
+          hostname === "localhost" ||
+          hostname === "metadata.google.internal" ||
+          /^(127\.|10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|169\.254\.)/.test(hostname)
+        ) {
+          return; // Skip internal URLs silently
+        }
+      } catch {
+        return; // Invalid URL, skip
+      }
+
       const secretHash = (meta.secret as string) || "";
 
+      // Note: HMAC key is SHA256(original_secret). Receivers verify with:
+      // HMAC-SHA256(SHA256(signing_secret), payload_body)
       const signature = crypto
         .createHmac("sha256", secretHash)
         .update(payloadStr)

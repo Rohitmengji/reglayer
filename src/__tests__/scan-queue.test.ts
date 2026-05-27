@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock dependencies that scanQueue imports
+vi.mock("server-only", () => ({}));
+
 vi.mock("@/lib/scanner/pipelines/scanPipeline", () => ({
   executeScanPipeline: vi.fn(),
 }));
@@ -17,6 +19,17 @@ vi.mock("@/lib/telemetry/logger", () => ({
       error: vi.fn(),
     }),
   },
+}));
+
+vi.mock("@/lib/database/prisma", () => ({
+  prisma: {
+    user: { findUnique: vi.fn().mockResolvedValue(null) },
+    scan: { create: vi.fn().mockResolvedValue({}) },
+  },
+}));
+
+vi.mock("@/lib/database/workspace", () => ({
+  getOrCreateWorkspace: vi.fn().mockResolvedValue("ws_1"),
 }));
 
 import { enqueueScanJob, getJob, getAllJobs } from "@/lib/queue/scanQueue";

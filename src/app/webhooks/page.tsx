@@ -161,8 +161,8 @@ export default function WebhooksPage() {
         {/* Secret reveal (one-time) */}
         {newSecret && (
           <div className="rounded-xl border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950 p-5">
-            <h3 className="text-sm font-semibold text-green-800 mb-2">Signing Secret Created</h3>
-            <p className="text-xs text-green-700 mb-3">
+            <h3 className="text-sm font-semibold text-green-800 dark:text-green-200 mb-2">Signing Secret Created</h3>
+            <p className="text-xs text-green-700 dark:text-green-300 mb-3">
               Copy this secret now — it won&apos;t be shown again. Use it to verify webhook signatures.
             </p>
             <div className="flex items-center gap-2">
@@ -310,7 +310,7 @@ export default function WebhooksPage() {
                 {/* Test result inline */}
                 {testResult && testResult.id === hook.id && (
                   <div className={`mt-3 rounded-lg p-2.5 text-xs flex items-center gap-2 ${
-                    testResult.status === "success" ? "bg-green-50 dark:bg-green-950 text-green-700" : "bg-red-50 dark:bg-red-950 text-red-700"
+                    testResult.status === "success" ? "bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300" : "bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300"
                   }`}>
                     {testResult.status === "success" ? (
                       <CheckCircle2 className="h-3.5 w-3.5" />

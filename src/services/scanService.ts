@@ -83,7 +83,7 @@ export async function performScan(
 
     // Persist to database — blocking, scan data is the product
     try {
-      await persistScan(scanResult, complianceReport);
+      await persistScan(scanResult, complianceReport, request.userEmail);
     } catch (err) {
       scanLogger.error("Failed to persist scan to database", {
         scanId: scanResult.id,
@@ -133,8 +133,21 @@ export async function performScan(
  */
 async function persistScan(
   scan: ScanResult,
-  compliance: ComplianceReport
+  compliance: ComplianceReport,
+  userEmail?: string
 ): Promise<void> {
+  // Resolve user and workspace for proper scoping
+  let userId: string | undefined;
+  let workspaceId: string | undefined;
+
+  if (userEmail) {
+    const user = await prisma.user.findUnique({ where: { email: userEmail } });
+    if (user) {
+      userId = user.id;
+      workspaceId = await getOrCreateWorkspace(user.id, user.email);
+    }
+  }
+
   await prisma.scan.create({
     data: {
       id: scan.id,
@@ -152,6 +165,8 @@ async function persistScan(
       screenshot: scan.screenshot || null,
       startedAt: new Date(scan.timestamp),
       completedAt: new Date(),
+      userId,
+      workspaceId,
       metadata: {
         browserEngine: scan.metadata.browserEngine,
         axeCoreVersion: scan.metadata.axeCoreVersion,
