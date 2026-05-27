@@ -1,5 +1,8 @@
 "use client";
 
+import { useEffect } from "react";
+import * as Sentry from "@sentry/nextjs";
+
 /**
  * Global Error Boundary — catches errors in the root layout itself.
  * This is the last line of defense before a white screen.
@@ -11,6 +14,9 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  useEffect(() => {
+    Sentry.captureException(error);
+  }, [error]);
   return (
     <html lang="en">
       <body className="flex min-h-screen items-center justify-center bg-neutral-50 dark:bg-neutral-950 p-6">

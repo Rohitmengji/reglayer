@@ -346,7 +346,7 @@ export default function TeamPage() {
                                 </button>
                                 <button
                                   onClick={() => { setResetPwUser(null); setResetPwValue(""); }}
-                                  className="rounded-md p-1 text-neutral-400 hover:text-neutral-600"
+                                  className="rounded-md p-1 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200"
                                 >
                                   <X className="h-3 w-3" />
                                 </button>
@@ -354,7 +354,7 @@ export default function TeamPage() {
                             ) : (
                               <button
                                 onClick={() => setResetPwUser(member.userId)}
-                                className="rounded-md p-1.5 text-neutral-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors"
+                                className="rounded-md p-1.5 text-neutral-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors"
                                 title="Reset Password"
                               >
                                 <KeyRound className="h-3.5 w-3.5" />
@@ -362,7 +362,7 @@ export default function TeamPage() {
                             )}
                             <button
                               onClick={() => handleRemove(member.id, member.email)}
-                              className="rounded-md p-1.5 text-neutral-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                              className="rounded-md p-1.5 text-neutral-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
                               title="Remove member"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
