@@ -15,7 +15,7 @@ export async function GET() {
 
   const user = await prisma.user.findUnique({
     where: { email: session.user.email },
-    select: { id: true, plan: true, aiCreditsUsed: true, creditResetAt: true, isMasterAdmin: true },
+    select: { id: true, plan: true, aiCreditsUsed: true, bonusCredits: true, creditResetAt: true, isMasterAdmin: true },
   });
 
   if (!user) {
@@ -37,6 +37,8 @@ export async function GET() {
     credits: {
       used: status.creditsUsed,
       limit: status.creditsLimit,
+      bonus: user.bonusCredits ?? 0,
+      totalAvailable: status.creditsLimit === -1 ? -1 : status.creditsLimit + (user.bonusCredits ?? 0),
       remaining: status.creditsRemaining,
       daysUntilReset,
       unlimited: user.isMasterAdmin,
