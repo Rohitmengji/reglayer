@@ -100,15 +100,41 @@ export async function POST(request: NextRequest) {
       error: error instanceof Error ? error.message : "Unknown error",
     });
 
+    // Classify the error for better client UX
+    const message = error instanceof Error ? error.message : "An unexpected error occurred";
+    const { status, code } = classifyScanError(message);
+
     return NextResponse.json(
-      {
-        error: "Scan failed",
-        message:
-          error instanceof Error
-            ? error.message
-            : "An unexpected error occurred",
-      },
-      { status: 500 }
+      { error: "Scan failed", message, code },
+      { status }
     );
   }
+}
+
+/**
+ * Classify scan errors into actionable categories.
+ * Returns appropriate HTTP status and error code for the client.
+ */
+function classifyScanError(message: string): { status: number; code: string } {
+  const lower = message.toLowerCase();
+
+  if (lower.includes("timeout") || lower.includes("timed out")) {
+    return { status: 504, code: "TIMEOUT" };
+  }
+  if (lower.includes("net::err_name_not_resolved") || lower.includes("getaddrinfo")) {
+    return { status: 422, code: "UNREACHABLE" };
+  }
+  if (lower.includes("net::err_connection_refused") || lower.includes("econnrefused")) {
+    return { status: 422, code: "UNREACHABLE" };
+  }
+  if (lower.includes("net::err_connection_reset") || lower.includes("econnreset")) {
+    return { status: 502, code: "BLOCKED" };
+  }
+  if (lower.includes("403") || lower.includes("forbidden")) {
+    return { status: 502, code: "BLOCKED" };
+  }
+  if (lower.includes("crash") || lower.includes("target closed") || lower.includes("disconnected")) {
+    return { status: 500, code: "BROWSER_CRASH" };
+  }
+  return { status: 500, code: "UNKNOWN" };
 }

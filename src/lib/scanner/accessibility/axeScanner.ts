@@ -43,7 +43,7 @@
 import type { Page, Browser } from "playwright-core";
 import type { ScanOptions } from "@/lib/types";
 import { SCAN_DEFAULTS } from "@/lib/constants";
-import { launchBrowser, isServerless } from "@/lib/scanner/browser/launch";
+import { launchBrowser, isServerless, getViewport } from "@/lib/scanner/browser/launch";
 import fs from "fs";
 import path from "path";
 
@@ -64,6 +64,29 @@ function getAxeSource(): string {
   );
   return fs.readFileSync(axePath, "utf-8");
 }
+
+/**
+ * Domains that serve tracking/advertising content.
+ * Blocking these speeds up page load without affecting
+ * accessibility analysis of the actual page content.
+ */
+const BLOCKED_RESOURCE_DOMAINS = [
+  "googletagmanager.com",
+  "google-analytics.com",
+  "doubleclick.net",
+  "facebook.net",
+  "hotjar.com",
+  "intercom.io",
+  "segment.com",
+  "mixpanel.com",
+  "amplitude.com",
+];
+
+/**
+ * Resource types that are unnecessary for accessibility analysis.
+ * Blocking these reduces load time without affecting DOM structure.
+ */
+const BLOCKED_RESOURCE_TYPES = ["media", "font"];
 
 export interface AxeScanResult {
   violations: AxeViolation[];
@@ -110,80 +133,107 @@ export async function runAccessibilityScan(
   let browser: Browser | null = null;
 
   try {
-    /**
-     * Launch headless Chromium browser.
-     *
-     * Why Chromium?
-     * - Stable automation support
-     * - Industry-standard rendering engine
-     * - Reliable accessibility tree support
-     *
-     * Uses @sparticuz/chromium in serverless (Vercel),
-     * local Playwright Chromium otherwise.
-     */
     browser = await launchBrowser();
-
-    /**
-     * Create isolated browser page instance.
-     *
-     * Each scan gets isolated execution context
-     * to avoid cross-request contamination.
-     */
     const page: Page = await browser.newPage();
+
+    // Set consistent viewport for reproducible results
+    const viewport = getViewport();
+    if (!isServerless()) {
+      await page.setViewportSize(viewport);
+    }
+
+    // Block tracking/ad resources to speed up load without affecting content
+    if (isServerless()) {
+      // Puppeteer request interception
+      await (page as unknown as { setRequestInterception: (v: boolean) => Promise<void> })
+        .setRequestInterception(true);
+      (page as unknown as { on: (event: string, handler: (req: { url: () => string; resourceType: () => string; abort: () => void; continue: () => void }) => void) => void })
+        .on("request", (req) => {
+          const reqUrl = req.url();
+          const resourceType = req.resourceType();
+          if (
+            BLOCKED_RESOURCE_TYPES.includes(resourceType) ||
+            BLOCKED_RESOURCE_DOMAINS.some((d) => reqUrl.includes(d))
+          ) {
+            req.abort();
+          } else {
+            req.continue();
+          }
+        });
+    } else {
+      // Playwright route interception
+      await page.route("**/*", (route) => {
+        const reqUrl = route.request().url();
+        const resourceType = route.request().resourceType();
+        if (
+          BLOCKED_RESOURCE_TYPES.includes(resourceType) ||
+          BLOCKED_RESOURCE_DOMAINS.some((d) => reqUrl.includes(d))
+        ) {
+          route.abort();
+        } else {
+          route.continue();
+        }
+      });
+    }
 
     /**
      * Navigate to target page.
      *
-     * Strategy: Use "load" event instead of "networkidle".
+     * Strategy:
+     * - Serverless (Puppeteer): "networkidle0" — waits until ≤0 network
+     *   connections for 500ms. More thorough than "load" for SPAs.
+     * - Local (Playwright): "networkidle" — equivalent Playwright API.
      *
-     * Why NOT networkidle:
-     * - Many modern sites keep persistent connections open
-     *   (WebSocket, analytics, long-polling)
-     * - networkidle waits for 0 connections for 500ms
-     * - This frequently times out on SPAs and dynamic sites
-     *
-     * Why "load" + manual stabilization:
-     * - "load" fires when DOM + subresources are ready
-     * - Additional wait ensures JS frameworks hydrate
-     * - More reliable across diverse site architectures
+     * Fallback: If networkidle times out (common for sites with persistent
+     * connections like WebSockets), catch and proceed — the page is likely
+     * already rendered enough for axe analysis.
      */
-    await page.goto(url, {
-      waitUntil: "load",
-      timeout: options?.timeout ?? SCAN_DEFAULTS.timeout,
-    });
-
-    // Allow time for JS frameworks to hydrate and render
-    if (isServerless()) {
-      // Puppeteer: use simple delay (waitForLoadState doesn't exist)
-      await new Promise((r) => setTimeout(r, 2000));
-    } else {
-      // Playwright: use native load state APIs
-      await page.waitForLoadState("domcontentloaded");
-      await page.waitForTimeout(2000);
+    const timeout = options?.timeout ?? SCAN_DEFAULTS.timeout;
+    try {
+      if (isServerless()) {
+        await page.goto(url, { waitUntil: "networkidle0" as unknown as "load", timeout });
+      } else {
+        await page.goto(url, { waitUntil: "networkidle", timeout });
+      }
+    } catch (navError: unknown) {
+      // If networkidle timed out, the page is likely loaded enough.
+      // Only re-throw if the page didn't load at all.
+      const message = navError instanceof Error ? navError.message : "";
+      if (message.includes("Timeout") || message.includes("timeout")) {
+        // Page loaded but had persistent connections — proceed with scan
+      } else {
+        throw navError;
+      }
     }
 
-    /**
-     * Optional: wait for specific selector if provided.
-     * Useful for SPAs that render content dynamically.
-     */
+    // Post-navigation stabilization: allow JS frameworks to hydrate
+    // 3 seconds provides enough time for React/Vue/Angular to render
+    if (isServerless()) {
+      await new Promise((r) => setTimeout(r, 3000));
+    } else {
+      await page.waitForLoadState("domcontentloaded");
+      await page.waitForTimeout(3000);
+    }
+
+    // Optional: wait for specific selector if provided (SPA support)
     if (options?.waitForSelector) {
-      await page.waitForSelector(options.waitForSelector, {
-        timeout: 10000,
-      });
+      try {
+        await page.waitForSelector(options.waitForSelector, { timeout: 10000 });
+      } catch {
+        // Selector not found within timeout — proceed anyway
+      }
     }
 
     /**
      * Execute accessibility scan using axe-core.
      *
      * Injects axe-core source directly into page context,
-     * then runs axe.run() to analyze the DOM.
-     *
-     * This avoids the @axe-core/playwright wrapper bug where
-     * `module` is not defined in browser evaluate context.
+     * then runs axe.run() to analyze the full document.
      */
     const axeSource = getAxeSource();
     await page.evaluate(axeSource);
 
+    // Run axe with specified tags or full ruleset
     const axeOptions = options?.tags?.length
       ? { runOnly: { type: "tag" as const, values: options.tags } }
       : {};
@@ -229,14 +279,6 @@ export async function runAccessibilityScan(
       pageTitle,
     };
   } finally {
-    /**
-     * Always close browser resources.
-     *
-     * Prevents:
-     * - memory leaks
-     * - hanging processes
-     * - infrastructure instability
-     */
     if (browser) {
       await browser.close();
     }
