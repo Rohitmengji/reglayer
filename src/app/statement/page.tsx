@@ -295,8 +295,9 @@ export default function StatementPage() {
                       <span className="text-xs font-medium text-neutral-500">Preview</span>
                       <button
                         onClick={() => {
-                          const w = window.open("", "_blank");
-                          if (w) { w.document.write(result.html); w.document.close(); }
+                          const blob = new Blob([result.html], { type: "text/html" });
+                          const url = URL.createObjectURL(blob);
+                          window.open(url, "_blank");
                         }}
                         className="text-xs text-blue-600 hover:underline flex items-center gap-1"
                       >
