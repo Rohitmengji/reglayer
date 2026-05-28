@@ -61,6 +61,14 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/favicon");
 
   if (isPublicPath) {
+    // Redirect authenticated users away from login/register pages
+    if (pathname.startsWith("/auth/login") || pathname.startsWith("/auth/register")) {
+      const token = await getToken({ req: request });
+      if (token) {
+        const dashboardUrl = new URL("/dashboard", request.url);
+        return applySecurityHeaders(NextResponse.redirect(dashboardUrl));
+      }
+    }
     return applySecurityHeaders(NextResponse.next());
   }
 

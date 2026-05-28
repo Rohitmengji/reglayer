@@ -299,7 +299,7 @@ export default function StatementPage() {
                           const url = URL.createObjectURL(blob);
                           window.open(url, "_blank");
                         }}
-                        className="text-xs text-blue-600 hover:underline flex items-center gap-1"
+                        className="text-xs text-blue-600 flex items-center gap-1"
                       >
                         Open in new tab <ExternalLink className="h-3 w-3" />
                       </button>

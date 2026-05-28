@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Shield, Scan, BarChart3, FileText, Zap, Globe, CheckCircle2, ArrowRight, Users, Lock, Clock, Star } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { Footer } from "@/components/layout/footer";
 
 export default function Home() {
   return (
@@ -284,49 +285,7 @@ export default function Home() {
         </section>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900 py-8 sm:py-12">
-        <div className="mx-auto max-w-6xl px-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <Shield className="h-5 w-5 text-neutral-700 dark:text-neutral-300" />
-                <span className="font-bold text-neutral-900 dark:text-white">RegLayer</span>
-              </div>
-              <p className="text-xs text-neutral-500 leading-relaxed">
-                Web Accessibility compliance platform. Automated scanning, monitoring, and reporting for global standards.
-              </p>
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-3">Product</p>
-              <ul className="space-y-2">
-                <li><Link href="/features" className="text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white">Features</Link></li>
-                <li><Link href="/pricing" className="text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white">Pricing</Link></li>
-                <li><Link href="/standards" className="text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white">Standards</Link></li>
-              </ul>
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-3">Legal</p>
-              <ul className="space-y-2">
-                <li><Link href="/privacy" className="text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white">Privacy Policy</Link></li>
-                <li><Link href="/terms" className="text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white">Terms of Service</Link></li>
-                <li><Link href="/cookie-policy" className="text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white">Cookie Policy</Link></li>
-              </ul>
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-3">Support</p>
-              <ul className="space-y-2">
-                <li><Link href="/docs" className="text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white">Documentation</Link></li>
-                <li><Link href="/api-reference" className="text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white">API Reference</Link></li>
-                <li><Link href="/contact" className="text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white">Contact</Link></li>
-              </ul>
-            </div>
-          </div>
-          <div className="border-t border-neutral-200 dark:border-neutral-700 pt-8 text-center">
-            <p className="text-xs text-neutral-500 dark:text-neutral-400">© {new Date().getFullYear()} RegLayer. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

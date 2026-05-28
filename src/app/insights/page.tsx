@@ -144,7 +144,7 @@ function InsightsContent() {
         <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-12 text-center">
           <Brain className="h-12 w-12 text-neutral-300 mx-auto mb-4" />
           <p className="text-lg font-medium text-neutral-700 dark:text-neutral-200">{error || "No data"}</p>
-          <Link href="/dashboard" className="text-sm text-blue-600 hover:underline mt-2 inline-block">
+          <Link href="/dashboard" className="text-sm text-blue-600 mt-2 inline-block">
             {t("insights.runScanFirst")}
           </Link>
         </div>
@@ -171,7 +171,7 @@ function InsightsContent() {
         <div className="space-y-6">
           {data.insights.map((entry) => (
             <Card key={entry.violationId} className="overflow-hidden">
-              <CardHeader className="bg-neutral-50 dark:bg-neutral-800 dark:bg-neutral-800 border-b border-neutral-100 dark:border-neutral-700">
+              <CardHeader className="bg-neutral-50 dark:bg-neutral-800 border-b border-neutral-100 dark:border-neutral-700">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Badge variant={entry.impact as "critical" | "serious" | "moderate" | "minor"}>
