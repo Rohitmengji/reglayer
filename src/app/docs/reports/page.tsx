@@ -3,7 +3,7 @@ import Link from "next/link";
 
 export const metadata = {
   title: "Reports & Statements — RegLayer Docs",
-  description: "Generate PDF compliance reports and accessibility statements for the European Accessibility Act.",
+  description: "Generate PDF compliance reports and accessibility statements for WCAG 2.2, ADA, Section 508, and other global standards.",
 };
 
 export default function ReportsPage() {
@@ -26,7 +26,7 @@ export default function ReportsPage() {
           <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">Reports & Statements</h1>
         </div>
         <p className="text-neutral-500 dark:text-neutral-400 mb-10">
-          Generate professional compliance documentation required by the European Accessibility Act and other regulations.
+          Generate professional compliance documentation required by WCAG 2.2, ADA, Section 508, EAA, and other accessibility regulations.
         </p>
 
         <div className="space-y-10">
@@ -54,7 +54,7 @@ export default function ReportsPage() {
           <section>
             <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-3">Accessibility Statements</h2>
             <p className="text-sm text-neutral-600 dark:text-neutral-300 mb-3 leading-relaxed">
-              The European Accessibility Act and EN 301 549 require organizations to publish an accessibility statement. RegLayer&apos;s statement generator helps you create one that meets the requirements of EN 301 549 Annex C.
+              Accessibility laws worldwide (ADA, EAA, Section 508, AODA) require organizations to publish an accessibility statement. RegLayer&apos;s statement generator helps you create one that meets requirements across multiple jurisdictions.
             </p>
             <p className="text-sm text-neutral-600 dark:text-neutral-300 mb-3 font-medium">Statement sections generated:</p>
             <ul className="text-sm text-neutral-600 dark:text-neutral-300 space-y-2 list-disc list-inside">

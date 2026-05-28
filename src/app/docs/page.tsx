@@ -29,7 +29,7 @@ const sections = [
     icon: FileText,
     slug: "reports",
     title: "Reports & Statements",
-    description: "Generate PDF compliance reports and EU-compliant accessibility statements following EN 301 549 Annex C.",
+    description: "Generate PDF compliance reports and accessibility statements aligned with WCAG 2.2, ADA, Section 508, and EN 301 549.",
   },
   {
     icon: Users,

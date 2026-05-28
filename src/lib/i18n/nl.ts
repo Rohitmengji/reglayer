@@ -257,7 +257,7 @@ export const nl = {
 
   // Statement
   "statement.title": "Generator toegankelijkheidsverklaring",
-  "statement.subtitle": "Genereer een EU-conforme toegankelijkheidsverklaring volgens Richtlijn 2016/2102 en de Europese Toegankelijkheidswet.",
+  "statement.subtitle": "Genereer een toegankelijkheidsverklaring conform WCAG 2.2, ADA, EAA, Section 508 en andere internationale regelgeving.",
   "statement.formTitle": "Organisatiegegevens",
   "statement.orgName": "Organisatienaam *",
   "statement.orgNamePlaceholder": "Acme Corporatie",
