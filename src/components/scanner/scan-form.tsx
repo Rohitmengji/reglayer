@@ -9,6 +9,14 @@ import { handleUpgradeResponse } from "@/lib/upgrade-prompt";
 import { useI18n } from "@/components/i18n-provider";
 import { toast } from "sonner";
 
+const ERROR_MESSAGES: Record<string, string> = {
+  TIMEOUT: "The site took too long to respond. It may be down or behind a firewall.",
+  UNREACHABLE: "Cannot reach this URL. Please check the address is correct and publicly accessible.",
+  BLOCKED: "This site blocks automated access. Try again later or contact the site owner.",
+  BROWSER_CRASH: "Browser encountered an unexpected error. Please try again.",
+  UNKNOWN: "Something went wrong during the scan. Please try again.",
+};
+
 interface ScanFormProps {
   onScanComplete?: (result: unknown) => void;
 }
@@ -61,8 +69,9 @@ export function ScanForm({ onScanComplete }: ScanFormProps) {
           setIsScanning(false);
           return;
         }
-        const message = data.error || data.message || "Scan failed";
-        const retryable = res.status >= 500 || res.status === 429;
+        const code = data.code as string | undefined;
+        const message = (code && ERROR_MESSAGES[code]) || data.message || data.error || "Scan failed";
+        const retryable = res.status >= 500 || res.status === 504 || res.status === 429;
         setErrorInfo({ message, retryable });
         toast.error(message);
         return;
