@@ -1,3 +1,10 @@
+/**
+ * RegLayer — API Reference Page
+ *
+ * WHY: Developers integrating with RegLayer need complete API documentation.
+ * WHAT: Lists all endpoints with methods, request/response examples, auth, rate limits.
+ * HOW: Static page with formatted code blocks showing curl examples and JSON responses.
+ */
 import { Shield, Code2, Lock, Zap } from "lucide-react";
 import Link from "next/link";
 import { Footer } from "@/components/layout/footer";

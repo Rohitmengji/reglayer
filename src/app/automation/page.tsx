@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * RegLayer — Automation Hub Page
+ *
+ * WHY: Combines scheduling and remediation views in one tabbed interface.
+ * WHAT: Tab navigation between Schedules (cron) and Remediation (AI fixes).
+ * HOW: Uses URL search params (?tab=remediation) for tab state. Lazy-loads tab content.
+ */
+
 import { Suspense, lazy } from "react";
 import { useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";

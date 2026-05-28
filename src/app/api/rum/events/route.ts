@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Real User Monitoring Events API
+ *
+ * WHY: Track actual accessibility issues encountered by real users in production.
+ * WHAT: POST ingests RUM events (keyboard navigation failures, screen reader errors, etc.).
+ * HOW: Accepts batched events from client-side RUM snippet, persists for analytics.
+ */
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";

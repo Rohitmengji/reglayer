@@ -1,3 +1,10 @@
+/**
+ * RegLayer — E2E Smoke Tests
+ *
+ * WHY: Deploys need basic sanity checks — key pages load, auth works, scan runs.
+ * WHAT: Tests: homepage loads, login flow works, dashboard accessible, scan form submits.
+ * HOW: Playwright browser automation. Navigates pages, checks for expected text/elements.
+ */
 import { test, expect } from "@playwright/test";
 
 test.describe("Public pages load", () => {

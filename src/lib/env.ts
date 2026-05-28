@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Environment Variable Validation
+ *
+ * WHY: Missing env vars cause cryptic runtime errors — fail fast at startup instead.
+ * WHAT: Validates all required env vars (DATABASE_URL, NEXTAUTH_SECRET, etc.) exist at build/start.
+ * HOW: Uses zod schema to parse process.env. Throws descriptive error listing missing vars.
+ */
 import "server-only";
 
 import { z } from "zod/v4";

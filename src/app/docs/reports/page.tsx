@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Reports Documentation
+ *
+ * WHY: Users generating compliance reports need formatting and export guidance.
+ * WHAT: Explains PDF reports, accessibility statements, VPAT generation.
+ * HOW: Static docs page with report format examples.
+ */
 import { Shield, FileText, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 

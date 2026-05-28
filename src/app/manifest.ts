@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Web App Manifest
+ *
+ * WHY: PWA support — allows users to "install" RegLayer on their device.
+ * WHAT: Returns JSON manifest with app name, icons, theme color, display mode.
+ * HOW: Next.js Metadata API generates /manifest.webmanifest from this export.
+ */
 import type { MetadataRoute } from "next";
 
 /**

@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Scanning Documentation
+ *
+ * WHY: Users need to understand how scanning works and available options.
+ * WHAT: Explains scan types, standards, options, result interpretation.
+ * HOW: Static docs page with examples of scan configurations.
+ */
 import { Shield, ScanLine, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 

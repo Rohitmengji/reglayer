@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * RegLayer — Tab Navigation Component
+ *
+ * WHY: Multiple pages use tabbed interfaces to organize related content.
+ * WHAT: Horizontal tab bar with active indicator. Controls which content panel is visible.
+ * HOW: Client-side state management. Renders tabs from array of { label, value } props.
+ */
+
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils/cn";

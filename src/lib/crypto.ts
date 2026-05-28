@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Cryptography Utilities
+ *
+ * WHY: OAuth tokens and webhook secrets need encryption at rest in the database.
+ * WHAT: AES-256-GCM encrypt/decrypt functions for sensitive data.
+ * HOW: Uses Node.js crypto module. Encryption key from ENCRYPTION_KEY env var. IV is random per encryption.
+ */
 import "server-only";
 import { createCipheriv, createDecipheriv, randomBytes } from "crypto";
 

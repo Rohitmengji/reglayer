@@ -1,3 +1,10 @@
+/**
+ * RegLayer — API Error Utilities Tests
+ *
+ * WHY: Error response helpers must return correct status codes and JSON shape.
+ * WHAT: Tests badRequest(), unauthorized(), forbidden(), notFound(), serverError() helpers.
+ * HOW: Unit tests verifying status code, Content-Type header, and { error } body format.
+ */
 import { describe, it, expect } from "vitest";
 import {
   unauthorized,

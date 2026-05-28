@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * RegLayer — Design System Audit Page
+ *
+ * WHY: Component libraries need accessibility auditing at the component level.
+ * WHAT: Scan individual UI components (buttons, forms, modals) for accessibility issues.
+ * HOW: POSTs component URLs to /api/design-system/scan, renders per-component results.
+ */
+
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";

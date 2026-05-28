@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Scan Queue Tests
+ *
+ * WHY: Queued scans must execute in order, handle failures, and report status correctly.
+ * WHAT: Tests enqueueScan(), processQueue(), getQueueStatus(), retryFailed() functions.
+ * HOW: Mocks BullMQ/in-memory queue. Tests FIFO ordering, concurrency limits, failure retry.
+ */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock dependencies that scanQueue imports

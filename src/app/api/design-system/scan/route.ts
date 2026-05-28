@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Design System Scan API
+ *
+ * WHY: Component libraries need accessibility auditing at the component level.
+ * WHAT: POST with component HTML/URL to scan individual UI components in isolation.
+ * HOW: Renders component in isolated page context, runs axe-core, returns component-level results.
+ */
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";

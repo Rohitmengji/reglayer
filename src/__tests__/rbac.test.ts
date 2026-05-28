@@ -1,3 +1,10 @@
+/**
+ * RegLayer — RBAC Unit Tests
+ *
+ * WHY: Permission check functions must correctly evaluate role capabilities.
+ * WHAT: Tests hasPermission(), canManageTeam(), canDeleteScan(), canViewBilling() functions.
+ * HOW: Unit tests with mock user/role objects. Verifies each permission grants correct access.
+ */
 import { describe, it, expect, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));

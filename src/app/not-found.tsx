@@ -1,3 +1,10 @@
+/**
+ * RegLayer — 404 Not Found Page
+ *
+ * WHY: Users navigating to non-existent routes need a helpful message.
+ * WHAT: Friendly 404 page with link back to homepage/dashboard.
+ * HOW: Next.js serves this for any unmatched route automatically.
+ */
 import Link from "next/link";
 
 /**

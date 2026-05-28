@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Italian (Italiano) Translations
+ *
+ * WHY: Italy enforces web accessibility via Legge Stanca.
+ * WHAT: Full Italian translation matching all English keys.
+ * HOW: Same key structure as en.ts. Falls back to English if key missing.
+ */
 export const it = {
   // Navigation
   "nav.dashboard": "Pannello",

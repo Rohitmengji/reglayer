@@ -1,3 +1,10 @@
+/**
+ * RegLayer — AI Remediation API
+ *
+ * WHY: Developers need code fix suggestions for accessibility violations.
+ * WHAT: POST with violation details, returns AI-generated code fix.
+ * HOW: Sends violation context + affected HTML to OpenAI, returns suggested code change.
+ */
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";

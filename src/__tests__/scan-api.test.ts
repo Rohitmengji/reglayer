@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Scan API Tests
+ *
+ * WHY: The scan endpoint is the core product feature — must handle all cases robustly.
+ * WHAT: Tests POST /api/scan: URL validation, auth check, credit deduction, scan execution, response format.
+ * HOW: Mocks scanner, Prisma, auth. Tests: invalid URL, no credits, successful scan, error handling.
+ */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock all external dependencies

@@ -1,3 +1,11 @@
+/**
+ * RegLayer — Global Stylesheet
+ *
+ * WHY: Tailwind CSS 4 needs a root CSS file to import its base layers.
+ * WHAT: Imports Tailwind base/components/utilities + custom CSS properties for theming.
+ * HOW: PostCSS processes this file via @tailwindcss/postcss plugin. Custom properties
+ *      define color tokens that switch between light/dark via .dark class.
+ */
 @import "tailwindcss";
 
 @custom-variant dark (&:where(.dark, .dark *));

@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Integrations Documentation
+ *
+ * WHY: Users connecting GitHub, Slack, etc. need setup instructions.
+ * WHAT: Step-by-step integration setup for GitHub Actions, webhooks, API keys.
+ * HOW: Static docs page with configuration examples and code snippets.
+ */
 import { Shield, Code2, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 

@@ -1,3 +1,10 @@
+/**
+ * RegLayer — CI/CD Quality Gate API
+ *
+ * WHY: Teams want to block deployments if accessibility score drops below threshold.
+ * WHAT: POST with URL + threshold, returns pass/fail status for CI/CD integration.
+ * HOW: Runs a scan, compares score against threshold. Returns { passed: boolean, score, threshold }.
+ */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/database/prisma";
 import { createHash } from "crypto";

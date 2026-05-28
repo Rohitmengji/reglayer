@@ -1,3 +1,9 @@
+# RegLayer — Docker Compose (Local Development)
+#
+# WHY: Local dev needs PostgreSQL and Redis without manual installation.
+# WHAT: Defines postgres (port 5432) and redis (port 6379) services with persistent volumes.
+# HOW: Run "docker compose up -d" to start. Services match DATABASE_URL and REDIS_URL env vars.
+#
 # ---------------------------------------------------------
 # RegLayer — Docker Compose
 # ---------------------------------------------------------

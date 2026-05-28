@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Spanish (Español) Translations
+ *
+ * WHY: Spain is part of the EU market requiring accessibility compliance.
+ * WHAT: Full Spanish translation matching all English keys.
+ * HOW: Same key structure as en.ts. Falls back to English if key missing.
+ */
 export const es = {
   // Navigation
   "nav.dashboard": "Panel",

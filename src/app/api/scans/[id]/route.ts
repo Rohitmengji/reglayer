@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Single Scan API
+ *
+ * WHY: Frontend needs to fetch a single scan's full details (violations, metadata, score).
+ * WHAT: GET returns complete scan data with all violations for a given scan ID.
+ * HOW: Queries Prisma for scan + nested violations by ID. Verifies workspace ownership.
+ */
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";

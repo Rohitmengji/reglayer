@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Portuguese (Português) Translations
+ *
+ * WHY: Portugal is part of the EU accessibility compliance market.
+ * WHAT: Full Portuguese translation matching all English keys.
+ * HOW: Same key structure as en.ts. Falls back to English if key missing.
+ */
 export const pt = {
   // Navigation
   "nav.dashboard": "Painel",

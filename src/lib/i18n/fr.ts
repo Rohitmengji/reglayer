@@ -1,3 +1,10 @@
+/**
+ * RegLayer — French (Français) Translations
+ *
+ * WHY: France has strong digital accessibility laws (RGAA).
+ * WHAT: Full French translation matching all English keys.
+ * HOW: Same key structure as en.ts. Falls back to English if key missing.
+ */
 export const fr = {
   // Navigation
   "nav.dashboard": "Tableau de bord",

@@ -1,3 +1,11 @@
+/**
+ * RegLayer — Retry Utility
+ *
+ * WHY: External calls (scanner, AI, integrations) may fail transiently — retrying often succeeds.
+ * WHAT: Generic retry wrapper with exponential backoff and configurable max attempts.
+ * HOW: withRetry(fn, { maxAttempts: 3, baseDelay: 1000 }). Exponential backoff with jitter.
+ *      Only retries on transient errors (network, 5xx). Gives up on 4xx (client error).
+ */
 import "server-only";
 
 /**

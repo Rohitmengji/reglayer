@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Cookie Policy Page
+ *
+ * WHY: EU ePrivacy Directive requires disclosure of cookie usage.
+ * WHAT: Lists all cookies used, their purpose, duration, and necessity.
+ * HOW: Static content page. Server-rendered for SEO.
+ */
 import { Shield } from "lucide-react";
 import Link from "next/link";
 import { Footer } from "@/components/layout/footer";

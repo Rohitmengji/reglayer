@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Severity Engine Tests
+ *
+ * WHY: Violation severity scoring drives prioritization — must be accurate and consistent.
+ * WHAT: Tests calculateSeverity(): maps axe impact + WCAG level + user count → weighted score.
+ * HOW: Unit tests with various violation types. Verifies scoring formula and rank ordering.
+ */
 import { describe, it, expect } from "vitest";
 import {
   calculateComplianceScore,

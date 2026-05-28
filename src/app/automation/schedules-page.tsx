@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * RegLayer — Schedules Management Component
+ *
+ * WHY: Users manage recurring scan schedules (cron-based automation).
+ * WHAT: CRUD interface for schedules: name, site, cron expression, enable/disable.
+ * HOW: Fetches /api/schedules. Create/edit forms with cron builder helper.
+ */
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

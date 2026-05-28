@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * RegLayer — WCAG Compliance Matrix Component
+ *
+ * WHY: Compliance officers need a visual grid showing pass/fail per WCAG criterion.
+ * WHAT: Table/grid of all WCAG 2.1 AA criteria with pass/fail status from latest scan.
+ * HOW: Fetches /api/scans/:id/wcag-matrix, renders colored cells (green=pass, red=fail, gray=N/A).
+ */
+
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";

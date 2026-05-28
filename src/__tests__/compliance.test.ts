@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Compliance Engine Tests
+ *
+ * WHY: Compliance mapping (violations → WCAG criteria → standards) is critical logic that must be verified.
+ * WHAT: Tests for mapViolationToWcag(), calculateConformance(), generateVpat(), getRequiredStandard().
+ * HOW: Unit tests with mock violation data. Verifies correct WCAG mapping and score calculation.
+ */
 import { describe, it, expect } from "vitest";
 import { evaluateCompliance } from "@/lib/compliance/policyEvaluator";
 import type { AccessibilityViolation } from "@/lib/types";

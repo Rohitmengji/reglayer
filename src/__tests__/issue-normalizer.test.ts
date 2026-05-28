@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Issue Normalizer Tests
+ *
+ * WHY: Raw axe-core output needs normalization into consistent internal format.
+ * WHAT: Tests normalizeAxeResult(): maps axe violations to RegLayer format with severity/impact/help.
+ * HOW: Unit tests with sample axe-core output. Verifies field mapping, deduplication, and sorting.
+ */
 import { describe, it, expect } from "vitest";
 import { normalizeViolations } from "@/lib/scanner/accessibility/issueNormalizer";
 

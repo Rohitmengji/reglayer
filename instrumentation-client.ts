@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Client Instrumentation (Sentry)
+ *
+ * WHY: Client-side errors (React crashes, unhandled promises) need reporting.
+ * WHAT: Initializes Sentry SDK for browser with DSN, replay integration, error boundaries.
+ * HOW: Next.js loads this in the browser bundle. Captures errors + session replays for debugging.
+ */
 import * as Sentry from "@sentry/nextjs";
 
 Sentry.init({

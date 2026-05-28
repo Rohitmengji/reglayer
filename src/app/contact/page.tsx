@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * RegLayer — Contact Page
+ *
+ * WHY: Users need a way to reach support, sales, or report issues.
+ * WHAT: Contact form (name, email, subject, message) + company info (email, location, response time).
+ * HOW: Form submits to email service. Static company info alongside.
+ */
+
 import { Shield, Mail, MessageSquare, MapPin } from "lucide-react";
 import Link from "next/link";
 import { Footer } from "@/components/layout/footer";

@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Rate Limiter Tests
+ *
+ * WHY: Rate limiting logic must correctly track requests and enforce limits.
+ * WHAT: Tests rateLimit(): allows requests under limit, blocks over limit, resets after window.
+ * HOW: Mocks Redis (Upstash). Tests sliding window behavior, key generation, response headers.
+ */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock "server-only" to avoid import error in tests

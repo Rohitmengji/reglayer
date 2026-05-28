@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Robots.txt
+ *
+ * WHY: Controls search engine crawler behavior.
+ * WHAT: Allows all crawlers to index public pages, blocks /api/ and /dashboard/.
+ * HOW: Next.js Metadata API generates /robots.txt from this export.
+ */
 import type { MetadataRoute } from "next";
 
 /**

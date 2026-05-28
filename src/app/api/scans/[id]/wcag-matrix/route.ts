@@ -1,3 +1,10 @@
+/**
+ * RegLayer — WCAG Matrix API
+ *
+ * WHY: Compliance officers need to see pass/fail status for each WCAG criterion.
+ * WHAT: GET returns a matrix of all WCAG 2.1 AA criteria with pass/fail per scan.
+ * HOW: Maps scan violations to WCAG success criteria, marks each as pass/fail/not-applicable.
+ */
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";

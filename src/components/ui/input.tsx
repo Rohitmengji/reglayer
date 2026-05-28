@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Input Component
+ *
+ * WHY: Form inputs need consistent styling and accessibility attributes.
+ * WHAT: Styled text input with focus ring, placeholder styling, disabled state.
+ * HOW: forwardRef wrapper with Tailwind classes. Supports all native input props.
+ */
 import * as React from "react";
 import { cn } from "@/lib/utils/cn";
 

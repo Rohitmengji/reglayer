@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * RegLayer — Compliance Trend Chart
+ *
+ * WHY: Users need to visualize their compliance score over time.
+ * WHAT: Line chart showing score history with trend indicator (improving/declining).
+ * HOW: Receives data points array, renders SVG/canvas chart with hover tooltips.
+ */
+
 import { useScanStore } from "@/stores/scanStore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useI18n } from "@/components/i18n-provider";
