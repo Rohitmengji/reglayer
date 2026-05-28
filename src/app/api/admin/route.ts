@@ -69,6 +69,11 @@ export async function GET() {
           name: true,
           isMasterAdmin: true,
           createdAt: true,
+          bonusCredits: true,
+          creditGrants: {
+            where: { createdAt: { gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1) } },
+            select: { id: true },
+          },
           memberships: {
             select: {
               role: true,
@@ -108,6 +113,8 @@ export async function GET() {
           createdAt: u.createdAt,
           role: u.memberships[0]?.role || null,
           canGrantMaster: isOwnerOrAdmin || ownerIsMaster,
+          bonusCredits: u.bonusCredits ?? 0,
+          creditGrantsThisMonth: u.creditGrants.length,
         };
       }),
       stats: { totalWorkspaces: workspaces.length, totalUsers: users.length, totalScans, totalSchedules },
