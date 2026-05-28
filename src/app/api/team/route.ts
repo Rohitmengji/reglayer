@@ -4,6 +4,19 @@ import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
 import bcrypt from "bcryptjs";
 import { PLAN_LIMITS, type PlanType } from "@/lib/credits/plan-limits";
+import { z } from "zod";
+
+const inviteSchema = z.object({
+  email: z.string().email().max(320),
+  role: z.enum(["ADMIN", "MEMBER", "VIEWER"]).default("MEMBER"),
+});
+
+const patchSchema = z.object({
+  memberId: z.string().optional(),
+  role: z.enum(["OWNER", "ADMIN", "MEMBER", "VIEWER"]).optional(),
+  plan: z.enum(["FREE", "PRO", "ENTERPRISE"]).optional(),
+  userId: z.string().optional(),
+});
 
 /**
  * GET /api/team — List team members in the current workspace
@@ -70,12 +83,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await request.json();
-  const { email, role = "MEMBER" } = body;
-
-  if (!email) {
-    return NextResponse.json({ error: "Email is required" }, { status: 400 });
-  }
+  try {
+    const body = await request.json();
+    const parsed = inviteSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Invalid input", details: parsed.error.flatten().fieldErrors }, { status: 400 });
+    }
+    const { email, role } = parsed.data;
 
   // Verify current user is OWNER or ADMIN
   const currentUser = await prisma.user.findUnique({
@@ -149,6 +163,9 @@ export async function POST(request: NextRequest) {
     role: newMember.role,
     joinedAt: newMember.joinedAt,
   }, { status: 201 });
+  } catch {
+    return NextResponse.json({ error: "Failed to invite member" }, { status: 500 });
+  }
 }
 
 export async function PATCH(request: NextRequest) {

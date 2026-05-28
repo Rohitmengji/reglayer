@@ -23,14 +23,25 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // Scope to user's workspace
+  const member = await prisma.workspaceMember.findFirst({
+    where: { user: { email: session.user.email } },
+  });
+
+  if (!member) {
+    return NextResponse.json({ monitors: [], recentAlerts: [] });
+  }
+
   const schedules = await prisma.schedule.findMany({
+    where: { workspaceId: member.workspaceId },
     orderBy: { createdAt: "desc" },
+    take: 100,
     include: { site: { select: { url: true, name: true } } },
   });
 
-  // Also get recent alert triggers from audit log
+  // Also get recent alert triggers from audit log (workspace-scoped)
   const recentAlerts = await prisma.auditLog.findMany({
-    where: { action: "alert.triggered" },
+    where: { action: "alert.triggered", workspaceId: member.workspaceId },
     orderBy: { createdAt: "desc" },
     take: 20,
   });
