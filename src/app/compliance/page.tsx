@@ -1,11 +1,11 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, XCircle, Minus, Loader2, Grid3X3 } from "lucide-react";
+import { CheckCircle2, XCircle, Minus, Loader2, Grid3X3, ChevronDown } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 
 interface MatrixEntry {
@@ -26,6 +26,13 @@ interface MatrixData {
   summary: { total: number; passed: number; failed: number; notTested: number };
 }
 
+interface ScanOption {
+  id: string;
+  url: string;
+  score: number | null;
+  createdAt: string;
+}
+
 export default function CompliancePage() {
   return (
     <Suspense
@@ -44,21 +51,34 @@ export default function CompliancePage() {
 
 function ComplianceContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const scanId = searchParams.get("scan");
   const [data, setData] = useState<MatrixData | null>(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "pass" | "fail" | "not-tested">("all");
+  const [scans, setScans] = useState<ScanOption[]>([]);
+  const [activeScanId, setActiveScanId] = useState<string | null>(scanId);
   const { t } = useI18n();
+
+  // Load available scans for the selector
+  useEffect(() => {
+    fetch("/api/scans?limit=50")
+      .then((r) => r.ok ? r.json() : Promise.reject())
+      .then((d) => { if (d.scans) setScans(d.scans); })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
+    setLoading(true);
+
     function doFetch(id: string) {
       fetch(`/api/scans/${id}/wcag-matrix`)
         .then((r) => {
           if (!r.ok) throw new Error("Failed");
           return r.json();
         })
-        .then((d) => { if (!cancelled) { setData(d); setLoading(false); } })
+        .then((d) => { if (!cancelled) { setData(d); setActiveScanId(id); setLoading(false); } })
         .catch(() => { if (!cancelled) setLoading(false); });
     }
 
@@ -116,14 +136,34 @@ function ComplianceContent() {
     <AppShell>
       <div className="space-y-6">
         {/* Header */}
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <Grid3X3 className="h-5 w-5 text-indigo-500" />
-            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{t("compliance.title")}</h1>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <Grid3X3 className="h-5 w-5 text-indigo-500" />
+              <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{t("compliance.title")}</h1>
+            </div>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">
+              {t("compliance.subtitle", { url: data.url })}
+            </p>
           </div>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">
-            {t("compliance.subtitle", { url: data.url })}
-          </p>
+
+          {/* Scan Selector */}
+          {scans.length > 1 && (
+            <div className="relative">
+              <select
+                value={activeScanId || ""}
+                onChange={(e) => router.push(`/compliance?scan=${e.target.value}`)}
+                className="appearance-none rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 pl-3 pr-8 py-2 text-sm text-neutral-900 dark:text-white cursor-pointer hover:border-neutral-300 dark:hover:border-neutral-600 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                {scans.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {new URL(s.url).hostname} — {new Date(s.createdAt).toLocaleDateString()} ({s.score ?? "?"}%)
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400 pointer-events-none" />
+            </div>
+          )}
         </div>
 
         {/* Compliance Progress Gauge */}
