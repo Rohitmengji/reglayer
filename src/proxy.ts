@@ -57,6 +57,8 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/api/certificate/") ||
     pathname.startsWith("/api/gate") ||
     pathname.startsWith("/api/cron/") ||
+    pathname.startsWith("/api/remediate/script") ||
+    pathname.startsWith("/api/journey") ||
     pathname.startsWith("/_next/") ||
     pathname.startsWith("/favicon");
 
