@@ -147,17 +147,12 @@ export async function POST(req: NextRequest) {
   }
 
   // Plan check — Pro or Enterprise
-  const user = await prisma.user.findUnique({ where: { email: session.user.email } });
-  if (!user) {
-    return NextResponse.json({ error: "User not found" }, { status: 401 });
-  }
-
   const member = await prisma.workspaceMember.findFirst({
-    where: { userId: user.id },
+    where: { user: { email: session.user.email } },
     include: { workspace: true },
   });
 
-  if (!member || !["pro", "enterprise"].includes(member.workspace.plan || "")) {
+  if (!member || !["PRO", "ENTERPRISE"].includes(member.workspace.plan)) {
     return NextResponse.json(
       { error: "Journey scanning requires a Pro or Enterprise plan" },
       { status: 403 }
