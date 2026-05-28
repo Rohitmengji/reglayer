@@ -46,6 +46,7 @@ export default function TeamPage() {
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [workspace, setWorkspace] = useState<WorkspaceInfo | null>(null);
   const [currentUserRole, setCurrentUserRole] = useState<string>("");
+  const [isMasterAdmin, setIsMasterAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("MEMBER");
@@ -68,6 +69,7 @@ export default function TeamPage() {
         setMembers(data.members || []);
         setWorkspace(data.workspace);
         setCurrentUserRole(data.currentUserRole || "");
+        setIsMasterAdmin(data.currentUserIsMasterAdmin || false);
       })
       .catch(() => {})
       .finally(() => { if (!cancelled) setLoading(false); });
@@ -305,19 +307,21 @@ export default function TeamPage() {
                               </select>
                               <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 h-3 w-3 pointer-events-none" />
                             </div>
-                            <select
-                              value={member.plan}
-                              onChange={(e) => handleChangePlan(member.userId, e.target.value)}
-                              className="rounded-full px-2.5 py-1 text-xs font-semibold border border-neutral-200 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 cursor-pointer"
-                            >
-                              <option value="FREE">Free</option>
-                              {["PRO", "ENTERPRISE"].indexOf(workspace?.plan || "FREE") >= 0 && (
+                            {isMasterAdmin ? (
+                              <select
+                                value={member.plan}
+                                onChange={(e) => handleChangePlan(member.userId, e.target.value)}
+                                className="rounded-full px-2.5 py-1 text-xs font-semibold border border-neutral-200 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 cursor-pointer"
+                              >
+                                <option value="FREE">Free</option>
                                 <option value="PRO">Pro</option>
-                              )}
-                              {workspace?.plan === "ENTERPRISE" && (
                                 <option value="ENTERPRISE">Enterprise</option>
-                              )}
-                            </select>
+                              </select>
+                            ) : (
+                              <span className="rounded-full px-2.5 py-1 text-xs font-semibold border border-neutral-200 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100">
+                                {member.plan}
+                              </span>
+                            )}
                           </>
                         ) : (
                           <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${roleColors[displayRole]}`}>
