@@ -1,5 +1,6 @@
 import { Shield, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
+import { Footer } from "@/components/layout/footer";
 
 export const metadata = {
   title: "Standards — RegLayer",
@@ -88,7 +89,7 @@ export default function StandardsPage() {
                   href={standard.link}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs text-blue-600 hover:underline shrink-0"
+                  className="text-xs text-blue-600 shrink-0"
                 >
                   View Standard ↗
                 </a>
@@ -111,6 +112,7 @@ export default function StandardsPage() {
           ))}
         </div>
       </div>
+      <Footer />
     </div>
   );
 }

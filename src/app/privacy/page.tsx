@@ -1,5 +1,6 @@
 import { Shield } from "lucide-react";
 import Link from "next/link";
+import { Footer } from "@/components/layout/footer";
 
 export const metadata = {
   title: "Privacy Policy — RegLayer",
@@ -79,7 +80,7 @@ export default function PrivacyPage() {
               <li><strong>Withdraw consent:</strong> Withdraw consent at any time without affecting prior processing</li>
             </ul>
             <p className="mt-3 text-neutral-600 dark:text-neutral-300">
-              To exercise your rights, contact us at <a href="mailto:privacy@reglayer.dev" className="text-blue-600 hover:underline">privacy@reglayer.dev</a>. 
+              To exercise your rights, contact us at <a href="mailto:privacy@reglayer.dev" className="text-blue-600">privacy@reglayer.dev</a>. 
               We respond within 30 days as required by GDPR.
             </p>
           </section>
@@ -136,15 +137,16 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-lg font-semibold text-neutral-900 dark:text-white mt-8 mb-3">10. Contact</h2>
             <p className="text-neutral-600 dark:text-neutral-300">
-              For privacy-related inquiries: <a href="mailto:privacy@reglayer.dev" className="text-blue-600 hover:underline">privacy@reglayer.dev</a>
+              For privacy-related inquiries: <a href="mailto:privacy@reglayer.dev" className="text-blue-600">privacy@reglayer.dev</a>
             </p>
           </section>
         </div>
 
         <div className="mt-12 pt-6 border-t border-neutral-100 dark:border-neutral-800">
-          <Link href="/" className="text-sm text-blue-600 hover:underline">← Back to RegLayer</Link>
+          <Link href="/" className="text-sm text-blue-600">← Back to RegLayer</Link>
         </div>
       </div>
+      <Footer />
     </div>
   );
 }

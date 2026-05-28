@@ -98,7 +98,7 @@ function CompareContent() {
         <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950 p-8 text-center">
           <XCircle className="h-12 w-12 text-red-400 mx-auto mb-3" />
           <p className="text-lg font-medium text-red-800">{error || t("compare.failed")}</p>
-          <Link href="/scans" className="text-sm text-red-600 hover:underline mt-2 inline-block">
+          <Link href="/scans" className="text-sm text-red-600 mt-2 inline-block">
             {t("compare.backToScans")}
           </Link>
         </div>

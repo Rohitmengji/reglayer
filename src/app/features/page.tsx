@@ -1,5 +1,6 @@
 import { Shield, ScanLine, Bell, BarChart3, FileText, Code2, Users, Zap } from "lucide-react";
 import Link from "next/link";
+import { Footer } from "@/components/layout/footer";
 
 export const metadata = {
   title: "Features — RegLayer",
@@ -102,6 +103,7 @@ export default function FeaturesPage() {
           </Link>
         </div>
       </div>
+      <Footer />
     </div>
   );
 }

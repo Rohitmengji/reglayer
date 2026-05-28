@@ -93,7 +93,7 @@ export default function ReportsPage() {
               </div>
             </div>
             <p className="text-sm text-neutral-600 dark:text-neutral-300 mt-4">
-              Access via <strong>Scans → Compare</strong>, or use the <Link href="/api-reference" className="text-blue-600 hover:underline">API</Link> endpoint <code className="text-xs bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 rounded">GET /api/scans/compare?base=ID&amp;head=ID</code>.
+              Access via <strong>Scans → Compare</strong>, or use the <Link href="/api-reference" className="text-blue-600">API</Link> endpoint <code className="text-xs bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 rounded">GET /api/scans/compare?base=ID&amp;head=ID</code>.
             </p>
           </section>
 

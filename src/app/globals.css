@@ -8,6 +8,13 @@
   .print\:hidden { display: none !important; }
 }
 
+/* Constrain Sonner toast on narrow viewports */
+[data-sonner-toaster] {
+  max-width: 100vw !important;
+  padding-inline: 1rem;
+  box-sizing: border-box;
+}
+
 /* ─────────────────────────────────────────────────────────────────────────────
    Design Tokens — Color
    ───────────────────────────────────────────────────────────────────────────── */
