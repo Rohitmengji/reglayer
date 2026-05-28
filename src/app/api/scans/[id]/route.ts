@@ -15,12 +15,23 @@ export async function GET(
   try {
     const { id } = await params;
 
+    // Find user's workspace for ownership check
+    const member = await prisma.workspaceMember.findFirst({
+      where: { user: { email: session.user.email } },
+    });
+
     const scan = await prisma.scan.findUnique({
       where: { id },
       include: { violations: true },
     });
 
     if (!scan) {
+      return NextResponse.json({ error: "Scan not found" }, { status: 404 });
+    }
+
+    // Ownership check: scan must belong to user's workspace or user directly
+    const isMasterAdmin = (session.user as unknown as { isMasterAdmin?: boolean })?.isMasterAdmin;
+    if (!isMasterAdmin && scan.userId !== member?.userId && scan.workspaceId !== member?.workspaceId) {
       return NextResponse.json({ error: "Scan not found" }, { status: 404 });
     }
 
@@ -51,8 +62,17 @@ export async function DELETE(
 
   const { id } = await params;
 
+  // Verify scan belongs to user's workspace
+  const member = await prisma.workspaceMember.findFirst({
+    where: { user: { email: session.user.email } },
+  });
+
   const scan = await prisma.scan.findUnique({ where: { id } });
   if (!scan) {
+    return NextResponse.json({ error: "Scan not found" }, { status: 404 });
+  }
+
+  if (!isMasterAdmin && scan.workspaceId !== member?.workspaceId) {
     return NextResponse.json({ error: "Scan not found" }, { status: 404 });
   }
 
