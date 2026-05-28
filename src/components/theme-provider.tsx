@@ -28,7 +28,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
   const initialized = useRef(false);
 
-  // Read from localStorage on mount
+  // Read from localStorage on mount and sync state
   useEffect(() => {
     const stored = localStorage.getItem("reglayer-theme") as Theme | null;
     const t = stored || "system";
@@ -39,13 +39,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
           : "light"
         : t;
     document.documentElement.classList.toggle("dark", effective === "dark");
+    document.documentElement.classList.toggle("light", effective === "light");
     initialized.current = true;
-    // Batch state updates via microtask to avoid lint rule
-    Promise.resolve().then(() => {
-      setThemeState(t);
-      setResolvedTheme(effective);
-      setMounted(true);
-    });
+    setThemeState(t);
+    setResolvedTheme(effective);
+    setMounted(true);
   }, []);
 
   // Apply theme changes after initialization
@@ -59,6 +57,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         : theme;
     setResolvedTheme(effective);
     document.documentElement.classList.toggle("dark", effective === "dark");
+    document.documentElement.classList.toggle("light", effective === "light");
   }, [theme]);
 
   // Listen for system preference changes
@@ -68,6 +67,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const handler = (e: MediaQueryListEvent) => {
       setResolvedTheme(e.matches ? "dark" : "light");
       document.documentElement.classList.toggle("dark", e.matches);
+      document.documentElement.classList.toggle("light", !e.matches);
     };
     mql.addEventListener("change", handler);
     return () => mql.removeEventListener("change", handler);
