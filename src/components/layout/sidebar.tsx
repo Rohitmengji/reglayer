@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { cn } from "@/lib/utils/cn";
 import { useTheme } from "@/components/theme-provider";
-import { Shield, LayoutDashboard, Scan, Globe, Zap, Sparkles, BarChart3, GitCompare, Webhook, Settings, LogOut, Grid3X3, Moon, Sun, FileText, Languages, Users, ClipboardList, Plug, Crown, ChevronDown, Eye, Wand2, DollarSign, Route, Activity, Component } from "lucide-react";
+import { Shield, LayoutDashboard, Scan, Globe, Grid3X3, Moon, Sun, Languages, Crown, ChevronDown, Settings, BarChart3, Zap, Plug, LogOut } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 import { SUPPORTED_LOCALES } from "@/lib/i18n/translations";
 import { useState } from "react";
@@ -13,33 +13,11 @@ import { useState } from "react";
 const mainNav = [
   { name: "Dashboard", key: "nav.dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Scans", key: "nav.scans", href: "/scans", icon: Scan },
-  { name: "Compliance", key: "nav.compliance", href: "/compliance", icon: Grid3X3 },
-  { name: "Statement", key: "nav.statement", href: "/statement", icon: FileText },
   { name: "Crawl Site", key: "nav.crawl", href: "/crawl", icon: Globe },
-];
-
-const analysisNav = [
-  { name: "Screen Reader", key: "nav.screenReader", href: "/screen-reader", icon: Eye },
-  { name: "Priorities", key: "nav.priorities", href: "/priorities", icon: Zap },
-  { name: "AI Insights", key: "nav.insights", href: "/insights", icon: Sparkles },
-  { name: "Analytics", key: "nav.analytics", href: "/analytics", icon: BarChart3 },
-  { name: "Compare", key: "nav.compare", href: "/scans/compare", icon: GitCompare },
-];
-
-const automationNav = [
-  { name: "Remediation", key: "", href: "/dashboard/remediation", icon: Wand2 },
-  { name: "Revenue Impact", key: "", href: "/dashboard/revenue", icon: DollarSign },
-  { name: "VPAT/ACR", key: "", href: "/compliance/vpat", icon: FileText },
-  { name: "Journey Scan", key: "", href: "/dashboard/journey", icon: Route },
-  { name: "RUM", key: "", href: "/dashboard/rum", icon: Activity },
-  { name: "Design System", key: "", href: "/dashboard/design-system", icon: Component },
-];
-
-const manageNav = [
-  { name: "Team", key: "nav.team", href: "/team", icon: Users },
-  { name: "Audit Log", key: "nav.auditLog", href: "/audit-log", icon: ClipboardList },
-  { name: "Integrations", key: "nav.integrations", href: "/integrations", icon: Plug },
-  { name: "Webhooks", key: "nav.webhooks", href: "/webhooks", icon: Webhook },
+  { name: "Compliance", key: "nav.compliance", href: "/compliance?tab=matrix", icon: Grid3X3 },
+  { name: "Analysis", key: "", href: "/analysis?tab=screen-reader", icon: BarChart3 },
+  { name: "Automation", key: "", href: "/automation?tab=remediation", icon: Zap },
+  { name: "Manage", key: "", href: "/manage?tab=team", icon: Plug },
   { name: "Settings", key: "nav.settings", href: "/settings", icon: Settings },
 ];
 
@@ -55,7 +33,8 @@ export function Sidebar({ onNavigate }: SidebarProps) {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   const NavItem = ({ item }: { item: { name: string; key: string; href: string; icon: React.ComponentType<{ className?: string }> } }) => {
-    const isActive = pathname.startsWith(item.href);
+    const basePath = item.href.split("?")[0];
+    const isActive = pathname.startsWith(basePath);
     return (
       <Link
         key={item.name}
@@ -87,34 +66,10 @@ export function Sidebar({ onNavigate }: SidebarProps) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto px-3 pb-3 space-y-5">
+      <nav className="flex-1 px-3 pb-3 space-y-5">
         {/* Main */}
         <div className="space-y-0.5">
           {mainNav.map((item) => (
-            <NavItem key={item.name} item={item} />
-          ))}
-        </div>
-
-        {/* Analysis */}
-        <div className="space-y-0.5">
-          <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">Analysis</p>
-          {analysisNav.map((item) => (
-            <NavItem key={item.name} item={item} />
-          ))}
-        </div>
-
-        {/* Automation */}
-        <div className="space-y-0.5">
-          <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">Automation</p>
-          {automationNav.map((item) => (
-            <NavItem key={item.name} item={item} />
-          ))}
-        </div>
-
-        {/* Manage */}
-        <div className="space-y-0.5">
-          <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">Manage</p>
-          {manageNav.map((item) => (
             <NavItem key={item.name} item={item} />
           ))}
         </div>
