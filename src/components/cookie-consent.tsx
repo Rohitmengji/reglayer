@@ -144,7 +144,14 @@ export function CookieConsent() {
 
 /** Hook to check consent status */
 export function useConsent(): ConsentState & { hasConsented: boolean } {
-  const [state] = useState<ConsentState>(getInitialConsent);
+  const [state, setState] = useState<ConsentState>({
+    essential: true, analytics: false, marketing: false, timestamp: null,
+  });
+
+  useEffect(() => {
+    const stored = localStorage.getItem(CONSENT_KEY);
+    if (stored) setState(JSON.parse(stored));
+  }, []);
 
   return { ...state, hasConsented: !!state.timestamp };
 }
