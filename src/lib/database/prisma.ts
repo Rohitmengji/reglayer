@@ -1,3 +1,12 @@
+/**
+ * RegLayer — Prisma Client Singleton
+ *
+ * WHY: PrismaClient creates a connection pool. Multiple instances would exhaust DB connections.
+ * WHAT: Creates a single PrismaClient instance cached on globalThis.
+ * HOW: Uses PrismaPg adapter for PostgreSQL. In dev, stored on globalThis to survive Hot Module Replacement.
+ *      In prod, a single instance is created per cold start. `server-only` prevents client bundle inclusion.
+ */
+
 import "server-only";
 
 import { PrismaClient } from "@/generated/prisma/client";

@@ -1,5 +1,27 @@
 "use client";
 
+/**
+ * ---------------------------------------------------------
+ * RegLayer — Internationalization (i18n) Provider
+ * ---------------------------------------------------------
+ *
+ * WHY: EU market requires multi-language support.
+ * 7 languages: EN, DE, FR, ES, IT, NL, PT.
+ *
+ * WHAT:
+ * - React context providing: t() function, locale, setLocale()
+ * - t() translates a key with optional interpolation params
+ * - Auto-detects browser language on first visit
+ * - Persists language choice to localStorage
+ *
+ * HOW:
+ * - Uses useSyncExternalStore for localStorage sync
+ * - getTranslation() looks up key in locale file, falls back to EN
+ * - Interpolation: t("key", { count: 5 }) replaces {count} in string
+ * - detectLocale() checks: localStorage → navigator.language → default
+ * ---------------------------------------------------------
+ */
+
 import { createContext, useContext, useCallback, useSyncExternalStore } from "react";
 import { type Locale, type TranslationKey, getTranslation, detectLocale, DEFAULT_LOCALE } from "@/lib/i18n/translations";
 

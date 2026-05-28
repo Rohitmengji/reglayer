@@ -1,3 +1,11 @@
+/**
+ * RegLayer — API Keys Route
+ *
+ * WHY: Developers need API keys for CI/CD integration and programmatic access.
+ * WHAT: GET (list keys with prefix/last-used), POST (create key, return once), DELETE (revoke key).
+ * HOW: Key generation: randomBytes(32) → hash with SHA-256. Only hash stored. Full key shown once on create.
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";

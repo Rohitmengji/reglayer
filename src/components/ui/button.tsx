@@ -1,3 +1,23 @@
+/**
+ * ---------------------------------------------------------
+ * RegLayer — Button Component
+ * ---------------------------------------------------------
+ *
+ * WHY: Consistent button styling across the entire app.
+ *
+ * WHAT: Reusable Button with variants:
+ * - default: solid dark background
+ * - outline: bordered, transparent background
+ * - ghost: no border, transparent (for icon buttons)
+ * - destructive: red for dangerous actions
+ * Sizes: sm, default, lg, icon
+ *
+ * HOW: Uses class-variance-authority (CVA) to define variant
+ * class maps. cn() merges Tailwind classes without conflicts.
+ * forwardRef for DOM access. Supports asChild via Slot pattern.
+ * ---------------------------------------------------------
+ */
+
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils/cn";

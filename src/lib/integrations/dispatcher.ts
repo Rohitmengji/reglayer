@@ -1,3 +1,11 @@
+/**
+ * RegLayer — Integration Dispatcher
+ *
+ * WHY: When events occur (scan complete, score drop), all connected integrations need notification.
+ * WHAT: Fan-out dispatcher that routes events to GitHub, Slack, and custom webhooks.
+ * HOW: Queries user's connected integrations, dispatches event payload to each. Non-blocking (fire-and-forget).
+ */
+
 import { prisma } from "@/lib/database/prisma";
 import { decryptToken } from "@/lib/crypto";
 

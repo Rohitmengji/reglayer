@@ -1,3 +1,11 @@
+/**
+ * RegLayer — Notifications API
+ *
+ * WHY: Users need notification preferences and history (email alerts, in-app alerts).
+ * WHAT: GET (list notifications + preferences), POST (update preferences), PATCH (mark read).
+ * HOW: Notification preferences stored per user. Notification history stored in AuditLog-like model.
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";

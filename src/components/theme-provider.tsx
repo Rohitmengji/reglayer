@@ -1,5 +1,27 @@
 "use client";
 
+/**
+ * ---------------------------------------------------------
+ * RegLayer — Theme Provider
+ * ---------------------------------------------------------
+ *
+ * WHY: Manages dark/light mode across the entire app.
+ *
+ * WHAT:
+ * - React context providing: resolvedTheme, setTheme(), mounted
+ * - Persists preference to localStorage (key: "reglayer-theme")
+ * - Syncs HTML class (dark/light) for Tailwind dark: variant
+ * - Supports "system" theme (follows OS preference)
+ *
+ * HOW:
+ * - On mount, reads from localStorage or defaults to "system"
+ * - Uses matchMedia("prefers-color-scheme: dark") for system detection
+ * - Adds/removes .dark/.light class on <html> element
+ * - Sets color-scheme CSS property for browser UI integration
+ * - mounted flag prevents hydration mismatch (server doesn't know theme)
+ * ---------------------------------------------------------
+ */
+
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 
 type Theme = "light" | "dark" | "system";

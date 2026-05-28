@@ -1,3 +1,11 @@
+/**
+ * RegLayer — Workspace Helper
+ *
+ * WHY: New users need a workspace auto-provisioned on first scan.
+ * WHAT: Gets or creates a personal workspace for a user.
+ * HOW: Checks WorkspaceMember for user. If none, creates workspace with slug from email, adds user as OWNER.
+ */
+
 import { prisma } from "@/lib/database/prisma";
 
 /**

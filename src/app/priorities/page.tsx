@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * RegLayer — Fix Priorities Page
+ *
+ * WHY: "What should I fix first?" — the most common developer question after a scan.
+ * WHAT: AI-ranked list of fixes ordered by impact × effort. Shows estimated score uplift per fix.
+ * HOW: Fetches /api/scans/:id/priorities. Renders prioritized fix cards with difficulty badges and time estimates.
+ */
+
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";

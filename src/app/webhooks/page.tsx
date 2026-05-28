@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * RegLayer — Webhooks Page
+ *
+ * WHY: Teams need to integrate scan events with external systems (Slack, CI/CD, etc.).
+ * WHAT: Webhook CRUD: create (URL + events + secret), list, toggle, test, delete.
+ * HOW: Fetches /api/webhooks. POST to create, DELETE to remove. Test button sends sample payload.
+ */
+
 import { useState, useEffect } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";

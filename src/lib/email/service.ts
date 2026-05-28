@@ -1,3 +1,11 @@
+/**
+ * RegLayer — Email Service
+ *
+ * WHY: Users need email notifications (scan complete, score drop, team invites).
+ * WHAT: Nodemailer-based email sending with HTML templates.
+ * HOW: Creates SMTP transporter from env vars. Sends templated HTML emails. Falls back gracefully if not configured.
+ */
+
 import nodemailer from "nodemailer";
 
 let transporter: nodemailer.Transporter | null = null;

@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * RegLayer — Scans History Page
+ *
+ * WHY: Users need to review past scan results, compare scores, and track progress.
+ * WHAT: Lists all scans with filters (date, score, URL), pagination, and quick actions (view, compare, export).
+ * HOW: Fetches /api/scans on mount, renders sortable table with scan metadata and score badges.
+ */
+
 import { useEffect, useState, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { AppShell } from "@/components/layout/app-shell";

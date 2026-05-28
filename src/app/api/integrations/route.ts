@@ -1,3 +1,11 @@
+/**
+ * RegLayer — Integrations API
+ *
+ * WHY: Users connect external tools (GitHub, Slack) to automate accessibility workflows.
+ * WHAT: GET (list connections), POST (connect new), DELETE (disconnect). Stores OAuth tokens securely.
+ * HOW: Each integration type has its own handler. OAuth tokens encrypted at rest.
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";

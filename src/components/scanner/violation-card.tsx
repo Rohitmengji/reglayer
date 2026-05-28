@@ -1,5 +1,29 @@
 "use client";
 
+/**
+ * ---------------------------------------------------------
+ * RegLayer — Violation Card Component
+ * ---------------------------------------------------------
+ *
+ * WHY: Each accessibility violation needs a clear, actionable
+ * display that developers can understand and act on.
+ *
+ * WHAT:
+ * - Rule name and description
+ * - Impact badge (critical/serious/moderate/minor) with color
+ * - WCAG criteria tags
+ * - Affected element count
+ * - Expandable details: HTML snippets, CSS selectors, fix guidance
+ * - Link to axe-core documentation
+ *
+ * HOW:
+ * - Receives AccessibilityViolation as prop
+ * - Impact badge uses color-coded Badge component
+ * - Collapsible panel for element details (click to expand)
+ * - Code blocks rendered in monospace for HTML snippets
+ * ---------------------------------------------------------
+ */
+
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

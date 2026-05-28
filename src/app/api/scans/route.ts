@@ -1,3 +1,11 @@
+/**
+ * RegLayer — Scans List API
+ *
+ * WHY: Frontend needs to fetch paginated scan history for the current user's workspace.
+ * WHAT: GET returns scans with pagination, filtering by date/URL/score. Ordered by createdAt DESC.
+ * HOW: Authenticates via session, queries Prisma with workspace scope, returns JSON array with total count.
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";

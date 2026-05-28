@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * RegLayer — AI Insights Page
+ *
+ * WHY: Raw violation data isn't actionable enough. AI explains WHY issues matter.
+ * WHAT: AI-generated explanations, fix suggestions, and pattern analysis for scan results.
+ * HOW: Fetches /api/scans/:id/insights. Calls AI explainer for each violation. Shows impact on real users.
+ */
+
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";

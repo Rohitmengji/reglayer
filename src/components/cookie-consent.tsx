@@ -1,5 +1,27 @@
 "use client";
 
+/**
+ * ---------------------------------------------------------
+ * RegLayer — Cookie Consent Banner
+ * ---------------------------------------------------------
+ *
+ * WHY: GDPR/ePrivacy requires explicit cookie consent in the EU.
+ *
+ * WHAT:
+ * - Shows a bottom banner on first visit
+ * - "Accept" and "Decline" buttons
+ * - Remembers choice in localStorage
+ * - Only shows once per device
+ *
+ * HOW:
+ * - Checks localStorage for "reglayer-cookie-consent" key
+ * - If not set, renders banner after mount
+ * - Accept: stores "accepted", hides banner
+ * - Decline: stores "declined", hides banner
+ * - No analytics scripts load until consent is given
+ * ---------------------------------------------------------
+ */
+
 import { useState, useEffect } from "react";
 import { Shield } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";

@@ -1,3 +1,24 @@
+/**
+ * ---------------------------------------------------------
+ * RegLayer — Card Component
+ * ---------------------------------------------------------
+ *
+ * WHY: Content containers need consistent styling and structure.
+ *
+ * WHAT: Composable Card with sub-components:
+ * - Card: outer container (border, shadow, rounded)
+ * - CardHeader: top section (padding, flex layout)
+ * - CardTitle: heading text
+ * - CardDescription: subtitle text
+ * - CardContent: main body
+ * - CardFooter: bottom section (actions)
+ *
+ * HOW: Each sub-component is a forwardRef div with appropriate
+ * Tailwind classes. Compose them together for structured layouts.
+ * Example: <Card><CardHeader><CardTitle>...</CardTitle></CardHeader><CardContent>...</CardContent></Card>
+ * ---------------------------------------------------------
+ */
+
 import * as React from "react";
 import { cn } from "@/lib/utils/cn";
 

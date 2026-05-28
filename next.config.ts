@@ -1,3 +1,26 @@
+/**
+ * ---------------------------------------------------------
+ * RegLayer — Next.js Configuration
+ * ---------------------------------------------------------
+ *
+ * WHY: Configures the Next.js 16 build system and Sentry integration.
+ *
+ * WHAT:
+ * - Marks heavy server packages (chromium, playwright, pg) as external
+ *   so they don't bloat client bundles or cause bundling errors.
+ * - Includes Chromium binaries in Vercel deployment via outputFileTracingIncludes.
+ * - Enables Turbopack (Next.js 16 default bundler).
+ * - Optimizes barrel imports (lucide-react, etc.) for faster builds.
+ * - Wraps config with Sentry for error tracking + source maps.
+ *
+ * HOW:
+ * - serverExternalPackages: tells bundler "don't try to bundle these"
+ * - outputFileTracingIncludes: ensures @sparticuz/chromium binary deploys to serverless
+ * - withSentryConfig: wraps Next config to add Sentry webpack plugin
+ * - tunnelRoute: proxies Sentry requests through our server to avoid ad-blockers
+ * ---------------------------------------------------------
+ */
+
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 

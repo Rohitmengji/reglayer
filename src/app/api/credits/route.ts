@@ -1,3 +1,11 @@
+/**
+ * RegLayer — Credits API
+ *
+ * WHY: Frontend needs to display the user's current AI credit balance and plan info.
+ * WHAT: GET returns { credits: { used, limit, remaining, daysUntilReset, unlimited } }.
+ * HOW: Reads user from session, computes credits based on plan limits and monthly usage.
+ */
+
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";

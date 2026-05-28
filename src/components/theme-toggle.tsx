@@ -1,5 +1,21 @@
 "use client";
 
+/**
+ * ---------------------------------------------------------
+ * RegLayer — Theme Toggle Button
+ * ---------------------------------------------------------
+ *
+ * WHY: Users need a way to switch between dark and light mode.
+ *
+ * WHAT: A button that shows Sun (in dark mode) or Moon (in light mode)
+ * and toggles the theme on click.
+ *
+ * HOW: Uses useTheme() from ThemeProvider to read/write theme state.
+ * Icons swap based on resolvedTheme. Hidden until mounted to
+ * prevent hydration mismatch.
+ * ---------------------------------------------------------
+ */
+
 import { useTheme } from "@/components/theme-provider";
 import { Moon, Sun } from "lucide-react";
 
