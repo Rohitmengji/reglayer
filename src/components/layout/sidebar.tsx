@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { cn } from "@/lib/utils/cn";
 import { useTheme } from "@/components/theme-provider";
-import { Shield, LayoutDashboard, Scan, Globe, Zap, Sparkles, BarChart3, GitCompare, Webhook, Settings, LogOut, Grid3X3, Moon, Sun, FileText, Languages, Users, ClipboardList, Plug, Crown, ChevronDown, Eye } from "lucide-react";
+import { Shield, LayoutDashboard, Scan, Globe, Zap, Sparkles, BarChart3, GitCompare, Webhook, Settings, LogOut, Grid3X3, Moon, Sun, FileText, Languages, Users, ClipboardList, Plug, Crown, ChevronDown, Eye, Wand2, DollarSign, Route } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 import { SUPPORTED_LOCALES } from "@/lib/i18n/translations";
 import { useState } from "react";
@@ -24,6 +24,13 @@ const analysisNav = [
   { name: "AI Insights", key: "nav.insights", href: "/insights", icon: Sparkles },
   { name: "Analytics", key: "nav.analytics", href: "/analytics", icon: BarChart3 },
   { name: "Compare", key: "nav.compare", href: "/scans/compare", icon: GitCompare },
+];
+
+const automationNav = [
+  { name: "Remediation", key: "", href: "/dashboard/remediation", icon: Wand2 },
+  { name: "Revenue Impact", key: "", href: "/dashboard/revenue", icon: DollarSign },
+  { name: "VPAT/ACR", key: "", href: "/compliance/vpat", icon: FileText },
+  { name: "Journey Scan", key: "", href: "/dashboard/journey", icon: Route },
 ];
 
 const manageNav = [
@@ -90,6 +97,14 @@ export function Sidebar({ onNavigate }: SidebarProps) {
         <div className="space-y-0.5">
           <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">Analysis</p>
           {analysisNav.map((item) => (
+            <NavItem key={item.name} item={item} />
+          ))}
+        </div>
+
+        {/* Automation */}
+        <div className="space-y-0.5">
+          <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">Automation</p>
+          {automationNav.map((item) => (
             <NavItem key={item.name} item={item} />
           ))}
         </div>
