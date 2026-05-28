@@ -57,7 +57,21 @@ export default function ScreenReaderPage() {
 
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const playIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const speakTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const playStepRef = useRef<(stepIndex: number) => void>(() => {});
+  const audioUnlockedRef = useRef(false);
+
+  // Warm up speech synthesis — voices load async in most browsers
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.speechSynthesis) return;
+
+    const loadVoices = () => { window.speechSynthesis.getVoices(); };
+    loadVoices();
+    window.speechSynthesis.addEventListener("voiceschanged", loadVoices);
+    return () => {
+      window.speechSynthesis.removeEventListener("voiceschanged", loadVoices);
+    };
+  }, []);
   const stepsContainerRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll the step list to keep current step visible
@@ -113,14 +127,49 @@ export default function ScreenReaderPage() {
 
   const speak = useCallback(
     (text: string) => {
-      if (isMuted || typeof window === "undefined" || !window.speechSynthesis) return;
+      if (typeof window === "undefined" || !window.speechSynthesis) return;
+      if (isMuted) return;
+
+      // Clear any pending speech timeout
+      if (speakTimeoutRef.current) {
+        clearTimeout(speakTimeoutRef.current);
+        speakTimeoutRef.current = null;
+      }
+
+      // Cancel any ongoing speech
       window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = speed;
-      utterance.pitch = 1;
-      utterance.volume = 0.8;
-      utteranceRef.current = utterance;
-      window.speechSynthesis.speak(utterance);
+
+      // Delay after cancel — Chrome/Safari bug: speak() immediately after cancel() produces no audio
+      speakTimeoutRef.current = setTimeout(() => {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = speed;
+        utterance.pitch = 1;
+        utterance.volume = 1;
+        utterance.lang = "en-US";
+
+        // Select a local English voice if available (higher quality, lower latency)
+        const voices = window.speechSynthesis.getVoices();
+        const englishVoice = voices.find(
+          (v) => v.lang.startsWith("en") && v.localService
+        ) || voices.find((v) => v.lang.startsWith("en")) || voices[0];
+        if (englishVoice) utterance.voice = englishVoice;
+
+        utteranceRef.current = utterance;
+        window.speechSynthesis.speak(utterance);
+
+        // Chrome bug workaround: speech engine pauses after ~15s of continuous use
+        const resumeInterval = setInterval(() => {
+          if (!window.speechSynthesis.speaking) {
+            clearInterval(resumeInterval);
+          } else {
+            window.speechSynthesis.pause();
+            window.speechSynthesis.resume();
+          }
+        }, 10000);
+
+        utterance.onend = () => clearInterval(resumeInterval);
+        utterance.onerror = () => clearInterval(resumeInterval);
+      }, 100);
     },
     [isMuted, speed]
   );
@@ -130,6 +179,10 @@ export default function ScreenReaderPage() {
     if (playIntervalRef.current) {
       clearTimeout(playIntervalRef.current);
       playIntervalRef.current = null;
+    }
+    if (speakTimeoutRef.current) {
+      clearTimeout(speakTimeoutRef.current);
+      speakTimeoutRef.current = null;
     }
     if (typeof window !== "undefined" && window.speechSynthesis) {
       window.speechSynthesis.cancel();
@@ -162,6 +215,16 @@ export default function ScreenReaderPage() {
 
   const startPlayback = useCallback(() => {
     if (!snapshot) return;
+
+    // Unlock audio on first user gesture — browsers require a speak() call
+    // directly inside a click handler before async speech will work
+    if (!audioUnlockedRef.current && window.speechSynthesis) {
+      const unlock = new SpeechSynthesisUtterance("");
+      unlock.volume = 0;
+      window.speechSynthesis.speak(unlock);
+      audioUnlockedRef.current = true;
+    }
+
     setIsPlaying(true);
     playStep(currentStep);
   }, [snapshot, currentStep, playStep]);
@@ -179,6 +242,15 @@ export default function ScreenReaderPage() {
     const clamped = Math.max(0, Math.min(index, snapshot.steps.length - 1));
     setCurrentStep(clamped);
     stopPlayback();
+
+    // Unlock audio on first user gesture
+    if (!audioUnlockedRef.current && window.speechSynthesis) {
+      const unlock = new SpeechSynthesisUtterance("");
+      unlock.volume = 0;
+      window.speechSynthesis.speak(unlock);
+      audioUnlockedRef.current = true;
+    }
+
     speak(snapshot.steps[clamped].announcement);
   };
 
