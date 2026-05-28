@@ -45,7 +45,7 @@ export default function IntegrationsPage() {
               </pre>
             </div>
             <p className="text-sm text-neutral-600 dark:text-neutral-300 mt-3">
-              See the full <Link href="/api-reference" className="text-blue-600 hover:underline">API Reference</Link> for all available endpoints.
+              See the full <Link href="/api-reference" className="text-blue-600">API Reference</Link> for all available endpoints.
             </p>
           </section>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Shield } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 
@@ -13,22 +13,21 @@ interface ConsentState {
 
 const CONSENT_KEY = "reglayer-gdpr-consent";
 
-function getInitialVisible(): boolean {
-  if (typeof window === "undefined") return false;
-  return !localStorage.getItem(CONSENT_KEY);
-}
-
-function getInitialConsent(): ConsentState {
-  if (typeof window === "undefined") return { essential: true, analytics: false, marketing: false, timestamp: null };
-  const stored = localStorage.getItem(CONSENT_KEY);
-  if (stored) return JSON.parse(stored);
-  return { essential: true, analytics: false, marketing: false, timestamp: null };
-}
-
 export function CookieConsent() {
-  const [visible, setVisible] = useState(getInitialVisible);
+  const [visible, setVisible] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
-  const [consent, setConsent] = useState<ConsentState>(getInitialConsent);
+  const [consent, setConsent] = useState<ConsentState>({
+    essential: true, analytics: false, marketing: false, timestamp: null,
+  });
+
+  useEffect(() => {
+    const stored = localStorage.getItem(CONSENT_KEY);
+    if (!stored) {
+      setVisible(true);
+    } else {
+      setConsent(JSON.parse(stored));
+    }
+  }, []);
   const { t } = useI18n();
 
   function saveConsent(state: ConsentState) {
@@ -125,7 +124,7 @@ export function CookieConsent() {
                 ) : (
                   <button
                     onClick={() => setShowDetails(true)}
-                    className="text-xs font-medium text-blue-600 hover:underline"
+                    className="text-xs font-medium text-blue-600"
                   >
                     {t("cookie.customize")}
                   </button>

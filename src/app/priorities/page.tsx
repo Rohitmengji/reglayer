@@ -132,7 +132,7 @@ function PrioritiesContent() {
       <AppShell>
         <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-12 text-center">
           <p className="text-lg font-medium text-neutral-700 dark:text-neutral-200">{error || "No data"}</p>
-          <Link href="/dashboard" className="text-sm text-blue-600 hover:underline mt-2 inline-block">
+          <Link href="/dashboard" className="text-sm text-blue-600 mt-2 inline-block">
             {t("priorities.runScanFirst")}
           </Link>
         </div>
@@ -264,7 +264,7 @@ function FixCard({ fix, variant }: { fix: PrioritizedFix; variant: "quickwin" | 
             </div>
           </div>
           {fix.helpUrl && (
-            <a href={fix.helpUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline shrink-0">
+            <a href={fix.helpUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 shrink-0">
               Fix guide →
             </a>
           )}

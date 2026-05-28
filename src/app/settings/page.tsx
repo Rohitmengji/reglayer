@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Clock, Play, Pause, Key, GitBranch, Bell, Copy, Eye, EyeOff, Sparkles, Zap } from "lucide-react";
+import { Plus, Trash2, Clock, Play, Pause, Key, GitBranch, Bell, Copy, Eye, EyeOff, Sparkles, Zap, SlidersHorizontal, AlertTriangle } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 
 interface Schedule {
@@ -32,19 +33,21 @@ interface ApiKeyRecord {
   expiresAt: string | null;
 }
 
-type Tab = "plan" | "general" | "api-keys" | "schedules" | "integrations" | "alerts";
+type Tab = "plan" | "general" | "api-keys" | "schedules" | "integrations" | "notifications" | "alerts";
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState<Tab>("plan");
+  const searchParams = useSearchParams();
+  const [activeTab, setActiveTab] = useState<Tab>((searchParams.get("tab") as Tab) || "plan");
   const { t } = useI18n();
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
-    { id: "plan", label: t("settings.tabPlan"), icon: <Sparkles className="h-3.5 w-3.5" /> },
-    { id: "general", label: t("settings.tabGeneral"), icon: null },
-    { id: "api-keys", label: t("settings.tabApiKeys"), icon: <Key className="h-3.5 w-3.5" /> },
-    { id: "schedules", label: t("settings.tabSchedules"), icon: <Clock className="h-3.5 w-3.5" /> },
-    { id: "integrations", label: t("settings.tabIntegrations"), icon: <GitBranch className="h-3.5 w-3.5" /> },
-    { id: "alerts", label: t("settings.tabAlerts"), icon: <Bell className="h-3.5 w-3.5" /> },
+    { id: "plan", label: t("settings.tabPlan"), icon: <Sparkles className="h-4 w-4" /> },
+    { id: "general", label: t("settings.tabGeneral"), icon: <SlidersHorizontal className="h-4 w-4" /> },
+    { id: "api-keys", label: t("settings.tabApiKeys"), icon: <Key className="h-4 w-4" /> },
+    { id: "schedules", label: t("settings.tabSchedules"), icon: <Clock className="h-4 w-4" /> },
+    { id: "integrations", label: t("settings.tabIntegrations"), icon: <GitBranch className="h-4 w-4" /> },
+    { id: "notifications", label: "Notifications", icon: <Bell className="h-4 w-4" /> },
+    { id: "alerts", label: t("settings.tabAlerts"), icon: <AlertTriangle className="h-4 w-4" /> },
   ];
 
   return (
@@ -58,19 +61,20 @@ export default function SettingsPage() {
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex gap-1 overflow-x-auto border-b border-neutral-200 dark:border-neutral-700 pb-px -mx-4 px-4 sm:mx-0 sm:px-0">
+        <div className="grid grid-cols-7 sm:flex sm:gap-1 border-b border-neutral-200 dark:border-neutral-700 pb-px">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-1.5 rounded-t-lg px-4 py-2 text-sm font-medium transition-colors ${
+              className={`flex items-center justify-center sm:justify-start gap-2 px-2 py-3 sm:px-4 sm:py-2.5 text-sm font-medium transition-colors relative ${
                 activeTab === tab.id
-                  ? "border-b-2 border-neutral-900 text-neutral-900 dark:text-white"
-                  : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-white"
+                  ? "text-neutral-900 dark:text-white after:absolute after:bottom-0 after:left-2 after:right-2 after:h-0.5 after:bg-neutral-900 after:dark:bg-white after:rounded-full"
+                  : "text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-white"
               }`}
+              title={tab.label}
             >
               {tab.icon}
-              {tab.label}
+              <span className="hidden sm:inline">{tab.label}</span>
             </button>
           ))}
         </div>
@@ -81,6 +85,7 @@ export default function SettingsPage() {
         {activeTab === "api-keys" && <ApiKeysTab />}
         {activeTab === "schedules" && <SchedulesTab />}
         {activeTab === "integrations" && <IntegrationsTab />}
+        {activeTab === "notifications" && <NotificationsTab />}
         {activeTab === "alerts" && <AlertsTab />}
       </div>
     </AppShell>
@@ -968,6 +973,135 @@ function IntegrationsTab() {
           <code className="block rounded-lg bg-neutral-50 dark:bg-neutral-800 p-3 text-xs text-neutral-700 dark:text-neutral-200 break-all">
             ![Accessibility](https://reglayer.vercel.app/api/badge?url=YOUR_URL)
           </code>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+/* ─────────────── Notifications Tab ─────────────── */
+
+interface NotificationPrefs {
+  scanComplete: boolean;
+  weeklyDigest: boolean;
+  newViolations: boolean;
+  complianceAlerts: boolean;
+  teamActivity: boolean;
+  scheduledReports: boolean;
+}
+
+const notificationSettings = [
+  { key: "scanComplete" as const, label: "Scan Complete", description: "Get notified when a scan finishes running" },
+  { key: "newViolations" as const, label: "New Violations Detected", description: "Alert when new accessibility issues are found" },
+  { key: "complianceAlerts" as const, label: "Compliance Status Changes", description: "Notify when compliance level drops below threshold" },
+  { key: "weeklyDigest" as const, label: "Weekly Digest", description: "Summary of accessibility progress every Monday" },
+  { key: "teamActivity" as const, label: "Team Activity", description: "When team members join, leave, or change roles" },
+  { key: "scheduledReports" as const, label: "Scheduled Reports", description: "Receive automated compliance reports on schedule" },
+];
+
+function NotificationsTab() {
+  const [prefs, setPrefs] = useState<NotificationPrefs>({
+    scanComplete: true,
+    weeklyDigest: true,
+    newViolations: true,
+    complianceAlerts: true,
+    teamActivity: false,
+    scheduledReports: false,
+  });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [testSending, setTestSending] = useState(false);
+  const [testResult, setTestResult] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/notifications")
+      .then((r) => { if (!r.ok) throw new Error("Failed"); return r.json(); })
+      .then((d) => { if (d.preferences) setPrefs(d.preferences); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function handleToggle(key: keyof NotificationPrefs) {
+    const updated = { ...prefs, [key]: !prefs[key] };
+    setPrefs(updated);
+    setSaving(true);
+    setSaved(false);
+    try {
+      await fetch("/api/notifications", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ preferences: updated }) });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } finally { setSaving(false); }
+  }
+
+  return (
+    <div className="space-y-4">
+      {saved && (
+        <p className="text-xs text-green-600 font-medium">✓ Preferences saved</p>
+      )}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Bell className="h-4 w-4" />
+            Email Notifications
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <p className="text-sm text-neutral-500 text-center py-8">Loading preferences...</p>
+          ) : (
+            <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
+              {notificationSettings.map((item) => (
+                <div key={item.key} className="flex items-center justify-between gap-4 py-4 first:pt-0 last:pb-0">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-neutral-900 dark:text-white">{item.label}</p>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400 line-clamp-2">{item.description}</p>
+                  </div>
+                  <button
+                    onClick={() => handleToggle(item.key)}
+                    disabled={saving}
+                    className={`relative shrink-0 inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      prefs[item.key] ? "bg-neutral-900 dark:bg-white" : "bg-neutral-200 dark:bg-neutral-700"
+                    }`}
+                  >
+                    <span className={`inline-block h-4 w-4 rounded-full bg-white dark:bg-neutral-900 transition-transform ${
+                      prefs[item.key] ? "translate-x-6" : "translate-x-1"
+                    }`} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="py-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-neutral-900 dark:text-white">Send Test Email</p>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">Verify your email notifications are working</p>
+              {testResult && (
+                <p className={`text-xs mt-1 wrap-break-word ${testResult.startsWith("✓") ? "text-green-600" : "text-red-600"}`}>{testResult}</p>
+              )}
+            </div>
+            <button
+              onClick={async () => {
+                setTestSending(true);
+                setTestResult(null);
+                try {
+                  const res = await fetch("/api/notifications", { method: "POST" });
+                  const data = await res.json();
+                  setTestResult(res.ok ? "✓ Test email sent!" : `✗ ${data.error || "Failed"}`);
+                } catch { setTestResult("✗ Network error"); }
+                finally { setTestSending(false); }
+              }}
+              disabled={testSending}
+              className="shrink-0 rounded-lg bg-neutral-900 dark:bg-white px-3 py-1.5 text-xs font-medium text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 disabled:opacity-50 transition-colors"
+            >
+              {testSending ? "Sending..." : "Send Test"}
+            </button>
+          </div>
         </CardContent>
       </Card>
     </div>

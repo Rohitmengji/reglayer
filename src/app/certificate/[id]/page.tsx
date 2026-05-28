@@ -182,7 +182,7 @@ export default function CertificatePage() {
             <div className="border-t border-neutral-100 dark:border-neutral-800 pt-6 mt-6 space-y-4">
               <div className="flex items-center justify-center gap-2 text-sm">
                 <Globe className="h-4 w-4 text-neutral-400" />
-                <a href={cert.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center gap-1">
+                <a href={cert.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 flex items-center gap-1">
                   {cert.url} <ExternalLink className="h-3 w-3" />
                 </a>
               </div>
@@ -235,7 +235,7 @@ export default function CertificatePage() {
                 Certificate ID: <code className="font-mono">{cert.id}</code>
               </p>
               <p className="text-xs text-neutral-400 mt-1">
-                Verified by <a href="https://reglayer.vercel.app" className="text-blue-600 hover:underline">RegLayer</a> — Web Accessibility Compliance Platform
+                Verified by <a href="https://reglayer.vercel.app" className="text-blue-600">RegLayer</a> — Web Accessibility Compliance Platform
               </p>
               {isExpired && (
                 <p className="text-xs text-red-500 font-medium mt-2">
