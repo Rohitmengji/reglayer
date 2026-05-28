@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Standards Page
+ *
+ * WHY: Users need to understand which accessibility standards RegLayer supports.
+ * WHAT: Explains WCAG 2.2, ADA, Section 508, EAA, EN 301 549, AODA with key requirements.
+ * HOW: Server-rendered static content with standard comparison table.
+ */
 import { Shield, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { Footer } from "@/components/layout/footer";

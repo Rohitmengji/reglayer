@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * RegLayer — User Journey Page
+ *
+ * WHY: Multi-step user flows (checkout, registration) may have accessibility barriers between steps.
+ * WHAT: Define a flow of URLs/interactions, scan each step, show step-by-step accessibility report.
+ * HOW: POSTs flow definition to /api/journey, receives per-step scan results.
+ */
+
 import { useState } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent } from "@/components/ui/card";

@@ -1,3 +1,10 @@
+/**
+ * RegLayer — VPAT (Voluntary Product Accessibility Template) API
+ *
+ * WHY: Enterprise procurement requires VPAT documents to evaluate product accessibility.
+ * WHAT: GET/POST generates a VPAT document from scan results in Section 508 format.
+ * HOW: Maps scan violations to VPAT criteria sections, generates structured document.
+ */
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";

@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Playwright E2E Test Configuration
+ *
+ * WHY: End-to-end tests need browser configuration and dev server settings.
+ * WHAT: Configures Playwright: browsers (chromium), base URL, retries, screenshots on failure.
+ * HOW: Starts Next.js dev server, runs tests in e2e/ directory against localhost:3000.
+ */
 import { defineConfig, devices } from "@playwright/test";
 
 /**

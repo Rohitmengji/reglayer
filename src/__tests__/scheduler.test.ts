@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Scheduler Tests
+ *
+ * WHY: Scheduled scan execution must fire at correct times and handle failures gracefully.
+ * WHAT: Tests for parseCron(), shouldRun(), handleScheduleExecution(), retryFailedScans().
+ * HOW: Unit tests with mocked clock (vi.useFakeTimers). Verifies cron parsing and execution logic.
+ */
 import { describe, it, expect, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));

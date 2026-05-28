@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Accessibility Statement Generator API
+ *
+ * WHY: EU law (EN 301 549 Annex C) requires published accessibility statements.
+ * WHAT: POST with scan data + org info, returns formatted accessibility statement text.
+ * HOW: Uses latest scan results to auto-fill compliance status in a legal template.
+ */
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";

@@ -1,3 +1,10 @@
+/**
+ * RegLayer — GitHub Issues Integration API
+ *
+ * WHY: Teams want to auto-create GitHub issues from accessibility violations.
+ * WHAT: POST creates GitHub issues for selected violations with labels and assignees.
+ * HOW: Uses GitHub API with connected OAuth token. Creates issues with violation details + fix guidance.
+ */
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";

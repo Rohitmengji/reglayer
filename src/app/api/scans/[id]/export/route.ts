@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Scan Export API
+ *
+ * WHY: Users need to export scan results for external tools or reporting.
+ * WHAT: GET returns scan data as CSV or JSON (format query param).
+ * HOW: Serializes scan violations into requested format with proper Content-Type headers.
+ */
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";

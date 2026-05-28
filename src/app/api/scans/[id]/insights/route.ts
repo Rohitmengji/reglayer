@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Scan Insights API
+ *
+ * WHY: AI-powered insights help users understand violation patterns and impact.
+ * WHAT: GET returns AI-generated insights for a specific scan.
+ * HOW: Sends scan violations to AI summarizer, caches result, returns structured insights.
+ */
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";

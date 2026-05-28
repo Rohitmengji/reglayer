@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * RegLayer — VPAT Page
+ *
+ * WHY: Enterprise customers need VPAT documents for procurement evaluation.
+ * WHAT: VPAT (Voluntary Product Accessibility Template) generator with Section 508 format.
+ * HOW: Fetches /api/compliance/vpat, renders structured VPAT document with export options.
+ */
+
 import { useState } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent } from "@/components/ui/card";

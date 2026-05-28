@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * RegLayer — Global Error Boundary
+ *
+ * WHY: If even the root layout throws, this catches it (last resort).
+ * WHAT: Minimal HTML error page that renders without any layout dependencies.
+ * HOW: Next.js renders this when RootLayout itself throws. Includes its own <html>/<body>.
+ */
+
 import { useEffect } from "react";
 import * as Sentry from "@sentry/nextjs";
 

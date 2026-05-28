@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * RegLayer — Analysis Hub Page
+ *
+ * WHY: Combines multiple analysis views (screen reader, visual audit) in one tabbed interface.
+ * WHAT: Tab navigation between Screen Reader simulation, Visual Audit, and Design System analysis.
+ * HOW: Uses URL search params (?tab=screen-reader) for tab state. Lazy-loads tab content.
+ */
+
 import { Suspense, lazy } from "react";
 import { useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";

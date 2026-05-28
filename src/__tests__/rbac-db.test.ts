@@ -1,3 +1,10 @@
+/**
+ * RegLayer — RBAC Database Integration Tests
+ *
+ * WHY: Role-based access control in database must enforce permission boundaries correctly.
+ * WHAT: Tests team membership queries, permission checks, role hierarchy in actual DB operations.
+ * HOW: Integration tests with mocked Prisma client. Tests Owner > Admin > Member > Viewer hierarchy.
+ */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("server-only", () => ({}));

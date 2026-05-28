@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * RegLayer — Management Hub Page
+ *
+ * WHY: Consolidates team, webhook, and notification management in one tabbed view.
+ * WHAT: Tab navigation between Team, Webhooks, and Notifications management.
+ * HOW: Uses URL search params (?tab=team) for tab state. Lazy-loads tab content.
+ */
+
 import { Suspense, lazy } from "react";
 import { useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";

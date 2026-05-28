@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Development Proxy
+ *
+ * WHY: Development tooling may need a proxy for API requests.
+ * WHAT: HTTP proxy configuration for development environment.
+ * HOW: Exports proxy configuration used by development servers.
+ */
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 

@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Getting Started Guide
+ *
+ * WHY: New users need step-by-step onboarding instructions.
+ * WHAT: Quick start guide: create account, run first scan, understand results, set up monitoring.
+ * HOW: Static content page with code examples and screenshots.
+ */
 import { Shield, Rocket, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 

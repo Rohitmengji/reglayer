@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Scan Compare API
+ *
+ * WHY: Teams need to see what changed between two scans (did we fix/introduce issues?).
+ * WHAT: GET with base and head scan IDs, returns diff (fixed, introduced, persistent violations).
+ * HOW: Loads both scans' violations, computes set difference by ruleId + element target.
+ */
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";

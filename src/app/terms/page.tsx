@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Terms of Service Page
+ *
+ * WHY: Legal requirement — defines the agreement between RegLayer and its users.
+ * WHAT: Full ToS covering acceptable use, billing, liability, termination, governing law.
+ * HOW: Static content page. Server-rendered for SEO.
+ */
 import { Shield } from "lucide-react";
 import Link from "next/link";
 import { Footer } from "@/components/layout/footer";

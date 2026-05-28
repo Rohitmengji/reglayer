@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Export API Tests
+ *
+ * WHY: Report exports (PDF, CSV, JSON) must generate correct output formats.
+ * WHAT: Tests /api/reports/export endpoint: validates auth, generates correct MIME types, includes data.
+ * HOW: Mocks scan data, calls export handler, verifies response headers and content structure.
+ */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 

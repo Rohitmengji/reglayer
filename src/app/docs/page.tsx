@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Documentation Hub
+ *
+ * WHY: Users need a central docs page linking to all documentation sections.
+ * WHAT: Card grid linking to: Getting Started, Scanning, Monitoring, Reports, Integrations, Teams.
+ * HOW: Server component rendering static links to /docs/* sub-pages.
+ */
 import { Shield, BookOpen, Rocket, ScanLine, Bell, FileText, Code2, Users } from "lucide-react";
 import Link from "next/link";
 

@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Monitoring Documentation
+ *
+ * WHY: Users setting up scheduled scans need reference documentation.
+ * WHAT: Explains cron schedules, alert thresholds, notification configuration.
+ * HOW: Static docs page with cron syntax examples.
+ */
 import { Shield, Bell, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 

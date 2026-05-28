@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * RegLayer — Screen Reader Simulation Page
+ *
+ * WHY: Developers need to understand how screen readers interpret their pages.
+ * WHAT: Simulates screen reader output for a given URL (narration sequence, landmarks, headings).
+ * HOW: Fetches /api/screen-reader with URL, renders narration output in sequential order.
+ */
+
 import { useState, useRef, useCallback, useEffect } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";

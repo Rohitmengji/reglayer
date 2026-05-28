@@ -1,3 +1,10 @@
+/**
+ * RegLayer — API Error Utilities
+ *
+ * WHY: All API routes should return errors in a consistent JSON format.
+ * WHAT: Helper functions for common error responses (400, 401, 403, 404, 500).
+ * HOW: Each function returns a NextResponse with structured { error, details? } body and correct status code.
+ */
 import { NextResponse } from "next/server";
 
 /**

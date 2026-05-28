@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * RegLayer — Notifications Management Component
+ *
+ * WHY: Users configure when and how they receive alerts (email, in-app).
+ * WHAT: Toggle notifications per event type (scan complete, score drop, new critical).
+ * HOW: Fetches /api/notifications preferences, PATCH to update toggles.
+ */
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Bell } from "lucide-react";

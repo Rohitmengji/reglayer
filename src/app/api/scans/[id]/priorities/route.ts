@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Scan Priorities API
+ *
+ * WHY: Users need to know which violations to fix first for maximum score improvement.
+ * WHAT: GET returns prioritized fix list ranked by impact × effort × recurrence.
+ * HOW: Calls priorityEngine with scan violations, returns ranked fixes with time estimates.
+ */
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";

@@ -1,3 +1,11 @@
+/**
+ * RegLayer — Rate Limiter Core
+ *
+ * WHY: API endpoints need protection from abuse (brute force, scraping, DDoS).
+ * WHAT: Sliding-window rate limiter with configurable limits per endpoint category.
+ * HOW: Uses Upstash Redis for distributed state. Presets: scan(10/min), api(100/min), auth(5/min).
+ *      Returns { success, remaining, reset } for each check.
+ */
 import "server-only";
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";

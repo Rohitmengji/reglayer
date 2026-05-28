@@ -1,3 +1,10 @@
+/**
+ * RegLayer — RUM Snippet API
+ *
+ * WHY: Sites need a lightweight script to collect accessibility RUM data.
+ * WHAT: GET serves the RUM JavaScript snippet for embedding in sites.
+ * HOW: Returns minified JS that monitors focus traps, keyboard nav, and ARIA errors.
+ */
 import { NextRequest } from "next/server";
 
 /**

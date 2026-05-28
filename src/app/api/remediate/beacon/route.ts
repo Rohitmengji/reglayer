@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Remediation Beacon API
+ *
+ * WHY: Client-side remediation overlay needs to report fix confirmations.
+ * WHAT: POST receives beacon events when a user applies a fix suggestion.
+ * HOW: Accepts lightweight event payload, logs to analytics. Non-blocking.
+ */
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/database/prisma";
 import { createHash } from "crypto";

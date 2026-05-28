@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Change Password Tests
+ *
+ * WHY: Password change has security implications — must verify old password, enforce strength.
+ * WHAT: Tests changePassword API: wrong old password rejected, weak new password rejected, success case.
+ * HOW: Mocks auth session and Prisma. Tests edge cases: mismatched confirm, same-as-old, etc.
+ */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("server-only", () => ({}));

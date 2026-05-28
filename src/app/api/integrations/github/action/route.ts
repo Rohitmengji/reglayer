@@ -1,3 +1,10 @@
+/**
+ * RegLayer — GitHub Action Integration API
+ *
+ * WHY: Teams want to trigger accessibility scans from GitHub Actions CI/CD.
+ * WHAT: POST accepts scan request from GitHub Action, returns results for CI annotation.
+ * HOW: Validates GitHub Action token, runs scan, formats results as GitHub annotations.
+ */
 import { NextRequest } from "next/server";
 
 /**

@@ -1,3 +1,9 @@
+# RegLayer — Deploy Pipeline
+#
+# WHY: Main branch merges should auto-deploy to Vercel production.
+# WHAT: Triggers Vercel deployment on push to main, runs post-deploy smoke tests.
+# HOW: Uses Vercel CLI to deploy, then runs e2e/smoke.spec.ts against production URL.
+#
 name: Deploy
 
 on:

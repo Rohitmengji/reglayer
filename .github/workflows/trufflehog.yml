@@ -1,3 +1,9 @@
+# RegLayer — TruffleHog Secret Scanning
+#
+# WHY: Prevents accidental commit of API keys, passwords, tokens to the repository.
+# WHAT: Scans all commits in PR for high-entropy strings matching secret patterns.
+# HOW: Uses trufflehog GitHub Action. Blocks PR if secrets detected. Runs on every push.
+#
 name: TruffleHog Secrets Scan
 
 on:

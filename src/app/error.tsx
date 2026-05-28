@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * RegLayer — Error Boundary Page
+ *
+ * WHY: When a page component throws, users see this instead of a white screen.
+ * WHAT: User-friendly error message with "Try Again" button to reset the error boundary.
+ * HOW: Next.js automatically wraps pages in error boundaries. This is the fallback UI.
+ */
+
 import { useEffect } from "react";
 import * as Sentry from "@sentry/nextjs";
 import Link from "next/link";

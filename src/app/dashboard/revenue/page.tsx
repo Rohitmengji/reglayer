@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * RegLayer — Revenue Impact Page
+ *
+ * WHY: Business stakeholders need ROI justification for accessibility investment.
+ * WHAT: Calculates estimated revenue loss from inaccessibility (lost users, legal risk, market size).
+ * HOW: Fetches /api/revenue-impact with site traffic data, renders financial impact breakdown.
+ */
+
 import { useState } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent } from "@/components/ui/card";
