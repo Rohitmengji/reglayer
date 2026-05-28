@@ -257,7 +257,7 @@ export const fr = {
 
   // Statement
   "statement.title": "Générateur de déclaration d'accessibilité",
-  "statement.subtitle": "Générer une déclaration d'accessibilité conforme à l'UE selon la Directive 2016/2102 et l'Acte européen d'accessibilité.",
+  "statement.subtitle": "Générer une déclaration d'accessibilité conforme aux normes WCAG 2.2, ADA, EAA, Section 508 et autres réglementations internationales.",
   "statement.formTitle": "Détails de l'organisation",
   "statement.orgName": "Nom de l'organisation *",
   "statement.orgNamePlaceholder": "Société Exemple",

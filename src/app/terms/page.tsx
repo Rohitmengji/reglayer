@@ -33,8 +33,8 @@ export default function TermsPage() {
             <h2 className="text-lg font-semibold text-neutral-900 dark:text-white mt-8 mb-3">2. Description of Service</h2>
             <p className="text-neutral-600 dark:text-neutral-300">
               RegLayer provides automated web accessibility scanning, compliance monitoring, and reporting tools. 
-              The Service helps organizations assess their digital products against WCAG 2.1, EN 301 549, 
-              and European Accessibility Act requirements.
+              The Service helps organizations assess their digital products against WCAG 2.2, ADA, Section 508, EN 301 549, 
+              and other global accessibility requirements.
             </p>
           </section>
 

@@ -257,7 +257,7 @@ export const it = {
 
   // Statement
   "statement.title": "Generatore dichiarazione di accessibilità",
-  "statement.subtitle": "Genera una dichiarazione conforme UE secondo la Direttiva 2016/2102 e l'Atto Europeo di Accessibilità.",
+  "statement.subtitle": "Genera una dichiarazione di accessibilità conforme a WCAG 2.2, ADA, EAA, Section 508 e altre normative internazionali.",
   "statement.formTitle": "Dettagli organizzazione",
   "statement.orgName": "Nome organizzazione *",
   "statement.orgNamePlaceholder": "Acme Corporation",

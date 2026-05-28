@@ -3,7 +3,7 @@ import Link from "next/link";
 
 export const metadata = {
   title: "Standards — RegLayer",
-  description: "Accessibility standards supported by RegLayer: WCAG 2.1, EN 301 549, Section 508, and the European Accessibility Act.",
+  description: "Accessibility standards supported by RegLayer: WCAG 2.2, ADA, Section 508, EN 301 549, EAA, and AODA.",
 };
 
 const standards = [
@@ -38,6 +38,22 @@ const standards = [
       "U.S. federal requirements for ICT accessibility, aligned with WCAG 2.0 Level AA. Required for all federal agency websites and technology procured by the government.",
     criteria: ["Web-based applications", "Software applications", "Electronic documents", "Telecommunications"],
     link: "https://www.section508.gov/",
+  },
+  {
+    name: "ADA Title III",
+    org: "U.S. Department of Justice",
+    description:
+      "The Americans with Disabilities Act requires that places of public accommodation — including websites — be accessible to people with disabilities. Courts increasingly apply WCAG 2.1 AA as the benchmark.",
+    criteria: ["Public accommodations", "Effective communication", "Auxiliary aids & services", "Web accessibility"],
+    link: "https://www.ada.gov/",
+  },
+  {
+    name: "AODA",
+    org: "Government of Ontario, Canada",
+    description:
+      "The Accessibility for Ontarians with Disabilities Act requires organizations in Ontario to meet WCAG 2.0 Level AA for web content. Applies to public and private sector organizations.",
+    criteria: ["Web content", "Web applications", "Digital documents", "Multimedia"],
+    link: "https://www.ontario.ca/laws/statute/05a11",
   },
 ];
 
