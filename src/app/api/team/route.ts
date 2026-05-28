@@ -50,6 +50,7 @@ export async function GET() {
       plan: workspace.plan,
     },
     currentUserRole: membership.role,
+    currentUserIsMasterAdmin: user.isMasterAdmin || false,
     members: workspace.members.map((m) => ({
       id: m.id,
       userId: m.user.id,
