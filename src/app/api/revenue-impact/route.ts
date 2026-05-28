@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Revenue Impact API
+ *
+ * WHY: Business stakeholders need to understand the financial cost of inaccessibility.
+ * WHAT: GET calculates estimated revenue loss from accessibility barriers.
+ * HOW: Uses traffic data + bounce rates + disability statistics to estimate lost conversions.
+ */
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";

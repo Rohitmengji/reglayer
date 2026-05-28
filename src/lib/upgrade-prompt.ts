@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Upgrade Prompt Utility
+ *
+ * WHY: When users hit plan limits, they need a friendly nudge to upgrade.
+ * WHAT: Shows a persistent toast notification with upgrade guidance when API returns upgradeRequired.
+ * HOW: Called from client-side fetch error handlers. Uses Sonner toast library for UI.
+ */
 import { toast } from "sonner";
 
 /**

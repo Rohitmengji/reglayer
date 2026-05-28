@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Badge Component
+ *
+ * WHY: Status indicators need consistent styling (severity levels, plan tiers, etc.).
+ * WHAT: Colored pill with variants: default, success, warning, destructive, outline.
+ * HOW: CVA-based variant system. Used for violation severity, plan badges, status indicators.
+ */
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils/cn";

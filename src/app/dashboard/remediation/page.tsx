@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * RegLayer — Remediation Dashboard Page
+ *
+ * WHY: Teams need to track remediation progress and get AI-powered fix suggestions.
+ * WHAT: Shows violations with AI-generated code fixes, remediation status tracking.
+ * HOW: Fetches violations, calls /api/remediate for fix suggestions, tracks status changes.
+ */
+
 import { useState } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent } from "@/components/ui/card";

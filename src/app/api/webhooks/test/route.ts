@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Webhook Test API
+ *
+ * WHY: Users need to verify their webhook endpoint is reachable before relying on it.
+ * WHAT: POST sends a test payload to the specified webhook URL.
+ * HOW: Constructs sample event payload, POSTs to URL with HMAC signature, reports success/failure.
+ */
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";

@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * RegLayer — Real User Monitoring Page
+ *
+ * WHY: Automated scans miss issues that only appear in real user interactions.
+ * WHAT: Shows RUM data: keyboard navigation failures, focus traps, ARIA errors from real sessions.
+ * HOW: Fetches /api/rum/events for aggregated data, renders timeline and heatmap visualizations.
+ */
+
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";

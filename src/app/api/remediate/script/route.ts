@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Remediation Script API
+ *
+ * WHY: Sites can embed a script that shows an accessibility fix overlay.
+ * WHAT: GET serves a JavaScript snippet that renders remediation suggestions on-page.
+ * HOW: Returns minified JS that fetches violations and renders fix UI in a shadow DOM.
+ */
 import { NextRequest } from "next/server";
 
 /**

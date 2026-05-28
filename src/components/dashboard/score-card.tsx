@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * RegLayer — Score Card Component
+ *
+ * WHY: Dashboard needs compact metric displays (total scans, avg score, etc.).
+ * WHAT: Card with large number, label, and optional trend arrow (up/down/neutral).
+ * HOW: Receives value, label, trend props. Color-codes trend (green=up, red=down).
+ */
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { ScanSummary } from "@/lib/types";
 import { ShieldAlert, AlertTriangle, Info } from "lucide-react";

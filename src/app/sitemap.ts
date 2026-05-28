@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Sitemap
+ *
+ * WHY: SEO — helps search engines discover all public pages.
+ * WHAT: Lists all public routes with lastModified dates and change frequency.
+ * HOW: Next.js Metadata API generates /sitemap.xml from this export.
+ */
 import type { MetadataRoute } from "next";
 
 /**

@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Violation Status API
+ *
+ * WHY: Teams need to track violation remediation progress (open, in-progress, fixed, won't-fix).
+ * WHAT: PATCH updates a violation's status. Used for workflow tracking.
+ * HOW: Updates violation metadata in the database. Logs status change to audit trail.
+ */
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";

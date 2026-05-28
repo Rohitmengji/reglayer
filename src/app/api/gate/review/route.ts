@@ -1,3 +1,10 @@
+/**
+ * RegLayer — PR Review Gate API
+ *
+ * WHY: Teams want automated accessibility checks on pull requests.
+ * WHAT: POST triggers a scan of the PR preview URL and reports status.
+ * HOW: Scans the provided URL, compares with base branch scan, posts results as PR comment.
+ */
 import { NextRequest, NextResponse } from "next/server";
 import { createHash } from "crypto";
 import { validateScanUrl } from "@/lib/validations/ssrf";

@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Server Instrumentation (Sentry)
+ *
+ * WHY: Server-side errors (API routes, SSR) need to be captured and reported to Sentry.
+ * WHAT: Initializes Sentry SDK for Node.js runtime with DSN, traces sample rate, environment.
+ * HOW: Next.js calls this file on server startup. Exported register() function inits Sentry.
+ */
 import * as Sentry from "@sentry/nextjs";
 
 export async function register() {

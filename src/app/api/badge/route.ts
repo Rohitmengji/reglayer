@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Badge API
+ *
+ * WHY: Sites can embed a compliance badge to show their accessibility score.
+ * WHAT: GET returns an SVG badge image with the site's current score.
+ * HOW: Queries latest scan for the given URL, renders SVG with score color-coded (green/yellow/red).
+ */
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/database/prisma";
 

@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Privacy Policy Page
+ *
+ * WHY: GDPR requires a public privacy policy for EU users.
+ * WHAT: Full privacy policy covering data collection, processing, retention, rights.
+ * HOW: Static content page. Server-rendered for SEO.
+ */
 import { Shield } from "lucide-react";
 import Link from "next/link";
 import { Footer } from "@/components/layout/footer";

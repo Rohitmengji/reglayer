@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Team Management Documentation
+ *
+ * WHY: Workspace admins need docs on roles, permissions, and member management.
+ * WHAT: Explains roles (Owner/Admin/Member/Viewer), invitation flow, RBAC permissions.
+ * HOW: Static docs page with permission matrix table.
+ */
 import { Shield, Users, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 

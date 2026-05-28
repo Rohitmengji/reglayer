@@ -1,3 +1,10 @@
+/**
+ * RegLayer — English Translations (Base Language)
+ *
+ * WHY: All UI text is externalized for multi-language support.
+ * WHAT: Complete English translation dictionary (~616 keys covering all UI text).
+ * HOW: Flat key-value map. Keys use dot notation (e.g., "dashboard.title"). Interpolation via {variable}.
+ */
 export const en = {
   // Navigation
   "nav.dashboard": "Dashboard",

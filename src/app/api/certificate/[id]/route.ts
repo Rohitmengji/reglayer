@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Certificate API
+ *
+ * WHY: Users want embeddable compliance certificates for their websites.
+ * WHAT: GET returns certificate data (score, standard, date, URL) for rendering.
+ * HOW: Queries scan by ID, verifies it exists, returns structured certificate info.
+ */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/database/prisma";
 

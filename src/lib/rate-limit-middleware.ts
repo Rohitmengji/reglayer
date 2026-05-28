@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Rate Limit Middleware
+ *
+ * WHY: API routes need rate limiting but the boilerplate is repetitive.
+ * WHAT: Reusable middleware function that wraps a route handler with rate limiting.
+ * HOW: Takes a preset (scan, api, auth), applies rate limit, returns 429 if exceeded, otherwise calls handler.
+ */
 import "server-only";
 import { NextRequest, NextResponse } from "next/server";
 import { rateLimit, RATE_LIMITS, rateLimitHeaders } from "@/lib/rate-limit";

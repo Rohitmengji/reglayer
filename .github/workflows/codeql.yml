@@ -1,3 +1,9 @@
+# RegLayer — CodeQL Security Analysis
+#
+# WHY: Automated SAST (Static Application Security Testing) catches vulnerabilities in PRs.
+# WHAT: Runs GitHub CodeQL analysis for JavaScript/TypeScript on push and weekly schedule.
+# HOW: GitHub Advanced Security scans for injection, XSS, path traversal, hardcoded secrets.
+#
 name: CodeQL - Default
 
 on:

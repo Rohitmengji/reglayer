@@ -1,3 +1,10 @@
+/**
+ * RegLayer — German (Deutsch) Translations
+ *
+ * WHY: Germany is a primary EU market for accessibility compliance tools.
+ * WHAT: Full German translation matching all English keys.
+ * HOW: Same key structure as en.ts. Falls back to English if key missing.
+ */
 export const de = {
   // Navigation
   "nav.dashboard": "Übersicht",

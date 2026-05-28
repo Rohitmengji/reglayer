@@ -1,3 +1,9 @@
+# RegLayer — CI Pipeline
+#
+# WHY: Every PR must pass linting, type checking, and tests before merge.
+# WHAT: Runs on push/PR: install deps, lint, type-check, unit tests, build.
+# HOW: GitHub Actions with Node 20, pnpm cache, Postgres service container for integration tests.
+#
 name: CI
 
 on:

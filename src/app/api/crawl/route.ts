@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Crawl API
+ *
+ * WHY: Users need to scan entire sites, not just individual pages.
+ * WHAT: GET (list crawls), POST (start a new site crawl with base URL and max pages).
+ * HOW: Creates crawl job, discovers pages via link following, queues individual scans per page.
+ */
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";

@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Dutch (Nederlands) Translations
+ *
+ * WHY: Netherlands has Digitoegankelijk (digital accessibility) requirements.
+ * WHAT: Full Dutch translation matching all English keys.
+ * HOW: Same key structure as en.ts. Falls back to English if key missing.
+ */
 export const nl = {
   // Navigation
   "nav.dashboard": "Dashboard",

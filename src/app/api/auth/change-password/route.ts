@@ -1,3 +1,10 @@
+/**
+ * RegLayer — Change Password API
+ *
+ * WHY: Users with credentials-based accounts need to update their password.
+ * WHAT: POST with currentPassword + newPassword. Validates current, hashes new with bcrypt.
+ * HOW: Verifies old password via bcrypt.compare(), hashes new password, updates user record.
+ */
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
