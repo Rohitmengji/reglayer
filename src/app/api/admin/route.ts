@@ -455,6 +455,80 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true });
     }
 
+    // ── Master Admin: Grant bonus AI credits to a user (max 3x/month per user) ──
+    case "grantCredits": {
+      if (!actor.isMasterAdmin) {
+        return NextResponse.json({ error: "Forbidden: Master Admin required" }, { status: 403 });
+      }
+
+      const { userId: grantUserId, amount, reason } = body;
+      if (!grantUserId || !amount) {
+        return NextResponse.json({ error: "Missing userId or amount" }, { status: 400 });
+      }
+
+      // Validate amount is a positive integer, capped at 500 per grant
+      const grantAmount = Math.floor(Number(amount));
+      if (!Number.isFinite(grantAmount) || grantAmount < 1 || grantAmount > 500) {
+        return NextResponse.json({ error: "Amount must be between 1 and 500" }, { status: 400 });
+      }
+
+      const grantTarget = await prisma.user.findUnique({
+        where: { id: grantUserId },
+        select: { id: true, email: true, bonusCredits: true },
+      });
+      if (!grantTarget) {
+        return NextResponse.json({ error: "User not found" }, { status: 404 });
+      }
+
+      // Enforce: max 3 grants per user per calendar month
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const grantsThisMonth = await prisma.creditGrant.count({
+        where: { userId: grantUserId, createdAt: { gte: startOfMonth } },
+      });
+
+      if (grantsThisMonth >= 3) {
+        return NextResponse.json(
+          { error: `Credit grant limit reached: ${grantTarget.email} has already received 3 grants this month` },
+          { status: 429 }
+        );
+      }
+
+      // Apply the grant atomically
+      const [updatedUser] = await prisma.$transaction([
+        prisma.user.update({
+          where: { id: grantUserId },
+          data: { bonusCredits: { increment: grantAmount } },
+          select: { bonusCredits: true },
+        }),
+        prisma.creditGrant.create({
+          data: {
+            userId: grantUserId,
+            amount: grantAmount,
+            reason: typeof reason === "string" ? reason.slice(0, 200) : null,
+            grantedBy: actor.id,
+          },
+        }),
+        prisma.auditLog.create({
+          data: {
+            action: "credits.granted",
+            actor: actor.id,
+            target: grantUserId,
+            metadata: { amount: grantAmount, reason: reason || null, email: grantTarget.email, grantNumber: grantsThisMonth + 1 },
+          },
+        }),
+      ]);
+
+      return NextResponse.json({
+        success: true,
+        userId: grantUserId,
+        email: grantTarget.email,
+        bonusCredits: updatedUser.bonusCredits,
+        grantsThisMonth: grantsThisMonth + 1,
+        grantsRemaining: 2 - grantsThisMonth,
+      });
+    }
+
     default:
       return NextResponse.json({ error: `Unknown action: ${action}` }, { status: 400 });
   }

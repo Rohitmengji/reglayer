@@ -22,6 +22,7 @@ model User {
   passwordHash  String?
   plan          Plan      @default(FREE)
   aiCreditsUsed Int       @default(0)
+  bonusCredits  Int       @default(0)
   creditResetAt DateTime  @default(now())
   isMasterAdmin Boolean   @default(false)
   createdAt     DateTime  @default(now())
@@ -32,8 +33,27 @@ model User {
   scans          Scan[]
   apiKeys        ApiKey[]
   accessRequests AccessRequest[]
+  creditGrants   CreditGrant[]
 
   @@map("users")
+}
+
+// ─────────────────────────────────────────────
+// Credit Grants (admin → user, max 3x/month/user)
+// ─────────────────────────────────────────────
+
+model CreditGrant {
+  id        String   @id @default(cuid())
+  amount    Int
+  reason    String?
+  grantedBy String   // admin user ID
+  createdAt DateTime @default(now())
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("credit_grants")
 }
 
 model Workspace {
