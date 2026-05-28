@@ -62,7 +62,7 @@ describe("POST /api/scan", () => {
     vi.mocked(getServerSession).mockResolvedValue({
       user: { email: "test@example.com" },
     } as any);
-    vi.mocked(rateLimit).mockReturnValue({
+    vi.mocked(rateLimit).mockResolvedValue({
       success: true,
       limit: 10,
       remaining: 9,
@@ -84,7 +84,7 @@ describe("POST /api/scan", () => {
   });
 
   it("returns 429 when rate limited", async () => {
-    vi.mocked(rateLimit).mockReturnValue({
+    vi.mocked(rateLimit).mockResolvedValue({
       success: false,
       limit: 10,
       remaining: 0,
