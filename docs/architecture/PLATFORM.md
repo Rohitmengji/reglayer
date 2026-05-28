@@ -80,23 +80,34 @@ src/
 │   ├── scanner/                  # Core scanning engine
 │   │   ├── accessibility/        # axe-core, normalization, scoring
 │   │   ├── browser/              # Browser launch, crawl, screenshot
+│   │   ├── journey/              # Multi-step flow scanner (Playwright)
+│   │   ├── design-system/        # Storybook component scanner
 │   │   └── pipelines/            # Orchestration
-│   ├── compliance/               # Policy evaluation & rules
+│   ├── compliance/               # Policy evaluation, WCAG rules, VPAT generator
+│   ├── remediation/              # jsdom-based DOM transform engine
+│   ├── rum/                      # Real User Monitoring event collector
+│   ├── analytics/                # Revenue impact calculator
 │   ├── ai/                       # OpenAI integration
 │   ├── auth/                     # NextAuth config
+│   ├── credits/                  # Plan limits & credit management
+│   ├── integrations/             # Slack, GitHub review, webhook dispatch
+│   ├── intelligence/             # Alert engine, priority engine, analytics
 │   ├── queue/                    # Job queue & scheduler
-│   ├── database/                 # (scaffolded) Future persistence
+│   ├── database/                 # Prisma client & helpers
+│   ├── email/                    # Nodemailer SMTP service
 │   ├── telemetry/                # Structured logging
 │   ├── types/                    # TypeScript definitions
 │   ├── validations/              # Zod schemas
 │   ├── constants/                # App-wide constants
 │   └── utils/                    # Utilities
 ├── components/
-│   ├── ui/                       # Base components (button, card, etc.)
+│   ├── ui/                       # Base components (button, card, badge, etc.)
 │   ├── layout/                   # App shell, sidebar
 │   ├── scanner/                  # Scan form, violation cards
-│   ├── dashboard/                # Score card
-│   └── charts/                   # Compliance trend
+│   ├── dashboard/                # Score cards, stats
+│   ├── forms/                    # Form components
+│   ├── reports/                  # Report components
+│   └── charts/                   # Compliance trend, analytics
 ├── stores/                       # Zustand state
 ├── hooks/                        # Custom React hooks
 ├── services/                     # Service orchestration
@@ -110,11 +121,14 @@ src/
 | Decision | Rationale |
 |----------|-----------|
 | Playwright local + puppeteer-core serverless | Playwright's full install is too large for Lambda. puppeteer-core + @sparticuz/chromium is the proven serverless combo |
-| Manual axe-core injection (not @axe-core/playwright) | The wrapper has a `module.exports` bug in browser evaluate context |
-| JWT sessions (no DB) | V1 simplicity. No infrastructure dependency for auth |
-| In-memory queue/scheduler | V1 simplicity. Redis/BullMQ ready architecture |
-| Zustand + localStorage | Client-side persistence without a database for scan history |
-| `outputFileTracingIncludes` + `includeFiles` | Ensures @sparticuz/chromium binaries ship in serverless bundle |
+| jsdom for remediation (not Playwright) | Lighter weight, no browser spin-up. Fast DOM manipulation for fix application |
+| `src/proxy.ts` middleware (not middleware.ts) | Next.js 16 convention for request interception — acts as auth gate + security headers |
+| Prisma 7 with driver adapter | Neon serverless compatibility, connection pooling via @neondatabase/serverless |
+| In-memory stores for RUM/Design System | V1 simplicity. ClickHouse/Tinybird ready architecture for production scale |
+| Plan gating via WorkspaceMember → Workspace.plan | Enables team-level plan management (not per-user) |
+| Zod for all API input validation | Runtime type safety at system boundaries, auto-generates error details |
+| SHA-256 hashed API keys | Keys stored securely, timing-safe comparison prevents enumeration |
+| Workspace-scoped data access | All queries filter by workspace to prevent IDOR across tenants |
 
 ---
 
@@ -124,15 +138,24 @@ src/
 |----------|----------|---------|
 | `NEXTAUTH_URL` | Yes | App base URL |
 | `NEXTAUTH_SECRET` | Yes (prod) | JWT signing secret |
-| `OPENAI_API_KEY` | No | Enables AI explanations |
+| `DATABASE_URL` | Yes | Neon PostgreSQL connection string |
+| `OPENAI_API_KEY` | No | Enables AI explanations + fix suggestions |
 | `GOOGLE_CLIENT_ID` | No | Enables Google OAuth |
 | `GOOGLE_CLIENT_SECRET` | No | Enables Google OAuth |
+| `SMTP_HOST` | No | Email notification SMTP server |
+| `SMTP_USER` | No | Email sender address |
+| `SMTP_PASS` | No | Email SMTP password |
+| `SENTRY_DSN` | No | Error tracking |
+| `SENTRY_AUTH_TOKEN` | No | Sentry source maps upload |
 
 ---
 
 ## Deployment
 
 - **Platform:** Vercel (auto-deploy from GitHub)
+- **Database:** Neon PostgreSQL (serverless, connection pooling)
 - **Functions:** 60s timeout, 1024MB memory for scan routes
-- **External Packages:** @sparticuz/chromium, playwright, puppeteer-core
+- **External Packages:** @sparticuz/chromium, playwright, puppeteer-core, jsdom
 - **Chromium Binary:** Included via `outputFileTracingIncludes` + `vercel.json includeFiles`
+- **Error Tracking:** Sentry (edge, server, client instrumentation)
+- **CI/CD:** GitHub Actions (lint → build → test → security audit)
