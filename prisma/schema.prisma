@@ -159,6 +159,7 @@ model Scan {
   violations    Violation[]
 
   @@index([workspaceId, createdAt])
+  @@index([userId])
   @@index([url])
   @@index([status])
   @@map("scans")
@@ -218,6 +219,9 @@ model Schedule {
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   site        Site      @relation(fields: [siteId], references: [id], onDelete: Cascade)
 
+  @@index([workspaceId])
+  @@index([siteId])
+  @@index([enabled, nextRunAt])
   @@map("schedules")
 }
 
@@ -253,6 +257,8 @@ model ApiKey {
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
+  @@index([workspaceId])
   @@map("api_keys")
 }
 
