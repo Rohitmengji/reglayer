@@ -92,8 +92,14 @@ export default function ScreenReaderPage() {
       });
 
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to capture");
+        let errorMsg = `Server error (${res.status})`;
+        try {
+          const data = await res.json();
+          errorMsg = data.error || errorMsg;
+        } catch {
+          // Empty response body
+        }
+        throw new Error(errorMsg);
       }
 
       const data: ScreenReaderSnapshot = await res.json();
