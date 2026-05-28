@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * RegLayer — Integrations Page
+ *
+ * WHY: Teams want to connect RegLayer with their existing tools (GitHub, Slack, Jira).
+ * WHAT: Integration cards showing connected/available integrations with connect/disconnect buttons.
+ * HOW: Fetches /api/integrations for connection status. OAuth flows for GitHub. Webhook config for others.
+ */
+
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent } from "@/components/ui/card";

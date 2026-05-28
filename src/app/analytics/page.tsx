@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * RegLayer — Analytics Page
+ *
+ * WHY: Teams need to track compliance score trends and identify improvement patterns.
+ * WHAT: Line charts for score over time, violation breakdown by type, improvement rate calculations.
+ * HOW: Fetches /api/analytics for historical data. Renders charts with trend indicators.
+ */
+
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

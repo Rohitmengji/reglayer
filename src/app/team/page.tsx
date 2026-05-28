@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * RegLayer — Team Management Page
+ *
+ * WHY: Multi-user workspaces need member management with role control.
+ * WHAT: Member list with roles, invite form (email + role), remove members, transfer ownership.
+ * HOW: Fetches /api/team for members. POST to invite, DELETE to remove. RBAC enforces permissions.
+ */
+
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/layout/app-shell";

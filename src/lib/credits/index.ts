@@ -1,3 +1,11 @@
+/**
+ * RegLayer — Credit System
+ *
+ * WHY: AI features (explanations, fix suggestions) cost money. Credits limit usage per plan.
+ * WHAT: Functions to check credit balance, consume credits, handle monthly reset.
+ * HOW: Reads user.aiCreditsUsed, compares to plan limit. Resets monthly via creditResetAt timestamp.
+ */
+
 import "server-only";
 
 import { prisma } from "@/lib/database/prisma";

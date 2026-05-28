@@ -1,3 +1,27 @@
+/**
+ * ---------------------------------------------------------
+ * RegLayer — Root Layout
+ * ---------------------------------------------------------
+ *
+ * WHY: This is the HTML shell for the entire application.
+ * Every page renders inside this layout.
+ *
+ * WHAT:
+ * - Loads Inter (UI) and JetBrains Mono (code) fonts
+ * - Sets SEO metadata (title, description, OpenGraph, Twitter cards)
+ * - Implements flash-free dark mode (3 layers of defense in <head>)
+ * - Wraps all pages in Providers (auth, query, theme, i18n)
+ * - Adds global Toaster for notifications and CookieConsent banner
+ *
+ * HOW:
+ * - Dark mode flash prevention:
+ *   1. CSS @media query for system-dark users (no JS needed)
+ *   2. Inline <script> runs before paint to add .dark/.light class
+ *   3. <meta color-scheme> tells browser to use dark canvas during navigation
+ * - Providers hierarchy: SessionProvider → QueryClient → Theme → I18n
+ * ---------------------------------------------------------
+ */
+
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import Script from "next/script";

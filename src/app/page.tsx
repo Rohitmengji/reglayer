@@ -1,3 +1,28 @@
+/**
+ * ---------------------------------------------------------
+ * RegLayer — Landing Page
+ * ---------------------------------------------------------
+ *
+ * WHY: The public homepage and primary marketing surface.
+ * First thing visitors see. Must convert visitors to sign-ups.
+ *
+ * WHAT:
+ * - Hero section with value proposition + CTA buttons
+ * - Social proof stats (500+ sites, 30+ countries, etc.)
+ * - Feature grid (8 features with icons)
+ * - Compliance standards section
+ * - Testimonials
+ * - Final CTA
+ * - Footer with navigation
+ *
+ * HOW:
+ * - Server-rendered (no "use client") for SEO
+ * - Uses Tailwind for responsive layout (mobile-first)
+ * - Dark mode support via dark: variant classes
+ * - Links to /auth/login for sign-up flow
+ * ---------------------------------------------------------
+ */
+
 import Link from "next/link";
 import { Shield, Scan, BarChart3, FileText, Zap, Globe, CheckCircle2, ArrowRight, Users, Lock, Clock, Star } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";

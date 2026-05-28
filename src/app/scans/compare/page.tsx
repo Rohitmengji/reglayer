@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * RegLayer — Scan Compare Page
+ *
+ * WHY: Teams need to see what changed between scans (did we fix/introduce issues?).
+ * WHAT: Side-by-side comparison showing fixed, introduced, and persistent violations.
+ * HOW: Fetches /api/scans/compare?base=X&head=Y. Diff algorithm groups violations by change type.
+ */
+
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";

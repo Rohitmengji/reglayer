@@ -1,5 +1,29 @@
 "use client";
 
+/**
+ * ---------------------------------------------------------
+ * RegLayer — Dashboard Page
+ * ---------------------------------------------------------
+ *
+ * WHY: The main authenticated user hub. First page after login.
+ *
+ * WHAT:
+ * - Scan form to initiate new accessibility scans
+ * - Stats cards (total scans, avg score, violations, sites monitored)
+ * - AI credits usage display
+ * - Compliance trend chart (score over time)
+ * - Recent scans list with quick actions
+ * - Scan results display when a new scan completes
+ *
+ * HOW:
+ * - "use client" — needs interactivity (forms, state, effects)
+ * - Fetches /api/dashboard/stats and /api/credits on mount
+ * - ScanForm POSTs to /api/scan, passes result via callback
+ * - Stores scan results in Zustand (persists to localStorage)
+ * - PDF export via /api/reports endpoint
+ * ---------------------------------------------------------
+ */
+
 import { useState, useEffect } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { ScanForm } from "@/components/scanner/scan-form";

@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * RegLayer — Scan Detail Page
+ *
+ * WHY: Users need to drill into individual scan results for detailed violation analysis.
+ * WHAT: Score hero, violation list (filterable by severity), affected elements, AI explanations, export options.
+ * HOW: Fetches /api/scans/:id. Dynamic route [id] param. Renders ViolationCard for each issue.
+ */
+
 import { use, useEffect, useState } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { useScanStore } from "@/stores/scanStore";

@@ -1,3 +1,11 @@
+/**
+ * RegLayer — Monitors API
+ *
+ * WHY: Users want to track specific sites for accessibility changes over time.
+ * WHAT: GET (list monitored sites), POST (add site to monitor), DELETE (stop monitoring).
+ * HOW: Creates Site records linked to workspace. Sites can then have schedules attached.
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";

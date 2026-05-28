@@ -1,3 +1,11 @@
+/**
+ * RegLayer — Webhooks API
+ *
+ * WHY: Users configure webhooks to receive scan events in their systems.
+ * WHAT: GET (list webhooks), POST (create with URL + events + secret), DELETE (remove).
+ * HOW: Validates URL and events with Zod. Stores webhook config. HMAC secret generated if not provided.
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";

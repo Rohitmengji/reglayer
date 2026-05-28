@@ -1,5 +1,33 @@
 "use client";
 
+/**
+ * ---------------------------------------------------------
+ * RegLayer — Sidebar Navigation
+ * ---------------------------------------------------------
+ *
+ * WHY: Primary navigation for authenticated users.
+ * Always visible on desktop, drawer on mobile.
+ *
+ * WHAT:
+ * - Brand logo at top
+ * - Grouped nav items: Main (Dashboard, Scans, Crawl, Compliance,
+ *   Analysis, Automation, Manage, Settings)
+ * - Master Admin section (only for isMasterAdmin users)
+ * - User menu popup at bottom with:
+ *   - Email display
+ *   - Theme toggle (dark/light)
+ *   - Language selector (7 EU languages)
+ *   - Sign out button
+ *
+ * HOW:
+ * - Uses usePathname() for active link highlighting
+ * - NavItem component determines active state by matching path prefix
+ * - i18n: nav labels use t() translation function with keys
+ * - Theme/language controls in popup prevent sidebar clutter
+ * - onNavigate callback closes mobile drawer after navigation
+ * ---------------------------------------------------------
+ */
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";

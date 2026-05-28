@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * RegLayer — Master Admin Panel
+ *
+ * WHY: Platform administrators need to manage all users, plans, and credits.
+ * WHAT: User list with plan/credit info, grant credits button, change plan, view access requests.
+ * HOW: Fetches /api/admin. Only accessible by users with isMasterAdmin=true. RBAC enforced server-side.
+ */
+
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";

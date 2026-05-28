@@ -1,3 +1,19 @@
+/**
+ * ---------------------------------------------------------
+ * RegLayer — Reset Google User Script
+ * ---------------------------------------------------------
+ *
+ * WHY: Development utility for testing OAuth onboarding flows.
+ * When testing Google login, you need a clean slate.
+ *
+ * WHAT: Deletes all data for a Google OAuth user so they
+ * can go through the onboarding flow again.
+ *
+ * HOW: Run with `npx tsx scripts/reset-google-user.ts`
+ * Deletes: workspace memberships, scans, workspaces, user record.
+ * ---------------------------------------------------------
+ */
+
 import 'dotenv/config';
 import { prisma } from '../src/lib/database/prisma';
 

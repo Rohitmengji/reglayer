@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * RegLayer — Access Request Page
+ *
+ * WHY: New Google OAuth users need to request workspace access (not auto-granted).
+ * WHAT: Form to submit access request with optional message. Shows pending status after submit.
+ * HOW: POSTs to /api/access-request. Admin approves/denies from admin panel.
+ */
+
 import { useEffect, useState } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";

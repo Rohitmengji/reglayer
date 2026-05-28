@@ -1,3 +1,11 @@
+/**
+ * RegLayer — Dashboard Stats API
+ *
+ * WHY: Dashboard page needs aggregated metrics (total scans, avg score, top violations).
+ * WHAT: GET returns { totalScans, avgScore, totalViolations, sitesMonitored, trend, recentScans, topViolations }.
+ * HOW: Queries Prisma for user's workspace scans, aggregates counts and averages.
+ */
+
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";

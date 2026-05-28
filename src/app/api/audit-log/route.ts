@@ -1,3 +1,11 @@
+/**
+ * RegLayer — Audit Log API
+ *
+ * WHY: Compliance requires an immutable record of all actions taken in the workspace.
+ * WHAT: GET returns paginated audit log entries with actor, action, target, timestamp.
+ * HOW: Queries AuditLog model filtered by workspace and date range. Cannot be modified/deleted.
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";

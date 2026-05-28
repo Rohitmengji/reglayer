@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * RegLayer — Site Crawl Page
+ *
+ * WHY: Scanning one page at a time is tedious. Users want full-site audits.
+ * WHAT: Input base URL + max pages, initiates multi-page crawl, shows per-page results.
+ * HOW: POSTs to /api/crawl, then polls for status. Displays discovered pages with individual scores.
+ */
+
 import { useState } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
