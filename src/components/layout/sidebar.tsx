@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { cn } from "@/lib/utils/cn";
 import { useTheme } from "@/components/theme-provider";
-import { Shield, LayoutDashboard, Scan, Globe, Zap, Sparkles, BarChart3, GitCompare, Webhook, Settings, LogOut, Grid3X3, Moon, Sun, FileText, Languages, Users, ClipboardList, Plug, Crown, ChevronDown } from "lucide-react";
+import { Shield, LayoutDashboard, Scan, Globe, Zap, Sparkles, BarChart3, GitCompare, Webhook, Settings, LogOut, Grid3X3, Moon, Sun, FileText, Languages, Users, ClipboardList, Plug, Crown, ChevronDown, Eye } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 import { SUPPORTED_LOCALES } from "@/lib/i18n/translations";
 import { useState } from "react";
@@ -19,6 +19,7 @@ const mainNav = [
 ];
 
 const analysisNav = [
+  { name: "Screen Reader", key: "nav.screenReader", href: "/screen-reader", icon: Eye },
   { name: "Priorities", key: "nav.priorities", href: "/priorities", icon: Zap },
   { name: "AI Insights", key: "nav.insights", href: "/insights", icon: Sparkles },
   { name: "Analytics", key: "nav.analytics", href: "/analytics", icon: BarChart3 },
