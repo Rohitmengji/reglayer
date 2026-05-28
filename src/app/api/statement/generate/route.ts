@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
+import { applyRateLimit } from "@/lib/rate-limit-middleware";
 
 /**
  * POST /api/statement/generate
@@ -15,6 +16,9 @@ import { prisma } from "@/lib/database/prisma";
  * - EN 301 549 V3.2.1 Clause 12.1
  */
 export async function POST(request: NextRequest) {
+  const blocked = await applyRateLimit(request, "ai");
+  if (blocked) return blocked;
+
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

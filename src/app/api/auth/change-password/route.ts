@@ -3,8 +3,12 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
 import bcrypt from "bcryptjs";
+import { applyRateLimit } from "@/lib/rate-limit-middleware";
 
 export async function POST(request: NextRequest) {
+  const blocked = await applyRateLimit(request, "auth");
+  if (blocked) return blocked;
+
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Authentication required" }, { status: 401 });

@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
 
   // Rate limit AI requests
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-  const rl = rateLimit(`ai:${ip}`, RATE_LIMITS.ai);
+  const rl = await rateLimit(`ai:${ip}`, RATE_LIMITS.ai, "ai");
   if (!rl.success) {
     return NextResponse.json(
       { error: "Too many AI requests. Please wait." },

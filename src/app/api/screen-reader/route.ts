@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
 
     // Rate limit (same as scan — launches a browser)
     const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-    const rl = rateLimit(`sr:${ip}`, RATE_LIMITS.scan);
+    const rl = await rateLimit(`sr:${ip}`, RATE_LIMITS.scan, "scan");
     if (!rl.success) {
       return NextResponse.json(
         { error: "Too many requests. Please wait." },

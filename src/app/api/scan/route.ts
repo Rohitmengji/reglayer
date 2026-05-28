@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
 
   // Rate limit by IP
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-  const rl = rateLimit(`scan:${ip}`, RATE_LIMITS.scan);
+  const rl = await rateLimit(`scan:${ip}`, RATE_LIMITS.scan, "scan");
   if (!rl.success) {
     return NextResponse.json(
       { error: "Too many requests. Please wait before scanning again." },

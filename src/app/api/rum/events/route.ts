@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
 import { aggregateEvents, RumEvent, detectDevice, detectAssistiveTech } from "@/lib/rum/collector";
 import { z } from "zod";
+import { applyRateLimit } from "@/lib/rate-limit-middleware";
 
 /**
  * Real User Monitoring API
@@ -52,6 +53,9 @@ const eventStore = new Map<string, RumEvent[]>();
  * Authenticated via site API key (public, embeddable).
  */
 export async function POST(request: NextRequest) {
+  const blocked = await applyRateLimit(request, "rum");
+  if (blocked) return blocked;
+
   let body: unknown;
   try {
     body = await request.json();
