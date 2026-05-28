@@ -264,7 +264,7 @@ export default function PricingPage() {
         <div className="mx-auto max-w-6xl px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <Shield className="h-4 w-4 text-neutral-500" />
-            <span className="text-sm text-neutral-500">RegLayer — European Accessibility Act Compliance Platform</span>
+            <span className="text-sm text-neutral-500">RegLayer — Web Accessibility Compliance Platform</span>
           </div>
           <div className="flex items-center gap-4 text-sm text-neutral-500">
             <Link href="/privacy" className="hover:text-neutral-900 dark:hover:text-white transition-colors">Privacy</Link>

@@ -257,7 +257,7 @@ export const de = {
 
   // Statement
   "statement.title": "Generator für Barrierefreiheitserklärung",
-  "statement.subtitle": "Erstellen Sie eine EU-konforme Barrierefreiheitserklärung gemäß Richtlinie 2016/2102 und dem Europäischen Barrierefreiheitsgesetz.",
+  "statement.subtitle": "Erstellen Sie eine standardkonforme Barrierefreiheitserklärung für WCAG 2.2, ADA, EAA, Section 508 und andere internationale Vorschriften.",
   "statement.formTitle": "Organisationsdetails",
   "statement.orgName": "Organisationsname *",
   "statement.orgNamePlaceholder": "Muster GmbH",
