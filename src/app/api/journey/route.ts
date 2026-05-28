@@ -7,6 +7,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
 import { executeJourney, type JourneyConfig } from "@/lib/scanner/journey/flow-scanner";
+import { applyRateLimit } from "@/lib/rate-limit-middleware";
 
 // ─── Preset Journeys ────────────────────────────────────
 
@@ -141,6 +142,9 @@ export async function GET() {
 // ─── POST: Execute a journey ─────────────────────────────
 
 export async function POST(req: NextRequest) {
+  const blocked = await applyRateLimit(req, "scan");
+  if (blocked) return blocked;
+
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

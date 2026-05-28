@@ -5,6 +5,7 @@ import { z } from "zod";
 import { crawlSite } from "@/lib/scanner/crawler/siteCrawler";
 import { getPlanContext } from "@/lib/credits/plan-context";
 import { validateScanUrl } from "@/lib/validations/ssrf";
+import { applyRateLimit } from "@/lib/rate-limit-middleware";
 
 const crawlSchema = z.object({
   url: z.string().url(),
@@ -16,6 +17,9 @@ const crawlSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  const blocked = await applyRateLimit(request, "crawl");
+  if (blocked) return blocked;
+
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

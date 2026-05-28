@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
 import { getOrCreateWorkspace } from "@/lib/database/workspace";
+import { encryptToken } from "@/lib/crypto";
 
 const VALID_PROVIDERS = ["slack", "jira", "github", "linear", "teams", "gitlab", "zapier", "email"];
 
@@ -101,6 +102,10 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // Encrypt sensitive tokens before storage
+  const encryptedToken = encryptToken(body.accessToken);
+  const encryptedRefresh = encryptToken(body.refreshToken);
+
   // Upsert integration (one per provider per workspace)
   const integration = await prisma.integration.upsert({
     where: { workspaceId_provider: { workspaceId, provider } },
@@ -109,6 +114,8 @@ export async function POST(request: NextRequest) {
       config: config || undefined,
       name: name || provider,
       enabled: true,
+      ...(encryptedToken && { accessToken: encryptedToken }),
+      ...(encryptedRefresh && { refreshToken: encryptedRefresh }),
       updatedAt: new Date(),
     },
     create: {
@@ -118,6 +125,8 @@ export async function POST(request: NextRequest) {
       name: name || provider,
       webhookUrl,
       config: config || undefined,
+      ...(encryptedToken && { accessToken: encryptedToken }),
+      ...(encryptedRefresh && { refreshToken: encryptedRefresh }),
       enabled: true,
     },
   });

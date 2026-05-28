@@ -1,32 +1,90 @@
 import "server-only";
+import { Ratelimit } from "@upstash/ratelimit";
+import { Redis } from "@upstash/redis";
 
 /**
- * In-memory sliding window rate limiter.
- * 
- * Production note: For multi-instance deployments, replace with Redis-based
- * rate limiting (e.g., @upstash/ratelimit). This implementation is suitable
- * for single-instance or Vercel serverless (each function instance tracks its own).
+ * Rate limiter with Upstash Redis backend + in-memory fallback.
  *
- * Algorithm: Fixed window with atomic counters per identifier (IP or user ID).
+ * When UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN are configured,
+ * uses distributed Redis-based sliding window (works across serverless instances).
+ * Otherwise, falls back to in-memory fixed window (dev/single-instance).
  */
+
+// ─── Redis-backed limiters (created lazily) ─────────────────────────────────
+
+let redis: Redis | null = null;
+
+function getRedis(): Redis | null {
+  if (redis) return redis;
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (url && token) {
+    redis = new Redis({ url, token });
+    return redis;
+  }
+  return null;
+}
+
+const redisLimiters = new Map<string, Ratelimit>();
+
+function getRedisLimiter(prefix: string, limit: number, windowSec: number): Ratelimit | null {
+  const r = getRedis();
+  if (!r) return null;
+
+  const key = `${prefix}:${limit}:${windowSec}`;
+  if (!redisLimiters.has(key)) {
+    redisLimiters.set(
+      key,
+      new Ratelimit({
+        redis: r,
+        limiter: Ratelimit.slidingWindow(limit, `${windowSec} s`),
+        prefix: `rl:${prefix}`,
+        analytics: true,
+      })
+    );
+  }
+  return redisLimiters.get(key)!;
+}
+
+// ─── In-memory fallback ─────────────────────────────────────────────────────
 
 interface RateLimitEntry {
   count: number;
   resetAt: number;
 }
 
-const store = new Map<string, RateLimitEntry>();
+const memoryStore = new Map<string, RateLimitEntry>();
 
-// Periodic cleanup to prevent memory leaks (every 60s)
 let lastCleanup = Date.now();
 function cleanup() {
   const now = Date.now();
   if (now - lastCleanup < 60_000) return;
   lastCleanup = now;
-  for (const [key, entry] of store) {
-    if (entry.resetAt < now) store.delete(key);
+  for (const [key, entry] of memoryStore) {
+    if (entry.resetAt < now) memoryStore.delete(key);
   }
 }
+
+function memoryRateLimit(identifier: string, limit: number, windowSec: number): RateLimitResult {
+  cleanup();
+  const now = Date.now();
+  const entry = memoryStore.get(identifier);
+
+  if (!entry || entry.resetAt < now) {
+    const resetAt = now + windowSec * 1000;
+    memoryStore.set(identifier, { count: 1, resetAt });
+    return { success: true, limit, remaining: limit - 1, resetAt };
+  }
+
+  if (entry.count >= limit) {
+    return { success: false, limit, remaining: 0, resetAt: entry.resetAt };
+  }
+
+  entry.count++;
+  return { success: true, limit, remaining: limit - entry.count, resetAt: entry.resetAt };
+}
+
+// ─── Public API ─────────────────────────────────────────────────────────────
 
 interface RateLimitConfig {
   /** Maximum requests in the window */
@@ -44,31 +102,39 @@ interface RateLimitResult {
 
 /**
  * Check rate limit for an identifier.
- * Returns headers-compatible result for 429 responses.
+ * Uses Redis when configured, falls back to in-memory.
  */
-export function rateLimit(
+export async function rateLimit(
   identifier: string,
-  config: RateLimitConfig
+  config: RateLimitConfig,
+  prefix = "api"
+): Promise<RateLimitResult> {
+  const limiter = getRedisLimiter(prefix, config.limit, config.windowSec);
+
+  if (limiter) {
+    const result = await limiter.limit(identifier);
+    return {
+      success: result.success,
+      limit: result.limit,
+      remaining: result.remaining,
+      resetAt: result.reset,
+    };
+  }
+
+  // Fallback to in-memory
+  return memoryRateLimit(`${prefix}:${identifier}`, config.limit, config.windowSec);
+}
+
+/**
+ * Synchronous rate limit (in-memory only, for backward compatibility).
+ * Prefer the async version when possible.
+ */
+export function rateLimitSync(
+  identifier: string,
+  config: RateLimitConfig,
+  prefix = "api"
 ): RateLimitResult {
-  cleanup();
-
-  const now = Date.now();
-  const key = identifier;
-  const entry = store.get(key);
-
-  if (!entry || entry.resetAt < now) {
-    // New window
-    const resetAt = now + config.windowSec * 1000;
-    store.set(key, { count: 1, resetAt });
-    return { success: true, limit: config.limit, remaining: config.limit - 1, resetAt };
-  }
-
-  if (entry.count >= config.limit) {
-    return { success: false, limit: config.limit, remaining: 0, resetAt: entry.resetAt };
-  }
-
-  entry.count++;
-  return { success: true, limit: config.limit, remaining: config.limit - entry.count, resetAt: entry.resetAt };
+  return memoryRateLimit(`${prefix}:${identifier}`, config.limit, config.windowSec);
 }
 
 /**
@@ -77,12 +143,18 @@ export function rateLimit(
 export const RATE_LIMITS = {
   // Scan endpoints — expensive (browser launch)
   scan: { limit: 5, windowSec: 60 },
-  // AI endpoints — costly (OpenAI calls, gated by credits but rate limit as safety net)
+  // Crawl — very expensive (multi-page)
+  crawl: { limit: 3, windowSec: 60 },
+  // AI endpoints — costly (OpenAI calls)
   ai: { limit: 10, windowSec: 60 },
   // General API — standard CRUD
   api: { limit: 60, windowSec: 60 },
   // Auth endpoints — strict to prevent brute force
   auth: { limit: 5, windowSec: 300 },
+  // Integration/webhook endpoints
+  integration: { limit: 20, windowSec: 60 },
+  // RUM events — high volume expected
+  rum: { limit: 100, windowSec: 60 },
 } as const;
 
 /**

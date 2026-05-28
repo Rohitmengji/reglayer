@@ -5,6 +5,7 @@ import { prisma } from "@/lib/database/prisma";
 import { validateScanUrl } from "@/lib/validations/ssrf";
 import { remediate } from "@/lib/remediation/engine";
 import { z } from "zod";
+import { applyRateLimit } from "@/lib/rate-limit-middleware";
 
 /**
  * Auto-Remediation Edge Layer API
@@ -32,6 +33,9 @@ const remediateSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  const blocked = await applyRateLimit(request, "scan");
+  if (blocked) return blocked;
+
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Authentication required" }, { status: 401 });

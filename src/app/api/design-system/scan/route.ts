@@ -9,6 +9,7 @@ import {
   ComponentResult,
 } from "@/lib/scanner/design-system/scanner";
 import { z } from "zod";
+import { applyRateLimit } from "@/lib/rate-limit-middleware";
 
 /**
  * Design System Compliance Scanner API
@@ -45,6 +46,9 @@ const reportStore = new Map<string, ReturnType<typeof generateReport>>();
  * 2. Provide only storybookUrl → fetches stories.json and scans found components
  */
 export async function POST(request: NextRequest) {
+  const blocked = await applyRateLimit(request, "scan");
+  if (blocked) return blocked;
+
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Authentication required" }, { status: 401 });
