@@ -37,7 +37,7 @@
     "lucide-react": "^1.16.0",
     "next": "16.2.6",
     "next-auth": "^4.24.14",
-    "nodemailer": "^7.0.13",
+    "nodemailer": "^8.0.9",
     "openai": "^6.39.0",
     "pg": "^8.21.0",
     "playwright": "^1.60.0",
