@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/database/prisma";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { Shield, ExternalLink, Clock, AlertTriangle, CheckCircle2, ArrowLeft, Award } from "lucide-react";
+import { Shield, ExternalLink, Clock, AlertTriangle, CheckCircle2, ArrowLeft, Award, Eye } from "lucide-react";
 
 interface ReportPageProps {
   params: Promise<{ id: string }>;
@@ -57,20 +57,10 @@ export default async function PublicReportPage({ params }: ReportPageProps) {
       {/* Navigation Header */}
       <header className="sticky top-0 z-40 border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 backdrop-blur">
         <div className="mx-auto max-w-5xl px-4 sm:px-6 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link
-              href="/scans"
-              className="flex items-center gap-1.5 text-sm font-medium text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              <span className="hidden sm:inline">Back to Scans</span>
-            </Link>
-            <div className="hidden sm:block h-5 w-px bg-neutral-200 dark:bg-neutral-700" />
-            <div className="flex items-center gap-2">
-              <Shield className="h-5 w-5 text-neutral-900 dark:text-white" />
-              <span className="font-bold text-neutral-900 dark:text-white">RegLayer</span>
-              <span className="text-xs text-neutral-500 dark:text-neutral-400 ml-1">Report</span>
-            </div>
+          <div className="flex items-center gap-2">
+            <Shield className="h-5 w-5 text-neutral-900 dark:text-white" />
+            <span className="font-bold text-neutral-900 dark:text-white">RegLayer</span>
+            <span className="text-xs text-neutral-500 dark:text-neutral-400 ml-1">Report</span>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
             <Link
@@ -83,15 +73,23 @@ export default async function PublicReportPage({ params }: ReportPageProps) {
               href={`/certificate/${scan.id}`}
               className="flex items-center gap-1.5 rounded-lg bg-neutral-900 dark:bg-white px-2.5 sm:px-3 py-1.5 text-xs font-medium text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors"
             >
-              <Award className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">View Certificate</span>
-              <span className="sm:hidden">Certificate</span>
+              <Eye className="h-3.5 w-3.5" />
+              Certificate
             </Link>
           </div>
         </div>
       </header>
 
       <main className="mx-auto max-w-5xl px-4 sm:px-6 py-8 sm:py-10 space-y-8">
+        {/* Back Navigation */}
+        <Link
+          href="/scans"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to Scans
+        </Link>
+
         {/* Score Hero */}
         <div className={`rounded-2xl border p-8 ${scoreBg}`}>
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
