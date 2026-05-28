@@ -4,6 +4,7 @@ export const it = {
   "nav.scans": "Scansioni",
   "nav.compliance": "Conformità",
   "nav.crawl": "Esplora sito",
+  "nav.screenReader": "Lettore di schermo",
   "nav.priorities": "Priorità",
   "nav.insights": "Analisi IA",
   "nav.analytics": "Statistiche",
