@@ -170,24 +170,18 @@ export async function PATCH(request: NextRequest) {
 
   const myMembership = currentUser.memberships[0];
 
-  // ── Change user plan ───────────────────────────────────────
+  // ── Change user plan (Master Admin only) ────────────────────
   if (plan) {
+    if (!currentUser.isMasterAdmin) {
+      return NextResponse.json({ error: "Forbidden: Only master admins can change user plans" }, { status: 403 });
+    }
     const { userId } = body;
     if (!userId) {
       return NextResponse.json({ error: "userId is required" }, { status: 400 });
     }
-    if (!["OWNER", "ADMIN"].includes(myMembership.role)) {
-      return NextResponse.json({ error: "Only owners and admins can change user plans" }, { status: 403 });
-    }
     const validPlans = ["FREE", "PRO", "ENTERPRISE"];
     if (!validPlans.includes(plan)) {
       return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
-    }
-    // Enforce: user plan cannot exceed workspace plan (unless master admin)
-    const planHierarchy = { FREE: 0, PRO: 1, ENTERPRISE: 2 };
-    const workspacePlan = myMembership.workspace.plan as keyof typeof planHierarchy;
-    if (!currentUser.isMasterAdmin && planHierarchy[plan as keyof typeof planHierarchy] > planHierarchy[workspacePlan]) {
-      return NextResponse.json({ error: `Cannot assign ${plan} — workspace plan is ${workspacePlan}` }, { status: 403 });
     }
     // Verify target user is in the same workspace
     const targetMember = await prisma.workspaceMember.findFirst({
