@@ -4,6 +4,7 @@ export const en = {
   "nav.scans": "Scans",
   "nav.compliance": "Compliance",
   "nav.crawl": "Crawl Site",
+  "nav.screenReader": "Screen Reader",
   "nav.priorities": "Priorities",
   "nav.insights": "AI Insights",
   "nav.analytics": "Analytics",
