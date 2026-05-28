@@ -35,12 +35,12 @@ export async function POST(request: NextRequest) {
   }
 
   // Plan check — VPAT is enterprise feature
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-    select: { plan: true },
+  const member = await prisma.workspaceMember.findFirst({
+    where: { user: { email: session.user.email } },
+    include: { workspace: true },
   });
 
-  if (!user || user.plan === "FREE") {
+  if (!member || !["PRO", "ENTERPRISE"].includes(member.workspace.plan)) {
     return NextResponse.json(
       { error: "VPAT/ACR generation requires a Pro or Enterprise plan" },
       { status: 403 }

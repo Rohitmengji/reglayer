@@ -38,16 +38,12 @@ export async function POST(request: NextRequest) {
   }
 
   // Verify user has pro or enterprise plan
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-    select: { id: true, plan: true },
+  const member = await prisma.workspaceMember.findFirst({
+    where: { user: { email: session.user.email } },
+    include: { workspace: true },
   });
 
-  if (!user) {
-    return NextResponse.json({ error: "User not found" }, { status: 404 });
-  }
-
-  if (user.plan === "FREE") {
+  if (!member || !["PRO", "ENTERPRISE"].includes(member.workspace.plan)) {
     return NextResponse.json(
       { error: "Auto-remediation requires a Pro or Enterprise plan" },
       { status: 403 }
