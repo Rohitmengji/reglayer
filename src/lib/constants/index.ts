@@ -21,7 +21,7 @@ export const APP_CONFIG = {
 
 export const SCAN_DEFAULTS = {
   timeout: 30000,
-  waitUntil: "networkidle" as const,
+  stabilizationDelay: 3000,
   maxConcurrentScans: 5,
   browserEngine: "chromium",
 } as const;
