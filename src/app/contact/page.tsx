@@ -2,6 +2,7 @@
 
 import { Shield, Mail, MessageSquare, MapPin } from "lucide-react";
 import Link from "next/link";
+import { Footer } from "@/components/layout/footer";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
@@ -41,13 +42,13 @@ export default function ContactPage() {
               <div>
                 <h3 className="font-medium text-neutral-900 dark:text-white">Email</h3>
                 <p className="text-sm text-neutral-600 dark:text-neutral-300">
-                  General: <a href="mailto:hello@reglayer.dev" className="text-blue-600 hover:underline">hello@reglayer.dev</a>
+                  General: <a href="mailto:hello@reglayer.dev" className="text-blue-600">hello@reglayer.dev</a>
                 </p>
                 <p className="text-sm text-neutral-600 dark:text-neutral-300">
-                  Support: <a href="mailto:support@reglayer.dev" className="text-blue-600 hover:underline">support@reglayer.dev</a>
+                  Support: <a href="mailto:support@reglayer.dev" className="text-blue-600">support@reglayer.dev</a>
                 </p>
                 <p className="text-sm text-neutral-600 dark:text-neutral-300">
-                  Sales: <a href="mailto:sales@reglayer.dev" className="text-blue-600 hover:underline">sales@reglayer.dev</a>
+                  Sales: <a href="mailto:sales@reglayer.dev" className="text-blue-600">sales@reglayer.dev</a>
                 </p>
               </div>
             </div>
@@ -154,6 +155,7 @@ export default function ContactPage() {
           </div>
         </div>
       </div>
+      <Footer />
     </div>
   );
 }

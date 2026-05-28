@@ -1,5 +1,6 @@
 import { Shield, Code2, Lock, Zap } from "lucide-react";
 import Link from "next/link";
+import { Footer } from "@/components/layout/footer";
 
 export const metadata = {
   title: "API Reference — RegLayer",
@@ -164,11 +165,12 @@ export default function ApiReferencePage() {
 
         <div className="mt-12 text-center text-sm text-neutral-500">
           <p>
-            Need help integrating? <Link href="/contact" className="text-blue-600 hover:underline">Contact our team</Link> or check the{" "}
-            <Link href="/docs" className="text-blue-600 hover:underline">Documentation</Link>.
+            Need help integrating? <Link href="/contact" className="text-blue-600">Contact our team</Link> or check the{" "}
+            <Link href="/docs" className="text-blue-600">Documentation</Link>.
           </p>
         </div>
       </div>
+      <Footer />
     </div>
   );
 }

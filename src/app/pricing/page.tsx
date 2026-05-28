@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Shield, Check, Zap, Building2, ArrowRight, Globe, Users, Scan, FileText, BarChart3, Webhook, Lock } from "lucide-react";
+import { Footer } from "@/components/layout/footer";
 
 const plans = [
   {
@@ -100,12 +101,6 @@ export default function PricingPage() {
               className="rounded-md px-4 py-2 text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
             >
               Sign In
-            </Link>
-            <Link
-              href="/dashboard"
-              className="rounded-md bg-neutral-900 dark:bg-white px-4 py-2 text-sm font-medium text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors"
-            >
-              Dashboard
             </Link>
           </div>
         </div>
@@ -259,20 +254,7 @@ export default function PricingPage() {
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-neutral-100 dark:border-neutral-800 mt-16">
-        <div className="mx-auto max-w-6xl px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <Shield className="h-4 w-4 text-neutral-500" />
-            <span className="text-sm text-neutral-500">RegLayer — Web Accessibility Compliance Platform</span>
-          </div>
-          <div className="flex items-center gap-4 text-sm text-neutral-500">
-            <Link href="/privacy" className="hover:text-neutral-900 dark:hover:text-white transition-colors">Privacy</Link>
-            <Link href="/" className="hover:text-neutral-900 dark:hover:text-white transition-colors">Home</Link>
-            <Link href="/dashboard" className="hover:text-neutral-900 dark:hover:text-white transition-colors">Dashboard</Link>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

@@ -5,23 +5,29 @@ import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { cn } from "@/lib/utils/cn";
 import { useTheme } from "@/components/theme-provider";
-import { Shield, LayoutDashboard, Scan, Globe, Zap, Sparkles, BarChart3, GitCompare, Webhook, Settings, LogOut, Grid3X3, Moon, Sun, FileText, Languages, Users, ClipboardList, Bell, Plug, Crown } from "lucide-react";
+import { Shield, LayoutDashboard, Scan, Globe, Zap, Sparkles, BarChart3, GitCompare, Webhook, Settings, LogOut, Grid3X3, Moon, Sun, FileText, Languages, Users, ClipboardList, Plug, Crown, ChevronDown } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 import { SUPPORTED_LOCALES } from "@/lib/i18n/translations";
+import { useState } from "react";
 
-const navigation = [
+const mainNav = [
   { name: "Dashboard", key: "nav.dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Scans", key: "nav.scans", href: "/scans", icon: Scan },
   { name: "Compliance", key: "nav.compliance", href: "/compliance", icon: Grid3X3 },
   { name: "Statement", key: "nav.statement", href: "/statement", icon: FileText },
   { name: "Crawl Site", key: "nav.crawl", href: "/crawl", icon: Globe },
+];
+
+const analysisNav = [
   { name: "Priorities", key: "nav.priorities", href: "/priorities", icon: Zap },
   { name: "AI Insights", key: "nav.insights", href: "/insights", icon: Sparkles },
   { name: "Analytics", key: "nav.analytics", href: "/analytics", icon: BarChart3 },
   { name: "Compare", key: "nav.compare", href: "/scans/compare", icon: GitCompare },
+];
+
+const manageNav = [
   { name: "Team", key: "nav.team", href: "/team", icon: Users },
   { name: "Audit Log", key: "nav.auditLog", href: "/audit-log", icon: ClipboardList },
-  { name: "Notifications", key: "nav.notifications", href: "/notifications", icon: Bell },
   { name: "Integrations", key: "nav.integrations", href: "/integrations", icon: Plug },
   { name: "Webhooks", key: "nav.webhooks", href: "/webhooks", icon: Webhook },
   { name: "Settings", key: "nav.settings", href: "/settings", icon: Settings },
@@ -36,103 +42,149 @@ export function Sidebar({ onNavigate }: SidebarProps) {
   const { data: session } = useSession();
   const { resolvedTheme, setTheme, mounted } = useTheme();
   const { locale, setLocale, t } = useI18n();
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+
+  const NavItem = ({ item }: { item: { name: string; key: string; href: string; icon: React.ComponentType<{ className?: string }> } }) => {
+    const isActive = pathname.startsWith(item.href);
+    return (
+      <Link
+        key={item.name}
+        href={item.href}
+        onClick={onNavigate}
+        className={cn(
+          "group flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-all duration-150",
+          isActive
+            ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900"
+            : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-white"
+        )}
+      >
+        <item.icon className={cn("h-4 w-4 shrink-0", isActive ? "text-white dark:text-neutral-900" : "text-neutral-400 group-hover:text-neutral-600 dark:group-hover:text-neutral-300")} />
+        {item.key ? t(item.key as Parameters<typeof t>[0]) : item.name}
+      </Link>
+    );
+  };
 
   return (
-    <aside className="flex h-full w-64 flex-col border-r border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-900">
+    <aside className="flex h-full w-64 flex-col bg-neutral-50 dark:bg-neutral-900 border-r border-neutral-200/60 dark:border-neutral-800">
       {/* Brand */}
-      <div className="flex h-16 items-center gap-2 border-b border-neutral-200 dark:border-neutral-700 px-6">
-        <Shield className="h-6 w-6 text-neutral-900 dark:text-white" />
-        <span className="text-lg font-bold tracking-tight text-neutral-900 dark:text-white">
+      <div className="flex h-14 items-center gap-2.5 px-5">
+        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-neutral-900 dark:bg-white">
+          <Shield className="h-4 w-4 text-white dark:text-neutral-900" />
+        </div>
+        <span className="text-[15px] font-semibold tracking-tight text-neutral-900 dark:text-white">
           RegLayer
         </span>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-1 px-3 py-4 overflow-y-auto">
-        {navigation.map((item) => {
-          const isActive = pathname.startsWith(item.href);
-          return (
+      <nav className="flex-1 overflow-y-auto px-3 pb-3 space-y-5">
+        {/* Main */}
+        <div className="space-y-0.5">
+          {mainNav.map((item) => (
+            <NavItem key={item.name} item={item} />
+          ))}
+        </div>
+
+        {/* Analysis */}
+        <div className="space-y-0.5">
+          <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">Analysis</p>
+          {analysisNav.map((item) => (
+            <NavItem key={item.name} item={item} />
+          ))}
+        </div>
+
+        {/* Manage */}
+        <div className="space-y-0.5">
+          <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">Manage</p>
+          {manageNav.map((item) => (
+            <NavItem key={item.name} item={item} />
+          ))}
+        </div>
+
+        {/* Master Admin */}
+        {(session?.user as unknown as { isMasterAdmin?: boolean })?.isMasterAdmin && (
+          <div className="space-y-0.5">
+            <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-red-400">Admin</p>
             <Link
-              key={item.name}
-              href={item.href}
+              href="/admin"
               onClick={onNavigate}
               className={cn(
-                "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                isActive
-                  ? "bg-neutral-100 text-neutral-900 dark:bg-neutral-800 dark:text-white"
-                  : "text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-white"
+                "flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-all duration-150",
+                pathname === "/admin"
+                  ? "bg-red-600 text-white"
+                  : "text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
               )}
             >
-              <item.icon className="h-4 w-4" />
-              {item.key ? t(item.key as Parameters<typeof t>[0]) : item.name}
+              <Crown className="h-4 w-4" />
+              Admin Panel
             </Link>
-          );
-        })}
-
-        {/* Master Admin Panel — only visible to master admins */}
-        {(session?.user as unknown as { isMasterAdmin?: boolean })?.isMasterAdmin && (
-          <Link
-            href="/admin"
-            onClick={onNavigate}
-            className={cn(
-              "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors mt-2 border-t border-neutral-200 dark:border-neutral-700 pt-3",
-              pathname === "/admin"
-                ? "bg-red-50 text-red-800 dark:bg-red-900/30 dark:text-red-200"
-                : "text-red-600 hover:bg-red-50 hover:text-red-800 dark:text-red-400 dark:hover:bg-red-900/20 dark:hover:text-red-200"
-            )}
-          >
-            <Crown className="h-4 w-4" />
-            Admin Panel
-          </Link>
+          </div>
         )}
       </nav>
 
-      {/* User & Footer */}
-      <div className="border-t border-neutral-200 dark:border-neutral-700 px-4 py-4 space-y-3">
-        {/* Language Selector */}
-        <div className="flex items-center gap-2 rounded-md px-3 py-1.5">
-          <Languages className="h-4 w-4 text-neutral-500 dark:text-neutral-400" />
-          <select
-            value={locale}
-            onChange={(e) => setLocale(e.target.value as typeof locale)}
-            className="flex-1 bg-transparent text-xs font-medium text-neutral-600 dark:text-neutral-300 border-none outline-none cursor-pointer"
-          >
-            {SUPPORTED_LOCALES.map((l) => (
-              <option key={l.code} value={l.code}>
-                {l.flag} {l.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Theme Toggle */}
-        {mounted && (
-          <button
-            onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-            className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-neutral-600 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
-          >
-            {resolvedTheme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            {resolvedTheme === "dark" ? "Light Mode" : "Dark Mode"}
-          </button>
-        )}
-
+      {/* Bottom Area */}
+      <div className="border-t border-neutral-200/60 dark:border-neutral-800 p-3 space-y-1">
+        {/* User */}
         {session?.user && (
-          <div className="flex items-center justify-between">
-            <div className="min-w-0">
-              <p className="truncate text-xs font-medium text-neutral-700">
-                {session.user.name || session.user.email}
-              </p>
-              <p className="truncate mb-1 text-xs text-neutral-500 dark:text-neutral-400">
-                {session.user.email}
-              </p>
-            </div>
+          <div className="relative">
             <button
-              onClick={() => signOut({ callbackUrl: "/auth/login" })}
-              className="rounded-md p-0.8 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-600 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200 transition-colors"
-              title="Sign out"
+              onClick={() => setUserMenuOpen(!userMenuOpen)}
+              className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 hover:bg-neutral-200/60 dark:hover:bg-neutral-800 transition-colors"
             >
-              <LogOut className="h-3.5 w-3.5" />
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-blue-500 to-purple-600 text-[11px] font-bold text-white">
+                {(session.user.name || session.user.email || "U").charAt(0).toUpperCase()}
+              </div>
+              <div className="min-w-0 flex-1 text-left">
+                <p className="truncate text-[13px] font-medium text-neutral-800 dark:text-neutral-200">
+                  {session.user.name || session.user.email?.split("@")[0]}
+                </p>
+              </div>
+              <ChevronDown className={cn("h-3.5 w-3.5 text-neutral-400 transition-transform", userMenuOpen && "rotate-180")} />
             </button>
+
+            {userMenuOpen && (
+              <div className="absolute bottom-full left-0 right-0 mb-1 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-lg py-1 z-50">
+                <div className="px-3 py-2 border-b border-neutral-100 dark:border-neutral-800">
+                  <p className="text-[12px] font-medium text-neutral-700 dark:text-neutral-300 truncate">{session.user.email}</p>
+                </div>
+
+                {/* Theme + Language inside menu */}
+                <div className="flex items-center justify-between px-3 py-2 border-b border-neutral-100 dark:border-neutral-800">
+                  {mounted && (
+                    <button
+                      onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+                      className="flex items-center gap-2 text-[13px] font-medium text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors"
+                      title={resolvedTheme === "dark" ? "Light mode" : "Dark mode"}
+                    >
+                      {resolvedTheme === "dark" ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+                      {resolvedTheme === "dark" ? "Light" : "Dark"}
+                    </button>
+                  )}
+                  <div className="flex items-center gap-1">
+                    <Languages className="h-3.5 w-3.5 text-neutral-500" />
+                    <select
+                      value={locale}
+                      onChange={(e) => setLocale(e.target.value as typeof locale)}
+                      className="bg-transparent text-[11px] font-medium text-neutral-600 dark:text-neutral-400 border-none outline-none cursor-pointer"
+                    >
+                      {SUPPORTED_LOCALES.map((l) => (
+                        <option key={l.code} value={l.code}>
+                          {l.flag} {l.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => signOut({ callbackUrl: "/auth/login" })}
+                  className="flex w-full items-center gap-2.5 px-3 py-2 text-[13px] font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                >
+                  <LogOut className="h-3.5 w-3.5" />
+                  Sign out
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

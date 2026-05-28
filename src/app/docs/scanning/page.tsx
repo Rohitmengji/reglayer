@@ -118,7 +118,7 @@ export default function ScanningPage() {
               <li>Scan metadata (URL, date, duration, standard used)</li>
             </ul>
             <p className="text-sm text-neutral-600 dark:text-neutral-300 mt-3">
-              Click <strong>Export PDF</strong> on any scan detail page, or use the <Link href="/api-reference" className="text-blue-600 hover:underline">API</Link> to generate reports programmatically.
+              Click <strong>Export PDF</strong> on any scan detail page, or use the <Link href="/api-reference" className="text-blue-600">API</Link> to generate reports programmatically.
             </p>
           </section>
 
