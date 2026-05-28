@@ -1,5 +1,27 @@
 "use client";
 
+/**
+ * ---------------------------------------------------------
+ * RegLayer — App Shell (Authenticated Layout)
+ * ---------------------------------------------------------
+ *
+ * WHY: All authenticated pages share the same layout with
+ * sidebar navigation. This component wraps page content.
+ *
+ * WHAT:
+ * - Renders Sidebar (desktop: fixed left, mobile: drawer)
+ * - Main content area with proper margins
+ * - Mobile hamburger menu toggle
+ * - Session check (redirects to login if unauthenticated)
+ *
+ * HOW:
+ * - Desktop: flex layout with fixed w-64 sidebar + flex-1 content
+ * - Mobile: sidebar hidden, triggered via hamburger button
+ * - Uses useSession() to protect routes client-side
+ * - useRouter().push('/auth/login') if no session
+ * ---------------------------------------------------------
+ */
+
 import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter, usePathname } from "next/navigation";

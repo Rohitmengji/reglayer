@@ -1,3 +1,11 @@
+/**
+ * RegLayer — Plan Context
+ *
+ * WHY: API routes need to know the current user's plan limits to enforce feature gates.
+ * WHAT: Gets authenticated user's plan info (limits, usage, remaining credits, permissions).
+ * HOW: Reads NextAuth session → queries user → returns merged plan limits + current usage.
+ */
+
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import "server-only";

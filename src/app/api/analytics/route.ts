@@ -1,3 +1,11 @@
+/**
+ * RegLayer — Analytics API
+ *
+ * WHY: Analytics page needs historical compliance data for trend visualization.
+ * WHAT: GET returns score history, violation trends, and improvement metrics over time.
+ * HOW: Queries scans for workspace, groups by date, calculates moving averages.
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";

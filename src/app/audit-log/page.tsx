@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * RegLayer — Audit Log Page
+ *
+ * WHY: Compliance requires an immutable trail of who did what and when.
+ * WHAT: Filterable timeline of all workspace actions (scans, member changes, setting updates).
+ * HOW: Fetches /api/audit-log with pagination and filters. Renders action entries with actor, timestamp, details.
+ */
+
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * RegLayer — Login Page
+ *
+ * WHY: Authentication gateway. Users must sign in to use the platform.
+ * WHAT: Google OAuth button + email/password form. Links to request-access for new users.
+ * HOW: Uses next-auth signIn() for both providers. Redirects to /dashboard on success.
+ */
+
 import { signIn } from "next-auth/react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";

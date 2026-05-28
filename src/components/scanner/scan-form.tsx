@@ -1,5 +1,29 @@
 "use client";
 
+/**
+ * ---------------------------------------------------------
+ * RegLayer — Scan Form Component
+ * ---------------------------------------------------------
+ *
+ * WHY: The primary user action is scanning a URL. This form
+ * handles the entire scan UX: input, validation, progress, results.
+ *
+ * WHAT:
+ * - URL input field with validation
+ * - Scan options (standard selection, screenshot toggle)
+ * - Progress indicator showing pipeline stages
+ * - Error handling with retry
+ * - Passes completed scan data to parent via onScanComplete callback
+ *
+ * HOW:
+ * - POSTs to /api/scan with URL and options
+ * - Shows real-time pipeline stages (launching, analyzing, scoring...)
+ * - Uses AbortController for cancellation
+ * - Validates URL format before submission
+ * - Manages loading/error states internally
+ * ---------------------------------------------------------
+ */
+
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

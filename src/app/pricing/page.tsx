@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * RegLayer — Pricing Page
+ *
+ * WHY: Convert free users to paid plans. Show value of Pro and Enterprise.
+ * WHAT: 3-tier pricing cards (Free/Pro/Enterprise) with monthly/annual toggle and feature comparison.
+ * HOW: Client component for billing period toggle. Links to /auth/login for sign-up. Shows plan limits and features.
+ */
+
 import { useState } from "react";
 import Link from "next/link";
 import { Shield, Check, Zap, Building2, ArrowRight, Globe, Users, Scan, FileText, BarChart3, Webhook, Lock } from "lucide-react";

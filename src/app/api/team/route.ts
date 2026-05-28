@@ -1,3 +1,11 @@
+/**
+ * RegLayer — Team API
+ *
+ * WHY: Team management requires CRUD operations for workspace members.
+ * WHAT: GET (list members), POST (invite by email + role), DELETE (remove member).
+ * HOW: RBAC enforced — only OWNER/ADMIN can invite/remove. Creates user if email not found. Logs to audit trail.
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";

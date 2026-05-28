@@ -1,3 +1,24 @@
+/**
+ * ---------------------------------------------------------
+ * RegLayer — Footer Component
+ * ---------------------------------------------------------
+ *
+ * WHY: Public pages need a consistent footer with navigation links.
+ *
+ * WHAT:
+ * - 4-column layout: Brand, Product, Legal, Support
+ * - Product links: Features, Pricing, Standards
+ * - Legal links: Privacy, Terms, Cookie Policy
+ * - Support links: Docs, API Reference, Contact
+ * - Copyright notice
+ *
+ * HOW:
+ * - Server component (no "use client")
+ * - Used by landing page, pricing, docs, and other public pages
+ * - Responsive: stacks to 1 column on mobile
+ * ---------------------------------------------------------
+ */
+
 import Link from "next/link";
 import { Shield } from "lucide-react";
 

@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * RegLayer — Accessibility Statement Generator
+ *
+ * WHY: EU law (EN 301 549 Annex C) requires websites to publish an accessibility statement.
+ * WHAT: Form to generate a compliant accessibility statement with auto-filled scan data.
+ * HOW: Fetches latest scan results, pre-fills statement template. POSTs to /api/statement/generate for final text.
+ */
+
 import { useState } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

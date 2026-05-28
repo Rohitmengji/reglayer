@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * RegLayer — Compliance Page
+ *
+ * WHY: Users need to see how their sites map against specific compliance standards.
+ * WHAT: WCAG compliance matrix showing pass/fail for each success criterion. Tabs for different standards.
+ * HOW: Lazy-loads matrix-page component. Fetches scan data and maps violations to WCAG/EN 301 549 criteria.
+ */
+
 import { Suspense, lazy } from "react";
 import { useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";

@@ -1,3 +1,11 @@
+/**
+ * RegLayer — Public Scan Report Page
+ *
+ * WHY: Users need to share scan results publicly (clients, stakeholders, badges).
+ * WHAT: Standalone report with score hero, violation breakdown, compliance summary. No sidebar (public page).
+ * HOW: Server component that fetches scan from DB by ID. Renders without auth. Includes "View Certificate" link.
+ */
+
 import { prisma } from "@/lib/database/prisma";
 import { notFound } from "next/navigation";
 import Link from "next/link";

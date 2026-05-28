@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * RegLayer — Settings Page
+ *
+ * WHY: Users need to manage their account: API keys, profile, password, preferences.
+ * WHAT: Tabbed settings: Profile, API Keys (create/revoke), Password change, Notification prefs.
+ * HOW: Fetches /api/keys for key list, /api/auth/change-password for password updates. CRUD operations.
+ */
+
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";

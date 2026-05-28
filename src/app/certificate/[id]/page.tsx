@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * RegLayer — Compliance Certificate Page
+ *
+ * WHY: Users want a shareable visual certificate proving their accessibility compliance.
+ * WHAT: Certificate card with score, date, standard, URL. Downloadable as image. Embeddable badge code.
+ * HOW: Fetches scan data by ID. Uses html2canvas for image export. Provides HTML/Markdown embed snippets.
+ */
+
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { Shield, CheckCircle2, Award, ExternalLink, Calendar, Globe, Download, Loader2 } from "lucide-react";

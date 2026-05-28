@@ -1,3 +1,11 @@
+/**
+ * RegLayer — Features Page
+ *
+ * WHY: Public marketing page showing all platform capabilities.
+ * WHAT: 8 feature cards (scanning, monitoring, analytics, reports, API, teams, AI, standards) with icons.
+ * HOW: Server-rendered (no "use client"). Static content with consistent card layout. Links to pricing.
+ */
+
 import { Shield, ScanLine, Bell, BarChart3, FileText, Code2, Users, Zap } from "lucide-react";
 import Link from "next/link";
 import { Footer } from "@/components/layout/footer";
