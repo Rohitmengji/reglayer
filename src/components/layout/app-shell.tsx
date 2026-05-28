@@ -5,8 +5,9 @@ import { useSession } from "next-auth/react";
 import { useRouter, usePathname } from "next/navigation";
 import { Sidebar } from "./sidebar";
 import { Menu, X } from "lucide-react";
+import { useIsEmbedded } from "./embedded-context";
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({ children, bare }: { children: React.ReactNode; bare?: boolean }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -45,6 +46,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         .catch(handleWorkspaceCheck);
     }
   }, [session, status, pathname, workspaceVerified, handleWorkspaceCheck, handleNoAccess]);
+
+  // Bare mode: skip shell, just render children (used when embedded in tabbed layouts)
+  const isEmbedded = useIsEmbedded();
+  if (bare || isEmbedded) {
+    return <>{children}</>;
+  }
 
   const showLoading = status === "loading" || (status === "authenticated" && !workspaceVerified);
 
