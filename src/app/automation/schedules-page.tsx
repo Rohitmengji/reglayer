@@ -281,10 +281,10 @@ export default function SchedulesPage() {
       )}
 
       {schedules.length === 0 ? (
-        <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-8 text-center">
-          <Clock className="mx-auto h-8 w-8 text-neutral-300" />
-          <p className="mt-3 text-sm font-medium text-neutral-600 dark:text-neutral-300">No schedules configured</p>
-          <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+        <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-12 flex flex-col items-center justify-center text-center">
+          <Clock className="h-10 w-10 text-neutral-300 dark:text-neutral-600" />
+          <p className="mt-4 text-sm font-medium text-neutral-600 dark:text-neutral-300">No schedules configured</p>
+          <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400 max-w-sm">
             Set up automated monitoring to detect accessibility regressions after deploys.
           </p>
         </div>
