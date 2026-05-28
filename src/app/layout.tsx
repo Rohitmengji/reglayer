@@ -73,15 +73,33 @@ export default function RootLayout({
       className={`${sans.variable} ${mono.variable} h-full antialiased`}
     >
       <head>
-        <Script
-          id="theme-init"
-          strategy="beforeInteractive"
+        {/* color-scheme meta: tells the browser to use dark canvas during navigation transitions.
+            "dark light" means: prefer dark if system is dark, which prevents the white blank frame
+            the browser shows between unloading old page and painting new one. */}
+        <meta name="color-scheme" content="dark light" />
+        {/* Critical dark-mode styles — must be in <head> for immediate effect before first paint.
+            Three layers of defense:
+            1. @media query: handles system-dark users instantly (no script needed)
+            2. html.dark: handles explicit dark preference (after script adds class)
+            3. html.light: overrides media query when user explicitly chose light */}
+        <style
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem("reglayer-theme");if(t==="dark"||(t!=="light"&&window.matchMedia("(prefers-color-scheme:dark)").matches)){document.documentElement.classList.add("dark")}}catch(e){}})()`,
+            __html: [
+              `@media(prefers-color-scheme:dark){html:not(.light){background-color:#09090b;color-scheme:dark}html:not(.light) body{background-color:#09090b}}`,
+              `html.dark{background-color:#09090b;color-scheme:dark}html.dark body{background-color:#09090b}`,
+              `html.light{background-color:#fff;color-scheme:light}html.light body{background-color:#fff}`,
+            ].join(""),
           }}
         />
       </head>
       <body className="min-h-full flex flex-col bg-background text-foreground">
+        <Script
+          id="theme-init"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem("reglayer-theme");var d=t==="dark"||(t!=="light"&&window.matchMedia("(prefers-color-scheme:dark)").matches);if(d){document.documentElement.classList.add("dark");document.documentElement.style.colorScheme="dark"}else if(t==="light"){document.documentElement.classList.add("light")}}catch(e){}})()`,
+          }}
+        />
         <Providers>
           {children}
           <CookieConsent />
