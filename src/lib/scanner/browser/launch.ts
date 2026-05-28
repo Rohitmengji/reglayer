@@ -19,6 +19,13 @@ import type { Browser } from "playwright-core";
 const IS_SERVERLESS = !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME;
 
 /**
+ * Standard viewport for consistent scan results across environments.
+ * 1280x720 represents a common desktop resolution and ensures
+ * responsive breakpoints are evaluated consistently.
+ */
+const VIEWPORT = { width: 1280, height: 720 };
+
+/**
  * Launch a browser instance appropriate for the current environment.
  *
  * Returns a Playwright Browser in local dev.
@@ -32,7 +39,7 @@ export async function launchBrowser(): Promise<Browser> {
 
     const browser = await puppeteer.launch({
       args: chromium.args,
-      defaultViewport: { width: 1280, height: 720 },
+      defaultViewport: VIEWPORT,
       executablePath: await chromium.executablePath(),
       headless: true,
     });
@@ -43,7 +50,10 @@ export async function launchBrowser(): Promise<Browser> {
   }
 
   const { chromium } = await import("playwright");
-  return chromium.launch({ headless: true });
+  return chromium.launch({
+    headless: true,
+    args: ["--disable-gpu", "--no-sandbox"],
+  });
 }
 
 /**
@@ -52,4 +62,11 @@ export async function launchBrowser(): Promise<Browser> {
  */
 export function isServerless(): boolean {
   return IS_SERVERLESS;
+}
+
+/**
+ * Get the standard viewport dimensions.
+ */
+export function getViewport() {
+  return VIEWPORT;
 }
