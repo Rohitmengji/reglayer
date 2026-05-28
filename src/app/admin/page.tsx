@@ -22,6 +22,8 @@ import {
   X,
   Trash2,
   KeyRound,
+  Coins,
+  Search,
 } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 
@@ -49,6 +51,8 @@ interface UserInfo {
   createdAt: string;
   role: string | null;
   canGrantMaster: boolean;
+  bonusCredits: number;
+  creditGrantsThisMonth: number;
 }
 
 interface AdminData {
@@ -87,6 +91,11 @@ export default function AdminPage() {
   const [addUserRole, setAddUserRole] = useState("MEMBER");
   const [resetPasswordUser, setResetPasswordUser] = useState<string | null>(null);
   const [resetPasswordValue, setResetPasswordValue] = useState("");
+  const [grantCreditsUser, setGrantCreditsUser] = useState<string | null>(null);
+  const [grantCreditsAmount, setGrantCreditsAmount] = useState("");
+  const [grantCreditsReason, setGrantCreditsReason] = useState("");
+  const [userSearch, setUserSearch] = useState("");
+  const [userRoleFilter, setUserRoleFilter] = useState<string>("ALL");
   const { t } = useI18n();
   const [pendingRequests, setPendingRequests] = useState<{
     id: string;
@@ -281,6 +290,33 @@ export default function AdminPage() {
     setActionLoading(false);
   }
 
+  async function handleGrantCredits(userId: string) {
+    const amount = parseInt(grantCreditsAmount, 10);
+    if (!amount || amount < 1 || amount > 500) {
+      toast.error("Amount must be between 1 and 500");
+      return;
+    }
+    setActionLoading(true);
+    const toastId = toast.loading("Granting AI credits...");
+    const res = await fetch("/api/admin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "grantCredits", userId, amount, reason: grantCreditsReason || undefined }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      toast.success(`Granted ${amount} credits (total bonus: ${data.bonusCredits})`, { id: toastId });
+      setGrantCreditsUser(null);
+      setGrantCreditsAmount("");
+      setGrantCreditsReason("");
+      fetchData();
+    } else {
+      const data = await res.json();
+      toast.error(data.error || "Failed to grant credits", { id: toastId });
+    }
+    setActionLoading(false);
+  }
+
   async function handleResetPassword(userId: string) {
     if (!resetPasswordValue || resetPasswordValue.length < 6) return;
     setActionLoading(true);
@@ -416,32 +452,139 @@ export default function AdminPage() {
           </div>
         )}
 
+        {/* Grant Credits Modal */}
+        {grantCreditsUser && (() => {
+          const targetUser = data.users.find((u) => u.id === grantCreditsUser);
+          return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => { setGrantCreditsUser(null); setGrantCreditsAmount(""); setGrantCreditsReason(""); }}>
+              <div className="w-full max-w-sm bg-white dark:bg-neutral-900 rounded-xl shadow-xl p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-base font-semibold text-neutral-900 dark:text-white flex items-center gap-2">
+                    <Coins className="h-4 w-4 text-amber-500" /> Grant AI Credits
+                  </h3>
+                  <button onClick={() => { setGrantCreditsUser(null); setGrantCreditsAmount(""); setGrantCreditsReason(""); }} className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="text-sm text-neutral-600 dark:text-neutral-300">
+                  <p>User: <span className="font-medium">{targetUser?.name || targetUser?.email}</span></p>
+                  <p className="text-xs text-neutral-400 mt-0.5">
+                    Current bonus: {targetUser?.bonusCredits ?? 0} · Grants this month: {targetUser?.creditGrantsThisMonth ?? 0}/3
+                  </p>
+                </div>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1">Amount (1–500)</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={500}
+                      placeholder="e.g. 100"
+                      value={grantCreditsAmount}
+                      onChange={(e) => setGrantCreditsAmount(e.target.value)}
+                      className="w-full rounded-lg border border-neutral-200 dark:border-neutral-700 px-3 py-2 text-sm dark:bg-neutral-800 dark:text-neutral-100"
+                      autoFocus
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1">Reason (optional)</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Customer support escalation"
+                      value={grantCreditsReason}
+                      onChange={(e) => setGrantCreditsReason(e.target.value)}
+                      className="w-full rounded-lg border border-neutral-200 dark:border-neutral-700 px-3 py-2 text-sm dark:bg-neutral-800 dark:text-neutral-100"
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center justify-between pt-2">
+                  <span className="text-xs text-neutral-400">{3 - (targetUser?.creditGrantsThisMonth ?? 0)} grants remaining this month</span>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="ghost" onClick={() => { setGrantCreditsUser(null); setGrantCreditsAmount(""); setGrantCreditsReason(""); }}>
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      disabled={actionLoading || !grantCreditsAmount || (targetUser?.creditGrantsThisMonth ?? 0) >= 3}
+                      onClick={() => handleGrantCredits(grantCreditsUser)}
+                    >
+                      <Coins className="h-3 w-3 mr-1" /> Grant Credits
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Users Section */}
         <div>
           <h2 className="text-lg font-semibold text-neutral-900 dark:text-white mb-3 flex items-center gap-2">
             <Users className="h-5 w-5" /> {t("admin.allUsers")}
           </h2>
+
+          {/* Search & Filter Bar */}
+          <div className="flex flex-col sm:flex-row gap-2 mb-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-400" />
+              <input
+                type="text"
+                placeholder="Search by name or email..."
+                value={userSearch}
+                onChange={(e) => setUserSearch(e.target.value)}
+                className="w-full pl-8 pr-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 text-sm dark:bg-neutral-800 dark:text-neutral-100 placeholder:text-neutral-400"
+              />
+            </div>
+            <div className="flex gap-1 flex-wrap">
+              {["ALL", "MASTER_ADMIN", "OWNER", "ADMIN", "MEMBER", "VIEWER"].map((role) => (
+                <button
+                  key={role}
+                  onClick={() => setUserRoleFilter(role)}
+                  className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                    userRoleFilter === role
+                      ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900"
+                      : "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700"
+                  }`}
+                >
+                  {role === "ALL" ? "All" : role === "MASTER_ADMIN" ? "Master Admin" : role.charAt(0) + role.slice(1).toLowerCase()}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <Card>
             <CardContent className="p-0">
               <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
-                {data.users.map((user) => (
-                  <div key={user.id} className="flex items-center justify-between px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <div className="h-8 w-8 rounded-full bg-neutral-200 dark:bg-neutral-700 flex items-center justify-center text-xs font-bold text-neutral-600 dark:text-neutral-300">
+                {data.users
+                  .filter((user) => {
+                    const matchesSearch = !userSearch || 
+                      (user.name || "").toLowerCase().includes(userSearch.toLowerCase()) ||
+                      user.email.toLowerCase().includes(userSearch.toLowerCase());
+                    const matchesRole = userRoleFilter === "ALL" ||
+                      (userRoleFilter === "MASTER_ADMIN" ? user.isMasterAdmin : user.role === userRoleFilter);
+                    return matchesSearch && matchesRole;
+                  })
+                  .map((user) => (
+                  <div key={user.id} className="flex flex-col sm:flex-row sm:items-center justify-between px-4 py-3 gap-2">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="h-8 w-8 rounded-full bg-neutral-200 dark:bg-neutral-700 flex items-center justify-center text-xs font-bold text-neutral-600 dark:text-neutral-300 shrink-0">
                         {(user.name || user.email)[0].toUpperCase()}
                       </div>
-                      <div>
-                        <p className="text-sm font-medium text-neutral-900 dark:text-white">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-neutral-900 dark:text-white truncate">
                           {user.name || user.email.split("@")[0]}
                         </p>
-                        <p className="text-xs text-neutral-500 dark:text-neutral-400">{user.email}</p>
+                        <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate">{user.email}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap pl-11 sm:pl-0">
                       {user.isMasterAdmin && (
                         <Badge className="bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200 text-xs">
                           <Crown className="h-3 w-3 mr-1" /> {t("admin.masterAdmin")}
                         </Badge>
+                      )}
+                      {user.role && (
+                        <Badge className={`text-xs ${roleColors[user.role] || ""}`}>{user.role}</Badge>
                       )}
                       {user.email !== session?.user?.email && (
                         <>
@@ -481,9 +624,20 @@ export default function AdminPage() {
                               disabled={actionLoading}
                               title="Reset Password"
                             >
-                              <KeyRound className="h-3 w-3 mr-1" /> {t("admin.resetPw")}
+                              <KeyRound className="h-3 w-3 mr-1" /> <span className="hidden sm:inline">{t("admin.resetPw")}</span><span className="sm:hidden">PW</span>
                             </Button>
                           )}
+                          {/* Grant AI Credits */}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-xs"
+                            onClick={() => setGrantCreditsUser(user.id)}
+                            disabled={actionLoading || user.creditGrantsThisMonth >= 3}
+                            title={user.creditGrantsThisMonth >= 3 ? "Limit reached (3/month)" : `Grant AI Credits (bonus: ${user.bonusCredits})`}
+                          >
+                            <Coins className="h-3 w-3 mr-1" /> <span className="hidden sm:inline">Credits{user.bonusCredits > 0 ? ` (${user.bonusCredits})` : ""}</span><span className="sm:hidden">{user.bonusCredits || 0}</span>
+                          </Button>
                           {user.canGrantMaster && (
                             <Button
                               size="sm"
@@ -511,6 +665,18 @@ export default function AdminPage() {
                     </div>
                   </div>
                 ))}
+                {data.users.filter((user) => {
+                  const matchesSearch = !userSearch || 
+                    (user.name || "").toLowerCase().includes(userSearch.toLowerCase()) ||
+                    user.email.toLowerCase().includes(userSearch.toLowerCase());
+                  const matchesRole = userRoleFilter === "ALL" ||
+                    (userRoleFilter === "MASTER_ADMIN" ? user.isMasterAdmin : user.role === userRoleFilter);
+                  return matchesSearch && matchesRole;
+                }).length === 0 && (
+                  <div className="px-4 py-8 text-center text-sm text-neutral-400">
+                    No users match your filters
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
