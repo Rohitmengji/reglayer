@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { cn } from "@/lib/utils/cn";
 import { useTheme } from "@/components/theme-provider";
-import { Shield, LayoutDashboard, Scan, Globe, Zap, Sparkles, BarChart3, GitCompare, Webhook, Settings, LogOut, Grid3X3, Moon, Sun, FileText, Languages, Users, ClipboardList, Plug, Crown, ChevronDown, Eye, Wand2, DollarSign, Route } from "lucide-react";
+import { Shield, LayoutDashboard, Scan, Globe, Zap, Sparkles, BarChart3, GitCompare, Webhook, Settings, LogOut, Grid3X3, Moon, Sun, FileText, Languages, Users, ClipboardList, Plug, Crown, ChevronDown, Eye, Wand2, DollarSign, Route, Activity, Component } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 import { SUPPORTED_LOCALES } from "@/lib/i18n/translations";
 import { useState } from "react";
@@ -31,6 +31,8 @@ const automationNav = [
   { name: "Revenue Impact", key: "", href: "/dashboard/revenue", icon: DollarSign },
   { name: "VPAT/ACR", key: "", href: "/compliance/vpat", icon: FileText },
   { name: "Journey Scan", key: "", href: "/dashboard/journey", icon: Route },
+  { name: "RUM", key: "", href: "/dashboard/rum", icon: Activity },
+  { name: "Design System", key: "", href: "/dashboard/design-system", icon: Component },
 ];
 
 const manageNav = [
