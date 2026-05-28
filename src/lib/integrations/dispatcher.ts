@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/database/prisma";
+import { decryptToken } from "@/lib/crypto";
 
 /**
  * Dispatch notification to all connected integrations for a workspace
@@ -16,6 +17,9 @@ export async function dispatchToIntegrations(
 
   for (const integration of integrations) {
     try {
+      // Decrypt tokens before use
+      const accessToken = decryptToken(integration.accessToken);
+
       switch (integration.provider) {
         case "slack":
           if (integration.webhookUrl) {
@@ -36,8 +40,8 @@ export async function dispatchToIntegrations(
           }
           break;
         case "github":
-          if (integration.accessToken) {
-            const ghResult = await createGithubIssue(integration, event, payload);
+          if (accessToken) {
+            const ghResult = await createGithubIssue({ ...integration, accessToken }, event, payload);
             results.push({ provider: "github", ...ghResult });
           }
           break;

@@ -1,5 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+vi.mock("server-only", () => ({}));
+vi.mock("@upstash/ratelimit", () => ({ Ratelimit: vi.fn() }));
+vi.mock("@upstash/redis", () => ({ Redis: vi.fn() }));
+
+vi.mock("@/lib/rate-limit-middleware", () => ({
+  applyRateLimit: vi.fn().mockResolvedValue(null),
+}));
+
 vi.mock("next-auth", () => ({
   getServerSession: vi.fn(),
 }));
