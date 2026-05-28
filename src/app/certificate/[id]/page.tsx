@@ -235,7 +235,7 @@ export default function CertificatePage() {
                 Certificate ID: <code className="font-mono">{cert.id}</code>
               </p>
               <p className="text-xs text-neutral-400 mt-1">
-                Verified by <a href="https://reglayer.vercel.app" className="text-blue-600 hover:underline">RegLayer</a> — European Accessibility Act Compliance Platform
+                Verified by <a href="https://reglayer.vercel.app" className="text-blue-600 hover:underline">RegLayer</a> — Web Accessibility Compliance Platform
               </p>
               {isExpired && (
                 <p className="text-xs text-red-500 font-medium mt-2">

@@ -323,16 +323,17 @@ export default function StatementPage() {
               </CardHeader>
               <CardContent className="space-y-4 text-sm text-neutral-600 dark:text-neutral-300">
                 <p>
-                  The <strong>European Accessibility Act (EAA)</strong> requires all organizations 
-                  offering products or services in the EU to publish an accessibility statement.
+                  Accessibility laws worldwide require organizations to publish an accessibility 
+                  statement declaring their conformance status and providing contact information.
                 </p>
                 <div className="rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900 p-4">
-                  <p className="font-medium text-blue-900 dark:text-blue-200 mb-2">Legal Requirements</p>
+                  <p className="font-medium text-blue-900 dark:text-blue-200 mb-2">Supported Standards</p>
                   <ul className="list-disc list-inside space-y-1 text-blue-800 dark:text-blue-300 text-xs">
-                    <li>EU Web Accessibility Directive (2016/2102)</li>
-                    <li>European Accessibility Act (2019/882)</li>
-                    <li>EN 301 549 V3.2.1 harmonised standard</li>
-                    <li>WCAG 2.1 Level AA conformance</li>
+                    <li>WCAG 2.2 Level AA (W3C global standard)</li>
+                    <li>ADA Title III (United States)</li>
+                    <li>Section 508 (US Federal)</li>
+                    <li>EAA / EN 301 549 (European Union)</li>
+                    <li>AODA (Canada — Ontario)</li>
                   </ul>
                 </div>
                 <div className="space-y-2">

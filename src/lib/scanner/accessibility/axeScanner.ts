@@ -8,8 +8,9 @@
  * accessibility scans against a target webpage.
  *
  * Why this exists:
- * Accessibility compliance is one of the foundational
- * compliance pillars in European digital regulations.
+ * Accessibility compliance is a global requirement.
+ * WCAG 2.2, ADA, Section 508, EAA, and AODA all
+ * mandate accessible digital experiences.
  *
  * This scanner acts as the first layer of our
  * compliance intelligence pipeline.

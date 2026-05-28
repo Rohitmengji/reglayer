@@ -35,16 +35,16 @@ export default function Home() {
         <section className="mx-auto max-w-5xl px-6 py-16 sm:py-32 text-center">
           <div className="inline-flex items-center gap-2 rounded-full border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 px-3 py-1 text-xs font-medium text-neutral-600 dark:text-neutral-300 mb-8">
             <Zap className="h-3 w-3" />
-            EAA deadline: June 28, 2025 — Is your site ready?
+            WCAG 2.2 + ADA + EAA + Section 508 — One platform, every standard.
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-neutral-900 dark:text-white sm:text-6xl leading-[1.1]">
-            EU Accessibility compliance,
+            Web Accessibility compliance,
             <br />
             <span className="text-neutral-600 sm:text-neutral-400 dark:text-neutral-400">fully automated.</span>
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-base sm:text-lg text-neutral-600 dark:text-neutral-300 leading-relaxed">
-            RegLayer scans your websites against WCAG 2.1 AA and EN 301 549, generates audit-ready 
-            compliance reports, and monitors regressions — helping you avoid up to €100,000 in EAA fines.
+            RegLayer scans your websites against WCAG 2.2 AA, Section 508, ADA, EAA, and EN 301 549 — generates audit-ready 
+            compliance reports, and monitors regressions. One platform for worldwide accessibility standards.
           </p>
           <div className="mt-10 flex flex-col sm:flex-row justify-center gap-4">
             <Link
@@ -63,8 +63,8 @@ export default function Home() {
           </div>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-6 text-xs text-neutral-500 dark:text-neutral-400">
             <span className="flex items-center gap-1.5"><CheckCircle2 className="h-3.5 w-3.5 text-green-600" /> No credit card required</span>
-            <span className="flex items-center gap-1.5"><CheckCircle2 className="h-3.5 w-3.5 text-green-600" /> GDPR compliant</span>
-            <span className="flex items-center gap-1.5"><CheckCircle2 className="h-3.5 w-3.5 text-green-600" /> EU data residency</span>
+            <span className="flex items-center gap-1.5"><CheckCircle2 className="h-3.5 w-3.5 text-green-600" /> WCAG 2.2 compliant</span>
+            <span className="flex items-center gap-1.5"><CheckCircle2 className="h-3.5 w-3.5 text-green-600" /> Global standards coverage</span>
           </div>
         </section>
 
@@ -72,12 +72,12 @@ export default function Home() {
         <section className="border-y border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/50 py-12">
           <div className="mx-auto max-w-6xl px-6">
             <p className="text-center text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-8">
-              Trusted by compliance teams across the EU
+              Trusted by compliance teams worldwide
             </p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-8 items-center">
               {[
                 { value: "500+", label: "Sites Scanned" },
-                { value: "12", label: "EU Countries" },
+                { value: "30+", label: "Countries" },
                 { value: "99.7%", label: "Uptime" },
                 { value: "< 30s", label: "Scan Time" },
               ].map((stat) => (
@@ -95,17 +95,17 @@ export default function Home() {
           <div className="mx-auto max-w-6xl px-6">
             <div className="text-center mb-10 sm:mb-16">
               <h2 className="text-2xl sm:text-3xl font-bold text-neutral-900 dark:text-white">
-                Everything you need for EAA compliance
+                Everything you need for accessibility compliance
               </h2>
               <p className="mt-3 text-neutral-600 dark:text-neutral-400 max-w-xl mx-auto">
-                Built for developers and compliance officers who need to meet the European Accessibility Act deadline.
+                Built for developers and compliance officers who need to meet global accessibility standards — WCAG, ADA, EAA, Section 508, and more.
               </p>
             </div>
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               <FeatureCard
                 icon={Scan}
-                title="Deep WCAG Scanning"
-                description="axe-core powered analysis against WCAG 2.1 AA with headless Chromium. Results in under 30 seconds."
+                title="Deep WCAG 2.2 Scanning"
+                description="axe-core powered analysis against WCAG 2.2 AA with headless Chromium. Strict as a manual tester. Results in under 30 seconds."
               />
               <FeatureCard
                 icon={Globe}
@@ -114,8 +114,8 @@ export default function Home() {
               />
               <FeatureCard
                 icon={BarChart3}
-                title="EN 301 549 Scoring"
-                description="Compliance scores mapped to EAA, WCAG 2.1 AA, and EN 301 549 with trend analytics."
+                title="Multi-Standard Scoring"
+                description="Compliance scores mapped to WCAG 2.2, ADA, Section 508, EAA, and EN 301 549 with trend analytics."
               />
               <FeatureCard
                 icon={FileText}
@@ -142,17 +142,19 @@ export default function Home() {
             <div className="grid lg:grid-cols-2 gap-10 sm:gap-16 items-center">
               <div>
                 <h2 className="text-2xl sm:text-3xl font-bold text-neutral-900 dark:text-white">
-                  Built for the European Accessibility Act
+                  Built for worldwide accessibility standards
                 </h2>
                 <p className="mt-4 text-neutral-600 dark:text-neutral-300 leading-relaxed">
-                  The EAA takes effect June 28, 2025. Non-compliant websites face fines up to €100,000 
-                  and legal action. RegLayer maps your violations directly to EU regulatory requirements.
+                  Whether you need ADA compliance in the US, EAA in Europe, AODA in Canada, or WCAG globally — 
+                  RegLayer maps your violations directly to the regulatory requirements that matter to you.
                 </p>
                 <ul className="mt-8 space-y-4">
                   {[
-                    "WCAG 2.1 Level AA — Full success criteria coverage",
-                    "EN 301 549 — European harmonised standard",
-                    "Accessibility Statement Generator — Article 7 compliant",
+                    "WCAG 2.2 Level AA — Latest W3C success criteria",
+                    "ADA Title III — Americans with Disabilities Act",
+                    "Section 508 — US Federal accessibility standard",
+                    "EAA / EN 301 549 — European Accessibility Act",
+                    "AODA — Accessibility for Ontarians with Disabilities",
                     "VPAT / ACR — Voluntary Product Accessibility Template",
                     "7 languages — DE, FR, ES, IT, NL, PT, EN",
                   ].map((item) => (
@@ -172,11 +174,12 @@ export default function Home() {
               </div>
               <div className="rounded-2xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 p-8 space-y-4">
                 {[
-                  { standard: "WCAG 2.1 AA", status: "Supported", color: "bg-green-100 text-green-700" },
-                  { standard: "EN 301 549 v3.2.1", status: "Supported", color: "bg-green-100 text-green-700" },
-                  { standard: "EAA (Directive 2019/882)", status: "Mapped", color: "bg-green-100 text-green-700" },
-                  { standard: "GDPR Art. 25", status: "Compliant", color: "bg-green-100 text-green-700" },
-                  { standard: "Section 508", status: "Supported", color: "bg-blue-100 text-blue-700" },
+                  { standard: "WCAG 2.2 AA", status: "Supported", color: "bg-green-100 text-green-700" },
+                  { standard: "ADA Title III", status: "Supported", color: "bg-green-100 text-green-700" },
+                  { standard: "Section 508", status: "Supported", color: "bg-green-100 text-green-700" },
+                  { standard: "EAA / EN 301 549", status: "Supported", color: "bg-green-100 text-green-700" },
+                  { standard: "AODA (Canada)", status: "Supported", color: "bg-green-100 text-green-700" },
+                  { standard: "JIS X 8341 (Japan)", status: "Mapped", color: "bg-blue-100 text-blue-700" },
                 ].map((row) => (
                   <div key={row.standard} className="flex items-center justify-between py-3 border-b border-neutral-100 dark:border-neutral-700 last:border-0">
                     <span className="text-sm font-medium text-neutral-900 dark:text-white">{row.standard}</span>
@@ -291,7 +294,7 @@ export default function Home() {
                 <span className="font-bold text-neutral-900 dark:text-white">RegLayer</span>
               </div>
               <p className="text-xs text-neutral-500 leading-relaxed">
-                European Accessibility Act compliance platform. Automated scanning, monitoring, and reporting.
+                Web Accessibility compliance platform. Automated scanning, monitoring, and reporting for global standards.
               </p>
             </div>
             <div>

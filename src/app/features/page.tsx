@@ -51,9 +51,9 @@ const features = [
   },
   {
     icon: Shield,
-    title: "EAA & WCAG Compliance",
+    title: "Global Standards Compliance",
     description:
-      "Full support for European Accessibility Act (Directive 2019/882) requirements. Map violations to specific WCAG success criteria.",
+      "Full support for WCAG 2.2, ADA, Section 508, EAA, and AODA. Map violations to specific success criteria across all major standards.",
   },
 ];
 
