@@ -15,6 +15,8 @@ import { z } from "zod";
 import { explainViolation } from "@/lib/ai/explainers/violationExplainer";
 import { generateComplianceSummary } from "@/lib/ai/summaries/complianceSummary";
 import { rateLimit, RATE_LIMITS, rateLimitHeaders } from "@/lib/rate-limit";
+import { consumeCredits } from "@/lib/credits";
+import { prisma } from "@/lib/database/prisma";
 
 const explainSchema = z.object({
   type: z.enum(["violation", "summary"]),
@@ -51,6 +53,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { error: "Too many AI requests. Please wait." },
       { status: 429, headers: rateLimitHeaders(rl) }
+    );
+  }
+
+  // Enforce AI credit consumption
+  const user = await prisma.user.findUnique({
+    where: { email: session.user.email },
+    select: { id: true },
+  });
+  if (!user) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+
+  const creditResult = await consumeCredits(user.id, "explanation");
+  if (!creditResult.success) {
+    return NextResponse.json(
+      { error: "Insufficient AI credits", creditsRemaining: creditResult.creditsRemaining, cost: creditResult.cost, upgradeRequired: true },
+      { status: 429 }
     );
   }
 

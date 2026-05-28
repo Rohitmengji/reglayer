@@ -76,11 +76,11 @@ export function rateLimit(
  */
 export const RATE_LIMITS = {
   // Scan endpoints — expensive (browser launch)
-  scan: { limit: 10, windowSec: 60 },
-  // AI endpoints — costly
-  ai: { limit: 20, windowSec: 60 },
+  scan: { limit: 5, windowSec: 60 },
+  // AI endpoints — costly (OpenAI calls, gated by credits but rate limit as safety net)
+  ai: { limit: 10, windowSec: 60 },
   // General API — standard CRUD
-  api: { limit: 100, windowSec: 60 },
+  api: { limit: 60, windowSec: 60 },
   // Auth endpoints — strict to prevent brute force
   auth: { limit: 5, windowSec: 300 },
 } as const;

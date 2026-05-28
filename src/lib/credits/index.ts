@@ -12,20 +12,21 @@ export async function checkCredits(userId: string): Promise<{
   creditsUsed: number;
   creditsLimit: number;
   creditsRemaining: number;
+  bonusCredits: number;
   plan: PlanType;
 }> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { plan: true, aiCreditsUsed: true, creditResetAt: true, isMasterAdmin: true },
+    select: { plan: true, aiCreditsUsed: true, bonusCredits: true, creditResetAt: true, isMasterAdmin: true },
   });
 
   if (!user) {
-    return { allowed: false, creditsUsed: 0, creditsLimit: 0, creditsRemaining: 0, plan: "FREE" };
+    return { allowed: false, creditsUsed: 0, creditsLimit: 0, creditsRemaining: 0, bonusCredits: 0, plan: "FREE" };
   }
 
   // Master admins have unlimited credits
   if (user.isMasterAdmin) {
-    return { allowed: true, creditsUsed: 0, creditsLimit: -1, creditsRemaining: -1, plan: user.plan as PlanType };
+    return { allowed: true, creditsUsed: 0, creditsLimit: -1, creditsRemaining: -1, bonusCredits: 0, plan: user.plan as PlanType };
   }
 
   const plan = user.plan as PlanType;
@@ -39,7 +40,7 @@ export async function checkCredits(userId: string): Promise<{
   let creditsUsed = user.aiCreditsUsed;
 
   if (monthsSinceReset >= 1) {
-    // Reset credits for new month
+    // Reset credits for new month — bonus credits persist
     await prisma.user.update({
       where: { id: userId },
       data: { aiCreditsUsed: 0, creditResetAt: now },
@@ -47,19 +48,23 @@ export async function checkCredits(userId: string): Promise<{
     creditsUsed = 0;
   }
 
-  const remaining = limit - creditsUsed;
+  const totalAvailable = limit + (user.bonusCredits ?? 0);
+  const remaining = totalAvailable - creditsUsed;
 
   return {
     allowed: remaining > 0,
     creditsUsed,
     creditsLimit: limit,
     creditsRemaining: Math.max(0, remaining),
+    bonusCredits: user.bonusCredits ?? 0,
     plan,
   };
 }
 
 /**
- * Consume AI credits for an action. Returns false if insufficient credits.
+ * Consume AI credits for an action using atomic database operation.
+ * Prevents race conditions by using a conditional update (optimistic locking).
+ * Returns false if insufficient credits.
  */
 export async function consumeCredits(userId: string, action: AiAction): Promise<{
   success: boolean;
@@ -84,16 +89,33 @@ export async function consumeCredits(userId: string, action: AiAction): Promise<
     };
   }
 
-  const updated = await prisma.user.update({
-    where: { id: userId },
-    data: { aiCreditsUsed: { increment: cost } },
-    select: { aiCreditsUsed: true },
-  });
+  // Atomic update with WHERE guard to prevent race conditions.
+  // Only increments if the current usage + cost doesn't exceed limit + bonus.
+  // If a concurrent request already consumed credits pushing usage over, this returns 0 rows.
+  const totalLimit = status.creditsLimit + status.bonusCredits;
+  const result = await prisma.$executeRaw`
+    UPDATE users 
+    SET "aiCreditsUsed" = "aiCreditsUsed" + ${cost}, "updatedAt" = NOW()
+    WHERE id = ${userId} 
+      AND "aiCreditsUsed" + ${cost} <= ${totalLimit}
+  `;
 
+  if (result === 0) {
+    // Race condition: another request consumed credits first
+    const refreshed = await checkCredits(userId);
+    return {
+      success: false,
+      creditsUsed: refreshed.creditsUsed,
+      creditsRemaining: refreshed.creditsRemaining,
+      cost,
+    };
+  }
+
+  const newUsed = status.creditsUsed + cost;
   return {
     success: true,
-    creditsUsed: updated.aiCreditsUsed,
-    creditsRemaining: status.creditsLimit - updated.aiCreditsUsed,
+    creditsUsed: newUsed,
+    creditsRemaining: totalLimit - newUsed,
     cost,
   };
 }
