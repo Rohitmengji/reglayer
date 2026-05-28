@@ -5,13 +5,14 @@ import { useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { TabNav, type Tab } from "@/components/ui/tab-nav";
 import { EmbeddedProvider } from "@/components/layout/embedded-context";
-import { Wand2, DollarSign, Route, Activity, Component } from "lucide-react";
+import { Wand2, DollarSign, Route, Activity, Component, Clock } from "lucide-react";
 
 const RemediationPage = lazy(() => import("@/app/dashboard/remediation/page"));
 const RevenuePage = lazy(() => import("@/app/dashboard/revenue/page"));
 const JourneyPage = lazy(() => import("@/app/dashboard/journey/page"));
 const RumPage = lazy(() => import("@/app/dashboard/rum/page"));
 const DesignSystemPage = lazy(() => import("@/app/dashboard/design-system/page"));
+const SchedulesPage = lazy(() => import("@/app/automation/schedules-page"));
 
 const tabs: Tab[] = [
   { id: "remediation", label: "Remediation", icon: Wand2 },
@@ -19,6 +20,7 @@ const tabs: Tab[] = [
   { id: "journey", label: "Journey Scan", icon: Route },
   { id: "rum", label: "RUM", icon: Activity },
   { id: "design-system", label: "Design System", icon: Component },
+  { id: "schedules", label: "Schedules", icon: Clock },
 ];
 
 function AutomationContent() {
@@ -50,6 +52,7 @@ function AutomationContent() {
             {activeTab === "journey" && <JourneyPage />}
             {activeTab === "rum" && <RumPage />}
             {activeTab === "design-system" && <DesignSystemPage />}
+            {activeTab === "schedules" && <SchedulesPage />}
           </Suspense>
         </EmbeddedProvider>
       </div>

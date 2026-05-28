@@ -5,18 +5,20 @@ import { useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { TabNav, type Tab } from "@/components/ui/tab-nav";
 import { EmbeddedProvider } from "@/components/layout/embedded-context";
-import { Users, ClipboardList, Plug, Webhook } from "lucide-react";
+import { Users, ClipboardList, Plug, Webhook, Bell } from "lucide-react";
 
 const TeamPage = lazy(() => import("@/app/team/page"));
 const AuditLogPage = lazy(() => import("@/app/audit-log/page"));
 const IntegrationsPage = lazy(() => import("@/app/integrations/page"));
 const WebhooksPage = lazy(() => import("@/app/webhooks/page"));
+const NotificationsPage = lazy(() => import("@/app/manage/notifications-page"));
 
 const tabs: Tab[] = [
   { id: "team", label: "Team", icon: Users },
   { id: "audit-log", label: "Audit Log", icon: ClipboardList },
   { id: "integrations", label: "Integrations", icon: Plug },
   { id: "webhooks", label: "Webhooks", icon: Webhook },
+  { id: "notifications", label: "Notifications", icon: Bell },
 ];
 
 function ManageContent() {
@@ -47,6 +49,7 @@ function ManageContent() {
             {activeTab === "audit-log" && <AuditLogPage />}
             {activeTab === "integrations" && <IntegrationsPage />}
             {activeTab === "webhooks" && <WebhooksPage />}
+            {activeTab === "notifications" && <NotificationsPage />}
           </Suspense>
         </EmbeddedProvider>
       </div>
