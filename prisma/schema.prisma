@@ -297,6 +297,28 @@ model AuditLog {
 }
 
 // ─────────────────────────────────────────────
+// Product Analytics / Conversion Tracking
+// ─────────────────────────────────────────────
+
+model ConversionEvent {
+  id         String   @id @default(cuid())
+  event      String   // "demo_scan", "signup_started", "signup_completed", "first_scan", "plan_upgraded"
+  sessionId  String   // anonymous session ID (cookie-based)
+  userId     String?  // set after signup
+  email      String?  // set after signup
+  ip         String?
+  referrer   String?
+  userAgent  String?
+  metadata   Json?    // { url, score, source, etc. }
+  createdAt  DateTime @default(now())
+
+  @@index([sessionId])
+  @@index([event, createdAt])
+  @@index([userId])
+  @@map("conversion_events")
+}
+
+// ─────────────────────────────────────────────
 // Access Requests (for Google/OAuth onboarding)
 // ─────────────────────────────────────────────
 

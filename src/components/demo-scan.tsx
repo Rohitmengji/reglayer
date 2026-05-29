@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Scan, AlertTriangle, ArrowRight, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { useConversionTracker } from "@/hooks/use-conversion-tracker";
 
 interface DemoResult {
   score: number;
@@ -22,6 +23,7 @@ export function DemoScan() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<DemoResult | null>(null);
   const [error, setError] = useState("");
+  const { track } = useConversionTracker();
 
   async function handleScan(e: React.FormEvent) {
     e.preventDefault();
@@ -34,6 +36,7 @@ export function DemoScan() {
     try {
       let scanUrl = url.trim();
       if (!scanUrl.startsWith("http")) scanUrl = `https://${scanUrl}`;
+      track("demo_scan", { url: scanUrl });
 
       const res = await fetch("/api/demo-scan", {
         method: "POST",
@@ -46,6 +49,7 @@ export function DemoScan() {
         setError(data.error || "Scan failed");
       } else {
         setResult(data);
+        track("demo_scan_result", { url: scanUrl, score: data.score, violations: data.totalViolations });
       }
     } catch {
       setError("Network error. Please try again.");
