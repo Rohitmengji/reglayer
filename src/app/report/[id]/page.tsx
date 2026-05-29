@@ -57,8 +57,10 @@ export default async function PublicReportPage({ params }: ReportPageProps) {
   const score = recalculateScore(scan.violations);
   const scoreColor =
     score >= 90 ? "text-green-600" : score >= 70 ? "text-yellow-600" : score >= 50 ? "text-orange-600" : "text-red-600";
-  const scoreBg =
-    score >= 90 ? "bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800" : score >= 70 ? "bg-yellow-50 border-yellow-200 dark:bg-yellow-950/30 dark:border-yellow-800" : score >= 50 ? "bg-orange-50 border-orange-200 dark:bg-orange-950/30 dark:border-orange-800" : "bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800";
+  const ringColor =
+    score >= 90 ? "#16a34a" : score >= 70 ? "#ca8a04" : score >= 50 ? "#ea580c" : "#dc2626";
+  const scoreLabel =
+    score >= 90 ? "Excellent" : score >= 70 ? "Good" : score >= 50 ? "Needs Work" : "Poor";
 
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950">
@@ -100,38 +102,61 @@ export default async function PublicReportPage({ params }: ReportPageProps) {
         </Link>
 
         {/* Score Hero */}
-        <div className={`rounded-2xl border p-8 ${scoreBg}`}>
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-            <div>
-              <p className="text-sm font-medium text-neutral-500 mb-1">Accessibility Score</p>
-              <p className={`text-6xl font-black ${scoreColor}`}>{Math.round(score)}</p>
-              <p className="text-sm text-neutral-500 mt-2">out of 100</p>
+        <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 sm:p-10 shadow-sm">
+          <div className="flex flex-col sm:flex-row items-center gap-8">
+            {/* Circular Score Ring */}
+            <div className="relative shrink-0">
+              <svg width="140" height="140" viewBox="0 0 140 140">
+                <circle cx="70" cy="70" r="60" fill="none" stroke="currentColor" strokeWidth="10" className="text-neutral-100 dark:text-neutral-800" />
+                <circle
+                  cx="70" cy="70" r="60"
+                  fill="none"
+                  stroke={ringColor}
+                  strokeWidth="10"
+                  strokeLinecap="round"
+                  strokeDasharray={`${(score / 100) * 377} 377`}
+                  transform="rotate(-90 70 70)"
+                  className="transition-all duration-1000"
+                />
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className={`text-4xl font-black ${scoreColor}`}>{Math.round(score)}</span>
+                <span className="text-[10px] text-neutral-400 font-medium">/ 100</span>
+              </div>
             </div>
-            <div className="space-y-2 text-sm">
-              <div className="flex items-center gap-2 text-neutral-700">
-                <ExternalLink className="h-4 w-4" />
-                <a href={scan.url} target="_blank" rel="noopener noreferrer" className="hover:underline truncate max-w-75">
-                  {scan.url}
-                </a>
+
+            {/* Info */}
+            <div className="flex-1 text-center sm:text-left space-y-3">
+              <div>
+                <h2 className="text-xl font-bold text-neutral-900 dark:text-white">Accessibility Score</h2>
+                <p className={`text-sm font-medium ${scoreColor}`}>{scoreLabel} — meets WCAG 2.2 AA</p>
               </div>
-              <div className="flex items-center gap-2 text-neutral-500">
-                <Clock className="h-4 w-4" />
-                <span>Scanned {new Date(scan.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+              <div className="space-y-1.5 text-sm text-neutral-500 dark:text-neutral-400">
+                <div className="flex items-center gap-2 justify-center sm:justify-start">
+                  <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                  <a href={scan.url} target="_blank" rel="noopener noreferrer" className="hover:text-neutral-900 dark:hover:text-white truncate max-w-[280px] sm:max-w-[400px] transition-colors">
+                    {scan.url}
+                  </a>
+                </div>
+                <div className="flex items-center gap-2 justify-center sm:justify-start">
+                  <Clock className="h-3.5 w-3.5 shrink-0" />
+                  <span>{new Date(scan.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+                </div>
+                {scan.duration && (
+                  <p className="text-xs text-neutral-400 pl-5 sm:pl-[22px]">Completed in {scan.duration}ms</p>
+                )}
               </div>
-              {scan.duration && (
-                <p className="text-neutral-400">Completed in {scan.duration}ms</p>
-              )}
             </div>
           </div>
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          <StatCard label="Total" value={scan.totalViolations} />
-          <StatCard label="Critical" value={scan.critical} color="text-red-600" />
-          <StatCard label="Serious" value={scan.serious} color="text-orange-600" />
-          <StatCard label="Moderate" value={scan.moderate} color="text-yellow-600" />
-          <StatCard label="Minor" value={scan.minor} color="text-blue-600" />
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+          <StatCard label="Total" value={scan.totalViolations} dot="bg-neutral-400" />
+          <StatCard label="Critical" value={scan.critical} dot="bg-red-500" />
+          <StatCard label="Serious" value={scan.serious} dot="bg-orange-500" />
+          <StatCard label="Moderate" value={scan.moderate} dot="bg-yellow-500" />
+          <StatCard label="Minor" value={scan.minor} dot="bg-blue-500" />
         </div>
 
         {/* Compliance */}
@@ -157,25 +182,32 @@ export default async function PublicReportPage({ params }: ReportPageProps) {
               <AlertTriangle className="h-5 w-5 text-orange-500" />
               Violations ({scan.violations.length})
             </h2>
-            {scan.violations.map((v) => (
-              <div key={v.id} className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-5 space-y-3">
+            {scan.violations.map((v) => {
+              const borderColor: Record<string, string> = {
+                critical: "border-l-red-500",
+                serious: "border-l-orange-500",
+                moderate: "border-l-yellow-500",
+                minor: "border-l-blue-500",
+              };
+              return (
+              <div key={v.id} className={`rounded-xl border border-neutral-200 dark:border-neutral-800 border-l-4 ${borderColor[v.impact] || "border-l-neutral-400"} bg-white dark:bg-neutral-900 p-5 space-y-3 hover:shadow-sm transition-shadow`}>
                 <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                       <ImpactBadge impact={v.impact} />
-                      <code className="text-xs text-neutral-500">{v.ruleId}</code>
+                      <code className="text-[11px] text-neutral-400 font-mono">{v.ruleId}</code>
                     </div>
-                    <p className="font-medium text-neutral-900 dark:text-white">{v.help}</p>
-                    <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">{v.description}</p>
+                    <p className="font-semibold text-neutral-900 dark:text-white leading-snug">{v.help}</p>
+                    <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1 leading-relaxed">{v.description}</p>
                   </div>
                   {v.helpUrl && (
                     <a
                       href={v.helpUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="shrink-0 text-xs text-blue-600 hover:underline"
+                      className="shrink-0 flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 transition-colors"
                     >
-                      Learn more
+                      Learn more <ExternalLink className="h-3 w-3" />
                     </a>
                   )}
                 </div>
@@ -191,15 +223,15 @@ export default async function PublicReportPage({ params }: ReportPageProps) {
                 {/* Affected elements */}
                 {Array.isArray(v.affectedElements) && (v.affectedElements as Array<{ html: string; target: string[] }>).length > 0 && (
                   <details className="text-sm">
-                    <summary className="cursor-pointer text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200">
-                      {(v.affectedElements as Array<{ html: string }>).length} affected element(s)
+                    <summary className="cursor-pointer text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 font-medium">
+                      ▸ {(v.affectedElements as Array<{ html: string }>).length} affected element(s)
                     </summary>
                     <div className="mt-2 space-y-2">
                       {(v.affectedElements as Array<{ html: string; target: string[]; failureSummary: string }>).slice(0, 5).map((el, i) => (
-                        <div key={i} className="rounded bg-neutral-50 dark:bg-neutral-800 p-3 border border-neutral-100 dark:border-neutral-700">
-                          <code className="text-xs text-neutral-700 dark:text-neutral-300 break-all block">{el.html}</code>
+                        <div key={i} className="rounded-lg bg-neutral-50 dark:bg-neutral-800/50 p-3 border border-neutral-100 dark:border-neutral-700/50">
+                          <code className="text-[11px] text-neutral-700 dark:text-neutral-300 break-all block font-mono leading-relaxed">{el.html}</code>
                           {el.target && (
-                            <p className="text-xs text-neutral-400 mt-1">{el.target.join(" > ")}</p>
+                            <p className="text-[11px] text-neutral-400 mt-1.5 font-mono">{el.target.join(" > ")}</p>
                           )}
                         </div>
                       ))}
@@ -207,13 +239,16 @@ export default async function PublicReportPage({ params }: ReportPageProps) {
                   </details>
                 )}
               </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
-          <div className="rounded-xl border border-green-200 bg-green-50 p-8 text-center">
-            <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-3" />
-            <p className="text-lg font-semibold text-green-800">All Clear!</p>
-            <p className="text-sm text-green-600 mt-1">No accessibility violations found.</p>
+          <div className="rounded-2xl border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/30 p-10 text-center">
+            <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-green-100 dark:bg-green-900/50 mb-4">
+              <CheckCircle2 className="h-8 w-8 text-green-600" />
+            </div>
+            <p className="text-xl font-bold text-green-800 dark:text-green-200">All Clear!</p>
+            <p className="text-sm text-green-600 dark:text-green-400 mt-1">No accessibility violations detected. Your page meets WCAG 2.2 AA.</p>
           </div>
         )}
 
@@ -245,24 +280,25 @@ export default async function PublicReportPage({ params }: ReportPageProps) {
   );
 }
 
-function StatCard({ label, value, color = "text-neutral-900 dark:text-white" }: { label: string; value: number; color?: string }) {
+function StatCard({ label, value, dot }: { label: string; value: number; dot: string }) {
   return (
-    <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4 text-center">
-      <p className={`text-2xl font-bold ${color}`}>{value}</p>
-      <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">{label}</p>
+    <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 text-center hover:shadow-sm transition-shadow">
+      <div className={`h-2 w-2 rounded-full ${dot} mx-auto mb-2`} />
+      <p className="text-2xl font-bold text-neutral-900 dark:text-white">{value}</p>
+      <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5 font-medium">{label}</p>
     </div>
   );
 }
 
 function ImpactBadge({ impact }: { impact: string }) {
   const styles: Record<string, string> = {
-    critical: "bg-red-100 text-red-800",
-    serious: "bg-orange-100 text-orange-800",
-    moderate: "bg-yellow-100 text-yellow-800",
-    minor: "bg-blue-100 text-blue-800",
+    critical: "bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300 ring-1 ring-red-200 dark:ring-red-800",
+    serious: "bg-orange-100 text-orange-700 dark:bg-orange-950/50 dark:text-orange-300 ring-1 ring-orange-200 dark:ring-orange-800",
+    moderate: "bg-yellow-100 text-yellow-700 dark:bg-yellow-950/50 dark:text-yellow-300 ring-1 ring-yellow-200 dark:ring-yellow-800",
+    minor: "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 ring-1 ring-blue-200 dark:ring-blue-800",
   };
   return (
-    <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${styles[impact] || "bg-neutral-100 text-neutral-700"}`}>
+    <span className={`rounded-md px-2 py-0.5 text-[11px] font-semibold ${styles[impact] || "bg-neutral-100 text-neutral-700"}`}>
       {impact}
     </span>
   );
