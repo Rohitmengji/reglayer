@@ -29,10 +29,12 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { Footer } from "@/components/layout/footer";
 import { DemoScan } from "@/components/demo-scan";
 import { AnimatedStats } from "@/components/animated-stats";
+import { ProductTour } from "@/components/product-tour";
 
 export default function Home() {
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950">
+      <ProductTour />
       {/* Navigation */}
       <header className="sticky top-0 z-50 border-b border-neutral-100 bg-white/80 backdrop-blur-md dark:bg-neutral-950/80 dark:border-neutral-800">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 sm:px-6 py-3 sm:py-4">
@@ -50,6 +52,7 @@ export default function Home() {
             <ThemeToggle />
             <Link
               href="/auth/login"
+              data-tour="get-started"
               className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800 transition-colors dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200"
             >
               Get Started
@@ -120,7 +123,7 @@ export default function Home() {
         </section>
 
         {/* Features Grid */}
-        <section id="features" className="py-16 sm:py-24">
+        <section id="features" data-tour="features" className="py-16 sm:py-24">
           <div className="mx-auto max-w-6xl px-6">
             <div className="text-center mb-10 sm:mb-16">
               <h2 className="text-2xl sm:text-3xl font-bold text-neutral-900 dark:text-white">
