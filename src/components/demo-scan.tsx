@@ -154,22 +154,22 @@ export function DemoScan() {
   }
 
   return (
-    <div className="mx-auto mt-10 max-w-xl">
+    <div className="mx-auto mt-10 max-w-xl px-4 sm:px-0">
       <form onSubmit={handleScan} className="relative">
         <div className="flex items-center rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-lg overflow-hidden focus-within:border-neutral-400 dark:focus-within:border-neutral-500 transition-colors">
-          <Globe className="h-5 w-5 text-neutral-400 ml-4 shrink-0" />
+          <Globe className="h-5 w-5 text-neutral-400 ml-3 sm:ml-4 shrink-0" />
           <input
             type="text"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            placeholder="Enter any website URL..."
-            className="flex-1 px-3 py-4 text-sm bg-transparent text-neutral-900 dark:text-white placeholder:text-neutral-400 border-none outline-none shadow-none appearance-none"
+            placeholder="Enter website URL..."
+            className="flex-1 min-w-0 px-2 sm:px-3 py-3.5 sm:py-4 text-sm bg-transparent text-neutral-900 dark:text-white placeholder:text-neutral-400 border-none outline-none shadow-none appearance-none"
             disabled={loading}
           />
           <button
             type="submit"
             aria-disabled={loading || !url.trim()}
-            className={`mr-2 inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-medium transition-colors shrink-0 ${
+            className={`mr-1.5 sm:mr-2 inline-flex items-center gap-1.5 sm:gap-2 rounded-lg px-3 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-medium transition-colors shrink-0 ${
               loading || !url.trim()
                 ? "bg-neutral-900/80 dark:bg-white/80 text-white dark:text-neutral-900 cursor-not-allowed"
                 : "bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100"
@@ -179,7 +179,8 @@ export function DemoScan() {
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Scanning...
+                <span className="hidden sm:inline">Scanning...</span>
+                <span className="sm:hidden">...</span>
               </>
             ) : (
               <>Scan Free</>

@@ -100,10 +100,10 @@ export default function Home() {
         </section>
 
         {/* Social Proof */}
-        <section className="py-16 sm:py-20">
-          <div className="mx-auto max-w-5xl px-6">
-            <div className="text-center mb-10">
-              <p className="inline-flex items-center gap-2 rounded-full bg-neutral-100 dark:bg-neutral-800 px-4 py-1.5 text-xs font-medium uppercase tracking-wider text-neutral-600 dark:text-neutral-300">
+        <section className="border-y border-neutral-100 dark:border-neutral-800 py-12 sm:py-16">
+          <div className="mx-auto max-w-5xl px-4 sm:px-6">
+            <div className="text-center mb-6 sm:mb-8">
+              <p className="inline-flex items-center gap-2 rounded-full bg-neutral-100 dark:bg-neutral-800 px-3 sm:px-4 py-1.5 text-[10px] sm:text-xs font-medium uppercase tracking-wider text-neutral-600 dark:text-neutral-300">
                 <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
                 Trusted by compliance teams worldwide
               </p>
