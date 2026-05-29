@@ -143,8 +143,10 @@ describe("POST /api/scan", () => {
   it("returns 429 when scan limit reached", async () => {
     vi.mocked(getPlanContext).mockResolvedValue({
       userId: "user1",
-      plan: "free",
+      plan: "FREE",
       isMasterAdmin: false,
+      workspaceRole: "MEMBER",
+      effectiveScansPerMonth: 5,
       limits: { scansPerMonth: 5, scheduledScans: 1, teamMembers: 1, retentionDays: 30 },
     } as any);
     vi.mocked(getMonthlyScansCount).mockResolvedValue(5);
@@ -206,8 +208,10 @@ describe("POST /api/scan", () => {
   it("skips plan limit for master admin", async () => {
     vi.mocked(getPlanContext).mockResolvedValue({
       userId: "admin1",
-      plan: "free",
+      plan: "FREE",
       isMasterAdmin: true,
+      workspaceRole: "OWNER",
+      effectiveScansPerMonth: -1,
       limits: { scansPerMonth: 5 },
     } as any);
     vi.mocked(performScan).mockResolvedValue({ scan: {}, compliance: {} } as any);

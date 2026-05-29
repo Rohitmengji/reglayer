@@ -76,10 +76,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: ssrfError }, { status: 400 });
     }
 
-    // Enforce scan limit
+    // Enforce scan limit (resolved via role + plan hierarchy)
     const planCtx = await getPlanContext();
-    if (planCtx && !planCtx.isMasterAdmin && planCtx.bonusCredits <= 0) {
-      const limit = planCtx.limits.scansPerMonth;
+    if (planCtx) {
+      const limit = planCtx.effectiveScansPerMonth;
       if (limit !== -1) {
         const used = await getMonthlyScansCount(planCtx.userId);
         if (used >= limit) {
