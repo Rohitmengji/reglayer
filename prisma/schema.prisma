@@ -56,6 +56,22 @@ model CreditGrant {
   @@map("credit_grants")
 }
 
+// ─────────────────────────────────────────────
+// Password Reset OTP
+// ─────────────────────────────────────────────
+
+model PasswordReset {
+  id        String   @id @default(cuid())
+  email     String
+  otp       String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([email, otp])
+  @@map("password_resets")
+}
+
 model Workspace {
   id        String   @id @default(cuid())
   name      String
