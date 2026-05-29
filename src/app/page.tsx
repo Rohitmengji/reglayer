@@ -27,6 +27,7 @@ import Link from "next/link";
 import { Shield, Scan, BarChart3, FileText, Zap, Globe, CheckCircle2, ArrowRight, Users, Lock, Clock, Star } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Footer } from "@/components/layout/footer";
+import { DemoScan } from "@/components/demo-scan";
 
 export default function Home() {
   return (
@@ -92,6 +93,9 @@ export default function Home() {
             <span className="flex items-center gap-1.5"><CheckCircle2 className="h-3.5 w-3.5 text-green-600" /> WCAG 2.2 compliant</span>
             <span className="flex items-center gap-1.5"><CheckCircle2 className="h-3.5 w-3.5 text-green-600" /> Global standards coverage</span>
           </div>
+
+          {/* Demo Scan — convert visitors without signup */}
+          <DemoScan />
         </section>
 
         {/* Social Proof */}
