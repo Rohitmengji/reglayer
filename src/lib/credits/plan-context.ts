@@ -18,6 +18,7 @@ export interface PlanContext {
   email: string;
   plan: PlanType;
   isMasterAdmin: boolean;
+  bonusCredits: number;
   limits: (typeof PLAN_LIMITS)[PlanType];
 }
 
@@ -31,7 +32,7 @@ export async function getPlanContext(): Promise<PlanContext | null> {
 
   const user = await prisma.user.findUnique({
     where: { email: session.user.email },
-    select: { id: true, email: true, plan: true, isMasterAdmin: true },
+    select: { id: true, email: true, plan: true, isMasterAdmin: true, bonusCredits: true },
   });
 
   if (!user) return null;
@@ -43,6 +44,7 @@ export async function getPlanContext(): Promise<PlanContext | null> {
     email: user.email,
     plan,
     isMasterAdmin: user.isMasterAdmin,
+    bonusCredits: user.bonusCredits ?? 0,
     limits: PLAN_LIMITS[plan],
   };
 }
