@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Shield, Loader2, CheckCircle2 } from "lucide-react";
+import { useConversionTracker } from "@/hooks/use-conversion-tracker";
 
 export default function RegisterPage() {
   const [name, setName] = useState("");
@@ -17,11 +18,13 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const router = useRouter();
+  const { track } = useConversionTracker();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setLoading(true);
+    track("signup_started", { method: "email" });
 
     try {
       const res = await fetch("/api/auth/register", {
@@ -39,6 +42,7 @@ export default function RegisterPage() {
       }
 
       setSuccess(true);
+      track("signup_completed", { method: "email", email });
 
       // Auto sign-in after registration
       const signInResult = await signIn("credentials", {
@@ -89,7 +93,7 @@ export default function RegisterPage() {
           <Button
             variant="outline"
             className="w-full mb-6"
-            onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
+            onClick={() => { track("signup_google"); signIn("google", { callbackUrl: "/dashboard" }); }}
           >
             <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
