@@ -65,23 +65,24 @@ export default async function PublicReportPage({ params }: ReportPageProps) {
   return (
     <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950">
       {/* Navigation Header */}
-      <header className="sticky top-0 z-40 border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 backdrop-blur">
+      <header className="sticky top-0 z-40 border-b border-neutral-200/60 dark:border-neutral-800/60 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl">
         <div className="mx-auto max-w-5xl px-4 sm:px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Shield className="h-5 w-5 text-neutral-900 dark:text-white" />
-            <span className="font-bold text-neutral-900 dark:text-white">RegLayer</span>
-            <span className="text-sm font-medium text-neutral-500 dark:text-neutral-400 ml-1">Report</span>
+            <Shield className="h-4.5 w-4.5 text-neutral-900 dark:text-white" />
+            <span className="font-semibold text-sm text-neutral-900 dark:text-white tracking-tight">RegLayer</span>
+            <span className="text-xs text-neutral-400 dark:text-neutral-500 ml-0.5">/</span>
+            <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">Report</span>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
             <Link
               href="/dashboard"
-              className="hidden sm:block text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors"
+              className="hidden sm:block text-xs text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors"
             >
               Dashboard
             </Link>
             <Link
               href={`/certificate/${scan.id}`}
-              className="flex items-center gap-1.5 rounded-lg bg-neutral-900 dark:bg-white px-2.5 sm:px-3 py-1.5 text-xs font-medium text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors"
+              className="flex items-center gap-1.5 rounded-lg bg-neutral-900 dark:bg-white px-2.5 sm:px-3 py-1.5 text-xs font-medium text-white dark:text-neutral-900 hover:bg-neutral-700 dark:hover:bg-neutral-200 transition-colors"
             >
               <Eye className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">View Certificate</span>
@@ -91,84 +92,93 @@ export default async function PublicReportPage({ params }: ReportPageProps) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl px-4 sm:px-6 py-8 sm:py-10 space-y-8">
+      <main className="mx-auto max-w-5xl px-4 sm:px-6 py-8 sm:py-10 space-y-6">
         {/* Back button */}
         <Link
           href="/scans"
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors"
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-3.5 w-3.5" />
           Back to Scans
         </Link>
 
         {/* Score Hero */}
-        <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 sm:p-10 shadow-sm">
-          <div className="flex flex-col sm:flex-row items-center gap-8">
-            {/* Circular Score Ring */}
-            <div className="relative shrink-0">
-              <svg width="140" height="140" viewBox="0 0 140 140">
-                <circle cx="70" cy="70" r="60" fill="none" stroke="currentColor" strokeWidth="10" className="text-neutral-100 dark:text-neutral-800" />
-                <circle
-                  cx="70" cy="70" r="60"
-                  fill="none"
-                  stroke={ringColor}
-                  strokeWidth="10"
-                  strokeLinecap="round"
-                  strokeDasharray={`${(score / 100) * 377} 377`}
-                  transform="rotate(-90 70 70)"
-                  className="transition-all duration-1000"
-                />
-              </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className={`text-4xl font-black ${scoreColor}`}>{Math.round(score)}</span>
-                <span className="text-[10px] text-neutral-400 font-medium">/ 100</span>
+        <div className="relative overflow-hidden rounded-2xl border border-neutral-200/80 dark:border-neutral-800/80 bg-white dark:bg-neutral-900 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_8px_24px_rgba(0,0,0,0.04)]">
+          {/* Subtle gradient accent at top */}
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-neutral-300 dark:via-neutral-600 to-transparent" />
+          
+          <div className="p-6 sm:p-8 lg:p-10">
+            <div className="flex flex-col sm:flex-row items-center gap-6 sm:gap-10">
+              {/* Circular Score Ring with glow */}
+              <div className="relative shrink-0">
+                {/* Subtle glow behind ring */}
+                <div className="absolute inset-0 blur-2xl opacity-20" style={{ backgroundColor: ringColor }} />
+                <svg width="130" height="130" viewBox="0 0 130 130" className="relative">
+                  <circle cx="65" cy="65" r="54" fill="none" stroke="currentColor" strokeWidth="8" className="text-neutral-100 dark:text-neutral-800" />
+                  <circle
+                    cx="65" cy="65" r="54"
+                    fill="none"
+                    stroke={ringColor}
+                    strokeWidth="8"
+                    strokeLinecap="round"
+                    strokeDasharray={`${(score / 100) * 339} 339`}
+                    transform="rotate(-90 65 65)"
+                    style={{ filter: `drop-shadow(0 0 6px ${ringColor}40)` }}
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className={`text-3xl font-black tracking-tight ${scoreColor}`}>{Math.round(score)}</span>
+                  <span className="text-[10px] text-neutral-400 dark:text-neutral-500 font-medium -mt-0.5">/ 100</span>
+                </div>
               </div>
-            </div>
 
-            {/* Info */}
-            <div className="flex-1 text-center sm:text-left space-y-3">
-              <div>
-                <h2 className="text-xl font-bold text-neutral-900 dark:text-white">Accessibility Score</h2>
-                <p className={`text-sm font-medium ${scoreColor}`}>{scoreLabel} — meets WCAG 2.2 AA</p>
-              </div>
-              <div className="space-y-1.5 text-sm text-neutral-500 dark:text-neutral-400">
-                <div className="flex items-center gap-2 justify-center sm:justify-start">
-                  <ExternalLink className="h-3.5 w-3.5 shrink-0" />
-                  <a href={scan.url} target="_blank" rel="noopener noreferrer" className="hover:text-neutral-900 dark:hover:text-white truncate max-w-[280px] sm:max-w-[400px] transition-colors">
-                    {scan.url}
-                  </a>
+              {/* Info */}
+              <div className="flex-1 text-center sm:text-left">
+                <h2 className="text-lg font-semibold text-neutral-900 dark:text-white tracking-tight">Accessibility Score</h2>
+                <p className={`text-sm font-medium mt-0.5 ${scoreColor}`}>{scoreLabel} — meets WCAG 2.2 AA</p>
+                
+                <div className="mt-4 space-y-1.5">
+                  <div className="flex items-center gap-2 justify-center sm:justify-start text-[13px] text-neutral-500 dark:text-neutral-400">
+                    <ExternalLink className="h-3.5 w-3.5 shrink-0 text-neutral-400" />
+                    <a href={scan.url} target="_blank" rel="noopener noreferrer" className="hover:text-neutral-900 dark:hover:text-white truncate max-w-[260px] sm:max-w-[380px] transition-colors">
+                      {scan.url}
+                    </a>
+                  </div>
+                  <div className="flex items-center gap-2 justify-center sm:justify-start text-[13px] text-neutral-400 dark:text-neutral-500">
+                    <Clock className="h-3.5 w-3.5 shrink-0" />
+                    <span>{new Date(scan.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+                    {scan.duration && (
+                      <span className="text-neutral-300 dark:text-neutral-600">·</span>
+                    )}
+                    {scan.duration && (
+                      <span>{(scan.duration / 1000).toFixed(1)}s</span>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 justify-center sm:justify-start">
-                  <Clock className="h-3.5 w-3.5 shrink-0" />
-                  <span>{new Date(scan.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
-                </div>
-                {scan.duration && (
-                  <p className="text-xs text-neutral-400 pl-5 sm:pl-[22px]">Completed in {scan.duration}ms</p>
-                )}
               </div>
             </div>
           </div>
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-          <StatCard label="Total" value={scan.totalViolations} dot="bg-neutral-400" />
-          <StatCard label="Critical" value={scan.critical} dot="bg-red-500" />
-          <StatCard label="Serious" value={scan.serious} dot="bg-orange-500" />
-          <StatCard label="Moderate" value={scan.moderate} dot="bg-yellow-500" />
-          <StatCard label="Minor" value={scan.minor} dot="bg-blue-500" />
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+          <StatCard label="Total" value={scan.totalViolations} color="neutral" />
+          <StatCard label="Critical" value={scan.critical} color="red" />
+          <StatCard label="Serious" value={scan.serious} color="orange" />
+          <StatCard label="Moderate" value={scan.moderate} color="yellow" />
+          <StatCard label="Minor" value={scan.minor} color="blue" />
         </div>
 
         {/* Compliance */}
         {scan.compliance !== null && (
-          <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-6">
+          <div className="rounded-xl border border-neutral-200/80 dark:border-neutral-800/80 bg-white dark:bg-neutral-900 p-5 ring-1 ring-neutral-100 dark:ring-neutral-800/50">
             <div className="flex items-center justify-between">
-              <h2 className="font-semibold text-neutral-900 dark:text-white">WCAG 2.1 Compliance</h2>
-              <span className="text-2xl font-bold text-neutral-900 dark:text-white">{Math.round(scan.compliance)}%</span>
+              <h2 className="text-sm font-semibold text-neutral-900 dark:text-white tracking-tight">WCAG 2.1 Compliance</h2>
+              <span className="text-sm font-bold tabular-nums text-neutral-900 dark:text-white">{Math.round(scan.compliance)}%</span>
             </div>
-            <div className="mt-3 h-3 rounded-full bg-neutral-100 dark:bg-neutral-800 overflow-hidden">
+            <div className="mt-3 h-2 rounded-full bg-neutral-100 dark:bg-neutral-800 overflow-hidden">
               <div
-                className="h-full rounded-full bg-linear-to-r from-green-400 to-green-600 transition-all"
+                className="h-full rounded-full bg-gradient-to-r from-green-400 to-green-500 transition-all"
                 style={{ width: `${scan.compliance}%` }}
               />
             </div>
@@ -177,20 +187,23 @@ export default async function PublicReportPage({ params }: ReportPageProps) {
 
         {/* Violations */}
         {scan.violations.length > 0 ? (
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-neutral-900 dark:text-white flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-orange-500" />
-              Violations ({scan.violations.length})
-            </h2>
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-orange-500" />
+              <h2 className="text-sm font-semibold text-neutral-900 dark:text-white tracking-tight">
+                Violations
+              </h2>
+              <span className="text-xs font-medium text-neutral-400 tabular-nums">({scan.violations.length})</span>
+            </div>
             {scan.violations.map((v) => {
               const borderColor: Record<string, string> = {
                 critical: "border-l-red-500",
                 serious: "border-l-orange-500",
                 moderate: "border-l-yellow-500",
-                minor: "border-l-blue-500",
+                minor: "border-l-blue-400",
               };
               return (
-              <div key={v.id} className={`rounded-xl border border-neutral-200 dark:border-neutral-800 border-l-4 ${borderColor[v.impact] || "border-l-neutral-400"} bg-white dark:bg-neutral-900 p-5 space-y-3 hover:shadow-sm transition-shadow`}>
+              <div key={v.id} className={`rounded-xl border border-neutral-200/80 dark:border-neutral-800/80 border-l-[3px] ${borderColor[v.impact] || "border-l-neutral-400"} bg-white dark:bg-neutral-900 p-4 sm:p-5 space-y-3`}>
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 mb-1.5 flex-wrap">
@@ -243,48 +256,57 @@ export default async function PublicReportPage({ params }: ReportPageProps) {
             })}
           </div>
         ) : (
-          <div className="rounded-2xl border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/30 p-10 text-center">
-            <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-green-100 dark:bg-green-900/50 mb-4">
-              <CheckCircle2 className="h-8 w-8 text-green-600" />
+          <div className="rounded-xl border border-green-200/60 dark:border-green-800/40 bg-green-50/50 dark:bg-green-950/20 p-8 text-center">
+            <div className="inline-flex items-center justify-center h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/40 mb-3">
+              <CheckCircle2 className="h-6 w-6 text-green-600 dark:text-green-400" />
             </div>
-            <p className="text-xl font-bold text-green-800 dark:text-green-200">All Clear!</p>
-            <p className="text-sm text-green-600 dark:text-green-400 mt-1">No accessibility violations detected. Your page meets WCAG 2.2 AA.</p>
+            <p className="text-base font-semibold text-green-800 dark:text-green-200">All Clear</p>
+            <p className="text-sm text-green-600/80 dark:text-green-400/80 mt-1">No accessibility violations detected. Meets WCAG 2.2 AA.</p>
           </div>
         )}
 
         {/* Badge embed */}
-        <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-6 space-y-3">
-          <h3 className="font-semibold text-neutral-900 dark:text-white">Embed Badge</h3>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">Show your accessibility score in your README:</p>
+        <div className="rounded-xl border border-neutral-200/80 dark:border-neutral-800/80 bg-white dark:bg-neutral-900 p-5 space-y-3">
+          <h3 className="text-sm font-semibold text-neutral-900 dark:text-white tracking-tight">Embed Badge</h3>
+          <p className="text-xs text-neutral-500 dark:text-neutral-400">Show your accessibility score in your README:</p>
           <div className="flex items-center gap-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={`/api/badge?url=${encodeURIComponent(scan.url)}`} alt="Accessibility Score" />
           </div>
-          <code className="block rounded bg-neutral-50 dark:bg-neutral-800 p-3 text-xs text-neutral-600 dark:text-neutral-300 break-all border border-neutral-100 dark:border-neutral-700">
+          <code className="block rounded-lg bg-neutral-50 dark:bg-neutral-800/50 p-3 text-[11px] font-mono text-neutral-600 dark:text-neutral-400 break-all border border-neutral-100 dark:border-neutral-800">
             {`![Accessibility](https://reglayer.vercel.app/api/badge?url=${encodeURIComponent(scan.url)})`}
           </code>
         </div>
 
         {/* Footer */}
-        <footer className="text-center text-xs text-neutral-400 pt-8 border-t border-neutral-100 dark:border-neutral-800 space-y-3">
-          <div className="flex items-center justify-center gap-4">
-            <Link href="/scans" className="text-sm text-blue-600 hover:underline">← All Scans</Link>
-            <Link href="/dashboard" className="text-sm text-blue-600 hover:underline">Dashboard</Link>
-            <Link href="/compliance" className="text-sm text-blue-600 hover:underline">Compliance</Link>
+        <footer className="text-center text-xs text-neutral-400 dark:text-neutral-500 pt-6 border-t border-neutral-100 dark:border-neutral-800/50 space-y-2.5">
+          <div className="flex items-center justify-center gap-3">
+            <Link href="/scans" className="text-xs text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition-colors">← All Scans</Link>
+            <span className="text-neutral-200 dark:text-neutral-700">·</span>
+            <Link href="/dashboard" className="text-xs text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition-colors">Dashboard</Link>
+            <span className="text-neutral-200 dark:text-neutral-700">·</span>
+            <Link href="/compliance" className="text-xs text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition-colors">Compliance</Link>
           </div>
-          <p>Generated by <Link href="/" className="hover:underline">RegLayer</Link> — Enterprise Accessibility Intelligence</p>
-          <p className="mt-1">Scan ID: {scan.id}</p>
+          <p>Generated by <Link href="/" className="hover:text-neutral-900 dark:hover:text-white transition-colors">RegLayer</Link></p>
+          <p className="text-neutral-300 dark:text-neutral-700 font-mono text-[10px]">{scan.id}</p>
         </footer>
       </main>
     </div>
   );
 }
 
-function StatCard({ label, value, dot }: { label: string; value: number; dot: string }) {
+function StatCard({ label, value, color }: { label: string; value: number; color: string }) {
+  const styles: Record<string, { bg: string; text: string; ring: string }> = {
+    neutral: { bg: "bg-neutral-50 dark:bg-neutral-800/50", text: "text-neutral-900 dark:text-white", ring: "ring-neutral-200/50 dark:ring-neutral-700/50" },
+    red: { bg: "bg-red-50/50 dark:bg-red-950/20", text: "text-red-700 dark:text-red-300", ring: "ring-red-100 dark:ring-red-900/30" },
+    orange: { bg: "bg-orange-50/50 dark:bg-orange-950/20", text: "text-orange-700 dark:text-orange-300", ring: "ring-orange-100 dark:ring-orange-900/30" },
+    yellow: { bg: "bg-yellow-50/50 dark:bg-yellow-950/20", text: "text-yellow-700 dark:text-yellow-300", ring: "ring-yellow-100 dark:ring-yellow-900/30" },
+    blue: { bg: "bg-blue-50/50 dark:bg-blue-950/20", text: "text-blue-700 dark:text-blue-300", ring: "ring-blue-100 dark:ring-blue-900/30" },
+  };
+  const s = styles[color] || styles.neutral;
   return (
-    <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 text-center hover:shadow-sm transition-shadow">
-      <div className={`h-2 w-2 rounded-full ${dot} mx-auto mb-2`} />
-      <p className="text-2xl font-bold text-neutral-900 dark:text-white">{value}</p>
+    <div className={`rounded-xl ${s.bg} ring-1 ${s.ring} p-3.5 text-center`}>
+      <p className={`text-xl font-bold tabular-nums ${s.text}`}>{value}</p>
       <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-0.5 font-medium">{label}</p>
     </div>
   );

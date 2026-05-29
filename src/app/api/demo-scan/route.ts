@@ -8,7 +8,7 @@ const demoSchema = z.object({
   url: z.string().url("Please enter a valid URL"),
 });
 
-const DEMO_LIMIT = { limit: 3, windowSec: 3600 };
+const DEMO_LIMIT = { limit: 10, windowSec: 3600 };
 
 export async function POST(request: NextRequest) {
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
   const rl = await rateLimit(`demo:${ip}`, DEMO_LIMIT, "demo-scan");
   if (!rl.success) {
     return NextResponse.json(
-      { error: "Demo limit reached (3 free scans/hour). Sign up for unlimited scans." },
+      { error: "Demo limit reached (10 free scans/hour). Sign up for more scans and full reports." },
       { status: 429, headers: rateLimitHeaders(rl) }
     );
   }
