@@ -25,7 +25,6 @@ import { Badge } from "@/components/ui/badge";
 import {
   CheckCircle2,
   Copy,
-  ChevronRight,
   Trophy,
   Zap,
   Users,

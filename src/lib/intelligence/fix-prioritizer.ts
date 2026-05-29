@@ -121,7 +121,7 @@ export function generateFixCards(violations: AccessibilityViolation[]): FixCard[
 
     for (let i = 0; i < nodesToShow.length; i++) {
       const node = nodesToShow[i];
-      const fix = generateFix(violation.id, node.html, node.target[0] ?? "");
+      const fix = generateFix(violation.id, node.html);
 
       cards.push({
         id: `${violation.id}-${i}`,
@@ -152,7 +152,6 @@ export function generateFixCards(violations: AccessibilityViolation[]): FixCard[
   scored.sort((a, b) => b._priority - a._priority);
 
   // Assign ranks and estimate point gains
-  const totalCards = scored.length;
   return scored.map((card, i) => {
     const { _priority, ...rest } = card;
     // Distribute estimated point gains (higher priority = more points)
@@ -173,7 +172,7 @@ interface FixResult {
  * Generate a concrete fix for a specific violation + element.
  * Returns ready-to-paste HTML with the fix applied.
  */
-function generateFix(ruleId: string, html: string, selector: string): FixResult {
+function generateFix(ruleId: string, html: string): FixResult {
   switch (ruleId) {
     case "image-alt":
     case "input-image-alt":
@@ -187,7 +186,7 @@ function generateFix(ruleId: string, html: string, selector: string): FixResult 
 
     case "label":
     case "select-name":
-      return fixMissingLabel(html, selector);
+      return fixMissingLabel(html);
 
     case "button-name":
       return fixButtonName(html);
@@ -219,7 +218,7 @@ function generateFix(ruleId: string, html: string, selector: string): FixResult 
       return fixDuplicateId(html);
 
     case "meta-viewport":
-      return fixMetaViewport(html);
+      return fixMetaViewport();
 
     default:
       return {
@@ -273,7 +272,7 @@ function fixContrast(html: string): FixResult {
   };
 }
 
-function fixMissingLabel(html: string, selector: string): FixResult {
+function fixMissingLabel(html: string): FixResult {
   // Extract input type/name for label
   const nameMatch = html.match(/name=["']([^"']+)["']/);
   const idMatch = html.match(/id=["']([^"']+)["']/);
@@ -409,7 +408,7 @@ function fixDuplicateId(html: string): FixResult {
   return { code: html, explanation: "Give this element a unique id value", effort: "low" };
 }
 
-function fixMetaViewport(html: string): FixResult {
+function fixMetaViewport(): FixResult {
   const fixed = '<meta name="viewport" content="width=device-width, initial-scale=1">';
   return { code: fixed, explanation: "Removed maximum-scale/user-scalable=no to allow pinch-zoom", effort: "low" };
 }
