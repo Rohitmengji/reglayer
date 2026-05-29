@@ -154,7 +154,7 @@ export function DemoScan() {
   }
 
   return (
-    <div className="mx-auto mt-10 max-w-xl px-4 sm:px-0">
+    <div className="mx-auto mt-10 max-w-xl px-4 sm:px-0" data-tour="scan-input">
       <form onSubmit={handleScan} className="relative">
         <div className="flex items-center rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-lg overflow-hidden focus-within:border-neutral-400 dark:focus-within:border-neutral-500 transition-colors">
           <Globe className="h-5 w-5 text-neutral-400 ml-3 sm:ml-4 shrink-0" />
