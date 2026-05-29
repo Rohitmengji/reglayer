@@ -11,6 +11,7 @@
 import { signIn } from "next-auth/react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -73,9 +74,14 @@ export default function LoginPage() {
               />
             </div>
             <div className="space-y-2">
-              <label htmlFor="password" className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                {t("login.password")}
-              </label>
+              <div className="flex items-center justify-between">
+                <label htmlFor="password" className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                  {t("login.password")}
+                </label>
+                <Link href="/auth/forgot-password" className="text-xs text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300">
+                  Forgot password?
+                </Link>
+              </div>
               <Input
                 id="password"
                 type="password"
@@ -130,12 +136,12 @@ export default function LoginPage() {
             {t("login.continueGoogle")}
           </Button>
 
-          {/*
-          <p className="mt-4 text-center text-xs text-neutral-500">
-            Master: master@reglayer.dev / reglayer2024<br />
-            Admin: admin@reglayer.dev / reglayer2024
+          <p className="mt-6 text-center text-sm text-neutral-500 dark:text-neutral-400">
+            Don&apos;t have an account?{" "}
+            <Link href="/auth/register" className="font-medium text-neutral-900 dark:text-white hover:underline">
+              Sign up free
+            </Link>
           </p>
-          */}
         </CardContent>
       </Card>
     </div>
