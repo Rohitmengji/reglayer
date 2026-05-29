@@ -52,6 +52,21 @@ export const PLAN_LIMITS = {
 } as const;
 
 /**
+ * Role-based scan limit overrides.
+ *
+ * Workspace Admins/Owners get elevated scan limits regardless of plan.
+ * This ensures team leads and managers aren't blocked by plan constraints
+ * while still maintaining finite budgets (master admins are unlimited separately).
+ *
+ * -1 means unlimited.
+ */
+export const ADMIN_SCAN_LIMITS: Record<string, number> = {
+  FREE: 100,
+  PRO: 200,
+  ENTERPRISE: -1,
+} as const;
+
+/**
  * AI action credit costs
  */
 export const AI_CREDIT_COSTS = {
