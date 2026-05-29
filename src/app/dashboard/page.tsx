@@ -58,7 +58,7 @@ export default function DashboardPage() {
   const [scanResult, setScanResult] = useState<ScanResponse | null>(null);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
-  const [credits, setCredits] = useState<{ used: number; limit: number; remaining: number; daysUntilReset: number; unlimited: boolean } | null>(null);
+  const [credits, setCredits] = useState<{ used: number; limit: number; totalAvailable: number; remaining: number; daysUntilReset: number; unlimited: boolean } | null>(null);
   const { setScanResult: persistResult } = useScanStore();
   const { t } = useI18n();
 
@@ -211,7 +211,7 @@ export default function DashboardPage() {
                   {credits.remaining}
                 </span>
                 <span className="text-xs text-neutral-500 dark:text-neutral-400">
-                  {t("dashboard.creditsUsed", { used: credits.used, limit: credits.limit })}
+                  {t("dashboard.creditsUsed", { used: credits.used, limit: credits.totalAvailable })}
                 </span>
               </div>
               <div className="w-full h-2 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
@@ -219,11 +219,11 @@ export default function DashboardPage() {
                   className={`h-full rounded-full transition-all ${
                     credits.remaining <= 5
                       ? "bg-red-500"
-                      : credits.remaining <= credits.limit * 0.2
+                      : credits.remaining <= credits.totalAvailable * 0.2
                       ? "bg-amber-500"
                       : "bg-violet-500"
                   }`}
-                  style={{ width: `${Math.min(100, (credits.used / credits.limit) * 100)}%` }}
+                  style={{ width: `${Math.min(100, (credits.used / credits.totalAvailable) * 100)}%` }}
                 />
               </div>
               {credits.remaining <= 5 && (

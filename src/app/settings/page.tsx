@@ -86,7 +86,7 @@ export default function SettingsPage() {
 function PlanUsageTab() {
   const [data, setData] = useState<{
     plan: string;
-    credits: { used: number; limit: number; remaining: number; daysUntilReset: number; unlimited: boolean };
+    credits: { used: number; limit: number; totalAvailable: number; remaining: number; daysUntilReset: number; unlimited: boolean };
     limits: { scansPerMonth: number; pagesPerScan: number; teamMembers: number; auditLogDays: number };
     features: Record<string, boolean | string | number>;
     costs: Record<string, number>;
@@ -111,7 +111,7 @@ function PlanUsageTab() {
     ENTERPRISE: "bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-200",
   };
 
-  const creditPercent = data.credits.unlimited ? 0 : Math.min(100, (data.credits.used / data.credits.limit) * 100);
+  const creditPercent = data.credits.unlimited ? 0 : Math.min(100, (data.credits.used / data.credits.totalAvailable) * 100);
 
   return (
     <div className="space-y-6">
@@ -130,7 +130,7 @@ function PlanUsageTab() {
             <div>
               <p className="text-xs text-neutral-500 dark:text-neutral-400">{t("settings.aiCredits")}</p>
               <p className="text-lg font-bold text-neutral-900 dark:text-white">
-                {data.credits.unlimited ? "∞" : `${data.credits.remaining}/${data.credits.limit}`}
+                {data.credits.unlimited ? "∞" : `${data.credits.remaining}/${data.credits.totalAvailable}`}
               </p>
             </div>
             <div>

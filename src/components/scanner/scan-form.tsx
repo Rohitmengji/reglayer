@@ -62,9 +62,16 @@ export function ScanForm({ onScanComplete }: ScanFormProps) {
     };
   }, []);
 
+  function normalizeUrl(input: string): string {
+    const trimmed = input.trim();
+    if (!trimmed) return trimmed;
+    if (/^https?:\/\//i.test(trimmed)) return trimmed;
+    return `https://${trimmed}`;
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const targetUrl = url || lastUrl;
+    const targetUrl = normalizeUrl(url || lastUrl);
     if (!targetUrl) return;
 
     setIsScanning(true);
@@ -141,8 +148,8 @@ export function ScanForm({ onScanComplete }: ScanFormProps) {
       <CardContent className="space-y-3">
         <form onSubmit={handleSubmit} className="flex gap-3">
           <Input
-            type="url"
-            placeholder="https://example.com"
+            type="text"
+            placeholder="https://www.google.com"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             required
