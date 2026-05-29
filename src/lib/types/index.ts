@@ -29,6 +29,8 @@ export interface ScanOptions {
   waitForSelector?: string;
   timeout?: number;
   tags?: string[];
+  /** Authentication config for scanning behind-login pages */
+  auth?: import("@/lib/validations/auth").AuthConfig;
 }
 
 export interface ScanResult {

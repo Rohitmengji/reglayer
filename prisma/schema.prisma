@@ -387,3 +387,25 @@ model Integration {
   @@index([workspaceId])
   @@map("integrations")
 }
+
+// ─────────────────────────────────────────────
+// Saved Auth Configs (encrypted credentials for authenticated scanning)
+// ─────────────────────────────────────────────
+
+model AuthConfig {
+  id            String   @id @default(cuid())
+  name          String   // User-facing label
+  domain        String?  // Target domain (informational)
+  method        String   // cookies | form | basic | headers
+  encryptedData String   @db.Text // AES-256-GCM encrypted JSON (never exposed to client)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  userId        String
+  workspaceId   String
+
+  @@unique([workspaceId, name])
+  @@index([userId])
+  @@index([workspaceId])
+  @@map("auth_configs")
+}

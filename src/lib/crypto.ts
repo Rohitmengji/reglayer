@@ -106,3 +106,26 @@ export function decryptToken(token: string | null | undefined): string | null {
     return token;
   }
 }
+
+/**
+ * Encrypt a JSON-serializable object. Returns base64 ciphertext.
+ * Used for storing structured credentials (auth configs) at rest.
+ *
+ * @param data - Any JSON-serializable value
+ * @returns Base64-encoded encrypted string
+ */
+export function encryptJson(data: unknown): string {
+  return encrypt(JSON.stringify(data));
+}
+
+/**
+ * Decrypt a base64 ciphertext back to a parsed JSON object.
+ *
+ * @param ciphertext - Base64-encoded encrypted string from encryptJson()
+ * @returns Parsed JSON value
+ * @throws If decryption fails or JSON is invalid
+ */
+export function decryptJson<T = unknown>(ciphertext: string): T {
+  const plaintext = decrypt(ciphertext);
+  return JSON.parse(plaintext) as T;
+}

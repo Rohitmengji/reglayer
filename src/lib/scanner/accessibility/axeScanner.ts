@@ -45,6 +45,7 @@ import type { Page, Browser } from "playwright-core";
 import type { ScanOptions } from "@/lib/types";
 import { SCAN_DEFAULTS } from "@/lib/constants";
 import { launchBrowser, isServerless, getViewport } from "@/lib/scanner/browser/launch";
+import { applyAuthToContext } from "@/lib/scanner/auth";
 import fs from "fs";
 import path from "path";
 
@@ -97,6 +98,8 @@ export interface AxeScanResult {
   timestamp: string;
   url: string;
   pageTitle: string;
+  /** Auth result metadata (no credentials). Present only if auth was configured. */
+  authResult?: { authenticated: boolean; method: string; error?: string };
 }
 
 export interface AxeViolation {
@@ -141,6 +144,13 @@ export async function runAccessibilityScan(
     const viewport = getViewport();
     if (!isServerless()) {
       await page.setViewportSize(viewport);
+    }
+
+    // Apply authentication before navigation (if configured)
+    let authResult: { authenticated: boolean; method: string; error?: string } | undefined;
+    if (options?.auth && options.auth.method !== "none") {
+      const context = page.context();
+      authResult = await applyAuthToContext(context, page, options.auth);
     }
 
     // Block tracking/ad resources to speed up load without affecting content
@@ -278,6 +288,7 @@ export async function runAccessibilityScan(
       timestamp: new Date().toISOString(),
       url,
       pageTitle,
+      ...(authResult && { authResult }),
     };
   } finally {
     if (browser) {

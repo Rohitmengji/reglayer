@@ -23,6 +23,23 @@
   box-sizing: border-box;
 }
 
+/* Force caret and accent color to match theme (override macOS blue accent) */
+input, textarea, [contenteditable] {
+  caret-color: currentColor !important;
+  accent-color: var(--foreground);
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Remove all native focus indicators — custom focus styles are applied via Tailwind */
+input:focus,
+input:focus-visible,
+input:focus-within {
+  outline: none !important;
+  outline-offset: 0 !important;
+  box-shadow: none !important;
+  -webkit-appearance: none;
+}
+
 /* ─────────────────────────────────────────────────────────────────────────────
    Design Tokens — Color
    ───────────────────────────────────────────────────────────────────────────── */

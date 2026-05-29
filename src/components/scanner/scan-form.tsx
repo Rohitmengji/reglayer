@@ -24,7 +24,7 @@
  * ---------------------------------------------------------
  */
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,6 +32,8 @@ import { Scan, Loader2, RotateCcw, Clock } from "lucide-react";
 import { handleUpgradeResponse } from "@/lib/upgrade-prompt";
 import { useI18n } from "@/components/i18n-provider";
 import { toast } from "sonner";
+import { ScanAuthSection } from "@/components/scanner/scan-auth-section";
+import type { AuthConfig } from "@/lib/validations/auth";
 
 const ERROR_MESSAGES: Record<string, string> = {
   TIMEOUT: "The site took too long to respond. It may be down or behind a firewall.",
@@ -51,9 +53,14 @@ export function ScanForm({ onScanComplete }: ScanFormProps) {
   const [isScanning, setIsScanning] = useState(false);
   const [isSlow, setIsSlow] = useState(false);
   const [errorInfo, setErrorInfo] = useState<{ message: string; retryable: boolean } | null>(null);
+  const [authConfig, setAuthConfig] = useState<AuthConfig | undefined>(undefined);
   const slowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const { t } = useI18n();
+
+  const handleAuthChange = useCallback((config: AuthConfig | undefined) => {
+    setAuthConfig(config);
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -86,10 +93,15 @@ export function ScanForm({ onScanComplete }: ScanFormProps) {
     abortRef.current = new AbortController();
 
     try {
+      const scanBody: Record<string, unknown> = { url: targetUrl };
+      if (authConfig && authConfig.method !== "none") {
+        scanBody.options = { auth: authConfig };
+      }
+
       const res = await fetch("/api/scan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: targetUrl }),
+        body: JSON.stringify(scanBody),
         signal: abortRef.current.signal,
       });
 
@@ -170,6 +182,9 @@ export function ScanForm({ onScanComplete }: ScanFormProps) {
             )}
           </Button>
         </form>
+
+        {/* Authentication Section */}
+        <ScanAuthSection onAuthChange={handleAuthChange} scanUrl={normalizeUrl(url)} />
 
         {/* Scanning indicator */}
         {isScanning && (
