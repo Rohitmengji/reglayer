@@ -165,6 +165,30 @@ export async function PUT(request: NextRequest) {
       data: { passwordHash },
     });
 
+    // Send confirmation email (security alert)
+    sendEmail({
+      to: email,
+      subject: "RegLayer — Your password was changed",
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 480px; margin: 0 auto; padding: 40px 20px;">
+          <h2 style="color: #0a0a0a; margin-bottom: 8px;">Password changed successfully</h2>
+          <p style="color: #525252; font-size: 14px; line-height: 1.6;">
+            Your RegLayer account password was just reset. If you made this change, no further action is needed.
+          </p>
+          <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 16px; margin: 24px 0;">
+            <p style="color: #991b1b; font-size: 13px; margin: 0; font-weight: 500;">
+              ⚠️ If you did NOT request this change, please contact us immediately at support@reglayer.eu and secure your account.
+            </p>
+          </div>
+          <p style="color: #737373; font-size: 12px;">
+            Time: ${new Date().toUTCString()}<br/>
+            Account: ${email}
+          </p>
+        </div>
+      `,
+      text: `Your RegLayer password was changed on ${new Date().toUTCString()}. If you did not make this change, contact support@reglayer.eu immediately.`,
+    }).catch(() => { /* non-blocking */ });
+
     return NextResponse.json({ success: true, message: "Password reset successful. You can now sign in." });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Password reset failed";
