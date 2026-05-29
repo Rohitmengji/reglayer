@@ -1,33 +1,33 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
-import { X, ArrowRight, Sparkles } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { X, ArrowRight, Scan, BarChart3, Rocket } from "lucide-react";
 
 interface TourStep {
-  target: string; // CSS selector
+  icon: typeof Scan;
   title: string;
   description: string;
-  position: "top" | "bottom" | "left" | "right";
+  action?: { label: string; scroll: string };
 }
 
 const TOUR_STEPS: TourStep[] = [
   {
-    target: "[data-tour='scan-input']",
+    icon: Scan,
     title: "Try a free scan",
-    description: "Paste any URL and get an instant accessibility report — no sign-up needed.",
-    position: "top",
+    description: "Paste any URL in the box above to get an instant accessibility report — no sign-up needed.",
+    action: { label: "Show me", scroll: "[data-tour='scan-input']" },
   },
   {
-    target: "[data-tour='features']",
-    title: "Powerful features",
-    description: "Deep WCAG scanning, AI fixes, monitoring, and audit-ready reports.",
-    position: "top",
+    icon: BarChart3,
+    title: "Explore features",
+    description: "Deep WCAG scanning, AI-powered fixes, continuous monitoring, and audit-ready reports — all in one platform.",
+    action: { label: "See features", scroll: "[data-tour='features']" },
   },
   {
-    target: "[data-tour='get-started']",
-    title: "Ready to start?",
-    description: "Create a free account to unlock dashboards, scheduling, and team features.",
-    position: "top",
+    icon: Rocket,
+    title: "Create your account",
+    description: "Sign up free to unlock dashboards, scheduled scans, team collaboration, and compliance certificates.",
+    action: { label: "Get started", scroll: "[data-tour='get-started']" },
   },
 ];
 
@@ -36,219 +36,122 @@ const STORAGE_KEY = "reglayer_tour_completed";
 export function ProductTour() {
   const [active, setActive] = useState(false);
   const [step, setStep] = useState(0);
-  const [tooltipStyle, setTooltipStyle] = useState<React.CSSProperties>({});
-  const [arrowStyle, setArrowStyle] = useState<React.CSSProperties>({});
-  const [arrowDirection, setArrowDirection] = useState<"top" | "bottom">("top");
-  const tooltipRef = useRef<HTMLDivElement>(null);
-  const rafRef = useRef<number>(0);
+  const [exiting, setExiting] = useState(false);
 
-  // Show tour only for first-time visitors (after a short delay)
   useEffect(() => {
     if (typeof window === "undefined") return;
     const completed = localStorage.getItem(STORAGE_KEY);
     if (completed) return;
-
-    const timer = setTimeout(() => setActive(true), 2000);
+    const timer = setTimeout(() => setActive(true), 1500);
     return () => clearTimeout(timer);
   }, []);
 
-  const completeTour = useCallback(() => {
-    setActive(false);
-    localStorage.setItem(STORAGE_KEY, "true");
+  const dismiss = useCallback(() => {
+    setExiting(true);
+    setTimeout(() => {
+      setActive(false);
+      localStorage.setItem(STORAGE_KEY, "true");
+    }, 200);
   }, []);
 
   const nextStep = useCallback(() => {
     if (step >= TOUR_STEPS.length - 1) {
-      completeTour();
+      dismiss();
     } else {
       setStep((s) => s + 1);
     }
-  }, [step, completeTour]);
+  }, [step, dismiss]);
 
-  // Position tooltip relative to target element
-  useEffect(() => {
-    if (!active) return;
-
-    const position = () => {
-      const currentStep = TOUR_STEPS[step];
-      const el = document.querySelector(currentStep.target);
-      if (!el) {
-        // If element not visible, skip to next or complete
-        if (step < TOUR_STEPS.length - 1) setStep(step + 1);
-        else completeTour();
-        return;
-      }
-
-      const rect = el.getBoundingClientRect();
-      const tooltipWidth = 280;
-      const gap = 12;
-
-      // Scroll element into view if needed
-      if (rect.top < 0 || rect.bottom > window.innerHeight) {
+  const handleAction = useCallback(() => {
+    const current = TOUR_STEPS[step];
+    if (current.action?.scroll) {
+      const el = document.querySelector(current.action.scroll);
+      if (el) {
         el.scrollIntoView({ behavior: "smooth", block: "center" });
-        rafRef.current = requestAnimationFrame(position);
-        return;
       }
-
-      let top: number;
-      let left: number;
-      let direction: "top" | "bottom";
-
-      // Determine if tooltip goes above or below
-      const spaceBelow = window.innerHeight - rect.bottom;
-      if (currentStep.position === "bottom" || spaceBelow < 200) {
-        // Place above the element
-        top = rect.top - gap;
-        direction = "bottom"; // arrow points down
-      } else {
-        // Place below the element
-        top = rect.bottom + gap;
-        direction = "top"; // arrow points up
-      }
-
-      // Center horizontally on the element
-      left = rect.left + rect.width / 2 - tooltipWidth / 2;
-
-      // Clamp to viewport
-      left = Math.max(16, Math.min(left, window.innerWidth - tooltipWidth - 16));
-
-      setArrowDirection(direction);
-      setTooltipStyle({
-        position: "fixed",
-        top: direction === "bottom" ? undefined : `${top}px`,
-        bottom: direction === "bottom" ? `${window.innerHeight - top}px` : undefined,
-        left: `${left}px`,
-        width: `${tooltipWidth}px`,
-      });
-
-      // Arrow position
-      const arrowLeft = rect.left + rect.width / 2 - left - 6;
-      setArrowStyle({ left: `${Math.max(12, Math.min(arrowLeft, tooltipWidth - 24))}px` });
-    };
-
-    position();
-    window.addEventListener("resize", position);
-    window.addEventListener("scroll", position, true);
-    return () => {
-      window.removeEventListener("resize", position);
-      window.removeEventListener("scroll", position, true);
-      cancelAnimationFrame(rafRef.current);
-    };
-  }, [active, step, completeTour]);
-
-  // Highlight the target element
-  useEffect(() => {
-    if (!active) return;
-    const currentStep = TOUR_STEPS[step];
-    const el = document.querySelector(currentStep.target) as HTMLElement | null;
-    if (!el) return;
-
-    // Find any ancestor with a stacking context (sticky/fixed headers) and elevate it
-    const stickyAncestor = el.closest("[class*='sticky'], [class*='fixed']") as HTMLElement | null;
-    if (stickyAncestor && stickyAncestor !== el) {
-      stickyAncestor.style.zIndex = "70";
     }
-
-    el.style.position = "relative";
-    el.style.zIndex = "70";
-    el.style.borderRadius = "12px";
-    el.style.boxShadow = "0 0 0 4000px rgba(0,0,0,0.4), 0 0 0 4px rgba(59,130,246,0.5)";
-    el.style.transition = "box-shadow 0.3s ease";
-
-    return () => {
-      if (stickyAncestor && stickyAncestor !== el) {
-        stickyAncestor.style.zIndex = "";
-      }
-      el.style.position = "";
-      el.style.zIndex = "";
-      el.style.boxShadow = "";
-      el.style.borderRadius = "";
-      el.style.transition = "";
-    };
-  }, [active, step]);
+    // Auto-advance after a short delay
+    setTimeout(nextStep, 600);
+  }, [step, nextStep]);
 
   if (!active) return null;
 
-  const currentStep = TOUR_STEPS[step];
+  const current = TOUR_STEPS[step];
+  const Icon = current.icon;
   const isLast = step === TOUR_STEPS.length - 1;
 
   return (
-    <>
-      {/* Backdrop — click to dismiss */}
-      <div
-        className="fixed inset-0 z-[60]"
-        onClick={completeTour}
-        aria-hidden="true"
-      />
+    <div
+      className={`fixed bottom-5 right-5 z-50 w-[300px] transition-all duration-200 ${
+        exiting ? "opacity-0 translate-y-2" : "opacity-100 translate-y-0"
+      }`}
+      style={{ animation: exiting ? undefined : "slideUp 0.3s ease-out" }}
+    >
+      <style>{`@keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }`}</style>
+      <div className="rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 shadow-[0_8px_32px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.08)] overflow-hidden">
+        {/* Progress bar */}
+        <div className="h-0.5 bg-neutral-100 dark:bg-neutral-700">
+          <div
+            className="h-full bg-blue-500 transition-all duration-300"
+            style={{ width: `${((step + 1) / TOUR_STEPS.length) * 100}%` }}
+          />
+        </div>
 
-      {/* Tooltip */}
-      <div
-        ref={tooltipRef}
-        style={tooltipStyle}
-        className="fixed z-[80] animate-in fade-in slide-in-from-bottom-2 duration-200"
-      >
-        {/* Arrow */}
-        {arrowDirection === "top" && (
-          <div style={arrowStyle} className="absolute -top-1.5 w-3 h-3 rotate-45 bg-white dark:bg-neutral-800 border-t border-l border-neutral-200 dark:border-neutral-700" />
-        )}
-
-        <div className="rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 shadow-[0_4px_24px_rgba(0,0,0,0.12)] p-4">
+        <div className="p-4">
           {/* Header */}
-          <div className="flex items-start justify-between gap-2 mb-2">
-            <div className="flex items-center gap-1.5">
-              <Sparkles className="h-3.5 w-3.5 text-blue-500" />
-              <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">{currentStep.title}</h3>
+          <div className="flex items-start justify-between gap-2 mb-2.5">
+            <div className="flex items-center gap-2">
+              <div className="flex items-center justify-center h-6 w-6 rounded-md bg-blue-50 dark:bg-blue-950/40">
+                <Icon className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <h3 className="text-[13px] font-semibold text-neutral-900 dark:text-white">{current.title}</h3>
             </div>
             <button
-              onClick={completeTour}
-              className="rounded-md p-0.5 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-colors"
-              aria-label="Close tour"
+              onClick={dismiss}
+              className="rounded-md p-1 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors"
+              aria-label="Dismiss tour"
             >
               <X className="h-3.5 w-3.5" />
             </button>
           </div>
 
-          <p className="text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed">
-            {currentStep.description}
+          <p className="text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed pl-8">
+            {current.description}
           </p>
 
-          {/* Footer */}
-          <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-neutral-100 dark:border-neutral-700">
-            {/* Progress dots */}
-            <div className="flex items-center gap-1">
-              {TOUR_STEPS.map((_, i) => (
-                <div
-                  key={i}
-                  className={`h-1.5 rounded-full transition-all ${
-                    i === step ? "w-4 bg-blue-500" : i < step ? "w-1.5 bg-blue-300" : "w-1.5 bg-neutral-200 dark:bg-neutral-600"
-                  }`}
-                />
-              ))}
-            </div>
+          {/* Actions */}
+          <div className="flex items-center justify-between mt-3.5 pl-8">
+            {/* Step indicator */}
+            <span className="text-[10px] text-neutral-400 font-medium tabular-nums">
+              {step + 1} of {TOUR_STEPS.length}
+            </span>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <button
-                onClick={completeTour}
-                className="text-[11px] text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
+                onClick={dismiss}
+                className="rounded-md px-2 py-1 text-[11px] text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors"
               >
                 Skip
               </button>
+              {current.action && (
+                <button
+                  onClick={handleAction}
+                  className="rounded-md px-2.5 py-1 text-[11px] font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors"
+                >
+                  {current.action.label}
+                </button>
+              )}
               <button
                 onClick={nextStep}
-                className="inline-flex items-center gap-1 rounded-md bg-neutral-900 dark:bg-white px-2.5 py-1 text-[11px] font-medium text-white dark:text-neutral-900 hover:bg-neutral-700 dark:hover:bg-neutral-200 transition-colors"
+                className="inline-flex items-center gap-0.5 rounded-md bg-neutral-900 dark:bg-white px-2.5 py-1 text-[11px] font-medium text-white dark:text-neutral-900 hover:bg-neutral-700 dark:hover:bg-neutral-200 transition-colors"
               >
-                {isLast ? "Got it" : "Next"}
+                {isLast ? "Done" : "Next"}
                 {!isLast && <ArrowRight className="h-3 w-3" />}
               </button>
             </div>
           </div>
         </div>
-
-        {/* Arrow bottom */}
-        {arrowDirection === "bottom" && (
-          <div style={arrowStyle} className="absolute -bottom-1.5 w-3 h-3 rotate-45 bg-white dark:bg-neutral-800 border-b border-r border-neutral-200 dark:border-neutral-700" />
-        )}
       </div>
-    </>
+    </div>
   );
 }
