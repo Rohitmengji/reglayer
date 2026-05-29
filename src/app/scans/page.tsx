@@ -353,9 +353,12 @@ export default function ScansPage() {
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-neutral-900 dark:text-white truncate">
+                    <Link
+                      href={`/report/${scan.id}`}
+                      className="text-sm font-medium text-neutral-900 dark:text-white truncate block hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                    >
                       {scan.pageTitle || scan.url}
-                    </p>
+                    </Link>
                     <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate">{scan.url}</p>
                   </div>
 
