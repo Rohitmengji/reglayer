@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
 
     // Enforce scan limit
     const planCtx = await getPlanContext();
-    if (planCtx && !planCtx.isMasterAdmin) {
+    if (planCtx && !planCtx.isMasterAdmin && planCtx.bonusCredits <= 0) {
       const limit = planCtx.limits.scansPerMonth;
       if (limit !== -1) {
         const used = await getMonthlyScansCount(planCtx.userId);
