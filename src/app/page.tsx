@@ -28,6 +28,7 @@ import { Shield, Scan, BarChart3, FileText, Zap, Globe, CheckCircle2, ArrowRight
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Footer } from "@/components/layout/footer";
 import { DemoScan } from "@/components/demo-scan";
+import { AnimatedStats } from "@/components/animated-stats";
 
 export default function Home() {
   return (
@@ -59,7 +60,7 @@ export default function Home() {
 
       <main>
         {/* Hero Section */}
-        <section className="mx-auto max-w-5xl px-6 py-16 sm:py-32 text-center">
+        <section className="mx-auto max-w-5xl px-6 pt-12 pb-16 sm:pt-20 sm:pb-24 text-center">
           <div className="inline-flex items-center gap-2 rounded-full border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 px-3 py-1 text-xs font-medium text-neutral-600 dark:text-neutral-300 mb-8">
             <Zap className="h-3 w-3" />
             WCAG 2.2 + ADA + EAA + Section 508 — One platform, every standard.
@@ -67,7 +68,7 @@ export default function Home() {
           <h1 className="text-3xl font-bold tracking-tight text-neutral-900 dark:text-white sm:text-6xl leading-[1.1]">
             Web Accessibility compliance,
             <br />
-            <span className="text-neutral-600 sm:text-neutral-400 dark:text-neutral-400">fully automated.</span>
+            <span className="text-neutral-500 dark:text-neutral-400">fully automated.</span>
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-base sm:text-lg text-neutral-600 dark:text-neutral-300 leading-relaxed">
             RegLayer scans your websites against WCAG 2.2 AA, Section 508, ADA, EAA, and EN 301 549 — generates audit-ready 
@@ -99,24 +100,22 @@ export default function Home() {
         </section>
 
         {/* Social Proof */}
-        <section className="border-y border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/50 py-12">
-          <div className="mx-auto max-w-6xl px-6">
-            <p className="text-center text-xs font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-8">
-              Trusted by compliance teams worldwide
-            </p>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 items-center">
-              {[
-                { value: "500+", label: "Sites Scanned" },
-                { value: "30+", label: "Countries" },
-                { value: "99.7%", label: "Uptime" },
-                { value: "< 30s", label: "Scan Time" },
-              ].map((stat) => (
-                <div key={stat.label} className="text-center">
-                  <p className="text-2xl font-bold text-neutral-900 dark:text-white">{stat.value}</p>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">{stat.label}</p>
-                </div>
-              ))}
+        <section className="py-16 sm:py-20">
+          <div className="mx-auto max-w-5xl px-6">
+            <div className="text-center mb-10">
+              <p className="inline-flex items-center gap-2 rounded-full bg-neutral-100 dark:bg-neutral-800 px-4 py-1.5 text-xs font-medium uppercase tracking-wider text-neutral-600 dark:text-neutral-300">
+                <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+                Trusted by compliance teams worldwide
+              </p>
             </div>
+            <AnimatedStats
+              stats={[
+                { value: "500+", label: "Sites Scanned", icon: "scan" },
+                { value: "30+", label: "Countries", icon: "globe" },
+                { value: "99.7%", label: "Uptime", icon: "uptime" },
+                { value: "< 30s", label: "Scan Time", icon: "speed" },
+              ]}
+            />
           </div>
         </section>
 

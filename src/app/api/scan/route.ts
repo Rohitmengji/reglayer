@@ -28,6 +28,7 @@ import { authOptions } from "@/lib/auth/config";
 import { logger } from "@/lib/telemetry/logger";
 import { getPlanContext, getMonthlyScansCount } from "@/lib/credits/plan-context";
 import { rateLimit, RATE_LIMITS, rateLimitHeaders } from "@/lib/rate-limit";
+import { AuthenticationError } from "@/lib/scanner/auth";
 
 export async function POST(request: NextRequest) {
   const apiLogger = logger.withContext({ route: "POST /api/scan" });
@@ -96,6 +97,11 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(result, { status: 200 });
   } catch (error) {
+    // Structured auth error — return without exposing internals
+    if (error instanceof AuthenticationError) {
+      return NextResponse.json(error.toResponse(), { status: 401 });
+    }
+
     apiLogger.error("Scan request failed", {
       error: error instanceof Error ? error.message : "Unknown error",
     });

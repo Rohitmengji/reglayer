@@ -19,6 +19,7 @@
  */
 
 import { z } from "zod";
+import { authConfigSchema } from "@/lib/validations/auth";
 
 export const scanRequestSchema = z.object({
   url: z
@@ -34,6 +35,7 @@ export const scanRequestSchema = z.object({
       waitForSelector: z.string().optional(),
       timeout: z.number().min(1000).max(60000).optional(),
       tags: z.array(z.string()).optional(),
+      auth: authConfigSchema.optional(),
     })
     .optional(),
 });
