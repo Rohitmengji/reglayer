@@ -96,8 +96,10 @@ export default function AgencyDashboard() {
   }, []);
 
   useEffect(() => {
-    if (session) loadAgency();
-  }, [session, loadAgency]);
+    if (!session) return;
+    loadAgency();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session]);
 
   const saveBranding = async () => {
     if (!agency) return;
