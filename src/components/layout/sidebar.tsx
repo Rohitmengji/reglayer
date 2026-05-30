@@ -33,7 +33,7 @@ import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { cn } from "@/lib/utils/cn";
 import { useTheme } from "@/components/theme-provider";
-import { Shield, LayoutDashboard, Scan, Globe, Grid3X3, Moon, Sun, Languages, Crown, ChevronDown, Settings, BarChart3, Zap, Plug, LogOut, AlertTriangle } from "lucide-react";
+import { Shield, LayoutDashboard, Scan, Globe, Grid3X3, Moon, Sun, Languages, Crown, ChevronDown, Settings, BarChart3, Zap, Plug, LogOut, AlertTriangle, TrendingUp, Building2 } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 import { SUPPORTED_LOCALES } from "@/lib/i18n/translations";
 import { useState } from "react";
@@ -42,11 +42,13 @@ const mainNav = [
   { name: "Dashboard", key: "nav.dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Scans", key: "nav.scans", href: "/scans", icon: Scan },
   { name: "Violations", key: "", href: "/violations", icon: AlertTriangle },
+  { name: "Trends", key: "", href: "/trends", icon: TrendingUp },
   { name: "Crawl Site", key: "nav.crawl", href: "/crawl", icon: Globe },
   { name: "Compliance", key: "nav.compliance", href: "/compliance?tab=matrix", icon: Grid3X3 },
   { name: "Analysis", key: "", href: "/analysis?tab=screen-reader", icon: BarChart3 },
   { name: "Automation", key: "", href: "/automation?tab=remediation", icon: Zap },
   { name: "Manage", key: "", href: "/manage?tab=team", icon: Plug },
+  { name: "Agency", key: "", href: "/agency", icon: Building2 },
   { name: "Settings", key: "nav.settings", href: "/settings", icon: Settings },
 ];
 

@@ -33,6 +33,17 @@ const SECURITY_HEADERS: Record<string, string> = {
   ].join("; "),
 };
 
+/** Main RegLayer domains — no agency context */
+const MAIN_DOMAINS = new Set([
+  "reglayer.app",
+  "www.reglayer.app",
+  "reglayer.vercel.app",
+  "localhost",
+  "127.0.0.1",
+]);
+
+const REGLAYER_SUFFIX = ".reglayer.app";
+
 function applySecurityHeaders(response: NextResponse): NextResponse {
   for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
     response.headers.set(key, value);
@@ -40,8 +51,38 @@ function applySecurityHeaders(response: NextResponse): NextResponse {
   return response;
 }
 
+/**
+ * Extracts agency slug from subdomain if applicable.
+ * Returns null for main domains or custom domains.
+ */
+function getAgencySlug(hostname: string): string | null {
+  const host = hostname.split(":")[0];
+  if (MAIN_DOMAINS.has(host)) return null;
+  if (host.endsWith(REGLAYER_SUFFIX)) {
+    const slug = host.slice(0, -REGLAYER_SUFFIX.length);
+    if (slug && !slug.includes(".")) return slug;
+  }
+  return null;
+}
+
+/**
+ * Determines if the request is on a white-label agency domain.
+ * Sets x-agency-hostname header for server-side resolution.
+ */
+function isAgencyDomain(hostname: string): boolean {
+  const host = hostname.split(":")[0];
+  if (MAIN_DOMAINS.has(host)) return false;
+  // Either subdomain of reglayer.app or a custom domain
+  return true;
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const hostname = request.headers.get("host") || "localhost";
+
+  // Agency tenant detection — pass hostname to server components via header
+  const agencySlug = getAgencySlug(hostname);
+  const isAgency = isAgencyDomain(hostname);
 
   // Public paths — apply security headers only
   const isPublicPath =
@@ -82,7 +123,12 @@ export async function proxy(request: NextRequest) {
         return applySecurityHeaders(NextResponse.redirect(dashboardUrl));
       }
     }
-    return applySecurityHeaders(NextResponse.next());
+    const response = NextResponse.next();
+    if (isAgency) {
+      response.headers.set("x-agency-hostname", hostname.split(":")[0]);
+      if (agencySlug) response.headers.set("x-agency-slug", agencySlug);
+    }
+    return applySecurityHeaders(response);
   }
 
   // Protected paths — require auth
@@ -99,7 +145,12 @@ export async function proxy(request: NextRequest) {
     return applySecurityHeaders(NextResponse.redirect(loginUrl));
   }
 
-  return applySecurityHeaders(NextResponse.next());
+  const response = NextResponse.next();
+  if (isAgency) {
+    response.headers.set("x-agency-hostname", hostname.split(":")[0]);
+    if (agencySlug) response.headers.set("x-agency-slug", agencySlug);
+  }
+  return applySecurityHeaders(response);
 }
 
 export const config = {
