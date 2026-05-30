@@ -35,20 +35,37 @@ interface ConsentState {
 
 const CONSENT_KEY = "reglayer-gdpr-consent";
 
+function getStoredConsent(): ConsentState | null {
+  if (typeof window === "undefined") return null;
+  const stored = localStorage.getItem(CONSENT_KEY);
+  return stored ? JSON.parse(stored) : null;
+}
+
 export function CookieConsent() {
   const [visible, setVisible] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
-  const [consent, setConsent] = useState<ConsentState>({
-    essential: true, analytics: false, marketing: false, timestamp: null,
+  const [consent, setConsent] = useState<ConsentState>(() => {
+    return getStoredConsent() ?? { essential: true, analytics: false, marketing: false, timestamp: null };
   });
 
   useEffect(() => {
-    const stored = localStorage.getItem(CONSENT_KEY);
-    if (!stored) {
-      setVisible(true);
-    } else {
-      setConsent(JSON.parse(stored));
+    if (getStoredConsent()) return;
+
+    // Show cookie banner only when user scrolls near the footer
+    function handleScroll() {
+      const scrollBottom = window.scrollY + window.innerHeight;
+      const threshold = document.documentElement.scrollHeight - 400;
+      if (scrollBottom >= threshold) {
+        setVisible(true);
+        window.removeEventListener("scroll", handleScroll);
+      }
     }
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    // Also check immediately in case page is short enough
+    handleScroll();
+
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
   const { t } = useI18n();
 
@@ -166,14 +183,9 @@ export function CookieConsent() {
 
 /** Hook to check consent status */
 export function useConsent(): ConsentState & { hasConsented: boolean } {
-  const [state, setState] = useState<ConsentState>({
-    essential: true, analytics: false, marketing: false, timestamp: null,
+  const [state] = useState<ConsentState>(() => {
+    return getStoredConsent() ?? { essential: true, analytics: false, marketing: false, timestamp: null };
   });
-
-  useEffect(() => {
-    const stored = localStorage.getItem(CONSENT_KEY);
-    if (stored) setState(JSON.parse(stored));
-  }, []);
 
   return { ...state, hasConsented: !!state.timestamp };
 }

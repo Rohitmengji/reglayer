@@ -194,12 +194,29 @@ model Violation {
   affectedElements Json    // array of { html, target, failureSummary }
   aiExplanation   String?  // cached AI explanation
 
+  // ── Status Tracking (Fix Flow integration) ──
+  status          ViolationStatus @default(OPEN)
+  statusNote      String?         // required reason for WONT_FIX or ACCEPTABLE_RISK
+  statusUpdatedAt DateTime?       // last status change timestamp
+  statusUpdatedBy String?         // userId who changed status
+  verifiedAt      DateTime?       // set when re-scan confirms fix is applied
+
   scanId          String
   scan            Scan     @relation(fields: [scanId], references: [id], onDelete: Cascade)
 
   @@index([scanId])
   @@index([ruleId])
+  @@index([status])
   @@map("violations")
+}
+
+enum ViolationStatus {
+  OPEN
+  IN_PROGRESS
+  FIXED
+  VERIFIED        // confirmed fixed by re-scan
+  WONT_FIX        // intentional decision — requires statusNote
+  ACCEPTABLE_RISK // documented exception — requires statusNote
 }
 
 enum ScanStatus {
