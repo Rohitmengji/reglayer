@@ -18,14 +18,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
 
-    // Only master admin can create agencies
+    // Master admin or workspace ADMIN/OWNER can create agencies
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
-      select: { id: true, isMasterAdmin: true },
+      select: {
+        id: true,
+        isMasterAdmin: true,
+        memberships: { select: { role: true }, take: 1 },
+      },
     });
 
-    if (!user?.isMasterAdmin) {
-      return NextResponse.json({ error: "Forbidden: superadmin only" }, { status: 403 });
+    const workspaceRole = user?.memberships?.[0]?.role;
+    const canCreate = user?.isMasterAdmin || workspaceRole === "OWNER" || workspaceRole === "ADMIN";
+
+    if (!user || !canCreate) {
+      return NextResponse.json({ error: "Forbidden: admin access required" }, { status: 403 });
     }
 
     const body = await request.json();
@@ -78,12 +85,19 @@ export async function GET(_request: NextRequest) {
 
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
-      select: { id: true, isMasterAdmin: true },
+      select: {
+        id: true,
+        isMasterAdmin: true,
+        memberships: { select: { role: true }, take: 1 },
+      },
     });
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
+
+    const workspaceRole = user.memberships?.[0]?.role;
+    const canCreate = user.isMasterAdmin || workspaceRole === "OWNER" || workspaceRole === "ADMIN";
 
     // Master admin sees all, regular users see their own
     const where = user.isMasterAdmin ? {} : { ownerId: user.id };
@@ -96,7 +110,7 @@ export async function GET(_request: NextRequest) {
       orderBy: { createdAt: "desc" },
     });
 
-    return NextResponse.json({ agencies });
+    return NextResponse.json({ agencies, isMasterAdmin: user.isMasterAdmin, canCreate });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Internal server error";
     return NextResponse.json({ error: message }, { status: 500 });
