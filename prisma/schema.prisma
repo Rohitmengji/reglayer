@@ -34,6 +34,7 @@ model User {
   apiKeys        ApiKey[]
   accessRequests AccessRequest[]
   creditGrants   CreditGrant[]
+  agencies       Agency[]
 
   @@map("users")
 }
@@ -81,12 +82,13 @@ model Workspace {
   updatedAt DateTime @updatedAt
 
   // Relations
-  members   WorkspaceMember[]
-  sites     Site[]
-  scans     Scan[]
-  schedules Schedule[]
-  webhooks  Webhook[]
-  apiKeys   ApiKey[]
+  members      WorkspaceMember[]
+  sites        Site[]
+  scans        Scan[]
+  schedules    Schedule[]
+  webhooks     Webhook[]
+  apiKeys      ApiKey[]
+  agencyClient AgencyClient?
 
   @@map("workspaces")
 }
@@ -425,4 +427,70 @@ model AuthConfig {
   @@index([userId])
   @@index([workspaceId])
   @@map("auth_configs")
+}
+
+// ─────────────────────────────────────────────
+// White-Label Agency Platform
+// ─────────────────────────────────────────────
+
+model Agency {
+  id                String      @id @default(cuid())
+  name              String
+  slug              String      @unique
+  customDomain      String?     @unique
+  logoUrl           String?
+  primaryColor      String      @default("#6366f1")
+  accentColor       String      @default("#4f46e5")
+  faviconUrl        String?
+  brandName         String
+  supportEmail      String?
+  plan              AgencyPlan  @default(STARTER)
+  revenueSharePct   Int         @default(0)
+  maxClients        Int         @default(10)
+  isActive          Boolean     @default(true)
+  ownerId           String
+  owner             User        @relation(fields: [ownerId], references: [id])
+  clients           AgencyClient[]
+  apiKeys           AgencyApiKey[]
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  @@index([ownerId])
+  @@map("agencies")
+}
+
+enum AgencyPlan {
+  STARTER
+  PROFESSIONAL
+  ENTERPRISE
+}
+
+model AgencyClient {
+  id            String    @id @default(cuid())
+  agencyId      String
+  workspaceId   String    @unique
+  agency        Agency    @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  workspace     Workspace @relation(fields: [workspaceId], references: [id])
+  clientName    String
+  contactEmail  String
+  isActive      Boolean   @default(true)
+  addedAt       DateTime  @default(now())
+
+  @@index([agencyId])
+  @@map("agency_clients")
+}
+
+model AgencyApiKey {
+  id          String    @id @default(cuid())
+  agencyId    String
+  agency      Agency    @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  keyHash     String    @unique
+  keyPrefix   String
+  label       String
+  lastUsedAt  DateTime?
+  expiresAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([agencyId])
+  @@map("agency_api_keys")
 }
