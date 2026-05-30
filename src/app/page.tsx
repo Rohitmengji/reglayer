@@ -123,9 +123,9 @@ export default function Home() {
         </section>
 
         {/* Features Grid */}
-        <section id="features" data-tour="features" className="py-16 sm:py-24">
+        <section id="features" className="py-16 sm:py-24">
           <div className="mx-auto max-w-6xl px-6">
-            <div className="text-center mb-10 sm:mb-16">
+            <div className="text-center mb-10 sm:mb-16" data-tour="features">
               <h2 className="text-2xl sm:text-3xl font-bold text-neutral-900 dark:text-white">
                 Everything you need for accessibility compliance
               </h2>
