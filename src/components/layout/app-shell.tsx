@@ -49,7 +49,7 @@ export function AppShell({ children, bare }: { children: React.ReactNode; bare?:
     if (status === "unauthenticated") return;
 
     const isMasterAdmin = (session?.user as { isMasterAdmin?: boolean } | undefined)?.isMasterAdmin;
-    if (isMasterAdmin || pathname === "/admin") {
+    if (isMasterAdmin) {
       // Use queueMicrotask to avoid synchronous setState in effect
       queueMicrotask(handleWorkspaceCheck);
       return;
