@@ -25,9 +25,12 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import Script from "next/script";
+import { headers } from "next/headers";
 import { Providers } from "@/components/providers";
 import { CookieConsent } from "@/components/cookie-consent";
 import { Toaster } from "sonner";
+import { resolveAgency } from "@/lib/tenant/resolver";
+import type { BrandContextType } from "@/components/layout/BrandProvider";
 import "./globals.css";
 
 // Primary typeface — Inter: industry-standard UI font used by Linear, Vercel, Stripe
@@ -85,11 +88,45 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Resolve agency branding from hostname (set by proxy middleware)
+  const headersList = await headers();
+  const agencyHostname = headersList.get("x-agency-hostname");
+  const agencySlug = headersList.get("x-agency-slug");
+
+  let brand: BrandContextType = {
+    brandName: "RegLayer",
+    primaryColor: "#6366f1",
+    accentColor: "#4f46e5",
+    logoUrl: null,
+    faviconUrl: null,
+    supportEmail: null,
+    isAgency: false,
+    agencySlug: null,
+    showPoweredBy: false,
+  };
+
+  if (agencyHostname) {
+    const agency = await resolveAgency(agencyHostname);
+    if (agency) {
+      brand = {
+        brandName: agency.brandName,
+        primaryColor: agency.primaryColor,
+        accentColor: agency.accentColor,
+        logoUrl: agency.logoUrl,
+        faviconUrl: agency.faviconUrl,
+        supportEmail: agency.supportEmail,
+        isAgency: true,
+        agencySlug: agencySlug || agency.slug,
+        showPoweredBy: agency.plan === "STARTER",
+      };
+    }
+  }
+
   return (
     <html
       lang="en"
@@ -124,7 +161,7 @@ export default function RootLayout({
             __html: `(function(){try{var t=localStorage.getItem("reglayer-theme");var d=t==="dark"||(t!=="light"&&window.matchMedia("(prefers-color-scheme:dark)").matches);if(d){document.documentElement.classList.add("dark");document.documentElement.style.colorScheme="dark"}else if(t==="light"){document.documentElement.classList.add("light")}}catch(e){}})()`,
           }}
         />
-        <Providers>
+        <Providers brand={brand}>
           {children}
           <CookieConsent />
           <Toaster position="top-right" richColors closeButton />

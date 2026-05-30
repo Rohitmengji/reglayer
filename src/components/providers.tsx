@@ -28,8 +28,21 @@ import { SessionProvider } from "next-auth/react";
 import { useState } from "react";
 import { ThemeProvider } from "@/components/theme-provider";
 import { I18nProvider } from "@/components/i18n-provider";
+import { BrandProvider, type BrandContextType } from "@/components/layout/BrandProvider";
 
-export function Providers({ children }: { children: React.ReactNode }) {
+const DEFAULT_BRAND: BrandContextType = {
+  brandName: "RegLayer",
+  primaryColor: "#6366f1",
+  accentColor: "#4f46e5",
+  logoUrl: null,
+  faviconUrl: null,
+  supportEmail: null,
+  isAgency: false,
+  agencySlug: null,
+  showPoweredBy: false,
+};
+
+export function Providers({ children, brand }: { children: React.ReactNode; brand?: BrandContextType }) {
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -46,7 +59,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <SessionProvider>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
-          <I18nProvider>{children}</I18nProvider>
+          <I18nProvider>
+            <BrandProvider brand={brand ?? DEFAULT_BRAND}>
+              {children}
+            </BrandProvider>
+          </I18nProvider>
         </ThemeProvider>
       </QueryClientProvider>
     </SessionProvider>

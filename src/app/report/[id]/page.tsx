@@ -9,7 +9,7 @@
 import { prisma } from "@/lib/database/prisma";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { Shield, ExternalLink, Clock, AlertTriangle, CheckCircle2, ArrowLeft, Eye } from "lucide-react";
+import { Shield, ExternalLink, Clock, AlertTriangle, CheckCircle2, ArrowLeft, Eye, TrendingUp } from "lucide-react";
 
 interface ReportPageProps {
   params: Promise<{ id: string }>;
@@ -74,6 +74,13 @@ export default async function PublicReportPage({ params }: ReportPageProps) {
             <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">Report</span>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
+            <Link
+              href={`/trends?url=${encodeURIComponent(scan.url)}`}
+              className="hidden sm:flex items-center gap-1.5 text-xs text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors"
+            >
+              <TrendingUp className="h-3.5 w-3.5" />
+              Trends
+            </Link>
             <Link
               href="/dashboard"
               className="hidden sm:block text-xs text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors"
