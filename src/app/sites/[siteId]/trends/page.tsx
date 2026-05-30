@@ -104,9 +104,9 @@ export default function SiteTrendsPage() {
 
   return (
     <AppShell>
-      <div className="max-w-6xl mx-auto px-4 py-8">
+      <div className="space-y-6">
         {/* Page Header */}
-        <div className="mb-6">
+        <div>
           <div className="flex items-start justify-between">
             <div>
               <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">
