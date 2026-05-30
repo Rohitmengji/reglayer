@@ -73,20 +73,27 @@ export default function ViolationsPage() {
       setResolvedScanId(scanIdParam);
       return;
     }
-    fetch("/api/scans?limit=1")
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => {
-        if (data?.scans?.[0]?.id) {
-          setResolvedScanId(data.scans[0].id);
+    async function resolveLatestScan() {
+      try {
+        const resp = await fetch("/api/scans?limit=1");
+        if (!resp.ok) {
+          setError("Failed to load latest scan.");
+          setLoading(false);
+          return;
+        }
+        const json = await resp.json();
+        if (json?.scans?.[0]?.id) {
+          setResolvedScanId(json.scans[0].id);
         } else {
           setError("No scans found. Run a scan first.");
           setLoading(false);
         }
-      })
-      .catch(() => {
+      } catch {
         setError("Failed to load latest scan.");
         setLoading(false);
-      });
+      }
+    }
+    resolveLatestScan();
   }, [scanIdParam]);
 
   const fetchViolations = useCallback(async () => {
