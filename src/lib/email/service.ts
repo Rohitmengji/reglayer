@@ -37,6 +37,7 @@ export interface EmailPayload {
   subject: string;
   html: string;
   text?: string;
+  from?: string;
 }
 
 /**
@@ -53,7 +54,7 @@ export async function sendEmail(payload: EmailPayload) {
 
   try {
     const info = await transport.sendMail({
-      from: FROM_EMAIL,
+      from: payload.from || FROM_EMAIL,
       to: payload.to,
       subject: payload.subject,
       html: payload.html,
