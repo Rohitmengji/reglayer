@@ -137,6 +137,7 @@ model Site {
   // Relations
   scans       Scan[]
   schedules   Schedule[]
+  riskScores  LitigationRiskScore[]
 
   @@unique([workspaceId, url])
   @@map("sites")
@@ -175,6 +176,7 @@ model Scan {
   site          Site?      @relation(fields: [siteId], references: [id], onDelete: SetNull)
   user          User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
   violations    Violation[]
+  riskScore     LitigationRiskScore?
 
   @@index([workspaceId, createdAt])
   @@index([userId])
@@ -493,4 +495,49 @@ model AgencyApiKey {
 
   @@index([agencyId])
   @@map("agency_api_keys")
+}
+
+// ─────────────────────────────────────────────
+// Lawsuit Risk Score Engine
+// ─────────────────────────────────────────────
+
+model LitigationRiskScore {
+  id                  String   @id @default(cuid())
+  siteId              String
+  scanId              String   @unique
+  site                Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  scan                Scan     @relation(fields: [scanId], references: [id], onDelete: Cascade)
+  baseScore           Float
+  finalScore          Float
+  tier                RiskTier
+  industry            String
+  primaryGeo          String
+  industryMultiplier  Float
+  geoMultiplier       Float
+  estimatedExposure   Float
+  violationBreakdown  Json
+  topRiskFactors      Json
+  narrative           String?
+  calculatedAt        DateTime @default(now())
+
+  @@index([siteId, calculatedAt])
+  @@map("litigation_risk_scores")
+}
+
+enum RiskTier {
+  LOW
+  MODERATE
+  HIGH
+  CRITICAL
+}
+
+model LitigationWeight {
+  id              String   @id @default(cuid())
+  ruleId          String   @unique
+  weight          Float
+  frequency       Float
+  avgSettlement   Float
+  updatedAt       DateTime @updatedAt
+
+  @@map("litigation_weights")
 }
