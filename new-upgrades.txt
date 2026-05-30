@@ -1,0 +1,1864 @@
+Let me research the current accessibility compliance market, who the real competitors are, and where the genuine white space is — before I give you any strategic direction.I now have a deep, research-backed picture of the market. Here's the full strategic analysis:
+
+---
+
+## The Honest Market Reality First
+
+Before the ideas — context that shapes everything:
+
+Over 5,000 digital accessibility lawsuits targeted websites and apps in 2025 — a 37% surge — and 94.8% of websites still fail basic WCAG checks. 40% of federal ADA Title III filings are now pro se — self-represented plaintiffs using AI to draft complaints and identify violations, combining that with the fact that 95% of websites fail basic WCAG tests.
+
+The FTC fined accessiBe $1 million in January 2025 for deceptive marketing about WCAG compliance capabilities. Over 800 businesses using overlay solutions faced accessibility lawsuits in 2023–2024.
+
+None of the four major overlay providers — accessiBe, AudioEye, UserWay, EqualWeb — provide the governance documentation (audit reports, remediation logs, monitoring records) that ADA Title II enforcement actually requires.
+
+This is the opening. **The incumbents are getting fined and sued. The market is panicking. And nobody has built what's below.**
+
+---
+
+## The 6 Genuinely Rare Features Nobody Has Fully Built
+
+Ranked by global impact × revenue potential × how buildable they are on your existing stack:
+
+---
+
+### 🥇 #1 — Lawsuit Risk Score & Legal Exposure Engine
+
+**What nobody has: A predictive legal liability score, not just an accessibility score**
+
+Every tool gives you a WCAG score. Nobody gives you a **lawsuit probability score** — a number that tells you: *"Based on 5,000+ real filed lawsuits in 2025, your site's specific violation pattern puts you in the top 30% of sued companies in your industry."*
+
+One platform extracts every issue, associates it with the relevant WCAG success criterion, and calculates risk scores based on how frequently each issue type appears in lawsuit complaints — but it's basic. Nobody has a trained model on actual lawsuit complaint patterns mapped to specific WCAG violations, industries, and states.
+
+**What you build:** Train on public lawsuit filing data (PACER, UsableNet reports, EcomBack data — all public). Map the 6 violation types that appear in 96% of lawsuits to a weighted risk model. Output: *"Your missing alt text on checkout puts you at HIGH litigation risk in New York. 487 lawsuits in 2025 cited this exact violation in e-commerce."*
+
+**Why it's a moat:** Legal teams and CFOs don't understand WCAG scores. They understand "37% chance of a demand letter this year." This is the first thing a GC (General Counsel) will pay for without a procurement process. First revenue conversation closer.
+
+**Pricing signal:** This alone justifies $500–$2,000/month for a mid-market company vs. a $30,000+ lawsuit.
+
+---
+
+### 🥈 #2 — Accessibility Regression Guard for CI/CD (The "Shift-Left" Layer)
+
+**What nobody has: A scan that BLOCKS deploys, not just reports after**
+
+Developer-focused tools emphasize CI/CD integration while business-user tools prioritize dashboards and reporting — but no tool does both well simultaneously. Deque's axe integrates into CI but has no legal risk layer. RegLayer has the legal intelligence. Combining both is untapped.
+
+**What you build:** `npx reglayer check --url https://staging.myapp.com --threshold 700 --block-on-critical` — a CLI that returns exit code 1 when critical violations are introduced in a PR. Plus a GitHub App that posts a PR comment: *"3 new accessibility violations introduced. 2 are high litigation-risk. Deploy blocked."*
+
+**Why it's rare:** The gap between "compliance" and "accessibility" remains significant. Automated tools excel at catching technical WCAG violations, but real accessibility requires validation by real people with disabilities. Nobody pairs CI blocking with litigation-risk weighting. That combination is new.
+
+**First revenue:** Every engineering team that has been sued or nearly sued will pay for this immediately. It sells itself in one sentence.
+
+---
+
+### 🥉 #3 — Compliance Proof Vault (Audit-Trail-as-a-Feature)
+
+**What nobody has: Legally defensible, timestamped, tamper-proof compliance evidence**
+
+None of the four major overlay providers give you the governance documentation — audit reports, remediation logs, monitoring records — that ADA Title II enforcement requires.
+
+**What you build:** Every scan RegLayer runs gets cryptographically timestamped (hash of results + timestamp stored immutably). When a demand letter arrives, the client clicks "Export Compliance Vault" and gets a PDF with: every scan ever run, every violation found, every fix verified, every status change with who made it and when — a complete chain of custody. This is the difference between "we tried to fix it" and "here is proof we fixed it, verified on this date."
+
+**Why it's rare:** This is a legal product disguised as a tech feature. No scanner offers immutable audit trails. Law firms would *refer* clients to RegLayer just for this. It becomes a litigation defense tool — a completely different buyer and pricing tier.
+
+**Pricing signal:** Legal/compliance buyers pay $5,000–$20,000/year for documentation tools. This reframes RegLayer from "dev tool" to "legal infrastructure."
+
+---
+
+### #4 — The 30% Gap Filler: AI-Assisted Manual Testing Network
+
+**What nobody has: Crowdsourced real-user testing at scale with actual disabled users**
+
+Automated testing tools identify approximately 25–30% of accessibility issues. The remaining 70–75% of barriers, including complex interactions and assistive technology compatibility, require human expertise.
+
+Platforms like Fable demonstrate that real accessibility requires validation by real people with disabilities. But Fable is expensive, slow, and manual. Nobody has combined automated scanning (your existing engine) with an on-demand network of paid disabled testers who validate the 70% automated tools miss.
+
+**What you build:** A marketplace layer — users with disabilities sign up as "RegLayer Validators." Enterprise clients request human validation of specific user journeys (checkout, login, form submission) and get back session recordings + structured findings within 48 hours. You take 30% of the validator fee. Validators earn real income. Clients get legally-defensible human-validated results.
+
+**Why it's globally impactful:** This creates economic opportunity for people with disabilities worldwide while solving the biggest technical gap in the market. This is the feature that gets you a TechCrunch article.
+
+---
+
+### #5 — Regulation Deadline Intelligence + Auto-Mapped Obligations
+
+**What nobody has: "Your site + your industry + your markets = here are YOUR specific legal deadlines"**
+
+US companies doing business in Europe now face dual US/EU exposure. India's SEBI mandates financial entities must ensure accessible digital services. The LA 2028 Olympic Accessibility Commitment embeds accessibility in digital platforms.
+
+Every company is confused about which regulations apply to them. Nobody has built a tool that asks: *"Where are your users? What industry are you in? Do you take federal contracts?"* and outputs: *"You have 3 applicable regulations, 2 deadlines in the next 90 days, and here are the specific WCAG criteria each one requires."*
+
+**What you build:** A regulation obligation matrix — user inputs their industry, geography, and business type. RegLayer outputs their specific regulatory exposure, mapped to scan results, with a countdown to each deadline. Auto-updates when new laws pass (your existing Regulatory Intelligence Feed).
+
+**Why it's a moat:** This is the feature that makes RegLayer the first call when a company's legal team asks *"are we compliant?"* — not a developer tool, but a business intelligence tool.
+
+---
+
+### #6 — White-Label Platform for Accessibility Agencies
+
+**What nobody has: A fully rebrandable compliance platform agencies resell**
+
+A11yProof gives agencies source-level WCAG scanning, remediation reports, and multi-client management starting at $29/month. But it's a basic tool. No platform lets an accessibility consultancy put their own brand on a full enterprise scanning + reporting + violation tracking + trend dashboard and resell it to their clients at a markup.
+
+**What you build:** A white-label tier — agency gets their own branded domain (compliance.agencyname.com), their logo in all exports, client management dashboard, and a revenue-share or flat licensing model. They resell RegLayer at $300–$800/month per client and keep the margin.
+
+**Why it generates first revenue fastest:** Agencies already have the clients and the trust. You don't need to acquire customers — the agency does it for you. One agency partnership = 20–50 clients overnight. This is how you get from $0 to $10K MRR fastest.
+
+---
+
+## Priority Order for First Revenue
+
+Rank
+Feature
+Time to Build
+First Revenue Speed
+Impact
+
+1
+**White-Label for Agencies**
+2–3 weeks
+**Fastest** — agencies already have clients
+$10K MRR
+
+2
+**Lawsuit Risk Score**
+3–4 weeks
+Fast — legal fear drives immediate purchase
+$2K–$5K/client
+
+3
+**Compliance Proof Vault**
+2 weeks
+Medium — legal buyer, slower cycle
+High ACV
+
+4
+**CI/CD Regression Guard**
+2–3 weeks
+Medium — dev teams, longer eval
+Sticky/high retention
+
+5
+**Regulation Deadline Intel**
+3–4 weeks
+Medium — strong differentiator
+Enterprise moat
+
+6
+**Human Testing Network**
+8–12 weeks
+Slowest — marketplace cold start
+Highest global impact
+
+---
+
+## The Honest Recommendation
+
+**Build #6 (White-Label) first — it gets you paying clients in weeks, not months.** One email to 10 accessibility consulting firms with a demo link is your go-to-market. No sales team, no marketing budget needed.
+
+**Build #2 (Lawsuit Risk Score) second** — because once agencies are reselling RegLayer, the Lawsuit Risk Score is the single feature that upgrades every client from a $99/month plan to a $500/month plan. It's the upsell that pays for itself.
+
+Those two features together, built in the right order, give you **first revenue within 30–45 days** and a defensible enterprise story that no competitor can copy quickly — because it requires real lawsuit data, real regulatory intelligence, and a real scanning engine. You already have all three. You just need to connect them into a story that a CFO or GC understands in 60 seconds.
+
+Want the GitHub Copilot prompt for any of these?
+
+
+below prompt 
+
+Perfect. I have everything I need. Here are all 6 prompts, sequenced as a professional engineering roadmap — each one builds on the previous without breaking anything already built.
+
+---
+
+# PROMPT 1 — White-Label Agency Platform
+
+```
+You are a principal engineer + product team with 30+ years of collective 
+experience building multi-tenant enterprise SaaS platforms (think Stripe, 
+Twilio, Intercom — platforms that other businesses build on top of). You 
+write production-grade code that a team of 20 engineers could inherit 
+without a single question.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## PLATFORM CONTEXT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+RegLayer is a near-complete enterprise accessibility compliance SaaS:
+- Next.js 16 App Router, TypeScript strict mode, Vercel deployment
+- Vercel Postgres (Neon) via Prisma ORM
+- NextAuth.js for authentication (inspect existing auth config and 
+  follow its exact patterns — do not assume session shape)
+- Nodemailer/SMTP for transactional email
+- Tailwind CSS + shadcn/ui component system
+- 30+ API route handlers, Playwright scanning engine, axe-core injection
+- Existing models: User, Workspace, Site, Scan, Violation (with 
+  ViolationStatus enum just added)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## FEATURE: WHITE-LABEL AGENCY PLATFORM
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Accessibility consulting agencies need to resell RegLayer under their 
+own brand to their clients. One agency partnership = 20-50 clients 
+instantly. This is the fastest path to first revenue.
+
+The architecture must support complete tenant isolation — Agency A's 
+clients must never see Agency B's data, branding, or existence.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## SCHEMA EXTENSIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Add these models WITHOUT altering any existing model structure:
+
+```prisma
+model Agency {
+  id                String    @id @default(cuid())
+  name              String
+  slug              String    @unique  // used in subdomain: slug.reglayer.app
+  customDomain      String?   @unique  // e.g. compliance.agencyname.com
+  
+  // Branding
+  logoUrl           String?
+  primaryColor      String    @default("#6366f1")  // hex
+  accentColor       String    @default("#4f46e5")
+  faviconUrl        String?
+  brandName         String    // shown in UI instead of "RegLayer"
+  supportEmail      String?
+  
+  // Business
+  plan              AgencyPlan @default(STARTER)
+  revenueSharePct   Int        @default(0)  // % RegLayer takes
+  maxClients        Int        @default(10)
+  isActive          Boolean    @default(true)
+  
+  // Relations
+  ownerId           String     // User who owns this agency account
+  owner             User       @relation(fields: [ownerId], references: [id])
+  clients           AgencyClient[]
+  apiKeys           AgencyApiKey[]
+  
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+}
+
+enum AgencyPlan {
+  STARTER      // up to 10 clients, RegLayer branding optional
+  PROFESSIONAL // up to 50 clients, full white-label
+  ENTERPRISE   // unlimited clients, custom domain, revenue share
+}
+
+model AgencyClient {
+  id            String    @id @default(cuid())
+  agencyId      String
+  workspaceId   String    @unique  // maps to existing Workspace
+  agency        Agency    @relation(fields: [agencyId], references: [id])
+  workspace     Workspace @relation(fields: [workspaceId], references: [id])
+  clientName    String
+  contactEmail  String
+  isActive      Boolean   @default(true)
+  addedAt       DateTime  @default(now())
+}
+
+model AgencyApiKey {
+  id          String   @id @default(cuid())
+  agencyId    String
+  agency      Agency   @relation(fields: [agencyId], references: [id])
+  keyHash     String   @unique  // SHA-256 hash — never store plaintext
+  keyPrefix   String   // first 8 chars for display: "rl_ag_xxxx..."
+  label       String
+  lastUsedAt  DateTime?
+  expiresAt   DateTime?
+  createdAt   DateTime @default(now())
+}
+```
+
+Generate the Prisma migration. Do not alter User, Workspace, Scan, 
+Site, or Violation models.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## TENANT RESOLUTION MIDDLEWARE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+File: /middleware.ts (extend existing, do not replace)
+
+On every request, resolve the current tenant:
+
+1. Check request hostname:
+   - If host = slug.reglayer.app → look up Agency by slug
+   - If host = customDomain → look up Agency by customDomain
+   - If host = reglayer.app (or localhost) → no agency, native RegLayer UI
+2. Inject agency context into request headers:
+   x-agency-id, x-agency-slug, x-brand-name, x-primary-color
+3. If agency not found or isActive=false → return 404 page
+4. Never expose agency internals to other tenants
+
+File: /lib/tenant/resolver.ts
+```typescript
+/**
+ * Resolves agency context from hostname.
+ * Cached with Next.js unstable_cache — invalidate on agency update.
+ * @returns AgencyContext | null
+ */
+export async function resolveAgency(
+  hostname: string
+): Promise<AgencyContext | null>
+
+export type AgencyContext = {
+  id: string
+  slug: string
+  brandName: string
+  primaryColor: string
+  accentColor: string
+  logoUrl: string | null
+  faviconUrl: string | null
+  supportEmail: string | null
+  plan: AgencyPlan
+  maxClients: number
+}
+```
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## DYNAMIC BRANDING SYSTEM
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+File: /app/layout.tsx — extend root layout to:
+- Read agency context from request headers (injected by middleware)
+- Inject CSS custom properties into <html> style attribute:
+  --brand-primary, --brand-accent, --brand-name
+- Swap <title> and <meta name="application-name"> to brandName
+- Conditionally render agency logo instead of RegLayer logo
+- Swap favicon dynamically via <link rel="icon">
+
+File: /components/layout/BrandProvider.tsx
+- React context that provides AgencyContext to all client components
+- useBrand() hook: returns { brandName, primaryColor, logoUrl, ... }
+- All existing components that hardcode "RegLayer" must use 
+  useBrand().brandName instead — search codebase for "RegLayer" 
+  string literals and replace
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## AGENCY ADMIN DASHBOARD
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Route: /app/(agency-admin)/agency/page.tsx
+Only accessible to the Agency owner (role check middleware).
+
+Page sections:
+
+1. BRANDING PANEL
+   - Logo upload (to /api/agency/upload-logo → store URL)
+   - Brand name input
+   - Primary + accent color pickers (hex input + color swatch preview)
+   - Favicon upload
+   - Live preview: shows a mock nav bar + button using chosen colors
+   - Save button → PATCH /api/agency/[id]/branding
+
+2. CLIENT MANAGEMENT TABLE
+   Columns: Client Name, Contact Email, Sites, Last Scan, Status, Actions
+   Actions: View workspace, Deactivate, Remove
+   Add Client button → opens Dialog:
+   - Client name, contact email
+   - Creates new Workspace + AgencyClient record
+   - Sends welcome email to client via Nodemailer
+
+3. API KEYS PANEL
+   - List existing keys (prefix only, never full key)
+   - Generate new key → shows ONCE then never again (copy prompt)
+   - Revoke key with confirmation Dialog
+   - Key labels and expiry dates
+
+4. PLAN & BILLING PANEL
+   - Current plan badge
+   - Client usage: "8 / 10 clients used"
+   - Upgrade CTA (placeholder — Stripe not in scope)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## API ROUTES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+POST   /api/agency                    — Create agency (RegLayer superadmin only)
+GET    /api/agency/[id]               — Get agency details (owner only)
+PATCH  /api/agency/[id]/branding      — Update branding settings
+POST   /api/agency/[id]/clients       — Add client + create workspace
+DELETE /api/agency/[id]/clients/[cid] — Remove client
+POST   /api/agency/[id]/api-keys      — Generate new API key
+DELETE /api/agency/[id]/api-keys/[kid]— Revoke API key
+POST   /api/agency/[id]/upload-logo   — Upload logo (return URL)
+
+Security rules (non-negotiable):
+- Agency owner can only manage their own agency — verify ownership on 
+  every route, not just middleware
+- API key generation: generate cryptographically random 32-byte key, 
+  return plaintext ONCE, store only SHA-256 hash + first 8 chars
+- Never return full API keys in any GET response
+- Logo upload: validate MIME type (image/png, image/jpeg, image/svg+xml 
+  only), max 2MB, reject everything else with 400
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## WHITE-LABEL EMAIL SYSTEM
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+File: /lib/email/branded.ts
+
+Extend existing Nodemailer setup. When sending email in an agency 
+tenant context:
+- From name: "{Agency brandName} <noreply@reglayer.app>" 
+  (or agency supportEmail if set)
+- Email header logo: agency logoUrl if set, else RegLayer default
+- Primary button color: agency primaryColor
+- Footer: "{brandName} — Powered by RegLayer" (PROFESSIONAL+ only: 
+  remove "Powered by RegLayer")
+- Subject line prefix: "[{brandName}]" instead of "[RegLayer]"
+
+Implement for these existing email types:
+- Welcome email (new client added by agency)
+- Scan complete notification
+- Weekly digest (from Feature B)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## CLIENT-FACING EXPERIENCE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+When a client visits their agency's branded URL:
+- They see only their own workspace data — never other clients
+- Navigation shows agency brand name + logo, not RegLayer
+- "Help" links go to agency supportEmail if set
+- Sign-in page shows agency branding (logo, brand name, primary color)
+- All PDF exports show agency logo + brand name in header
+- No mention of "RegLayer" anywhere in the UI (PROFESSIONAL+ plan)
+  On STARTER plan: small "Powered by RegLayer" in footer only
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## NON-NEGOTIABLE STANDARDS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+- TypeScript strict — zero any, zero non-null assertions without comment
+- Every exported function has JSDoc with @param, @returns, @throws
+- Zod validation on every API route
+- Tenant isolation verified at the data layer — never trust headers alone
+  for authorization decisions, always re-verify agency ownership in DB
+- No N+1 queries — use Prisma include/select strategically
+- All agency branding cached (unstable_cache) and invalidated on update
+- ADA compliant UI — color pickers must show hex value, not color alone
+- Vercel-compatible — no long-running processes
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## DELIVERABLES — ONE AT A TIME, WAIT FOR CONFIRMATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[WL-1] Prisma schema additions + migration file
+[WL-2] /lib/tenant/resolver.ts — agency context resolution + caching
+[WL-3] /middleware.ts extension — tenant resolution on every request
+[WL-4] /components/layout/BrandProvider.tsx + useBrand() hook
+[WL-5] Root layout.tsx extension — dynamic branding injection
+[WL-6] All API routes (POST/GET/PATCH/DELETE) with Zod + auth guards
+[WL-7] /lib/email/branded.ts — white-label email system
+[WL-8] Agency admin dashboard page — full UI
+
+Start with [WL-1]. Nothing else yet.
+```
+
+---
+
+# PROMPT 2 — Lawsuit Risk Score Engine
+
+```
+You are a principal data engineer + product team with 30+ years of 
+experience building risk intelligence products (think Experian, 
+RiskIQ, SecurityScorecard — scores that turn raw data into 
+executive decisions). You write defensible, explainable scoring 
+models, not black boxes.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## PLATFORM CONTEXT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+RegLayer — same stack as before. Existing scan results contain 
+axe-core violation data with ruleId, impact, nodes, helpUrl.
+Violation model now has ViolationStatus enum.
+White-label Agency layer (from WL feature) may be present.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## FEATURE: LAWSUIT RISK SCORE ENGINE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Every accessibility tool gives a WCAG score. Nobody gives a legal 
+liability score. This feature answers the question a CFO or GC 
+actually asks: "What is our probability of receiving an ADA demand 
+letter this year — and what does it cost us if we do?"
+
+The score is based on publicly available ADA/EAA lawsuit data 
+(UsableNet, EcomBack, PACER patterns) cross-referenced with the 
+site's actual violation profile.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## RISK MODEL SPECIFICATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+### The 6 High-Litigation Violations
+Research shows 6 violation types appear in 96% of filed lawsuits.
+Build the risk model around these weights:
+
+```typescript
+export const LITIGATION_WEIGHTS: Record<string, LitigationWeight> = {
+  // Rule ID          Weight  Lawsuit frequency  Avg settlement
+  "image-alt":        { weight: 0.22, frequency: 0.67, avgSettlement: 28000 },
+  "label":            { weight: 0.19, frequency: 0.61, avgSettlement: 25000 },
+  "color-contrast":   { weight: 0.17, frequency: 0.54, avgSettlement: 22000 },
+  "link-name":        { weight: 0.15, frequency: 0.48, avgSettlement: 19000 },
+  "keyboard":         { weight: 0.14, frequency: 0.44, avgSettlement: 31000 },
+  "form-field-multiple-labels": 
+                      { weight: 0.13, frequency: 0.39, avgSettlement: 21000 },
+}
+// Source basis: UsableNet 2025 Mid-Year Report, EcomBack H1 2025 data,
+// publicly available PACER filing pattern analysis.
+// These weights must be configurable — store in DB, not hardcoded.
+```
+
+### Industry Risk Multipliers
+```typescript
+export const INDUSTRY_MULTIPLIERS: Record<string, number> = {
+  ecommerce:      1.8,   // highest lawsuit volume 2025
+  restaurant:     1.7,   // second highest
+  healthcare:     1.6,   // HHS deadline May 2026
+  financial:      1.5,   // SEBI + EAA dual exposure
+  education:      1.4,   // ADA Title II government deadline
+  government:     1.3,   // ADA Title II April 2027
+  hospitality:    1.2,
+  saas:           1.1,
+  other:          1.0,
+}
+```
+
+### Geography Risk Multipliers
+```typescript
+export const GEO_MULTIPLIERS: Record<string, number> = {
+  "NY": 1.9,   // 31.6% of all 2025 ADA lawsuits
+  "FL": 1.7,   // 24.2% of 2025 filings
+  "CA": 1.6,   // 18.9% of 2025 filings
+  "TX": 1.3,
+  "EU": 1.8,   // EAA enforcement active June 2025
+  "other": 1.0,
+}
+```
+
+### Score Formula
+```
+Base Risk Score (0-100) =
+  Σ (violation_count_for_rule × litigation_weight × impact_multiplier)
+  normalized to 0-100 scale
+
+Impact multipliers:
+  critical: 2.0 | serious: 1.5 | moderate: 1.0 | minor: 0.5
+
+Final Risk Score =
+  Base Risk Score
+  × industry_multiplier
+  × geo_multiplier
+  × recency_factor  // scans older than 90 days increase risk by 1.2×
+  capped at 100
+
+Risk Tiers:
+  0-24:  LOW      (green)  "Minimal exposure"
+  25-49: MODERATE (yellow) "Monitor closely"
+  50-74: HIGH     (orange) "Immediate action recommended"
+  75-100: CRITICAL (red)   "Severe legal exposure"
+
+Financial Exposure Estimate:
+  estimated_exposure = 
+    Σ (violations_matching_rule × avg_settlement_for_rule × 0.15)
+    // 0.15 = estimated probability of receiving demand letter
+    // given violation profile (based on 2025 filing rates)
+    capped at $500,000 (typical class action threshold)
+```
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## SCHEMA EXTENSIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+```prisma
+model LitigationRiskScore {
+  id                  String   @id @default(cuid())
+  siteId              String
+  scanId              String   @unique
+  site                Site     @relation(fields: [siteId], references: [id])
+  scan                Scan     @relation(fields: [scanId], references: [id])
+  
+  // Scores
+  baseScore           Float    // 0-100 before multipliers
+  finalScore          Float    // 0-100 after multipliers
+  tier                RiskTier
+  
+  // Context used in calculation
+  industry            String
+  primaryGeo          String
+  industryMultiplier  Float
+  geoMultiplier       Float
+  
+  // Financial
+  estimatedExposure   Float    // USD
+  
+  // Breakdown (JSON for flexibility)
+  violationBreakdown  Json     // per-rule contribution to score
+  topRiskFactors      Json     // top 3 factors driving the score
+  
+  calculatedAt        DateTime @default(now())
+}
+
+enum RiskTier {
+  LOW
+  MODERATE
+  HIGH
+  CRITICAL
+}
+
+model LitigationWeight {
+  id              String   @id @default(cuid())
+  ruleId          String   @unique
+  weight          Float
+  frequency       Float
+  avgSettlement   Float
+  updatedAt       DateTime @updatedAt
+  // Seeded from LITIGATION_WEIGHTS — updatable by superadmin
+}
+```
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## BUSINESS LOGIC
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+File: /lib/risk/legalRiskEngine.ts
+
+```typescript
+/**
+ * Calculates litigation risk score for a completed scan.
+ * Called automatically after every scan completes.
+ * @param scanId - completed scan ID
+ * @param context - industry and geography context
+ * @returns LitigationRiskScore persisted to DB
+ */
+export async function calculateLitigationRisk(
+  scanId: string,
+  context: RiskContext
+): Promise<LitigationRiskScore>
+
+/**
+ * Returns risk score trend over time for a site.
+ * @returns Array of { date, score, tier, estimatedExposure }
+ */
+export async function getRiskTrend(
+  siteId: string,
+  options?: { from?: Date; to?: Date }
+): Promise<RiskTrendPoint[]>
+
+/**
+ * Generates a plain-English risk narrative for executive reports.
+ * Uses string templates — no AI API call (deterministic + fast).
+ * Example: "Your site has 12 missing image labels. This violation 
+ * type appeared in 67% of ADA lawsuits filed in 2025. Combined with 
+ * your e-commerce industry profile and New York user base, your 
+ * estimated legal exposure is $42,000."
+ */
+export async function generateRiskNarrative(
+  score: LitigationRiskScore
+): Promise<string>
+
+type RiskContext = {
+  industry: keyof typeof INDUSTRY_MULTIPLIERS
+  primaryGeo: keyof typeof GEO_MULTIPLIERS
+}
+```
+
+File: /lib/risk/seed.ts
+- Seeds LitigationWeight table from LITIGATION_WEIGHTS constant
+- Idempotent — safe to run multiple times
+- Add to existing db:seed script
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## API ROUTES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+GET  /api/sites/[siteId]/risk
+     Returns latest LitigationRiskScore for site.
+     If no score exists, triggers calculation on latest completed scan.
+     Response includes: score, tier, estimatedExposure, 
+     topRiskFactors, narrative, violationBreakdown
+
+GET  /api/sites/[siteId]/risk/trend
+     Returns risk score over time (last 90 days default).
+
+POST /api/sites/[siteId]/risk/recalculate
+     Force recalculation using latest scan + provided context.
+     Body: { industry, primaryGeo }
+     Rate-limited: max 10 recalculations per site per day.
+
+GET  /api/workspace/risk-summary
+     Portfolio-level risk: all sites in workspace, ranked by 
+     risk score (worst first). Includes: total estimated exposure 
+     across all sites.
+
+Extend existing scan completion webhook/handler to automatically 
+call calculateLitigationRisk after every scan completes.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## UI COMPONENTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+File: /components/risk/RiskScoreBadge.tsx
+- Large circular gauge (hand-rolled SVG arc, match existing chart style)
+- Score number center, tier label below
+- Color: green/yellow/orange/red per tier
+- Animated fill on mount (CSS transition, respect 
+  prefers-reduced-motion)
+- aria-label: "Litigation risk score: {score} out of 100, {tier} risk"
+
+File: /components/risk/RiskBreakdownCard.tsx
+- shadcn Card
+- Top 3 risk factors listed with icons
+- Per-violation-rule contribution as a horizontal bar
+- Plain-English narrative paragraph
+- "What this means" expandable section with financial exposure
+
+File: /components/risk/RiskContextForm.tsx
+- Industry selector (shadcn Select, all industry options)
+- Geography selector (US states + EU option)
+- "Recalculate Risk" button → POST /api/sites/[siteId]/risk/recalculate
+- Shows last calculated timestamp
+
+File: /app/(dashboard)/sites/[siteId]/risk/page.tsx
+- Full risk page: RiskScoreBadge + RiskBreakdownCard + 
+  RiskContextForm + risk trend chart (hand-rolled SVG line chart, 
+  same pattern as trend dashboard)
+- "Export Risk Report" button (PDF — reuse existing PDF export pattern)
+- Link from site detail page: "View Legal Risk →"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## LEGAL DISCLAIMER (non-negotiable)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Every risk score display must include this disclaimer, 
+non-dismissable, below the score:
+
+"This score is an informational estimate based on publicly available 
+lawsuit filing patterns and is not legal advice. Consult qualified 
+legal counsel for compliance decisions."
+
+Implement as a /components/risk/RiskDisclaimer.tsx component.
+It must render in PDF exports too.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## DELIVERABLES — ONE AT A TIME
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[RS-1] Prisma schema + migration (LitigationRiskScore, 
+       LitigationWeight, RiskTier enum)
+[RS-2] /lib/risk/legalRiskEngine.ts — full scoring engine
+[RS-3] /lib/risk/seed.ts — weight seeder
+[RS-4] All API routes with Zod validation + auth guards
+[RS-5] Scan completion handler extension (auto-trigger after scan)
+[RS-6] RiskScoreBadge.tsx — SVG gauge component
+[RS-7] RiskBreakdownCard.tsx + RiskContextForm.tsx
+[RS-8] /app/(dashboard)/sites/[siteId]/risk/page.tsx — full page
+
+Start with [RS-1]. Nothing else yet.
+```
+
+---
+
+# PROMPT 3 — Compliance Proof Vault
+
+```
+You are a principal security engineer + legal-tech product team with 
+30+ years of experience building audit infrastructure for regulated 
+industries (SOC 2, HIPAA, PCI-DSS compliance tooling). You build 
+systems that hold up in court, not just on dashboards.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## PLATFORM CONTEXT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+RegLayer — same stack. Vercel Postgres (Neon) + Prisma, Next.js 16 
+App Router, NextAuth.js, Nodemailer/SMTP, Tailwind + shadcn/ui.
+Existing models: User, Workspace, Site, Scan, Violation 
+(with ViolationStatus + status history). White-label Agency layer 
+and Risk Score engine may be present.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## FEATURE: COMPLIANCE PROOF VAULT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+When a demand letter arrives, a company needs to prove they acted in 
+good faith — that they scanned, found violations, tracked fixes, and 
+verified them. No accessibility tool provides this today.
+
+The Vault is a cryptographically timestamped, tamper-evident audit 
+trail of every compliance action taken. It is the difference between 
+"we tried to fix it" and "here is court-admissible proof we fixed it, 
+verified on this exact date and time."
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## SCHEMA EXTENSIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+```prisma
+model ComplianceEvent {
+  id            String            @id @default(cuid())
+  workspaceId   String
+  siteId        String?
+  scanId        String?
+  violationId   String?
+  
+  eventType     ComplianceEventType
+  eventData     Json              // full snapshot of state at time of event
+  
+  // Cryptographic proof
+  contentHash   String            // SHA-256 of (eventType + eventData + 
+                                  // timestamp + previousHash)
+  previousHash  String?           // hash of previous event (chain)
+  isVerified    Boolean  @default(false)
+  
+  // Actor
+  actorId       String?           // userId or "system" for automated events
+  actorEmail    String?
+  actorIp       String?           // for audit purposes
+  
+  workspace     Workspace @relation(fields: [workspaceId], references: [id])
+  createdAt     DateTime  @default(now())
+  
+  @@index([workspaceId, createdAt])
+  @@index([siteId, createdAt])
+}
+
+enum ComplianceEventType {
+  SCAN_INITIATED
+  SCAN_COMPLETED
+  SCAN_FAILED
+  VIOLATION_DETECTED
+  VIOLATION_STATUS_CHANGED
+  VIOLATION_VERIFIED_FIXED
+  VIOLATION_DISMISSED          // WONT_FIX or ACCEPTABLE_RISK
+  REPORT_GENERATED
+  VAULT_EXPORTED               // when someone downloads the vault
+  AUTH_SCAN_USED               // authenticated scan evidence
+}
+
+model VaultExport {
+  id            String   @id @default(cuid())
+  workspaceId   String
+  siteId        String?
+  requestedById String
+  fromDate      DateTime
+  toDate        DateTime
+  eventCount    Int
+  exportHash    String   // SHA-256 of entire export payload
+  pdfUrl        String?  // stored export URL
+  createdAt     DateTime @default(now())
+  workspace     Workspace @relation(fields: [workspaceId], references: [id])
+}
+```
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## CRYPTOGRAPHIC INTEGRITY SYSTEM
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+File: /lib/vault/integrity.ts
+
+```typescript
+/**
+ * Creates a compliance event with cryptographic chaining.
+ * Each event's hash includes the previous event's hash,
+ * creating a tamper-evident chain (like a blockchain, but simpler).
+ * @throws if previous hash cannot be retrieved
+ */
+export async function recordComplianceEvent(
+  event: CreateComplianceEventInput
+): Promise<ComplianceEvent>
+
+/**
+ * Verifies the integrity of the entire event chain for a workspace.
+ * Recalculates every hash and compares to stored values.
+ * @returns { valid: boolean, brokenAt?: string (eventId), 
+ *             checkedCount: number }
+ */
+export async function verifyVaultIntegrity(
+  workspaceId: string
+): Promise<IntegrityReport>
+
+/**
+ * Generates a SHA-256 hash of compliance event content.
+ * Deterministic — same input always produces same hash.
+ */
+export function hashEvent(
+  eventType: string,
+  eventData: object,
+  timestamp: Date,
+  previousHash: string | null
+): string
+```
+
+Hash input format (deterministic serialization):
+```
+SHA256(
+  eventType + "|" + 
+  JSON.stringify(eventData, Object.keys(eventData).sort()) + "|" +
+  timestamp.toISOString() + "|" +
+  (previousHash ?? "GENESIS")
+)
+```
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## AUTO-RECORDING HOOKS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+File: /lib/vault/recorder.ts
+
+Wrap existing operations to auto-record events. 
+DO NOT modify the existing operations — call recordComplianceEvent 
+AFTER the operation succeeds:
+
+- After scan completes → SCAN_COMPLETED event with: 
+  { url, score, violationCount, duration, scanId }
+- After violation status changes → VIOLATION_STATUS_CHANGED with:
+  { violationId, ruleId, oldStatus, newStatus, note, actorEmail }
+- After violation verified → VIOLATION_VERIFIED_FIXED with:
+  { violationId, ruleId, verifiedAt, scanId }
+- After report PDF generated → REPORT_GENERATED with:
+  { reportType, siteId, generatedBy }
+
+All recording is fire-and-forget (do not await in critical path) 
+but errors must be logged, never swallowed silently.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## VAULT EXPORT ENGINE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+File: /lib/vault/exporter.ts
+
+```typescript
+/**
+ * Generates a complete compliance vault export as PDF.
+ * Uses existing PDF generation pattern in the codebase.
+ * 
+ * PDF sections:
+ * 1. Cover page: Company name, site URL, date range, export hash
+ * 2. Executive Summary: total scans, violations found/fixed/verified,
+ *    compliance trajectory (improving/declining/stable)
+ * 3. Chain of Custody: every ComplianceEvent in chronological order,
+ *    each with: timestamp, event type, actor, content hash
+ * 4. Scan History: each scan with score, violation count, delta
+ * 5. Violation Resolution Log: each violation with full status history
+ * 6. Integrity Certificate: verifyVaultIntegrity() result, export hash,
+ *    statement: "This document was generated by RegLayer on [date]. 
+ *    The cryptographic hashes above verify that no compliance records 
+ *    have been altered since their original creation."
+ * 
+ * @returns Buffer (PDF bytes) + exportHash
+ */
+export async function generateVaultExport(
+  workspaceId: string,
+  siteId: string | null,
+  dateRange: { from: Date; to: Date },
+  requestedBy: string
+): Promise<{ pdf: Buffer; exportHash: string }>
+```
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## API ROUTES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+GET  /api/vault/events
+     Query: workspaceId, siteId?, eventType?, from?, to?, page, limit
+     Returns paginated ComplianceEvent list (no hash exposure to client)
+     Auth: workspace members only
+
+GET  /api/vault/integrity
+     Runs verifyVaultIntegrity() for workspace
+     Returns: { valid, checkedCount, brokenAt? }
+     Rate-limited: max 5 per hour per workspace
+
+POST /api/vault/export
+     Body: { siteId?, from, to }
+     Generates PDF vault export, records VAULT_EXPORTED event,
+     returns download URL or streams PDF directly
+     Records the export itself as a ComplianceEvent
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## UI COMPONENTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+File: /app/(dashboard)/vault/page.tsx
+
+Page layout:
+1. INTEGRITY STATUS BANNER (top of page)
+   - Green: "✓ Vault integrity verified — all {n} records intact"
+   - Red: "⚠ Integrity issue detected — contact support"
+   - "Verify Now" button → GET /api/vault/integrity
+
+2. EXPORT PANEL (shadcn Card)
+   - Date range picker (from/to)
+   - Site selector (all sites or specific)
+   - "Export Compliance Vault" button → POST /api/vault/export
+   - Shows previous exports table with download links
+
+3. EVENT TIMELINE (infinite scroll or paginated)
+   - Each event: icon per type, timestamp, actor, description
+   - Color coded by type (scan=blue, fix=green, dismissed=gray)
+   - Expandable row: shows full eventData + content hash
+   - Filter bar: by event type, by date, by site
+
+File: /components/vault/EventRow.tsx
+File: /components/vault/IntegrityBanner.tsx
+File: /components/vault/ExportPanel.tsx
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## DELIVERABLES — ONE AT A TIME
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[PV-1] Prisma schema + migration
+[PV-2] /lib/vault/integrity.ts — hashing + chain verification
+[PV-3] /lib/vault/recorder.ts — auto-recording hooks
+[PV-4] /lib/vault/exporter.ts — PDF vault export
+[PV-5] All API routes with Zod + auth + rate limiting
+[PV-6] Vault page UI — full assembly
+[PV-7] Wire recorder into existing scan + violation handlers
+
+Start with [PV-1]. Nothing else yet.
+```
+
+---
+
+# PROMPT 4 — CI/CD Regression Guard
+
+```
+You are a principal DevEx engineer + open source maintainer with 30+ 
+years experience building developer tools that teams adopt because 
+they're genuinely useful, not mandated (think ESLint, Husky, 
+Lighthouse CI). You know that DX is the product.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## PLATFORM CONTEXT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+RegLayer — same stack. The existing scan API at 
+POST /api/scan accepts { url, options } and returns scan results.
+The Risk Score engine is available at GET /api/sites/[siteId]/risk.
+AgencyApiKey model exists with SHA-256 hashed keys.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## FEATURE: CI/CD REGRESSION GUARD
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Engineering teams adopt RegLayer permanently when it lives in 
+their CI pipeline — not as a dashboard they visit occasionally 
+but as a guardrail that blocks regressions before they ship.
+
+This feature has two parts:
+A) A CLI npm package: reglayer-cli
+B) A GitHub App integration (PR comments + Checks API)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## PART A: CLI PACKAGE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Package: packages/reglayer-cli/
+Structure:
+  packages/reglayer-cli/
+    src/
+      commands/check.ts
+      commands/scan.ts
+      commands/compare.ts
+      lib/api.ts
+      lib/formatter.ts
+      lib/config.ts
+    bin/reglayer.js
+    package.json
+    tsconfig.json
+    README.md
+
+### CLI Commands
+
+**reglayer check**
+```
+Usage: reglayer check [options]
+Options:
+  --url <url>              URL to scan (required)
+  --threshold <score>      Minimum AIS score (default: 700, 0-1000)
+  --block-on-critical      Exit 1 if ANY critical violations found
+  --block-on-new           Exit 1 if violations regressed vs baseline
+  --baseline <scanId>      Compare against specific previous scan
+  --api-key <key>          RegLayer API key (or REGLAYER_API_KEY env)
+  --api-url <url>          RegLayer instance URL (default: reglayer.app)
+  --format <fmt>           Output format: text|json|github (default: text)
+  --timeout <ms>           Scan timeout (default: 30000)
+  --output <file>          Write JSON results to file
+```
+
+Exit codes:
+  0 = passed all thresholds
+  1 = score below threshold OR critical violations found OR regression
+  2 = scan failed or API error
+
+**reglayer scan**
+  Runs a scan and outputs full results. No threshold blocking.
+  Useful for generating reports in CI without failing the build.
+
+**reglayer compare**
+  Compares two scan IDs and outputs what changed.
+  Used in release notes automation.
+
+### CLI Output (text format)
+```
+RegLayer Accessibility Check
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+URL:     https://staging.myapp.com
+Score:   743 / 1000  ✓ (threshold: 700)
+Risk:    MODERATE 
+
+Violations: 8 total
+  ● 2 critical   ← if --block-on-critical: BLOCKED
+  ● 3 serious
+  ● 2 moderate
+  ● 1 minor
+
+vs Baseline (scan_abc123):
+  ↑ Score improved +12 points
+  ✓ No new violations introduced
+  ✓ 3 violations resolved
+
+Result: PASSED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+### GitHub Actions format output
+When --format github, emit GitHub Actions annotations:
+```
+::error file=src/components/Header.tsx::Missing alt text on image (image-alt) — HIGH litigation risk
+::warning::3 serious violations detected — consider fixing before merge
+```
+
+### reglayer.config.ts (project config file)
+```typescript
+// reglayer.config.ts
+export default {
+  apiKey: process.env.REGLAYER_API_KEY,
+  apiUrl: "https://reglayer.app",
+  defaults: {
+    threshold: 700,
+    blockOnCritical: true,
+    blockOnNew: false,
+    timeout: 30000,
+  },
+  urls: [
+    { url: "https://staging.myapp.com", threshold: 750 },
+    { url: "https://staging.myapp.com/checkout", 
+      threshold: 800, blockOnCritical: true },
+  ]
+}
+```
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## PART B: GITHUB APP INTEGRATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+### Schema Extension
+```prisma
+model GitHubIntegration {
+  id                String   @id @default(cuid())
+  workspaceId       String   @unique
+  installationId    String   @unique  // GitHub App installation ID
+  accountLogin      String            // GitHub org or user
+  accessToken       String            // encrypted
+  defaultThreshold  Int      @default(700)
+  blockOnCritical   Boolean  @default(true)
+  isActive          Boolean  @default(true)
+  workspace         Workspace @relation(fields:[workspaceId],references:[id])
+  createdAt         DateTime @default(now())
+}
+```
+
+### GitHub App Webhook Handler
+File: /app/api/integrations/github/webhook/route.ts
+
+Handle these GitHub events:
+- pull_request (opened, synchronize, reopened):
+  1. Extract PR head SHA and repository
+  2. Find associated RegLayer workspace by GitHub installation
+  3. Post "pending" GitHub Check: "RegLayer Accessibility"
+  4. Queue scan of the preview/staging URL if configured
+  5. On scan complete: update Check with pass/fail + summary
+
+- check_run (rerequested):
+  Re-run the scan
+
+### PR Comment Format
+Posted automatically on every PR that has accessibility changes:
+
+```markdown
+## ♿ RegLayer Accessibility Report
+
+| | This PR | Baseline | Change |
+|---|---|---|---|
+| AIS Score | 743 | 731 | ↑ +12 ✓ |
+| Total Violations | 8 | 11 | ↓ -3 ✓ |
+| Critical | 2 | 2 | → 0 |
+| Litigation Risk | MODERATE | MODERATE | → |
+
+### New violations introduced (0) ✓
+*No new violations in this PR*
+
+### Resolved violations (3) ✓
+- ✅ Missing alt text on hero image (image-alt)
+- ✅ Form label missing on email field (label)
+- ✅ Insufficient color contrast on CTA button (color-contrast)
+
+---
+*[View full report →](https://reglayer.app/scans/scan_xyz) · 
+[Configure thresholds →](https://reglayer.app/settings/ci)*
+```
+
+### API Routes for GitHub Integration
+POST /api/integrations/github/install     — OAuth callback
+POST /api/integrations/github/webhook     — GitHub events (verify 
+                                            webhook signature)
+GET  /api/integrations/github/settings    — Get integration config
+PATCH /api/integrations/github/settings   — Update thresholds
+
+### Existing Scan API Extension
+Add to POST /api/scan:
+```typescript
+// Optional CI metadata (stored in scan metadata JSONB, no schema change)
+ciContext?: {
+  provider: "github" | "gitlab" | "circleci" | "generic"
+  commitSha?: string
+  prNumber?: number
+  branch?: string
+  triggeredBy: "cli" | "github-app" | "api"
+}
+```
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## UI: CI/CD SETTINGS PAGE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+File: /app/(dashboard)/settings/ci/page.tsx
+
+Sections:
+1. CLI SETUP: code block with install + config instructions
+2. API KEY: generate/revoke key for CI use (reuse AgencyApiKey pattern)
+3. GITHUB APP: "Connect GitHub" button → OAuth flow
+4. THRESHOLD CONFIG: per-URL threshold settings
+5. RECENT CI SCANS: table of scans triggered from CI 
+   (filter: ciContext.triggeredBy = "cli" or "github-app")
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## DELIVERABLES — ONE AT A TIME
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[CI-1] packages/reglayer-cli/ scaffold + package.json + tsconfig
+[CI-2] /lib/api.ts + /lib/config.ts — CLI API client + config loader
+[CI-3] check command — full implementation with all flags
+[CI-4] scan + compare commands
+[CI-5] GitHub Actions annotation formatter + README
+[CI-6] Prisma schema + migration (GitHubIntegration)
+[CI-7] GitHub webhook handler + Check API integration
+[CI-8] PR comment generator
+[CI-9] CI settings UI page
+
+Start with [CI-1]. Nothing else yet.
+```
+
+---
+
+# PROMPT 5 — Regulation Deadline Intelligence
+
+```
+You are a principal product engineer + regulatory intelligence 
+specialist with 30+ years experience building compliance platforms 
+for regulated industries (financial services, healthcare, government 
+contracting). You understand that compliance teams don't read 
+WCAG docs — they manage deadlines, obligations, and audit risk.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## PLATFORM CONTEXT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+RegLayer — same full stack. Risk Score engine, Vault, 
+white-label, and CI guard may be present.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## FEATURE: REGULATION DEADLINE INTELLIGENCE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+No tool tells a company: "Given YOUR industry, YOUR user geography, 
+and YOUR business type — here are YOUR specific legal obligations, 
+the exact WCAG criteria each requires, and the days remaining until 
+each deadline."
+
+This turns RegLayer from a developer tool into a 
+business intelligence platform.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## REGULATION DATA MODEL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+```prisma
+model Regulation {
+  id                String   @id @default(cuid())
+  code              String   @unique  // "EAA", "ADA-III", "ADA-II", 
+                                      // "508", "AODA", "HHS-504" etc.
+  name              String
+  fullName          String
+  jurisdiction      String   // "EU", "US-Federal", "US-NY", "CA-ON" etc.
+  
+  // Applicability
+  industries        String[] // which industries this applies to
+  entityTypes       String[] // "private", "government", "nonprofit", 
+                             // "healthcare", "education"
+  minRevenueUSD     Float?   // if revenue threshold applies
+  hasEUUsers        Boolean  @default(false)  // EAA trigger
+  
+  // Standard required
+  wcagVersion       String   // "2.1", "2.2"
+  wcagLevel         String   // "A", "AA", "AAA"
+  additionalStandard String? // "EN 301 549", "Section 508"
+  
+  // Deadlines
+  effectiveDate     DateTime
+  enforcementDate   DateTime?
+  deadlines         RegulationDeadline[]
+  
+  // Penalty info
+  maxFineUSD        Float?
+  maxFineEUR        Float?
+  penaltyNotes      String?
+  
+  // Status
+  status            RegulationStatus  @default(ACTIVE)
+  lastUpdated       DateTime          @updatedAt
+  sourceUrl         String            // official government source
+  
+  obligations       WorkspaceObligation[]
+}
+
+model RegulationDeadline {
+  id              String     @id @default(cuid())
+  regulationId    String
+  regulation      Regulation @relation(fields:[regulationId],references:[id])
+  label           String     // "Initial compliance", "Full compliance"
+  deadline        DateTime
+  entityScope     String?    // "large entities", "all entities"
+  notes           String?
+}
+
+model WorkspaceObligation {
+  id              String      @id @default(cuid())
+  workspaceId     String
+  regulationId    String
+  workspace       Workspace   @relation(fields:[workspaceId],references:[id])
+  regulation      Regulation  @relation(fields:[regulationId],references:[id])
+  
+  status          ObligationStatus @default(NOT_ASSESSED)
+  complianceScore Float?      // from latest scan vs required WCAG level
+  gapCount        Int?        // violations failing required criteria
+  lastAssessedAt  DateTime?
+  
+  @@unique([workspaceId, regulationId])
+}
+
+enum RegulationStatus {
+  ACTIVE
+  PENDING          // not yet in force
+  AMENDED
+  SUPERSEDED
+}
+
+enum ObligationStatus {
+  NOT_ASSESSED
+  COMPLIANT
+  PARTIAL
+  NON_COMPLIANT
+  EXEMPT
+}
+
+model WorkspaceProfile {
+  id              String    @id @default(cuid())
+  workspaceId     String    @unique
+  workspace       Workspace @relation(fields:[workspaceId],references:[id])
+  
+  industry        String
+  entityType      String
+  primaryMarkets  String[]  // ["US-NY", "EU", "CA-ON"]
+  hasEUUsers      Boolean   @default(false)
+  annualRevenueUSD Float?
+  employeeCount   Int?
+  
+  updatedAt       DateTime  @updatedAt
+}
+```
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## REGULATION SEED DATA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+File: /lib/regulations/seed.ts
+
+Seed these regulations with accurate data (source URLs required):
+
+1. EAA (European Accessibility Act) — EN 301 549 / WCAG 2.1 AA
+   Enforcement: June 28, 2025 (active now)
+   Applies to: e-commerce, banking, transport, digital services in EU
+
+2. ADA Title III — WCAG 2.1 AA
+   Applies to: US private businesses, ongoing litigation risk
+
+3. ADA Title II — WCAG 2.1 AA
+   Federal deadline: April 24, 2027 (extended)
+   Applies to: US state and local government
+
+4. HHS Section 504 — WCAG 2.1 AA
+   Deadline: May 11, 2026 (active)
+   Applies to: healthcare entities receiving federal funding
+
+5. Section 508 — WCAG 2.0 AA
+   Applies to: US federal contractors and agencies
+
+6. AODA (Ontario, Canada) — WCAG 2.0 AA
+   Deadline: January 1, 2021 (past, enforcement ongoing)
+   Applies to: Ontario public/private sectors
+
+7. EN 301 549 — EU standard underlying EAA
+
+Include source URLs for each from official government sources.
+Idempotent seed — safe to re-run.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## OBLIGATION ENGINE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+File: /lib/regulations/obligationEngine.ts
+
+```typescript
+/**
+ * Given a workspace profile, returns all applicable regulations
+ * with compliance status based on latest scan results.
+ */
+export async function resolveObligations(
+  workspaceId: string
+): Promise<ResolvedObligation[]>
+
+/**
+ * Calculates compliance against a specific regulation's 
+ * WCAG requirements using latest scan data.
+ * Maps regulation WCAG version + level to specific 
+ * success criteria and checks violations against them.
+ */
+export async function assessRegulationCompliance(
+  workspaceId: string,
+  regulationId: string
+): Promise<ObligationAssessment>
+
+/**
+ * Returns days until each deadline for applicable regulations.
+ * Negative = already passed (enforcement ongoing).
+ */
+export async function getDeadlineCountdowns(
+  workspaceId: string
+): Promise<DeadlineCountdown[]>
+
+type DeadlineCountdown = {
+  regulation: string
+  deadline: Date
+  daysRemaining: number
+  isOverdue: boolean
+  urgency: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW"
+  // CRITICAL = overdue or <30 days
+  // HIGH = 30-90 days
+  // MEDIUM = 90-180 days
+  // LOW = 180+ days
+}
+```
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## API ROUTES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+GET  /api/regulations
+     All regulations (filterable by jurisdiction, status)
+
+GET  /api/workspace/obligations
+     Workspace-specific obligations based on profile.
+     Triggers resolveObligations() and caches result.
+
+POST /api/workspace/profile
+     Set/update WorkspaceProfile (industry, markets, etc.)
+     Triggers obligation re-resolution on save.
+
+GET  /api/workspace/obligations/deadlines
+     Countdown timers for all applicable deadlines.
+
+POST /api/workspace/obligations/assess
+     Re-assess all obligations against latest scan data.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## UI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+File: /app/(dashboard)/compliance/page.tsx
+
+1. PROFILE SETUP WIZARD (shown if WorkspaceProfile not set)
+   Step 1: Industry selector
+   Step 2: Entity type (private/government/nonprofit/healthcare)
+   Step 3: Where are your users? (checkboxes: US states, EU, Canada)
+   Step 4: Revenue range (optional — for threshold regulations)
+   On complete: POST /api/workspace/profile + show obligations
+
+2. OBLIGATION MATRIX (main view)
+   Table columns: Regulation | Jurisdiction | Required Standard | 
+   Your Status | Gap Count | Next Deadline | Days Remaining
+   
+   Status badges:
+   - COMPLIANT → green "✓ Compliant"
+   - PARTIAL → yellow "{n} gaps remaining"
+   - NON_COMPLIANT → red "Action required"
+   - NOT_ASSESSED → gray "Run a scan"
+   
+   Row expand: shows which specific WCAG criteria are failing 
+   for this regulation
+
+3. DEADLINE COUNTDOWN CARDS
+   For each applicable deadline within 180 days:
+   shadcn Card with: regulation name, deadline date, 
+   large countdown (Xd remaining), urgency color, 
+   "View Requirements →" link
+
+4. REGULATION DETAIL DRAWER (shadcn Sheet)
+   Opens on row click. Shows:
+   - Full regulation name + jurisdiction
+   - Official source link
+   - Exact WCAG criteria required
+   - Current compliance status vs required criteria
+   - Penalty exposure
+   - "Export Compliance Evidence" button 
+     (links to Vault export for this regulation)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## DELIVERABLES — ONE AT A TIME
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[RD-1] Prisma schema + migration (all 6 new models)
+[RD-2] /lib/regulations/seed.ts — all 7 regulations with real data
+[RD-3] /lib/regulations/obligationEngine.ts — full engine
+[RD-4] All API routes with Zod + auth
+[RD-5] Profile setup wizard UI
+[RD-6] Obligation matrix + deadline cards UI
+[RD-7] Regulation detail drawer
+[RD-8] Wire obligation assessment into scan completion handler
+
+Start with [RD-1]. Nothing else yet.
+```
+
+---
+
+# PROMPT 6 — Human Testing Network
+
+```
+You are a principal platform engineer + marketplace architect with 
+30+ years experience building two-sided marketplaces and 
+crowdsourced quality platforms (think Upwork, UserTesting, 
+Mechanical Turk — but with strict quality control and a social 
+mission). You know that marketplace cold-start is the hardest 
+problem and design accordingly.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## PLATFORM CONTEXT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+RegLayer — same full stack. All 5 previous features may be present.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## FEATURE: HUMAN TESTING NETWORK
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Automated tools catch 30% of accessibility issues. The other 70% 
+require real humans using assistive technology. This feature creates 
+a marketplace connecting companies that need human accessibility 
+validation with people who have disabilities and use assistive 
+tech daily.
+
+This is the most globally impactful feature — it creates economic 
+opportunity for disabled people while solving the biggest 
+technical gap in the accessibility compliance market.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## SCHEMA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+```prisma
+model Validator {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  user              User     @relation(fields:[userId],references:[id])
+  
+  // Profile
+  displayName       String
+  bio               String?
+  country           String
+  timezone          String
+  
+  // Disability + AT profile (self-reported, used for matching)
+  disabilityTypes   String[] // ["visual", "motor", "cognitive", "hearing"]
+  assistiveTech     String[] // ["NVDA", "JAWS", "VoiceOver", "Switch", 
+                             //  "Dragon", "ZoomText", "BRLTTY"]
+  operatingSystems  String[] // ["Windows", "macOS", "iOS", "Android"]
+  browsers          String[] // ["Chrome", "Firefox", "Safari", "Edge"]
+  
+  // Verification
+  isVerified        Boolean  @default(false) // manual review by RegLayer
+  verifiedAt        DateTime?
+  verificationNotes String?
+  
+  // Earnings
+  totalEarningsUSD  Float    @default(0)
+  pendingEarningsUSD Float   @default(0)
+  
+  // Stats
+  completedTests    Int      @default(0)
+  avgRating         Float?
+  isAvailable       Boolean  @default(true)
+  
+  testSessions      TestSession[]
+  createdAt         DateTime @default(now())
+}
+
+model TestRequest {
+  id                String          @id @default(cuid())
+  workspaceId       String
+  siteId            String
+  workspace         Workspace       @relation(fields:[workspaceId],references:[id])
+  site              Site            @relation(fields:[siteId],references:[id])
+  
+  // What to test
+  targetUrl         String
+  userJourneys      Json            // Array<{ name, steps: string[] }>
+  focusAreas        String[]        // ["checkout", "navigation", "forms"]
+  
+  // Requirements
+  requiredAT        String[]        // which assistive tech must be used
+  requiredDisabilityTypes String[]
+  validatorCount    Int  @default(3) // how many validators needed
+  
+  // Timing + payment
+  turnaroundHours   Int  @default(48)
+  budgetUSD         Float           // total budget (distributed to validators)
+  validatorPayUSD   Float           // per-validator payment
+  platformFeeUSD    Float           // RegLayer's cut (30%)
+  
+  status            TestRequestStatus @default(PENDING)
+  
+  sessions          TestSession[]
+  findings          TestFinding[]
+  
+  createdAt         DateTime @default(now())
+  completedAt       DateTime?
+}
+
+enum TestRequestStatus {
+  PENDING      // awaiting validator assignment
+  ACTIVE       // validators working
+  IN_REVIEW    // sessions submitted, under review
+  COMPLETED
+  CANCELLED
+}
+
+model TestSession {
+  id              String        @id @default(cuid())
+  requestId       String
+  validatorId     String
+  request         TestRequest   @relation(fields:[requestId],references:[id])
+  validator       Validator     @relation(fields:[validatorId],references:[id])
+  
+  status          SessionStatus @default(ASSIGNED)
+  
+  // Deliverables
+  screenRecordingUrl String?
+  findings        TestFinding[]
+  summaryNotes    String?
+  
+  startedAt       DateTime?
+  submittedAt     DateTime?
+  
+  // Quality
+  clientRating    Int?          // 1-5 from the paying client
+  
+  paymentStatus   PaymentStatus @default(PENDING)
+  paymentAmountUSD Float
+}
+
+enum SessionStatus {
+  ASSIGNED | STARTED | SUBMITTED | APPROVED | REJECTED
+}
+
+enum PaymentStatus {
+  PENDING | PROCESSING | PAID | FAILED
+}
+
+model TestFinding {
+  id            String      @id @default(cuid())
+  sessionId     String
+  requestId     String
+  session       TestSession @relation(fields:[sessionId],references:[id])
+  request       TestRequest @relation(fields:[requestId],references:[id])
+  
+  // The finding
+  title         String
+  description   String      // what barrier they encountered
+  severity      String      // "blocker" | "major" | "minor"
+  wcagCriterion String?     // mapped WCAG criterion if known
+  
+  // Evidence
+  screenshotUrl String?
+  videoTimestamp Int?        // seconds into recording
+  affectedElement String?   // CSS selector or description
+  
+  // AT context
+  assistiveTechUsed String
+  browserUsed       String
+  osUsed            String
+  
+  createdAt     DateTime @default(now())
+}
+```
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## BUSINESS LOGIC
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+File: /lib/testing-network/matching.ts
+```typescript
+/**
+ * Matches a TestRequest to available verified Validators.
+ * Matches on: requiredAT ∩ validator.assistiveTech,
+ *             requiredDisabilityTypes ∩ validator.disabilityTypes,
+ *             validator.isAvailable = true,
+ *             validator.isVerified = true
+ * Returns top N validators ranked by: 
+ *   completedTests DESC, avgRating DESC
+ */
+export async function matchValidators(
+  requestId: string
+): Promise<Validator[]>
+```
+
+File: /lib/testing-network/payments.ts
+```typescript
+/**
+ * Placeholder payment logic (no Stripe in scope — build the 
+ * structure so Stripe can be wired in later).
+ * Tracks: budgetUSD held on TestRequest creation,
+ *         validatorPayUSD released on session APPROVED,
+ *         platformFeeUSD retained by RegLayer.
+ * All amounts stored in DB — no actual money movement in scope.
+ */
+export async function holdBudget(requestId: string): Promise<void>
+export async function releasePayment(sessionId: string): Promise<void>
+export async function refundBudget(requestId: string): Promise<void>
+```
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## API ROUTES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+// CLIENT SIDE (companies buying tests)
+POST /api/test-requests              — Create test request
+GET  /api/test-requests              — List workspace's requests
+GET  /api/test-requests/[id]         — Request detail + sessions + findings
+POST /api/test-requests/[id]/cancel  — Cancel pending request
+
+// VALIDATOR SIDE
+POST /api/validators/apply           — Register as validator
+GET  /api/validators/sessions        — My assigned sessions
+POST /api/validators/sessions/[id]/start    — Begin session
+POST /api/validators/sessions/[id]/submit   — Submit findings
+POST /api/validators/sessions/[id]/findings — Add individual finding
+
+// ADMIN (RegLayer superadmin)
+POST /api/admin/validators/[id]/verify — Approve validator
+GET  /api/admin/test-requests           — All requests (superadmin view)
+POST /api/admin/test-requests/[id]/assign — Manually assign validators
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## UI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CLIENT SIDE:
+File: /app/(dashboard)/human-testing/page.tsx
+- "Request Human Test" button → multi-step wizard:
+  Step 1: URL + user journeys to test
+  Step 2: Assistive tech requirements
+  Step 3: Budget + turnaround (3 options: 24h/$X, 48h/$Y, 7d/$Z)
+  Step 4: Review + submit
+- Active requests list with status + session progress
+- Completed tests: finding cards with severity badges
+
+VALIDATOR SIDE:
+File: /app/(validator)/dashboard/page.tsx
+(separate layout from main dashboard — validator role check)
+- Available sessions list (what they can pick up)
+- My active sessions
+- Earnings summary: paid / pending / total
+- "Submit Finding" form per session
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## COLD START STRATEGY (build into the product)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The hardest marketplace problem is chicken-and-egg.
+Build these features to solve it:
+
+1. VALIDATOR WAITLIST — before launch, collect validator 
+   applications with profile. Page: /become-a-validator
+   Store in Validator table with isVerified=false.
+   Email when approved.
+
+2. INTERNAL TEST MODE — RegLayer can create test requests 
+   against its own platform using internal validators 
+   (seed with 5 real staff/contractors as initial validators).
+   This seeds the supply side before clients arrive.
+
+3. GUARANTEED TURNAROUND SLA — If RegLayer can't find 
+   validators within turnaround window, auto-refund.
+   Build refund trigger into matching logic.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## DELIVERABLES — ONE AT A TIME
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[HT-1] Prisma schema + migration (all models)
+[HT-2] /lib/testing-network/matching.ts — validator matching
+[HT-3] /lib/testing-network/payments.ts — payment scaffolding
+[HT-4] All client-side API routes
+[HT-5] All validator-side API routes
+[HT-6] Admin API routes
+[HT-7] Client dashboard UI — request wizard + active requests
+[HT-8] Validator dashboard UI
+[HT-9] /become-a-validator landing page (cold-start)
+
+Start with [HT-1]. Nothing else yet.
+```
+
+---
+
+## How to Use These 6 Prompts
+
+Paste them into Copilot **in this exact order** — each one references the previous feature's models and patterns. The sequencing is deliberate:
+
+| Order | Prompt | Why This Position |
+|-------|--------|-------------------|
+| 1 | White-Label | Revenue first — agencies bring clients |
+| 2 | Lawsuit Risk | Upsell layer on top of white-label clients |
+| 3 | Proof Vault | Legal buyers upgrade once risk score hooks them |
+| 4 | CI/CD Guard | Developer adoption — retention play |
+| 5 | Regulation Intel | Locks in compliance teams — makes you sticky |
+| 6 | Human Network | Biggest moat — build last when revenue funds it |
+
+Each prompt is self-contained — if Copilot drifts or gives a bad deliverable, you can re-paste just that section without losing context on the others.
