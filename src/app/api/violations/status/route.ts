@@ -1,112 +1,166 @@
 /**
  * RegLayer — Violation Status API
  *
- * WHY: Teams need to track violation remediation progress (open, in-progress, fixed, won't-fix).
- * WHAT: PATCH updates a violation's status. Used for workflow tracking.
- * HOW: Updates violation metadata in the database. Logs status change to audit trail.
+ * WHY: Teams need to track violation remediation progress like Sentry issues.
+ *      Without status tracking, violations are a permanent wall of red.
+ *
+ * WHAT:
+ *   PATCH /api/violations/status — Update a violation's workflow status
+ *   GET /api/violations/status?scanId=xxx — Get status summary counts
+ *
+ * HOW: Delegates to /lib/violations/status.ts business logic. Validates with Zod.
+ *      Records audit trail. Enforces workspace ownership.
  */
+
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
+import { ViolationStatus } from "@/generated/prisma/client";
 import { z } from "zod";
+import {
+  updateViolationStatus,
+  getStatusSummary,
+  userOwnsViolation,
+  StatusValidationError,
+} from "@/lib/violations/status";
 
-const updateSchema = z.object({
-  violationId: z.string(),
-  status: z.enum(["open", "in-progress", "fixed", "ignored", "wont-fix"]),
+const patchSchema = z.object({
+  violationId: z.string().min(1, "violationId is required"),
+  status: z.nativeEnum(ViolationStatus),
   note: z.string().max(500).optional(),
 });
 
 /**
- * GET /api/violations/status — Get remediation statuses
- * Query: ?scanId=xxx or ?ruleId=xxx
+ * GET /api/violations/status?scanId=xxx
+ * Returns status summary counts for a scan.
  */
 export async function GET(request: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-  }
-
-  const scanId = request.nextUrl.searchParams.get("scanId");
-  const ruleId = request.nextUrl.searchParams.get("ruleId");
-
-  const where: Record<string, unknown> = { action: "violation.status_updated" };
-  if (scanId) where.target = scanId;
-
-  const logs = await prisma.auditLog.findMany({
-    where,
-    orderBy: { createdAt: "desc" },
-  });
-
-  // Build a map of latest status per violation
-  const statusMap = new Map<string, { status: string; note?: string; updatedAt: Date }>();
-  for (const log of logs) {
-    const meta = log.metadata as Record<string, unknown>;
-    const vid = meta.violationId as string;
-    if (ruleId && meta.ruleId !== ruleId) continue;
-    if (!statusMap.has(vid)) {
-      statusMap.set(vid, {
-        status: meta.status as string,
-        note: meta.note as string | undefined,
-        updatedAt: log.createdAt,
-      });
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json(
+        { error: "AUTH_REQUIRED", message: "Authentication required" },
+        { status: 401 }
+      );
     }
-  }
 
-  return NextResponse.json({
-    statuses: Object.fromEntries(statusMap),
-  });
+    const scanId = request.nextUrl.searchParams.get("scanId");
+    if (!scanId) {
+      return NextResponse.json(
+        { error: "MISSING_PARAM", message: "scanId query parameter is required" },
+        { status: 400 }
+      );
+    }
+
+    const summary = await getStatusSummary(scanId);
+    return NextResponse.json({ scanId, summary });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Internal server error";
+    return NextResponse.json(
+      { error: "INTERNAL_ERROR", message },
+      { status: 500 }
+    );
+  }
 }
 
 /**
- * POST /api/violations/status — Update a violation's remediation status
+ * PATCH /api/violations/status
+ * Update a violation's remediation status.
+ *
+ * Body: { violationId, status, note? }
+ * - note is required (min 10 chars) for WONT_FIX and ACCEPTABLE_RISK
+ * - Returns 403 if violation's workspace doesn't match user's membership
  */
-export async function POST(request: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-  }
-
-  let body: unknown;
+export async function PATCH(request: NextRequest) {
   try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json(
+        { error: "AUTH_REQUIRED", message: "Authentication required" },
+        { status: 401 }
+      );
+    }
 
-  const parsed = updateSchema.safeParse(body);
-  if (!parsed.success) {
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { error: "INVALID_JSON", message: "Request body must be valid JSON" },
+        { status: 400 }
+      );
+    }
+
+    const parsed = patchSchema.safeParse(body);
+    if (!parsed.success) {
+      const fieldErrors = parsed.error.flatten().fieldErrors;
+      const firstField = Object.keys(fieldErrors)[0];
+      return NextResponse.json(
+        {
+          error: "VALIDATION_ERROR",
+          message: "Invalid request body",
+          field: firstField,
+          details: fieldErrors,
+        },
+        { status: 400 }
+      );
+    }
+
+    const { violationId, status, note } = parsed.data;
+
+    // Get user ID from session
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { id: true },
+    });
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "USER_NOT_FOUND", message: "User not found" },
+        { status: 401 }
+      );
+    }
+
+    // Workspace ownership check
+    const hasAccess = await userOwnsViolation(violationId, user.id);
+    if (!hasAccess) {
+      return NextResponse.json(
+        { error: "FORBIDDEN", message: "You don't have access to this violation's workspace" },
+        { status: 403 }
+      );
+    }
+
+    // Delegate to business logic
+    const result = await updateViolationStatus({
+      violationId,
+      status,
+      note,
+      userId: user.id,
+    });
+
+    // Audit trail
+    await prisma.auditLog.create({
+      data: {
+        action: "violation.status_updated",
+        actor: user.id,
+        target: violationId,
+        metadata: { status, note: note ?? null, previousStatus: null },
+      },
+    });
+
+    return NextResponse.json(result);
+  } catch (err) {
+    if (err instanceof StatusValidationError) {
+      return NextResponse.json(
+        { error: err.code, message: err.message, field: err.field },
+        { status: 400 }
+      );
+    }
+    const message = err instanceof Error ? err.message : "Internal server error";
     return NextResponse.json(
-      { error: "Invalid request", details: parsed.error.flatten().fieldErrors },
-      { status: 400 }
+      { error: "INTERNAL_ERROR", message },
+      { status: 500 }
     );
   }
-
-  const { violationId, status, note } = parsed.data;
-
-  // Get violation info for context
-  const violation = await prisma.violation.findUnique({
-    where: { id: violationId },
-    select: { ruleId: true, scanId: true, impact: true },
-  });
-
-  if (!violation) {
-    return NextResponse.json({ error: "Violation not found" }, { status: 404 });
-  }
-
-  await prisma.auditLog.create({
-    data: {
-      action: "violation.status_updated",
-      target: violation.scanId,
-      metadata: {
-        violationId,
-        ruleId: violation.ruleId,
-        impact: violation.impact,
-        status,
-        note,
-      },
-    },
-  });
-
-  return NextResponse.json({ violationId, status, note });
 }
