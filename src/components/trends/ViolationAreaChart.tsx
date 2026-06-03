@@ -140,9 +140,9 @@ export function ViolationAreaChart({ data, height = 220 }: ViolationAreaChartPro
     : 0;
 
   return (
-    <div ref={containerRef} className="w-full relative">
+    <div ref={containerRef} className="w-full relative overflow-hidden">
       {/* Legend */}
-      <div className="flex items-center gap-4 mb-2 px-1">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-2 px-1">
         {LAYERS.map((layer) => (
           <div key={layer.key} className="flex items-center gap-1.5">
             <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: layer.color }} />

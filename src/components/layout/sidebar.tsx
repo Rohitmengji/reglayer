@@ -97,7 +97,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 pb-3 space-y-5">
+      <nav className="flex-1 min-h-0 overflow-y-auto px-3 pb-3 space-y-5">
         {/* Main */}
         <div className="space-y-0.5">
           {mainNav.map((item) => (

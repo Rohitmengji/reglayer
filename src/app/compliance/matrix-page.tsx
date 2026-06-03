@@ -157,11 +157,11 @@ function ComplianceContent() {
 
           {/* Scan Selector */}
           {scans.length > 1 && (
-            <div className="relative">
+            <div className="relative w-full sm:w-auto sm:max-w-[260px]">
               <select
                 value={activeScanId || ""}
                 onChange={(e) => router.push(`/compliance?scan=${e.target.value}`)}
-                className="appearance-none rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 pl-3 pr-8 py-2 text-sm text-neutral-900 dark:text-white cursor-pointer hover:border-neutral-300 dark:hover:border-neutral-600 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full appearance-none rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 pl-3 pr-8 py-2 text-sm text-neutral-900 dark:text-white cursor-pointer hover:border-neutral-300 dark:hover:border-neutral-600 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 truncate"
               >
                 {scans.map((s) => (
                   <option key={s.id} value={s.id}>

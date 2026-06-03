@@ -153,7 +153,7 @@ function PrioritiesContent() {
 
   return (
     <AppShell>
-      <div className="space-y-8">
+      <div className="space-y-5">
         {/* Header */}
         <div>
           <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{t("priorities.title")}</h1>
@@ -163,14 +163,14 @@ function PrioritiesContent() {
         </div>
 
         {/* Score Projection */}
-        <div className="rounded-2xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 items-center">
+        <div className="rounded-2xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-5 sm:p-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-8 items-center">
             <div className="text-center">
               <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">{t("priorities.currentScore")}</p>
               <p className="text-4xl font-black text-neutral-700 dark:text-neutral-200">{Math.round(report.currentScore)}</p>
             </div>
             <div className="text-center">
-              <ArrowUpRight className="h-8 w-8 text-green-500 mx-auto" />
+              <ArrowUpRight className="h-6 w-6 sm:h-8 sm:w-8 text-green-500 mx-auto" />
             </div>
             <div className="text-center">
               <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1">{t("priorities.afterFixes")}</p>
@@ -283,42 +283,37 @@ function FixCard({ fix, variant }: { fix: PrioritizedFix; variant: "quickwin" | 
 
   return (
     <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4 hover:shadow-sm transition-shadow">
-      <div className="flex items-center gap-4">
+      <div className="flex items-start gap-3">
         {/* Rank */}
-        <span className="text-lg font-bold text-neutral-300 w-8 text-center">
+        <span className="text-lg font-bold text-neutral-300 w-8 text-center shrink-0">
           #{fix.rank}
         </span>
 
         {/* Content */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-0.5">
+        <div className="flex-1 min-w-0 overflow-hidden">
+          <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
             <Badge variant={fix.impact as "critical" | "serious" | "moderate" | "minor"}>
               {fix.impact}
             </Badge>
-            <code className="text-xs text-neutral-500 dark:text-neutral-400">{fix.ruleId}</code>
+            <code className="text-xs text-neutral-500 dark:text-neutral-400 truncate max-w-[120px]">{fix.ruleId}</code>
             <span className="text-xs text-neutral-400">{fix.category}</span>
           </div>
           <p className="text-sm font-medium text-neutral-900 dark:text-white truncate">{fix.help}</p>
-          <div className="flex items-center gap-4 mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-neutral-500 dark:text-neutral-400">
             <span>{fix.affectedElementCount} element(s)</span>
             <span>WCAG {fix.wcagLevel}</span>
             {fix.recurrenceRate > 50 && (
               <span className="text-orange-600">⚠ Recurring ({fix.recurrenceRate}%)</span>
             )}
           </div>
-        </div>
 
-        {/* Metrics */}
-        <div className="flex items-center gap-4 shrink-0">
-          <div className="text-center">
-            <p className="text-sm font-bold text-green-600">+{fix.estimatedScoreUplift.toFixed(1)}</p>
-            <p className="text-xs text-neutral-400">pts</p>
-          </div>
-          <div className="text-center">
+          {/* Metrics - inline on mobile */}
+          <div className="flex items-center gap-3 mt-2">
+            <span className="text-sm font-bold text-green-600">+{fix.estimatedScoreUplift.toFixed(1)} pts</span>
             <span className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${difficultyColors[fix.fixDifficulty]}`}>
               {fix.fixDifficulty}
             </span>
-            <p className="text-xs text-neutral-400 mt-0.5">{fix.estimatedMinutes}m</p>
+            <span className="text-xs text-neutral-400">{fix.estimatedMinutes}m</span>
           </div>
         </div>
       </div>
