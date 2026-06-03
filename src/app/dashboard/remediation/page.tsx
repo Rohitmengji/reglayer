@@ -80,8 +80,8 @@ export default function RemediationPage() {
             <p className="text-sm text-muted-foreground mb-4">
               Add this single script tag to your site. It automatically fixes common accessibility issues on page load — no build step needed.
             </p>
-            <div className="bg-muted rounded-lg p-4 font-mono text-sm relative">
-              <code>{`<script src="${typeof window !== "undefined" ? window.location.origin : ""}/api/remediate/script"></script>`}</code>
+            <div className="bg-muted rounded-lg p-4 font-mono text-sm relative overflow-x-auto">
+              <code className="break-all">{`<script src="${typeof window !== "undefined" ? window.location.origin : ""}/api/remediate/script"></script>`}</code>
               <Button
                 size="sm"
                 variant="ghost"
@@ -127,15 +127,15 @@ export default function RemediationPage() {
             <p className="text-sm text-muted-foreground mb-4">
               Fetch a URL and apply server-side DOM transforms. Returns the fixed HTML.
             </p>
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <input
                 type="url"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder="https://example.com"
-                className="flex-1 rounded-md border px-3 py-2 text-sm bg-background"
+                className="flex-1 min-w-0 rounded-md border px-3 py-2 text-sm bg-background"
               />
-              <Button onClick={runRemediation} disabled={loading || !url.startsWith("http")}>
+              <Button onClick={runRemediation} disabled={loading || !url.startsWith("http")} size="sm" className="shrink-0 sm:size-default">
                 <Wand2 className="h-4 w-4 mr-2" />
                 {loading ? "Fixing..." : "Remediate"}
               </Button>

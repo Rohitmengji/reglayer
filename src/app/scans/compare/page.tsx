@@ -62,16 +62,12 @@ function CompareContent() {
   const headId = searchParams.get("head");
 
   const [comparison, setComparison] = useState<ComparisonData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!!(baseId && headId));
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!baseId || !headId) {
-      const timer = setTimeout(() => {
-        setError(t("compare.idsRequired"));
-        setLoading(false);
-      }, 0);
-      return () => clearTimeout(timer);
+      return;
     }
 
     fetch(`/api/scans/compare?base=${baseId}&head=${headId}`)
@@ -101,6 +97,24 @@ function CompareContent() {
   }
 
   if (error || !comparison) {
+    // No scans selected - show a friendly prompt
+    if (!baseId || !headId) {
+      return (
+        <AppShell>
+          <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-8 text-center">
+            <ArrowRight className="h-12 w-12 text-neutral-300 dark:text-neutral-600 mx-auto mb-3" />
+            <p className="text-lg font-medium text-neutral-700 dark:text-neutral-200">Compare Two Scans</p>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-2 max-w-md mx-auto">
+              Select two scans from the Scans page to compare them side-by-side and see what changed — fixes, regressions, and persistent issues.
+            </p>
+            <Link href="/scans" className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 mt-4 font-medium">
+              Go to Scans →
+            </Link>
+          </div>
+        </AppShell>
+      );
+    }
+
     return (
       <AppShell>
         <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950 p-8 text-center">
