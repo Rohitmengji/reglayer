@@ -12,7 +12,7 @@
  * HOW: Fetches /api/learn, renders personalized paths with expandable lesson cards.
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -29,6 +29,10 @@ import {
   Code2,
   GraduationCap,
   Sparkles,
+  Brain,
+  Trophy,
+  XCircle,
+  RotateCcw,
 } from "lucide-react";
 import Link from "next/link";
 import { SKILL_CATEGORIES } from "@/lib/skills/engine";
@@ -424,22 +428,290 @@ function LessonCard({ lesson, index, expanded, codeTab, onCodeTabChange, onToggl
             ))}
           </div>
 
-          {/* Self-Test */}
-          <div className="rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50/50 dark:from-indigo-950/20 dark:to-purple-950/10 border border-indigo-200/60 dark:border-indigo-800/40 p-4">
-            <div className="flex items-start gap-3">
-              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 shrink-0">
-                <Target className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-indigo-800 dark:text-indigo-200">Test Yourself</p>
-                <p className="text-xs text-indigo-700 dark:text-indigo-300 mt-1 leading-relaxed">
-                  {lesson.content.testYourself}
-                </p>
-              </div>
-            </div>
-          </div>
+          {/* Quiz Section */}
+          <LessonQuiz lessonId={lesson.id} />
         </div>
       )}
+    </div>
+  );
+}
+
+// ─────────────── Quiz Component ───────────────
+
+interface QuizQuestion {
+  id: string;
+  lessonId: string;
+  category: string;
+  question: string;
+  options: string[];
+}
+
+interface QuizResultItem {
+  questionId: string;
+  correct: boolean;
+  correctIndex: number;
+  explanation: string;
+}
+
+interface QuizGradeResult {
+  score: number;
+  correct: number;
+  total: number;
+  results: QuizResultItem[];
+  passed: boolean;
+  skillBoost: number;
+}
+
+function LessonQuiz({ lessonId }: { lessonId: string }) {
+  const [state, setState] = useState<"idle" | "loading" | "quiz" | "grading" | "results">("idle");
+  const [questions, setQuestions] = useState<QuizQuestion[]>([]);
+  const [selectedAnswers, setSelectedAnswers] = useState<Record<string, number>>({});
+  const [gradeResult, setGradeResult] = useState<QuizGradeResult | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const startQuiz = useCallback(async () => {
+    setState("loading");
+    setErrorMsg(null);
+    setSelectedAnswers({});
+    setGradeResult(null);
+    try {
+      const resp = await fetch(`/api/learn/quiz?lessonId=${lessonId}&count=3`);
+      if (!resp.ok) throw new Error("Failed to load quiz");
+      const data = await resp.json();
+      setQuestions(data.questions);
+      setState("quiz");
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : "Failed to load quiz");
+      setState("idle");
+    }
+  }, [lessonId]);
+
+  const submitQuiz = async () => {
+    setState("grading");
+    try {
+      const answers = questions.map((q) => ({
+        questionId: q.id,
+        selectedIndex: selectedAnswers[q.id] ?? -1,
+      }));
+      const resp = await fetch("/api/learn/quiz", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lessonId, answers }),
+      });
+      if (!resp.ok) throw new Error("Failed to submit quiz");
+      const result = await resp.json();
+      setGradeResult(result);
+      setState("results");
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : "Submission failed");
+      setState("quiz");
+    }
+  };
+
+  const allAnswered = questions.length > 0 && questions.every((q) => selectedAnswers[q.id] !== undefined);
+
+  // Idle state — show quiz CTA
+  if (state === "idle") {
+    return (
+      <div className="rounded-xl bg-gradient-to-r from-violet-50 to-indigo-50/50 dark:from-violet-950/20 dark:to-indigo-950/10 border border-violet-200/60 dark:border-violet-800/40 p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-violet-100 dark:bg-violet-900/40 shrink-0">
+              <Brain className="h-4.5 w-4.5 text-violet-600 dark:text-violet-400" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-violet-900 dark:text-violet-200">Test Your Knowledge</p>
+              <p className="text-xs text-violet-600 dark:text-violet-400 mt-0.5">
+                Answer quiz questions to boost your skill score
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={startQuiz}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 hover:bg-violet-700 px-3.5 py-2 text-xs font-medium text-white transition-colors shadow-sm hover:shadow-md"
+          >
+            <Target className="h-3.5 w-3.5" />
+            Take Quiz
+          </button>
+        </div>
+        {errorMsg && (
+          <p className="mt-2 text-xs text-red-500">{errorMsg}</p>
+        )}
+      </div>
+    );
+  }
+
+  // Loading state
+  if (state === "loading" || state === "grading") {
+    return (
+      <div className="rounded-xl border border-violet-200/60 dark:border-violet-800/40 bg-violet-50/50 dark:bg-violet-950/10 p-6 flex items-center justify-center">
+        <div className="flex items-center gap-3">
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-violet-200 border-t-violet-600" />
+          <span className="text-sm text-violet-600 dark:text-violet-400">
+            {state === "loading" ? "Loading quiz..." : "Grading..."}
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  // Results state
+  if (state === "results" && gradeResult) {
+    const scoreColor = gradeResult.passed ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400";
+    const bgColor = gradeResult.passed
+      ? "from-emerald-50 to-teal-50/50 dark:from-emerald-950/20 dark:to-teal-950/10 border-emerald-200/60 dark:border-emerald-800/40"
+      : "from-red-50 to-orange-50/50 dark:from-red-950/20 dark:to-orange-950/10 border-red-200/60 dark:border-red-800/40";
+
+    return (
+      <div className={`rounded-xl bg-gradient-to-r ${bgColor} border p-5 space-y-4`}>
+        {/* Score Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {gradeResult.passed ? (
+              <div className="flex items-center justify-center w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/40">
+                <Trophy className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+              </div>
+            ) : (
+              <div className="flex items-center justify-center w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/40">
+                <XCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+              </div>
+            )}
+            <div>
+              <p className={`text-lg font-bold ${scoreColor}`}>
+                {gradeResult.score}%
+              </p>
+              <p className="text-xs text-neutral-500">
+                {gradeResult.correct}/{gradeResult.total} correct
+                {gradeResult.passed && gradeResult.skillBoost > 0 && (
+                  <span className="ml-2 text-emerald-600 dark:text-emerald-400 font-medium">
+                    +{gradeResult.skillBoost} skill pts
+                  </span>
+                )}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={startQuiz}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-3 py-1.5 text-xs font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-750 transition-colors"
+          >
+            <RotateCcw className="h-3 w-3" />
+            Retry
+          </button>
+        </div>
+
+        {/* Per-question results */}
+        <div className="space-y-2.5">
+          {gradeResult.results.map((result, idx) => {
+            const q = questions[idx];
+            return (
+              <div
+                key={result.questionId}
+                className={`rounded-lg border p-3 ${
+                  result.correct
+                    ? "border-emerald-200 dark:border-emerald-800/40 bg-white/60 dark:bg-neutral-900/40"
+                    : "border-red-200 dark:border-red-800/40 bg-white/60 dark:bg-neutral-900/40"
+                }`}
+              >
+                <div className="flex items-start gap-2">
+                  {result.correct ? (
+                    <CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
+                  ) : (
+                    <XCircle className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-neutral-800 dark:text-neutral-200">
+                      {q?.question}
+                    </p>
+                    {!result.correct && (
+                      <p className="text-[11px] text-neutral-500 mt-1">
+                        <span className="font-medium text-emerald-600 dark:text-emerald-400">Correct: </span>
+                        {q?.options[result.correctIndex]}
+                      </p>
+                    )}
+                    <p className="text-[11px] text-neutral-400 mt-1 italic">
+                      {result.explanation}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // Quiz state — show questions
+  return (
+    <div className="rounded-xl border border-violet-200/60 dark:border-violet-800/40 bg-white dark:bg-neutral-900 overflow-hidden">
+      {/* Quiz Header */}
+      <div className="px-4 py-3 bg-gradient-to-r from-violet-50 to-indigo-50/50 dark:from-violet-950/20 dark:to-indigo-950/10 border-b border-violet-200/40 dark:border-violet-800/30">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Brain className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+            <span className="text-xs font-semibold text-violet-900 dark:text-violet-200">
+              Knowledge Check
+            </span>
+          </div>
+          <span className="text-[10px] text-violet-500">
+            {Object.keys(selectedAnswers).length}/{questions.length} answered
+          </span>
+        </div>
+      </div>
+
+      {/* Questions */}
+      <div className="p-4 space-y-5">
+        {questions.map((q, qIdx) => (
+          <div key={q.id}>
+            <p className="text-sm font-medium text-neutral-800 dark:text-neutral-200 mb-2.5">
+              <span className="text-violet-500 mr-1.5">{qIdx + 1}.</span>
+              {q.question}
+            </p>
+            <div className="grid gap-2">
+              {q.options.map((option, oIdx) => {
+                const isSelected = selectedAnswers[q.id] === oIdx;
+                return (
+                  <button
+                    key={oIdx}
+                    onClick={() => setSelectedAnswers((prev) => ({ ...prev, [q.id]: oIdx }))}
+                    className={`w-full text-left rounded-lg border px-3.5 py-2.5 text-xs transition-all ${
+                      isSelected
+                        ? "border-violet-400 dark:border-violet-600 bg-violet-50 dark:bg-violet-900/20 text-violet-800 dark:text-violet-200 ring-1 ring-violet-300 dark:ring-violet-700"
+                        : "border-neutral-200 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/30 text-neutral-700 dark:text-neutral-300 hover:border-neutral-300 dark:hover:border-neutral-600 hover:bg-neutral-100/50 dark:hover:bg-neutral-800/50"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <span className={`flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold shrink-0 ${
+                        isSelected
+                          ? "bg-violet-600 text-white"
+                          : "bg-neutral-200 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400"
+                      }`}>
+                        {String.fromCharCode(65 + oIdx)}
+                      </span>
+                      <span>{option}</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Submit Button */}
+      <div className="px-4 pb-4">
+        <button
+          onClick={submitQuiz}
+          disabled={!allAnswered}
+          className={`w-full rounded-lg py-2.5 text-sm font-medium transition-all ${
+            allAnswered
+              ? "bg-violet-600 hover:bg-violet-700 text-white shadow-sm hover:shadow-md"
+              : "bg-neutral-100 dark:bg-neutral-800 text-neutral-400 cursor-not-allowed"
+          }`}
+        >
+          {allAnswered ? "Submit Answers" : `Answer all ${questions.length} questions to submit`}
+        </button>
+      </div>
     </div>
   );
 }
