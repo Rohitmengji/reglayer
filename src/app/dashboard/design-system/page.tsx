@@ -211,22 +211,24 @@ export default function DesignSystemPage() {
 
       {/* Scan form */}
       <Card className="p-4">
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-3">
           <input
             type="url"
             placeholder="https://your-storybook.chromatic.com"
             value={storybookUrl}
             onChange={(e) => setStorybookUrl(e.target.value)}
-            className="flex-1 px-3 py-2 border rounded-md bg-background text-sm"
+            className="flex-1 min-w-0 px-3 py-2 border rounded-md bg-background text-sm"
           />
-          <Button onClick={runScan} disabled={loading || !storybookUrl}>
-            <Search className="h-4 w-4 mr-2" />
-            {loading ? "Scanning..." : "Scan Storybook"}
-          </Button>
-          <Button variant="outline" onClick={runDemoScan} disabled={loading}>
-            <Zap className="h-4 w-4 mr-2" />
-            Demo
-          </Button>
+          <div className="flex gap-2 shrink-0">
+            <Button onClick={runScan} disabled={loading || !storybookUrl} size="sm">
+              <Search className="h-4 w-4 mr-1.5" />
+              {loading ? "Scanning..." : "Scan Storybook"}
+            </Button>
+            <Button variant="outline" onClick={runDemoScan} disabled={loading} size="sm">
+              <Zap className="h-4 w-4 mr-1.5" />
+              Demo
+            </Button>
+          </div>
         </div>
         {error && <p className="text-sm text-red-500 mt-2">{error}</p>}
       </Card>

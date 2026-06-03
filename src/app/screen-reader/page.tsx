@@ -289,16 +289,16 @@ export default function ScreenReaderPage() {
           {/* URL Input */}
           <Card>
             <CardContent className="pt-6">
-              <div className="flex gap-3">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                 <input
                   type="url"
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleCapture()}
                   placeholder="Enter URL to analyze (e.g. example.com)"
-                  className="flex-1 px-4 py-2.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="flex-1 min-w-0 px-4 py-2.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
-                <Button onClick={handleCapture} disabled={loading || !url.trim()}>
+                <Button onClick={handleCapture} disabled={loading || !url.trim()} className="shrink-0">
                   {loading ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin mr-2" />

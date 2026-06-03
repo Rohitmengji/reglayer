@@ -122,14 +122,14 @@ export default function AnalyticsPage() {
     <AppShell>
       <div className="space-y-8">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{t("analytics.title")}</h1>
             <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
               {t("analytics.subtitle")}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             {[7, 30, 90].map((d) => (
               <button
                 key={d}

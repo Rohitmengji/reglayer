@@ -128,22 +128,25 @@ export default function TrendsPage() {
     fetchTrends();
   }, [fetchTrends]);
 
+  // Compute cutoff date for time filtering
+  const [now] = useState(() => Date.now());
+
   // Time-filtered data
   const filteredScoreTrend = useMemo(() => {
     if (!data) return [];
     if (timeRange === "ALL") return data.scoreTrend;
     const days = timeRange === "7D" ? 7 : timeRange === "30D" ? 30 : 90;
-    const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+    const cutoff = new Date(now - days * 24 * 60 * 60 * 1000).toISOString();
     return data.scoreTrend.filter((p) => p.date >= cutoff);
-  }, [data, timeRange]);
+  }, [data, timeRange, now]);
 
   const filteredViolationTrend = useMemo(() => {
     if (!data) return [];
     if (timeRange === "ALL") return data.violationTrend;
     const days = timeRange === "7D" ? 7 : timeRange === "30D" ? 30 : 90;
-    const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+    const cutoff = new Date(now - days * 24 * 60 * 60 * 1000).toISOString();
     return data.violationTrend.filter((p) => p.date >= cutoff);
-  }, [data, timeRange]);
+  }, [data, timeRange, now]);
 
   // Scan history table
   const scanHistory = useMemo(() => {
@@ -189,11 +192,11 @@ export default function TrendsPage() {
 
   return (
     <AppShell>
-      <div className="space-y-6">
+      <div className="space-y-6 overflow-x-hidden">
         {/* Page Header */}
         <div>
-          <div className="flex items-start justify-between">
-            <div>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
               <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">
                 Trends
               </h1>
@@ -202,10 +205,10 @@ export default function TrendsPage() {
                   href={resolvedUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm text-neutral-500 hover:text-blue-600 inline-flex items-center gap-1 mt-1"
+                  className="text-sm text-neutral-500 hover:text-blue-600 inline-flex items-center gap-1 mt-1 max-w-full"
                 >
-                  {resolvedUrl}
-                  <ExternalLink className="h-3 w-3" />
+                  <span className="truncate">{resolvedUrl}</span>
+                  <ExternalLink className="h-3 w-3 shrink-0" />
                 </a>
               )}
               {data.summary && (
@@ -218,7 +221,7 @@ export default function TrendsPage() {
             </div>
 
             {/* Time Range Selector */}
-            <div className="flex items-center gap-1 rounded-lg bg-neutral-100 dark:bg-neutral-800 p-1">
+            <div className="flex items-center gap-1 rounded-lg bg-neutral-100 dark:bg-neutral-800 p-1 shrink-0">
               {TIME_RANGES.map((tr) => (
                 <button
                   key={tr.key}
@@ -245,7 +248,7 @@ export default function TrendsPage() {
         {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Score Over Time */}
-          <Card className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900">
+          <Card className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 overflow-hidden">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-neutral-600 dark:text-neutral-400">
                 Score Over Time
@@ -263,7 +266,7 @@ export default function TrendsPage() {
           </Card>
 
           {/* Violations Over Time */}
-          <Card className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900">
+          <Card className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 overflow-hidden">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-neutral-600 dark:text-neutral-400">
                 Violations Over Time
