@@ -17,6 +17,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { EnhancedViolationCard } from "@/components/violations/EnhancedViolationCard";
 import {
@@ -366,15 +367,31 @@ export default function ViolationsPage() {
               <p className="text-red-500 font-medium text-sm">{error}</p>
             </div>
           ) : data && data.violations.length === 0 ? (
-            <div className="text-center py-16 px-4">
-              <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-3" />
-              <p className="text-neutral-600 dark:text-neutral-300 font-medium">
-                No violations in this category
-              </p>
-              <p className="text-sm text-neutral-400 mt-1">
-                {activeTab === "ALL" ? "This scan has no violations. Great job!" : "Try a different filter."}
-              </p>
-            </div>
+            activeTab === "ALL" && !scanIdParam ? (
+              <EmptyState
+                icon={CheckCircle2}
+                iconColor="text-green-500"
+                title="No violations found"
+                description="Run a scan first to see accessibility violations here. You can track, prioritize, and resolve issues from this page."
+                actionLabel="Run a Scan"
+                actionHref="/dashboard"
+                tips={[
+                  "Scan any URL from the Dashboard to detect issues",
+                  "Violations are categorized by severity (critical, serious, moderate, minor)",
+                  "Mark issues as fixed, in-progress, or won't-fix to track resolution",
+                ]}
+              />
+            ) : (
+              <div className="text-center py-16 px-4">
+                <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-3" />
+                <p className="text-neutral-600 dark:text-neutral-300 font-medium">
+                  No violations in this category
+                </p>
+                <p className="text-sm text-neutral-400 mt-1">
+                  {activeTab === "ALL" ? "This scan has no violations. Great job!" : "Try a different filter."}
+                </p>
+              </div>
+            )
           ) : (
             <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
               {data?.violations.map((violation) => (

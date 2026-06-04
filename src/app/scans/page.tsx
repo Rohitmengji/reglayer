@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useI18n } from "@/components/i18n-provider";
+import { EmptyState } from "@/components/ui/empty-state";
 
 interface ScanRecord {
   id: string;
@@ -282,17 +283,22 @@ export default function ScansPage() {
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-neutral-300 dark:border-neutral-600 border-t-neutral-900 dark:border-t-white" />
           </div>
         ) : scans.length === 0 ? (
-          <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-12 text-center">
-            <BarChart3 className="h-12 w-12 text-neutral-300 mx-auto mb-4" />
-            <p className="text-lg font-medium text-neutral-700 dark:text-neutral-200">{t("scans.noScansTitle")}</p>
-            <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-              {t("scans.noScansSubtitle")}{" "}
-              <Link href="/dashboard" className="text-blue-600 hover:underline">
-                {t("scans.dashboard")}
-              </Link>
-              .
-            </p>
-          </div>
+          <EmptyState
+            icon={BarChart3}
+            iconColor="text-blue-400"
+            title="No scans yet"
+            description="Run your first accessibility scan to see results here. Each scan analyzes your website for WCAG compliance issues."
+            actionLabel="Run First Scan"
+            actionHref="/dashboard"
+            secondaryLabel="Learn More"
+            secondaryHref="/learn"
+            tips={[
+              "Go to the Dashboard and enter any URL to scan",
+              "Scans check for WCAG 2.2 AA compliance issues",
+              "Results include severity ratings and fix suggestions",
+              "Compare scans over time to track your progress",
+            ]}
+          />
         ) : filteredScans.length === 0 ? (
           <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-12 text-center">
             <Search className="h-12 w-12 text-neutral-300 mx-auto mb-4" />
