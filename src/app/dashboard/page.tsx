@@ -25,11 +25,13 @@
  */
 
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import { AppShell } from "@/components/layout/app-shell";
 import { ScanForm } from "@/components/scanner/scan-form";
 import { ScoreCard } from "@/components/dashboard/score-card";
 import { ViolationCard } from "@/components/scanner/violation-card";
 import { ComplianceTrend } from "@/components/charts/compliance-trend";
+import { OnboardingFlow } from "@/components/onboarding/onboarding-flow";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -59,8 +61,10 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
   const [credits, setCredits] = useState<{ used: number; limit: number; totalAvailable: number; remaining: number; daysUntilReset: number; unlimited: boolean } | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const { setScanResult: persistResult } = useScanStore();
   const { t } = useI18n();
+  const { data: session } = useSession();
 
   useEffect(() => {
     fetch("/api/dashboard/stats")
@@ -68,7 +72,13 @@ export default function DashboardPage() {
         if (!r.ok) throw new Error("Failed");
         return r.json();
       })
-      .then((d) => setStats(d))
+      .then((d) => {
+        setStats(d);
+        // Show onboarding if user has no scans and hasn't dismissed
+        if (d.totalScans === 0 && !localStorage.getItem("reglayer_onboarding_dismissed")) {
+          setShowOnboarding(true);
+        }
+      })
       .catch(() => {})
       .finally(() => setStatsLoading(false));
 
@@ -119,6 +129,20 @@ export default function DashboardPage() {
             {t("dashboard.subtitle")}
           </p>
         </div>
+
+        {/* Onboarding Flow — shown for new users */}
+        {showOnboarding && (
+          <OnboardingFlow
+            userName={session?.user?.name}
+            onComplete={() => setShowOnboarding(false)}
+            onStartScan={(url) => {
+              setShowOnboarding(false);
+              // Trigger scan form with the URL — set it in sessionStorage for ScanForm to pick up
+              sessionStorage.setItem("reglayer_onboarding_url", url);
+              window.dispatchEvent(new Event("onboarding-scan"));
+            }}
+          />
+        )}
 
         {/* Scan Form */}
         <ScanForm onScanComplete={handleScanComplete} />

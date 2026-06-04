@@ -438,6 +438,8 @@ function LessonCard({ lesson, index, expanded, codeTab, onCodeTabChange, onToggl
 
 // ─────────────── Quiz Component ───────────────
 
+const MAX_ATTEMPTS = 3;
+
 interface QuizQuestion {
   id: string;
   lessonId: string;
@@ -462,18 +464,35 @@ interface QuizGradeResult {
   skillBoost: number;
 }
 
+interface AttemptRecord {
+  attempt: number;
+  score: number;
+  correct: number;
+  total: number;
+  passed: boolean;
+}
+
 function LessonQuiz({ lessonId }: { lessonId: string }) {
   const [state, setState] = useState<"idle" | "loading" | "quiz" | "grading" | "results">("idle");
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, number>>({});
   const [gradeResult, setGradeResult] = useState<QuizGradeResult | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  const [attemptHistory, setAttemptHistory] = useState<AttemptRecord[]>([]);
+  const [currentQuestion, setCurrentQuestion] = useState(0);
+
+  const attemptsRemaining = MAX_ATTEMPTS - attempt;
+  const bestScore = attemptHistory.length > 0
+    ? Math.max(...attemptHistory.map((a) => a.score))
+    : null;
 
   const startQuiz = useCallback(async () => {
     setState("loading");
     setErrorMsg(null);
     setSelectedAnswers({});
     setGradeResult(null);
+    setCurrentQuestion(0);
     try {
       const resp = await fetch(`/api/learn/quiz?lessonId=${lessonId}&count=3`);
       if (!resp.ok) throw new Error("Failed to load quiz");
@@ -499,8 +518,17 @@ function LessonQuiz({ lessonId }: { lessonId: string }) {
         body: JSON.stringify({ lessonId, answers }),
       });
       if (!resp.ok) throw new Error("Failed to submit quiz");
-      const result = await resp.json();
+      const result: QuizGradeResult = await resp.json();
       setGradeResult(result);
+      const newAttempt = attempt + 1;
+      setAttempt(newAttempt);
+      setAttemptHistory((prev) => [...prev, {
+        attempt: newAttempt,
+        score: result.score,
+        correct: result.correct,
+        total: result.total,
+        passed: result.passed,
+      }]);
       setState("results");
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : "Submission failed");
@@ -513,29 +541,118 @@ function LessonQuiz({ lessonId }: { lessonId: string }) {
   // Idle state — show quiz CTA
   if (state === "idle") {
     return (
-      <div className="rounded-xl bg-gradient-to-r from-violet-50 to-indigo-50/50 dark:from-violet-950/20 dark:to-indigo-950/10 border border-violet-200/60 dark:border-violet-800/40 p-4">
-        <div className="flex items-center justify-between">
+      <div className="rounded-xl bg-gradient-to-r from-violet-50 to-indigo-50/50 dark:from-violet-950/20 dark:to-indigo-950/10 border border-violet-200/60 dark:border-violet-800/40 p-5">
+        <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-violet-100 dark:bg-violet-900/40 shrink-0">
-              <Brain className="h-4.5 w-4.5 text-violet-600 dark:text-violet-400" />
+            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-violet-100 dark:bg-violet-900/40 shrink-0">
+              <Brain className="h-5 w-5 text-violet-600 dark:text-violet-400" />
             </div>
             <div>
               <p className="text-sm font-semibold text-violet-900 dark:text-violet-200">Test Your Knowledge</p>
-              <p className="text-xs text-violet-600 dark:text-violet-400 mt-0.5">
-                Answer quiz questions to boost your skill score
+              <p className="text-xs text-violet-600/80 dark:text-violet-400/80 mt-0.5">
+                3 questions &middot; Multiple choice &middot; {MAX_ATTEMPTS} attempts allowed
               </p>
+              {bestScore !== null && (
+                <p className="text-[11px] text-violet-500 mt-1 flex items-center gap-1">
+                  <Trophy className="h-3 w-3" />
+                  Best score: <strong>{bestScore}%</strong>
+                  {attempt < MAX_ATTEMPTS && (
+                    <span className="ml-1 text-neutral-400">
+                      &middot; {attemptsRemaining} {attemptsRemaining === 1 ? "retry" : "retries"} left
+                    </span>
+                  )}
+                </p>
+              )}
             </div>
           </div>
-          <button
-            onClick={startQuiz}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 hover:bg-violet-700 px-3.5 py-2 text-xs font-medium text-white transition-colors shadow-sm hover:shadow-md"
-          >
-            <Target className="h-3.5 w-3.5" />
-            Take Quiz
-          </button>
+          <div className="flex flex-col items-end gap-2 shrink-0">
+            <button
+              onClick={startQuiz}
+              disabled={attempt >= MAX_ATTEMPTS}
+              className={`inline-flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-xs font-medium transition-all shadow-sm ${
+                attempt >= MAX_ATTEMPTS
+                  ? "bg-neutral-200 dark:bg-neutral-700 text-neutral-400 cursor-not-allowed"
+                  : "bg-violet-600 hover:bg-violet-700 text-white hover:shadow-md hover:-translate-y-0.5"
+              }`}
+            >
+              {attempt === 0 ? (
+                <>
+                  <Target className="h-3.5 w-3.5" />
+                  Start Quiz
+                </>
+              ) : attempt >= MAX_ATTEMPTS ? (
+                <>
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Completed
+                </>
+              ) : (
+                <>
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  Retry ({attemptsRemaining} left)
+                </>
+              )}
+            </button>
+          </div>
         </div>
+
+        {/* Attempt History Mini-Bar */}
+        {attemptHistory.length > 0 && (
+          <div className="mt-4 pt-3 border-t border-violet-200/40 dark:border-violet-800/30">
+            <p className="text-[10px] font-medium text-violet-500 dark:text-violet-400 uppercase tracking-wider mb-2">
+              Attempt History
+            </p>
+            <div className="flex items-center gap-2">
+              {attemptHistory.map((a) => (
+                <div
+                  key={a.attempt}
+                  className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium border ${
+                    a.passed
+                      ? "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800/40 text-emerald-700 dark:text-emerald-300"
+                      : "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800/40 text-red-700 dark:text-red-300"
+                  }`}
+                >
+                  {a.passed ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                  #{a.attempt}: {a.score}%
+                </div>
+              ))}
+              {/* Empty slots */}
+              {Array.from({ length: MAX_ATTEMPTS - attemptHistory.length }).map((_, i) => (
+                <div
+                  key={`empty-${i}`}
+                  className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] border border-dashed border-neutral-200 dark:border-neutral-700 text-neutral-300 dark:text-neutral-600"
+                >
+                  #{attemptHistory.length + i + 1}: —
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Info chips */}
+        {attempt === 0 && (
+          <div className="mt-4 pt-3 border-t border-violet-200/40 dark:border-violet-800/30">
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="inline-flex items-center gap-1.5 text-[11px] text-neutral-500 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-md px-2 py-1">
+                <Target className="h-3 w-3 text-violet-400" />
+                Pass: 70%+ correct
+              </span>
+              <span className="inline-flex items-center gap-1.5 text-[11px] text-neutral-500 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-md px-2 py-1">
+                <Award className="h-3 w-3 text-amber-400" />
+                Earn up to +5 skill pts
+              </span>
+              <span className="inline-flex items-center gap-1.5 text-[11px] text-neutral-500 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-md px-2 py-1">
+                <RotateCcw className="h-3 w-3 text-indigo-400" />
+                {MAX_ATTEMPTS} attempts per session
+              </span>
+            </div>
+          </div>
+        )}
+
         {errorMsg && (
-          <p className="mt-2 text-xs text-red-500">{errorMsg}</p>
+          <p className="mt-3 text-xs text-red-500 flex items-center gap-1">
+            <AlertTriangle className="h-3 w-3" />
+            {errorMsg}
+          </p>
         )}
       </div>
     );
@@ -544,13 +661,17 @@ function LessonQuiz({ lessonId }: { lessonId: string }) {
   // Loading state
   if (state === "loading" || state === "grading") {
     return (
-      <div className="rounded-xl border border-violet-200/60 dark:border-violet-800/40 bg-violet-50/50 dark:bg-violet-950/10 p-6 flex items-center justify-center">
-        <div className="flex items-center gap-3">
-          <div className="h-5 w-5 animate-spin rounded-full border-2 border-violet-200 border-t-violet-600" />
-          <span className="text-sm text-violet-600 dark:text-violet-400">
-            {state === "loading" ? "Loading quiz..." : "Grading..."}
-          </span>
+      <div className="rounded-xl border border-violet-200/60 dark:border-violet-800/40 bg-gradient-to-r from-violet-50/50 to-indigo-50/30 dark:from-violet-950/10 dark:to-indigo-950/5 p-8 flex flex-col items-center justify-center gap-3">
+        <div className="relative">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-violet-200 border-t-violet-600" />
+          <Brain className="h-3.5 w-3.5 text-violet-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
         </div>
+        <span className="text-sm font-medium text-violet-700 dark:text-violet-300">
+          {state === "loading" ? "Preparing your questions..." : "Analyzing your answers..."}
+        </span>
+        <span className="text-[11px] text-violet-500/70">
+          {state === "loading" ? "Questions are randomized for you" : "Checking against WCAG standards"}
+        </span>
       </div>
     );
   }
@@ -562,73 +683,127 @@ function LessonQuiz({ lessonId }: { lessonId: string }) {
       ? "from-emerald-50 to-teal-50/50 dark:from-emerald-950/20 dark:to-teal-950/10 border-emerald-200/60 dark:border-emerald-800/40"
       : "from-red-50 to-orange-50/50 dark:from-red-950/20 dark:to-orange-950/10 border-red-200/60 dark:border-red-800/40";
 
+    const canRetry = attempt < MAX_ATTEMPTS;
+
     return (
-      <div className={`rounded-xl bg-gradient-to-r ${bgColor} border p-5 space-y-4`}>
+      <div className={`rounded-xl bg-gradient-to-r ${bgColor} border overflow-hidden`}>
         {/* Score Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {gradeResult.passed ? (
-              <div className="flex items-center justify-center w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/40">
-                <Trophy className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-              </div>
-            ) : (
-              <div className="flex items-center justify-center w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/40">
-                <XCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
-              </div>
-            )}
-            <div>
-              <p className={`text-lg font-bold ${scoreColor}`}>
-                {gradeResult.score}%
-              </p>
-              <p className="text-xs text-neutral-500">
-                {gradeResult.correct}/{gradeResult.total} correct
+        <div className="p-5 pb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {gradeResult.passed ? (
+                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-900/40 ring-4 ring-emerald-50 dark:ring-emerald-900/20">
+                  <Trophy className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+                </div>
+              ) : (
+                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/40 ring-4 ring-red-50 dark:ring-red-900/20">
+                  <XCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
+                </div>
+              )}
+              <div>
+                <p className={`text-xl font-bold ${scoreColor}`}>
+                  {gradeResult.score}%
+                </p>
+                <p className="text-xs text-neutral-500 mt-0.5">
+                  {gradeResult.correct}/{gradeResult.total} correct &middot; Attempt {attempt}/{MAX_ATTEMPTS}
+                </p>
                 {gradeResult.passed && gradeResult.skillBoost > 0 && (
-                  <span className="ml-2 text-emerald-600 dark:text-emerald-400 font-medium">
-                    +{gradeResult.skillBoost} skill pts
-                  </span>
+                  <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400 mt-1 flex items-center gap-1">
+                    <Sparkles className="h-3 w-3" />
+                    +{gradeResult.skillBoost} skill points earned!
+                  </p>
                 )}
-              </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col items-end gap-2 shrink-0">
+              {/* Attempt dots */}
+              <div className="flex items-center gap-1">
+                {Array.from({ length: MAX_ATTEMPTS }).map((_, i) => (
+                  <div
+                    key={i}
+                    className={`w-2.5 h-2.5 rounded-full transition-colors ${
+                      i < attempt
+                        ? attemptHistory[i]?.passed
+                          ? "bg-emerald-400"
+                          : "bg-red-400"
+                        : "bg-neutral-200 dark:bg-neutral-700"
+                    }`}
+                  />
+                ))}
+              </div>
+              {canRetry ? (
+                <button
+                  onClick={startQuiz}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 px-3.5 py-2 text-xs font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-750 hover:border-neutral-300 transition-all shadow-sm"
+                >
+                  <RotateCcw className="h-3 w-3" />
+                  Retry ({MAX_ATTEMPTS - attempt} left)
+                </button>
+              ) : (
+                <span className="text-[11px] text-neutral-400 italic">No retries remaining</span>
+              )}
             </div>
           </div>
-          <button
-            onClick={startQuiz}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-3 py-1.5 text-xs font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-750 transition-colors"
-          >
-            <RotateCcw className="h-3 w-3" />
-            Retry
-          </button>
+
+          {/* Motivational message */}
+          <div className={`mt-4 rounded-lg px-3 py-2 text-xs ${
+            gradeResult.passed
+              ? "bg-emerald-100/60 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300"
+              : canRetry
+                ? "bg-amber-100/60 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300"
+                : "bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400"
+          }`}>
+            {gradeResult.passed
+              ? gradeResult.score === 100
+                ? "🎉 Perfect score! You've mastered this topic completely."
+                : "✅ Great job! You passed. Review the explanations below to solidify your understanding."
+              : canRetry
+                ? `💡 Not quite — review the explanations below and try again. You have ${MAX_ATTEMPTS - attempt} ${MAX_ATTEMPTS - attempt === 1 ? "attempt" : "attempts"} remaining.`
+                : "📖 All attempts used. Review the lesson content above and come back tomorrow for a fresh quiz."}
+          </div>
         </div>
 
         {/* Per-question results */}
-        <div className="space-y-2.5">
+        <div className="border-t border-neutral-200/50 dark:border-neutral-800/50 p-5 pt-4 space-y-3">
+          <p className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">
+            Question Breakdown
+          </p>
           {gradeResult.results.map((result, idx) => {
             const q = questions[idx];
             return (
               <div
                 key={result.questionId}
-                className={`rounded-lg border p-3 ${
+                className={`rounded-lg border p-3.5 transition-all ${
                   result.correct
-                    ? "border-emerald-200 dark:border-emerald-800/40 bg-white/60 dark:bg-neutral-900/40"
-                    : "border-red-200 dark:border-red-800/40 bg-white/60 dark:bg-neutral-900/40"
+                    ? "border-emerald-200/70 dark:border-emerald-800/40 bg-white/70 dark:bg-neutral-900/40"
+                    : "border-red-200/70 dark:border-red-800/40 bg-white/70 dark:bg-neutral-900/40"
                 }`}
               >
-                <div className="flex items-start gap-2">
+                <div className="flex items-start gap-2.5">
                   {result.correct ? (
-                    <CheckCircle2 className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
+                    <div className="flex items-center justify-center w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 shrink-0 mt-0.5">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                    </div>
                   ) : (
-                    <XCircle className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />
+                    <div className="flex items-center justify-center w-5 h-5 rounded-full bg-red-100 dark:bg-red-900/40 shrink-0 mt-0.5">
+                      <XCircle className="h-3.5 w-3.5 text-red-500" />
+                    </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium text-neutral-800 dark:text-neutral-200">
+                    <p className="text-xs font-medium text-neutral-800 dark:text-neutral-200 leading-relaxed">
                       {q?.question}
                     </p>
                     {!result.correct && (
-                      <p className="text-[11px] text-neutral-500 mt-1">
-                        <span className="font-medium text-emerald-600 dark:text-emerald-400">Correct: </span>
-                        {q?.options[result.correctIndex]}
-                      </p>
+                      <div className="mt-2 rounded-md bg-emerald-50/80 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-800/30 px-2.5 py-1.5">
+                        <p className="text-[11px] text-emerald-700 dark:text-emerald-300">
+                          <span className="font-semibold">Correct answer: </span>
+                          {q?.options[result.correctIndex]}
+                        </p>
+                      </div>
                     )}
-                    <p className="text-[11px] text-neutral-400 mt-1 italic">
+                    <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-2 leading-relaxed flex items-start gap-1.5">
+                      <Lightbulb className="h-3 w-3 mt-0.5 text-amber-400 shrink-0" />
                       {result.explanation}
                     </p>
                   </div>
@@ -637,13 +812,38 @@ function LessonQuiz({ lessonId }: { lessonId: string }) {
             );
           })}
         </div>
+
+        {/* Best Score Footer */}
+        {attemptHistory.length > 1 && (
+          <div className="border-t border-neutral-200/50 dark:border-neutral-800/50 px-5 py-3 bg-white/30 dark:bg-neutral-900/30">
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] text-neutral-500">
+                Best score across all attempts: <strong className="text-neutral-700 dark:text-neutral-300">{bestScore}%</strong>
+              </p>
+              <div className="flex items-center gap-1.5">
+                {attemptHistory.map((a) => (
+                  <span
+                    key={a.attempt}
+                    className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
+                      a.score === bestScore
+                        ? "bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400"
+                        : "bg-neutral-100 dark:bg-neutral-800 text-neutral-400"
+                    }`}
+                  >
+                    #{a.attempt}: {a.score}%
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
 
   // Quiz state — show questions
   return (
-    <div className="rounded-xl border border-violet-200/60 dark:border-violet-800/40 bg-white dark:bg-neutral-900 overflow-hidden">
+    <div className="rounded-xl border border-violet-200/60 dark:border-violet-800/40 bg-white dark:bg-neutral-900 overflow-hidden shadow-sm">
       {/* Quiz Header */}
       <div className="px-4 py-3 bg-gradient-to-r from-violet-50 to-indigo-50/50 dark:from-violet-950/20 dark:to-indigo-950/10 border-b border-violet-200/40 dark:border-violet-800/30">
         <div className="flex items-center justify-between">
@@ -652,43 +852,80 @@ function LessonQuiz({ lessonId }: { lessonId: string }) {
             <span className="text-xs font-semibold text-violet-900 dark:text-violet-200">
               Knowledge Check
             </span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400 font-medium">
+              Attempt {attempt + 1}/{MAX_ATTEMPTS}
+            </span>
           </div>
-          <span className="text-[10px] text-violet-500">
-            {Object.keys(selectedAnswers).length}/{questions.length} answered
-          </span>
+          <div className="flex items-center gap-2">
+            {/* Progress dots */}
+            <div className="flex items-center gap-1">
+              {questions.map((q, i) => (
+                <div
+                  key={q.id}
+                  className={`w-2 h-2 rounded-full transition-colors ${
+                    selectedAnswers[q.id] !== undefined
+                      ? "bg-violet-500"
+                      : i === currentQuestion
+                        ? "bg-violet-300 dark:bg-violet-600 ring-2 ring-violet-200 dark:ring-violet-800"
+                        : "bg-neutral-200 dark:bg-neutral-700"
+                  }`}
+                />
+              ))}
+            </div>
+            <span className="text-[10px] text-violet-500 font-medium">
+              {Object.keys(selectedAnswers).length}/{questions.length}
+            </span>
+          </div>
         </div>
       </div>
 
       {/* Questions */}
       <div className="p-4 space-y-5">
         {questions.map((q, qIdx) => (
-          <div key={q.id}>
-            <p className="text-sm font-medium text-neutral-800 dark:text-neutral-200 mb-2.5">
-              <span className="text-violet-500 mr-1.5">{qIdx + 1}.</span>
+          <div
+            key={q.id}
+            className={`rounded-lg p-3.5 transition-all ${
+              currentQuestion === qIdx
+                ? "bg-violet-50/30 dark:bg-violet-950/10 ring-1 ring-violet-100 dark:ring-violet-800/30"
+                : ""
+            }`}
+            onClick={() => setCurrentQuestion(qIdx)}
+          >
+            <p className="text-sm font-medium text-neutral-800 dark:text-neutral-200 mb-3">
+              <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400 text-[10px] font-bold mr-2">
+                {qIdx + 1}
+              </span>
               {q.question}
             </p>
-            <div className="grid gap-2">
+            <div className="grid gap-2 ml-7">
               {q.options.map((option, oIdx) => {
                 const isSelected = selectedAnswers[q.id] === oIdx;
                 return (
                   <button
                     key={oIdx}
-                    onClick={() => setSelectedAnswers((prev) => ({ ...prev, [q.id]: oIdx }))}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedAnswers((prev) => ({ ...prev, [q.id]: oIdx }));
+                      // Auto-advance to next unanswered
+                      if (qIdx < questions.length - 1 && selectedAnswers[questions[qIdx + 1]?.id] === undefined) {
+                        setCurrentQuestion(qIdx + 1);
+                      }
+                    }}
                     className={`w-full text-left rounded-lg border px-3.5 py-2.5 text-xs transition-all ${
                       isSelected
-                        ? "border-violet-400 dark:border-violet-600 bg-violet-50 dark:bg-violet-900/20 text-violet-800 dark:text-violet-200 ring-1 ring-violet-300 dark:ring-violet-700"
-                        : "border-neutral-200 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/30 text-neutral-700 dark:text-neutral-300 hover:border-neutral-300 dark:hover:border-neutral-600 hover:bg-neutral-100/50 dark:hover:bg-neutral-800/50"
+                        ? "border-violet-400 dark:border-violet-600 bg-violet-50 dark:bg-violet-900/20 text-violet-800 dark:text-violet-200 ring-1 ring-violet-300 dark:ring-violet-700 shadow-sm"
+                        : "border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800/50 text-neutral-700 dark:text-neutral-300 hover:border-violet-200 dark:hover:border-violet-700 hover:bg-violet-50/30 dark:hover:bg-violet-950/10"
                     }`}
                   >
                     <div className="flex items-center gap-2.5">
-                      <span className={`flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold shrink-0 ${
+                      <span className={`flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold shrink-0 transition-colors ${
                         isSelected
                           ? "bg-violet-600 text-white"
-                          : "bg-neutral-200 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400"
+                          : "bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400"
                       }`}>
                         {String.fromCharCode(65 + oIdx)}
                       </span>
-                      <span>{option}</span>
+                      <span className="leading-relaxed">{option}</span>
                     </div>
                   </button>
                 );
@@ -698,19 +935,39 @@ function LessonQuiz({ lessonId }: { lessonId: string }) {
         ))}
       </div>
 
-      {/* Submit Button */}
-      <div className="px-4 pb-4">
-        <button
-          onClick={submitQuiz}
-          disabled={!allAnswered}
-          className={`w-full rounded-lg py-2.5 text-sm font-medium transition-all ${
-            allAnswered
-              ? "bg-violet-600 hover:bg-violet-700 text-white shadow-sm hover:shadow-md"
-              : "bg-neutral-100 dark:bg-neutral-800 text-neutral-400 cursor-not-allowed"
-          }`}
-        >
-          {allAnswered ? "Submit Answers" : `Answer all ${questions.length} questions to submit`}
-        </button>
+      {/* Submit Footer */}
+      <div className="px-4 pb-4 pt-1">
+        {errorMsg && (
+          <p className="text-xs text-red-500 mb-2 flex items-center gap-1">
+            <AlertTriangle className="h-3 w-3" />
+            {errorMsg}
+          </p>
+        )}
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-[11px] text-neutral-400">
+            {allAnswered
+              ? "All questions answered — ready to submit"
+              : `${questions.length - Object.keys(selectedAnswers).length} questions remaining`}
+          </p>
+          <button
+            onClick={submitQuiz}
+            disabled={!allAnswered}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-5 py-2.5 text-sm font-medium transition-all ${
+              allAnswered
+                ? "bg-violet-600 hover:bg-violet-700 text-white shadow-sm hover:shadow-md hover:-translate-y-0.5"
+                : "bg-neutral-100 dark:bg-neutral-800 text-neutral-400 cursor-not-allowed"
+            }`}
+          >
+            {allAnswered ? (
+              <>
+                <ArrowRight className="h-3.5 w-3.5" />
+                Submit Answers
+              </>
+            ) : (
+              "Complete all questions"
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );

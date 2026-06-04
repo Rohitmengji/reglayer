@@ -15,8 +15,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Key, GitBranch, Bell, Copy, Eye, EyeOff, Sparkles, Zap, SlidersHorizontal, AlertTriangle } from "lucide-react";
+import { Plus, Trash2, Key, GitBranch, Bell, Copy, Eye, EyeOff, Sparkles, Zap, SlidersHorizontal, AlertTriangle, User, Download, Shield, LogOut } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
+import { signOut } from "next-auth/react";
 
 interface ApiKeyRecord {
   id: string;
@@ -27,7 +28,7 @@ interface ApiKeyRecord {
   expiresAt: string | null;
 }
 
-type Tab = "plan" | "general" | "api-keys" | "integrations" | "alerts";
+type Tab = "plan" | "general" | "account" | "api-keys" | "integrations" | "alerts";
 
 export default function SettingsPage() {
   const searchParams = useSearchParams();
@@ -36,6 +37,7 @@ export default function SettingsPage() {
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: "plan", label: t("settings.tabPlan"), icon: <Sparkles className="h-4 w-4" /> },
+    { id: "account", label: "Account", icon: <User className="h-4 w-4" /> },
     { id: "general", label: t("settings.tabGeneral"), icon: <SlidersHorizontal className="h-4 w-4" /> },
     { id: "api-keys", label: t("settings.tabApiKeys"), icon: <Key className="h-4 w-4" /> },
     { id: "integrations", label: t("settings.tabIntegrations"), icon: <GitBranch className="h-4 w-4" /> },
@@ -53,7 +55,7 @@ export default function SettingsPage() {
         </div>
 
         {/* Tab Navigation */}
-        <div className="grid grid-cols-5 sm:flex sm:gap-1 border-b border-neutral-200 dark:border-neutral-700 pb-px">
+        <div className="grid grid-cols-3 sm:flex sm:gap-1 border-b border-neutral-200 dark:border-neutral-700 pb-px overflow-x-auto">
           {tabs.map((tab) => (
             <button
               key={tab.id}
@@ -73,6 +75,7 @@ export default function SettingsPage() {
 
         {/* Tab Content */}
         {activeTab === "plan" && <PlanUsageTab />}
+        {activeTab === "account" && <AccountTab />}
         {activeTab === "general" && <GeneralTab />}
         {activeTab === "api-keys" && <ApiKeysTab />}
         {activeTab === "integrations" && <IntegrationsTab />}
@@ -250,6 +253,245 @@ function PlanUsageTab() {
           <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-4">
             Audit log retention: {data.limits.auditLogDays} days
           </p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+/* ─────────────── Account Tab ─────────────── */
+function AccountTab() {
+  const [profile, setProfile] = useState<{ id: string; email: string; name: string | null; image: string | null; plan: string; createdAt: string } | null>(null);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [profileStatus, setProfileStatus] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/account")
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => {
+        if (d?.user) {
+          setProfile(d.user);
+          setName(d.user.name || "");
+          setEmail(d.user.email || "");
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  async function handleProfileUpdate(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setProfileStatus(null);
+    try {
+      const res = await fetch("/api/account", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name.trim() || undefined, email: email.trim() || undefined }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setProfile(data.user);
+        setProfileStatus({ type: "success", message: "Profile updated successfully" });
+      } else {
+        const data = await res.json();
+        setProfileStatus({ type: "error", message: data.error || "Failed to update profile" });
+      }
+    } catch {
+      setProfileStatus({ type: "error", message: "Network error" });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleExport() {
+    setExporting(true);
+    try {
+      const res = await fetch("/api/account/export");
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `reglayer-data-export-${Date.now()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      alert("Failed to export data. Please try again.");
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  async function handleDeleteAccount() {
+    if (deleteConfirmText !== "DELETE") return;
+    setDeleting(true);
+    try {
+      const res = await fetch("/api/account", {
+        method: "DELETE",
+        headers: { "x-confirm-delete": "DELETE_MY_ACCOUNT" },
+      });
+      if (res.ok) {
+        signOut({ callbackUrl: "/" });
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to delete account");
+      }
+    } catch {
+      alert("Network error. Please try again.");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  if (!profile) {
+    return <div className="text-center py-8 text-sm text-neutral-500">Loading profile...</div>;
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Profile Information */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm flex items-center gap-2">
+            <User className="h-4 w-4 text-blue-500" />
+            Profile Information
+          </CardTitle>
+          <CardDescription>Update your name and email address.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleProfileUpdate} className="space-y-4 max-w-md">
+            <div>
+              <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1 block">Display Name</label>
+              <Input
+                type="text"
+                placeholder="Your name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1 block">Email Address</label>
+              <Input
+                type="email"
+                placeholder="your@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-[11px] text-neutral-400">
+                Member since {new Date(profile.createdAt).toLocaleDateString()}
+              </span>
+              <Badge variant="secondary" className="text-[10px]">{profile.plan}</Badge>
+            </div>
+            {profileStatus && (
+              <p className={`text-xs ${profileStatus.type === "success" ? "text-green-600" : "text-red-600"}`}>
+                {profileStatus.message}
+              </p>
+            )}
+            <Button type="submit" size="sm" disabled={saving}>
+              {saving ? "Saving..." : "Save Changes"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      {/* GDPR Data Export */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Download className="h-4 w-4 text-emerald-500" />
+            Export Your Data
+          </CardTitle>
+          <CardDescription>
+            Download all your data as JSON (GDPR Article 20 — Right to Data Portability).
+            Includes scans, violations, API keys, workspace info, and account metadata.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExport}
+            disabled={exporting}
+            className="gap-2"
+          >
+            <Download className="h-3.5 w-3.5" />
+            {exporting ? "Preparing export..." : "Download My Data"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Danger Zone — Account Deletion */}
+      <Card className="border-red-200 dark:border-red-900/50">
+        <CardHeader>
+          <CardTitle className="text-sm text-red-600 dark:text-red-400 flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4" />
+            Danger Zone
+          </CardTitle>
+          <CardDescription>
+            Permanently delete your account and all associated data. This action cannot be undone.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!showDeleteConfirm ? (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setShowDeleteConfirm(true)}
+              className="gap-2"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Delete My Account
+            </Button>
+          ) : (
+            <div className="space-y-3 p-4 rounded-lg border border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-950/20 max-w-md">
+              <p className="text-xs text-red-700 dark:text-red-300 font-medium">
+                This will permanently delete:
+              </p>
+              <ul className="text-xs text-red-600 dark:text-red-400 space-y-1 pl-4 list-disc">
+                <li>Your profile and credentials</li>
+                <li>All scan history and violation data</li>
+                <li>API keys and integrations</li>
+                <li>Workspace memberships</li>
+              </ul>
+              <p className="text-xs text-neutral-600 dark:text-neutral-400">
+                Type <strong>DELETE</strong> to confirm:
+              </p>
+              <Input
+                type="text"
+                placeholder="Type DELETE"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                className="max-w-[200px] text-sm"
+              />
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleDeleteAccount}
+                  disabled={deleteConfirmText !== "DELETE" || deleting}
+                  className="gap-2"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  {deleting ? "Deleting..." : "Permanently Delete Account"}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => { setShowDeleteConfirm(false); setDeleteConfirmText(""); }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
