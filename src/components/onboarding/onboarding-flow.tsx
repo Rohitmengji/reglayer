@@ -62,7 +62,7 @@ export function OnboardingFlow({ userName, onComplete, onStartScan }: Onboarding
     <div key="welcome" className="space-y-6 text-center">
       <div className="flex items-center justify-center">
         <div className="relative">
-          <div className="flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-100 to-violet-100 dark:from-indigo-900/30 dark:to-violet-900/30">
+          <div className="flex items-center justify-center w-20 h-20 rounded-2xl bg-linear-to-br from-indigo-100 to-violet-100 dark:from-indigo-900/30 dark:to-violet-900/30">
             <Rocket className="h-9 w-9 text-indigo-600 dark:text-indigo-400" />
           </div>
           <div className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center ring-4 ring-white dark:ring-neutral-900">
@@ -202,7 +202,7 @@ export function OnboardingFlow({ userName, onComplete, onStartScan }: Onboarding
   ];
 
   return (
-    <div className="relative rounded-2xl border border-indigo-200/60 dark:border-indigo-800/40 bg-gradient-to-br from-white via-indigo-50/20 to-violet-50/20 dark:from-neutral-900 dark:via-indigo-950/10 dark:to-violet-950/10 p-8 shadow-lg">
+    <div className="relative rounded-2xl border border-indigo-200/60 dark:border-indigo-800/40 bg-linear-to-br from-white via-indigo-50/20 to-violet-50/20 dark:from-neutral-900 dark:via-indigo-950/10 dark:to-violet-950/10 p-8 shadow-lg">
       {/* Close button */}
       <button
         onClick={handleDismiss}

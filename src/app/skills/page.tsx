@@ -134,9 +134,9 @@ export default function SkillsPage() {
     <AppShell>
       <div className="space-y-8">
         {/* Hero Section */}
-        <div className="relative overflow-hidden rounded-2xl border border-neutral-200/60 dark:border-neutral-700/60 bg-gradient-to-br from-white via-indigo-50/30 to-purple-50/40 dark:from-neutral-900 dark:via-indigo-950/20 dark:to-purple-950/20 p-6 sm:p-8">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-indigo-100/40 to-transparent dark:from-indigo-900/20 rounded-full -translate-y-1/2 translate-x-1/3" />
-          <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-purple-100/30 to-transparent dark:from-purple-900/10 rounded-full translate-y-1/3 -translate-x-1/4" />
+        <div className="relative overflow-hidden rounded-2xl border border-neutral-200/60 dark:border-neutral-700/60 bg-linear-to-br from-white via-indigo-50/30 to-purple-50/40 dark:from-neutral-900 dark:via-indigo-950/20 dark:to-purple-950/20 p-6 sm:p-8">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-linear-to-bl from-indigo-100/40 to-transparent dark:from-indigo-900/20 rounded-full -translate-y-1/2 translate-x-1/3" />
+          <div className="absolute bottom-0 left-0 w-48 h-48 bg-linear-to-tr from-purple-100/30 to-transparent dark:from-purple-900/10 rounded-full translate-y-1/3 -translate-x-1/4" />
           
           <div className="relative flex flex-col lg:flex-row items-center gap-8">
             {/* Score Ring */}
@@ -182,7 +182,7 @@ export default function SkillsPage() {
                   </div>
                   <div className="h-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-1000"
+                      className="h-full bg-linear-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-1000"
                       style={{ width: `${animateScore ? levelProgress : 0}%` }}
                     />
                   </div>
@@ -305,7 +305,7 @@ export default function SkillsPage() {
         {/* Recommendation CTA */}
         {profile.weakestCategory && (
           <Link href="/learn" className="block group">
-            <div className="relative overflow-hidden rounded-2xl border border-indigo-200 dark:border-indigo-800/50 bg-gradient-to-r from-indigo-50 via-purple-50/50 to-indigo-50 dark:from-indigo-950/30 dark:via-purple-950/20 dark:to-indigo-950/30 p-5 transition-all group-hover:shadow-lg group-hover:shadow-indigo-100/50 dark:group-hover:shadow-indigo-900/20 group-hover:border-indigo-300 dark:group-hover:border-indigo-700">
+            <div className="relative overflow-hidden rounded-2xl border border-indigo-200 dark:border-indigo-800/50 bg-linear-to-r from-indigo-50 via-purple-50/50 to-indigo-50 dark:from-indigo-950/30 dark:via-purple-950/20 dark:to-indigo-950/30 p-5 transition-all group-hover:shadow-lg group-hover:shadow-indigo-100/50 dark:group-hover:shadow-indigo-900/20 group-hover:border-indigo-300 dark:group-hover:border-indigo-700">
               <div className="flex items-center gap-4">
                 <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-indigo-100 dark:bg-indigo-900/40 text-2xl shrink-0">
                   {CATEGORY_ICONS[profile.weakestCategory] || "📚"}
@@ -391,7 +391,7 @@ function CategoryCard({ category }: { category: CategoryScore }) {
       </div>
       <div className="h-2 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
         <div
-          className={`h-full bg-gradient-to-r ${barColor} rounded-full transition-all duration-1000`}
+          className={`h-full bg-linear-to-r ${barColor} rounded-full transition-all duration-1000`}
           style={{ width: `${category.score}%` }}
         />
       </div>
@@ -404,10 +404,10 @@ function CategoryCard({ category }: { category: CategoryScore }) {
 
 function BadgeCard({ badge }: { badge: Badge }) {
   const tierStyles = badge.tier === "gold"
-    ? "border-amber-300 bg-gradient-to-b from-amber-50 to-amber-100/50 dark:from-amber-900/20 dark:to-amber-900/10 shadow-amber-100/50 dark:shadow-amber-900/10"
+    ? "border-amber-300 bg-linear-to-b from-amber-50 to-amber-100/50 dark:from-amber-900/20 dark:to-amber-900/10 shadow-amber-100/50 dark:shadow-amber-900/10"
     : badge.tier === "silver"
-    ? "border-neutral-300 bg-gradient-to-b from-neutral-50 to-neutral-100/50 dark:from-neutral-800/50 dark:to-neutral-800/30 shadow-neutral-100/50"
-    : "border-orange-200 bg-gradient-to-b from-orange-50 to-orange-100/50 dark:from-orange-900/20 dark:to-orange-900/10 shadow-orange-100/50";
+    ? "border-neutral-300 bg-linear-to-b from-neutral-50 to-neutral-100/50 dark:from-neutral-800/50 dark:to-neutral-800/30 shadow-neutral-100/50"
+    : "border-orange-200 bg-linear-to-b from-orange-50 to-orange-100/50 dark:from-orange-900/20 dark:to-orange-900/10 shadow-orange-100/50";
 
   const emoji = badge.tier === "gold" ? "🏆" : badge.tier === "silver" ? "🥈" : "🥉";
 
@@ -420,7 +420,7 @@ function BadgeCard({ badge }: { badge: Badge }) {
       <p className="text-[10px] text-neutral-500 mt-1.5 leading-tight">
         {badge.description}
       </p>
-      <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-gradient-to-br from-white to-neutral-100 dark:from-neutral-700 dark:to-neutral-800 border border-neutral-200 dark:border-neutral-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+      <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-linear-to-br from-white to-neutral-100 dark:from-neutral-700 dark:to-neutral-800 border border-neutral-200 dark:border-neutral-600 opacity-0 group-hover:opacity-100 transition-opacity" />
     </div>
   );
 }

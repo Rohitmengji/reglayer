@@ -391,7 +391,7 @@ export default function ExecutiveDashboardPage() {
                         <td className="py-2.5 px-2">
                           <div className="flex items-center gap-2">
                             <div className={`w-2 h-2 rounded-full ${getScoreBg(site.latestScore)}`} />
-                            <span className="font-medium text-neutral-900 dark:text-neutral-100 truncate max-w-[200px]">
+                            <span className="font-medium text-neutral-900 dark:text-neutral-100 truncate max-w-50">
                               {site.hostname}
                             </span>
                           </div>

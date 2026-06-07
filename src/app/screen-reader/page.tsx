@@ -458,7 +458,7 @@ export default function ScreenReaderPage() {
                 <CardContent>
                   <div
                     ref={stepsContainerRef}
-                    className="max-h-[500px] overflow-y-auto space-y-1"
+                    className="max-h-125 overflow-y-auto space-y-1"
                   >
                     {snapshot.steps.map((step) => (
                       <button

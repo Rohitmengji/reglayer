@@ -117,8 +117,8 @@ export default function LearnPage() {
     <AppShell>
       <div className="space-y-8">
         {/* Hero Header */}
-        <div className="relative overflow-hidden rounded-2xl border border-neutral-200/60 dark:border-neutral-700/60 bg-gradient-to-br from-white via-emerald-50/20 to-teal-50/30 dark:from-neutral-900 dark:via-emerald-950/10 dark:to-teal-950/10 p-6 sm:p-8">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-emerald-100/30 to-transparent dark:from-emerald-900/10 rounded-full -translate-y-1/2 translate-x-1/3" />
+        <div className="relative overflow-hidden rounded-2xl border border-neutral-200/60 dark:border-neutral-700/60 bg-linear-to-br from-white via-emerald-50/20 to-teal-50/30 dark:from-neutral-900 dark:via-emerald-950/10 dark:to-teal-950/10 p-6 sm:p-8">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-linear-to-bl from-emerald-100/30 to-transparent dark:from-emerald-900/10 rounded-full -translate-y-1/2 translate-x-1/3" />
           
           <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
@@ -156,7 +156,7 @@ export default function LearnPage() {
 
         {/* Focus Area Banner */}
         {weakestCategory && (
-          <div className="flex items-center gap-4 p-4 rounded-xl border border-amber-200/70 dark:border-amber-800/40 bg-gradient-to-r from-amber-50 to-orange-50/50 dark:from-amber-950/20 dark:to-orange-950/10">
+          <div className="flex items-center gap-4 p-4 rounded-xl border border-amber-200/70 dark:border-amber-800/40 bg-linear-to-r from-amber-50 to-orange-50/50 dark:from-amber-950/20 dark:to-orange-950/10">
             <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-900/40 text-xl shrink-0">
               {CATEGORY_ICONS[weakestCategory] || "📚"}
             </div>
@@ -187,9 +187,9 @@ export default function LearnPage() {
                 <div className="p-5 pb-4 border-b border-neutral-100 dark:border-neutral-800">
                   <div className="flex items-start gap-4">
                     <div className={`flex items-center justify-center w-11 h-11 rounded-xl text-xl shrink-0 ${
-                      path.priority === 1 ? "bg-gradient-to-br from-red-100 to-orange-100 dark:from-red-900/30 dark:to-orange-900/20" :
-                      path.priority === 2 ? "bg-gradient-to-br from-amber-100 to-yellow-100 dark:from-amber-900/30 dark:to-yellow-900/20" :
-                      "bg-gradient-to-br from-neutral-100 to-neutral-50 dark:from-neutral-800 dark:to-neutral-800/50"
+                      path.priority === 1 ? "bg-linear-to-br from-red-100 to-orange-100 dark:from-red-900/30 dark:to-orange-900/20" :
+                      path.priority === 2 ? "bg-linear-to-br from-amber-100 to-yellow-100 dark:from-amber-900/30 dark:to-yellow-900/20" :
+                      "bg-linear-to-br from-neutral-100 to-neutral-50 dark:from-neutral-800 dark:to-neutral-800/50"
                     }`}>
                       {emoji}
                     </div>
@@ -223,7 +223,7 @@ export default function LearnPage() {
                       {/* Mini progress bar */}
                       <div className="w-16 h-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full"
+                          className="h-full bg-linear-to-r from-emerald-400 to-emerald-500 rounded-full"
                           style={{ width: `${path.categoryScore}%` }}
                         />
                       </div>
@@ -364,7 +364,7 @@ function LessonCard({ lesson, index, expanded, codeTab, onCodeTabChange, onToggl
                 onClick={() => onCodeTabChange("bad")}
                 className={`flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs font-medium transition-colors ${
                   codeTab === "bad"
-                    ? "text-red-600 dark:text-red-400 bg-white dark:bg-neutral-900 border-b-2 border-red-500 -mb-[1px]"
+                    ? "text-red-600 dark:text-red-400 bg-white dark:bg-neutral-900 border-b-2 border-red-500 -mb-px"
                     : "text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
                 }`}
               >
@@ -375,7 +375,7 @@ function LessonCard({ lesson, index, expanded, codeTab, onCodeTabChange, onToggl
                 onClick={() => onCodeTabChange("good")}
                 className={`flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs font-medium transition-colors ${
                   codeTab === "good"
-                    ? "text-emerald-600 dark:text-emerald-400 bg-white dark:bg-neutral-900 border-b-2 border-emerald-500 -mb-[1px]"
+                    ? "text-emerald-600 dark:text-emerald-400 bg-white dark:bg-neutral-900 border-b-2 border-emerald-500 -mb-px"
                     : "text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
                 }`}
               >
@@ -535,7 +535,7 @@ function LessonQuiz({ lessonId }: { lessonId: string }) {
   // Idle state — show quiz CTA
   if (state === "idle") {
     return (
-      <div className="rounded-xl bg-gradient-to-r from-violet-50 to-indigo-50/50 dark:from-violet-950/20 dark:to-indigo-950/10 border border-violet-200/60 dark:border-violet-800/40 p-5">
+      <div className="rounded-xl bg-linear-to-r from-violet-50 to-indigo-50/50 dark:from-violet-950/20 dark:to-indigo-950/10 border border-violet-200/60 dark:border-violet-800/40 p-5">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-violet-100 dark:bg-violet-900/40 shrink-0">
@@ -655,7 +655,7 @@ function LessonQuiz({ lessonId }: { lessonId: string }) {
   // Loading state
   if (state === "loading" || state === "grading") {
     return (
-      <div className="rounded-xl border border-violet-200/60 dark:border-violet-800/40 bg-gradient-to-r from-violet-50/50 to-indigo-50/30 dark:from-violet-950/10 dark:to-indigo-950/5 p-8 flex flex-col items-center justify-center gap-3">
+      <div className="rounded-xl border border-violet-200/60 dark:border-violet-800/40 bg-linear-to-r from-violet-50/50 to-indigo-50/30 dark:from-violet-950/10 dark:to-indigo-950/5 p-8 flex flex-col items-center justify-center gap-3">
         <div className="relative">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-violet-200 border-t-violet-600" />
           <Brain className="h-3.5 w-3.5 text-violet-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
@@ -680,7 +680,7 @@ function LessonQuiz({ lessonId }: { lessonId: string }) {
     const canRetry = attempt < MAX_ATTEMPTS;
 
     return (
-      <div className={`rounded-xl bg-gradient-to-r ${bgColor} border overflow-hidden`}>
+      <div className={`rounded-xl bg-linear-to-r ${bgColor} border overflow-hidden`}>
         {/* Score Header */}
         <div className="p-5 pb-4">
           <div className="flex items-center justify-between">
@@ -839,7 +839,7 @@ function LessonQuiz({ lessonId }: { lessonId: string }) {
   return (
     <div className="rounded-xl border border-violet-200/60 dark:border-violet-800/40 bg-white dark:bg-neutral-900 overflow-hidden shadow-sm">
       {/* Quiz Header */}
-      <div className="px-4 py-3 bg-gradient-to-r from-violet-50 to-indigo-50/50 dark:from-violet-950/20 dark:to-indigo-950/10 border-b border-violet-200/40 dark:border-violet-800/30">
+      <div className="px-4 py-3 bg-linear-to-r from-violet-50 to-indigo-50/50 dark:from-violet-950/20 dark:to-indigo-950/10 border-b border-violet-200/40 dark:border-violet-800/30">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Brain className="h-4 w-4 text-violet-600 dark:text-violet-400" />
