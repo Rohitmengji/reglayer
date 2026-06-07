@@ -3,65 +3,64 @@
 /**
  * RegLayer — useFeatures hook
  *
- * WHY: Sidebar and pages need to know which features the user's workspace has access to.
- * WHAT: Fetches /api/workspace/features on mount, returns enabled feature IDs.
- * HOW: SWR-style caching with useState/useEffect. Master admins get all features.
+ * Fetches workspace feature set once per session.
+ * Uses useRef for cache (safe in concurrent mode, per-component instance).
+ * Master admins see all features without network call.
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useSession } from "next-auth/react";
+import { FEATURE_CATALOG } from "@/lib/features/feature-catalog";
 
-let cachedFeatures: string[] | null = null;
+const ALL_FEATURE_IDS = FEATURE_CATALOG.map((f) => f.id);
 
 export function useFeatures() {
-  const { data: session } = useSession();
-  const [features, setFeatures] = useState<string[]>(cachedFeatures || []);
-  const [loading, setLoading] = useState(!cachedFeatures);
+  const { data: session, status } = useSession();
+  const [features, setFeatures] = useState<string[] | null>(null);
+  const fetchedRef = useRef(false);
 
   useEffect(() => {
+    if (status === "loading") return;
     if (!session?.user) return;
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
 
-    // Master admin sees everything
+    // Master admin — no network needed
     if (session.user.isMasterAdmin) {
-      const all = ["dashboard", "scans", "violations", "trends", "crawl", "compliance", "analysis", "automation", "manage", "executive", "agency", "settings"];
-      setFeatures(all);
-      cachedFeatures = all;
-      setLoading(false);
+      Promise.resolve().then(() => setFeatures(ALL_FEATURE_IDS));
       return;
     }
 
-    // Use cache if available
-    if (cachedFeatures) {
-      setFeatures(cachedFeatures);
-      setLoading(false);
-      return;
-    }
+    const controller = new AbortController();
 
-    fetch("/api/workspace/features")
-      .then((r) => r.ok ? r.json() : Promise.reject())
-      .then((data) => {
-        cachedFeatures = data.features;
-        setFeatures(data.features);
-      })
-      .catch(() => {
-        // Fallback: show core features if API fails
-        setFeatures(["dashboard", "scans", "settings"]);
-      })
-      .finally(() => setLoading(false));
-  }, [session]);
+    fetch("/api/workspace/features", { signal: controller.signal })
+      .then((r) => r.ok ? r.json() : Promise.reject(new Error(`${r.status}`)))
+      .then((data) => setFeatures(data.features ?? []))
+      .catch((err) => {
+        if (err.name !== "AbortError") {
+          setFeatures(["dashboard", "scans", "settings"]);
+        }
+      });
 
-  const hasFeature = (featureId: string): boolean => {
-    // While loading, be permissive to avoid flash
-    if (loading) return true;
-    return features.includes(featureId);
-  };
+    return () => controller.abort();
+  }, [session, status]);
 
-  return { features, loading, hasFeature };
+  // Derive loading from whether features have resolved
+  const loading = features === null;
+
+  const hasFeature = useCallback(
+    (featureId: string): boolean => loading || features!.includes(featureId),
+    [features, loading]
+  );
+
+  const resolvedFeatures = useMemo(() => features ?? [], [features]);
+
+  return { features: resolvedFeatures, loading, hasFeature };
 }
 
 /**
- * Invalidate the cached features (call after plan change or feature toggle).
+ * Force re-fetch on next render (call after plan upgrade or feature toggle).
  */
 export function invalidateFeatureCache() {
-  cachedFeatures = null;
+  window.dispatchEvent(new CustomEvent("reglayer:features-invalidated"));
 }
