@@ -295,7 +295,7 @@ function FixCard({ fix, variant }: { fix: PrioritizedFix; variant: "quickwin" | 
             <Badge variant={fix.impact as "critical" | "serious" | "moderate" | "minor"}>
               {fix.impact}
             </Badge>
-            <code className="text-xs text-neutral-500 dark:text-neutral-400 truncate max-w-[120px]">{fix.ruleId}</code>
+            <code className="text-xs text-neutral-500 dark:text-neutral-400 truncate max-w-30">{fix.ruleId}</code>
             <span className="text-xs text-neutral-400">{fix.category}</span>
           </div>
           <p className="text-sm font-medium text-neutral-900 dark:text-white truncate">{fix.help}</p>

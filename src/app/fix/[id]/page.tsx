@@ -206,7 +206,7 @@ export default function FixFlowPage() {
           {/* Progress Bar */}
           <div className="w-full h-2 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-green-500 to-emerald-500 rounded-full transition-all duration-500 ease-out"
+              className="h-full bg-linear-to-r from-green-500 to-emerald-500 rounded-full transition-all duration-500 ease-out"
               style={{ width: `${(completedCount / totalCards) * 100}%` }}
             />
           </div>

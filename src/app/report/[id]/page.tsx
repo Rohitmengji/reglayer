@@ -112,7 +112,7 @@ export default async function PublicReportPage({ params }: ReportPageProps) {
         {/* Score Hero */}
         <div className="relative overflow-hidden rounded-2xl border border-neutral-200/80 dark:border-neutral-800/80 bg-white dark:bg-neutral-900 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_8px_24px_rgba(0,0,0,0.04)]">
           {/* Subtle gradient accent at top */}
-          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-neutral-300 dark:via-neutral-600 to-transparent" />
+          <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-neutral-300 dark:via-neutral-600 to-transparent" />
           
           <div className="p-6 sm:p-8 lg:p-10">
             <div className="flex flex-col sm:flex-row items-center gap-6 sm:gap-10">
@@ -147,7 +147,7 @@ export default async function PublicReportPage({ params }: ReportPageProps) {
                 <div className="mt-4 space-y-1.5">
                   <div className="flex items-center gap-2 justify-center sm:justify-start text-[13px] text-neutral-500 dark:text-neutral-400">
                     <ExternalLink className="h-3.5 w-3.5 shrink-0 text-neutral-400" />
-                    <a href={scan.url} target="_blank" rel="noopener noreferrer" className="hover:text-neutral-900 dark:hover:text-white truncate max-w-[260px] sm:max-w-[380px] transition-colors">
+                    <a href={scan.url} target="_blank" rel="noopener noreferrer" className="hover:text-neutral-900 dark:hover:text-white truncate max-w-65 sm:max-w-95 transition-colors">
                       {scan.url}
                     </a>
                   </div>
@@ -185,7 +185,7 @@ export default async function PublicReportPage({ params }: ReportPageProps) {
             </div>
             <div className="mt-3 h-2 rounded-full bg-neutral-100 dark:bg-neutral-800 overflow-hidden">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-green-400 to-green-500 transition-all"
+                className="h-full rounded-full bg-linear-to-r from-green-400 to-green-500 transition-all"
                 style={{ width: `${scan.compliance}%` }}
               />
             </div>

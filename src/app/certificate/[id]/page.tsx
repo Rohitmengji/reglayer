@@ -162,7 +162,7 @@ export default function CertificatePage() {
         {/* Certificate Card */}
         <div ref={certRef} className={`relative rounded-xl border ${config.border} bg-white dark:bg-neutral-900 overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.06),0_12px_40px_rgba(0,0,0,0.04)]`}>
           {/* Top Gradient Bar */}
-          <div className={`h-1 bg-gradient-to-r ${config.color}`} />
+          <div className={`h-1 bg-linear-to-r ${config.color}`} />
           
           {/* Decorative corner patterns */}
           <div className="absolute top-5 left-5 w-10 h-10 border-t border-l border-neutral-200/60 dark:border-neutral-700/40 rounded-tl" />
@@ -214,7 +214,7 @@ export default function CertificatePage() {
             {/* URL */}
             <div className="flex items-center justify-center gap-1.5 text-xs mt-4">
               <Globe className="h-3 w-3 text-neutral-400" />
-              <a href={cert.url} target="_blank" rel="noopener noreferrer" className="text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors truncate max-w-[300px]">
+              <a href={cert.url} target="_blank" rel="noopener noreferrer" className="text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors truncate max-w-75">
                 {cert.url}
               </a>
               <ExternalLink className="h-2.5 w-2.5 text-neutral-400" />

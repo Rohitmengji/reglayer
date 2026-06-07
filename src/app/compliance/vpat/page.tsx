@@ -268,7 +268,7 @@ export default function VPATPage() {
                               <span>{c.conformance}</span>
                             </div>
                           </td>
-                          <td className="py-2 px-2 text-muted-foreground max-w-[300px] truncate">{c.remarks}</td>
+                          <td className="py-2 px-2 text-muted-foreground max-w-75 truncate">{c.remarks}</td>
                         </tr>
                       ))}
                     </tbody>
