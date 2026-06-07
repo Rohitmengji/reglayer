@@ -37,7 +37,7 @@ export async function GET(
     }
 
     // Ownership check: scan must belong to user's workspace or user directly
-    const isMasterAdmin = (session.user as unknown as { isMasterAdmin?: boolean })?.isMasterAdmin;
+    const isMasterAdmin = session.user?.isMasterAdmin;
     if (!isMasterAdmin && scan.userId !== member?.userId && scan.workspaceId !== member?.workspaceId) {
       return NextResponse.json({ error: "Scan not found" }, { status: 404 });
     }
@@ -57,8 +57,8 @@ export async function DELETE(
     return NextResponse.json({ error: "Authentication required" }, { status: 401 });
   }
 
-  const role = (session.user as unknown as { role?: string })?.role;
-  const isMasterAdmin = (session.user as unknown as { isMasterAdmin?: boolean })?.isMasterAdmin;
+  const role = session.user?.role;
+  const isMasterAdmin = session.user?.isMasterAdmin;
 
   if (role !== "admin" && !isMasterAdmin) {
     return NextResponse.json(

@@ -89,8 +89,29 @@ model Workspace {
   webhooks     Webhook[]
   apiKeys      ApiKey[]
   agencyClient AgencyClient?
+  featureOverrides WorkspaceFeature[]
 
   @@map("workspaces")
+}
+
+// ─────────────────────────────────────────────
+// Feature Gating (per-workspace overrides)
+// ─────────────────────────────────────────────
+
+model WorkspaceFeature {
+  id          String   @id @default(cuid())
+  feature     String   // e.g. "executive", "agency", "compliance", "automation"
+  enabled     Boolean  @default(true)
+  grantedBy   String   // master admin user ID who enabled/disabled
+  grantedAt   DateTime @default(now())
+  expiresAt   DateTime? // optional: time-limited trial access
+  note        String?  // admin note, e.g. "Annual deal includes Executive"
+
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, feature])
+  @@map("workspace_features")
 }
 
 model WorkspaceMember {

@@ -94,6 +94,9 @@ export async function PATCH(request: NextRequest) {
 /**
  * DELETE /api/account — Permanently delete user account and all associated data.
  * GDPR Article 17 — Right to Erasure.
+ *
+ * Wrapped in a Prisma interactive transaction to guarantee atomicity.
+ * If any step fails, the entire operation rolls back — no partial deletions.
  */
 export async function DELETE(request: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -119,35 +122,43 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
-  // Delete in order respecting foreign key constraints
-  // 1. Delete user's violations (via scans)
-  const scanIds = await prisma.scan.findMany({
-    where: { userId: user.id },
-    select: { id: true },
-  });
-  const scanIdList = scanIds.map((s) => s.id);
+  try {
+    await prisma.$transaction(async (tx) => {
+      // 1. Delete violations (via scans) — must go first due to FK constraints
+      const scanIds = await tx.scan.findMany({
+        where: { userId: user.id },
+        select: { id: true },
+      });
+      const scanIdList = scanIds.map((s) => s.id);
 
-  if (scanIdList.length > 0) {
-    await prisma.violation.deleteMany({ where: { scanId: { in: scanIdList } } });
+      if (scanIdList.length > 0) {
+        await tx.violation.deleteMany({ where: { scanId: { in: scanIdList } } });
+      }
+
+      // 2. Delete scans
+      await tx.scan.deleteMany({ where: { userId: user.id } });
+
+      // 3. Delete API keys
+      await tx.apiKey.deleteMany({ where: { userId: user.id } });
+
+      // 4. Delete workspace memberships
+      await tx.workspaceMember.deleteMany({ where: { userId: user.id } });
+
+      // 5. Delete credit grants
+      await tx.creditGrant.deleteMany({ where: { userId: user.id } });
+
+      // 6. Delete access requests
+      await tx.accessRequest.deleteMany({ where: { userId: user.id } });
+
+      // 7. Delete the user
+      await tx.user.delete({ where: { id: user.id } });
+    });
+  } catch {
+    return NextResponse.json(
+      { error: "Failed to delete account. Please try again or contact support." },
+      { status: 500 }
+    );
   }
-
-  // 2. Delete scans
-  await prisma.scan.deleteMany({ where: { userId: user.id } });
-
-  // 3. Delete API keys
-  await prisma.apiKey.deleteMany({ where: { userId: user.id } });
-
-  // 4. Delete workspace memberships
-  await prisma.workspaceMember.deleteMany({ where: { userId: user.id } });
-
-  // 5. Delete credit grants
-  await prisma.creditGrant.deleteMany({ where: { userId: user.id } });
-
-  // 6. Delete access requests
-  await prisma.accessRequest.deleteMany({ where: { userId: user.id } });
-
-  // 7. Delete the user
-  await prisma.user.delete({ where: { id: user.id } });
 
   return NextResponse.json({ success: true, message: "Account permanently deleted" });
 }
