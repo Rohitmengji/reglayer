@@ -71,36 +71,31 @@ export default function ViolationsPage() {
   const [bulkUpdating, setBulkUpdating] = useState(false);
 
   // If no scanId provided, resolve latest scan
+  const effectiveScanId = scanIdParam || resolvedScanId;
+
   useEffect(() => {
-    if (scanIdParam) {
-      setResolvedScanId(scanIdParam);
-      return;
-    }
-    async function resolveLatestScan() {
-      try {
-        const resp = await fetch("/api/scans?limit=1");
-        if (!resp.ok) {
-          setError("Failed to load latest scan.");
-          setLoading(false);
-          return;
-        }
-        const json = await resp.json();
+    if (scanIdParam) return;
+    fetch("/api/scans?limit=1")
+      .then((resp) => {
+        if (!resp.ok) throw new Error("Failed to load latest scan.");
+        return resp.json();
+      })
+      .then((json) => {
         if (json?.scans?.[0]?.id) {
           setResolvedScanId(json.scans[0].id);
         } else {
           setError("No scans found. Run a scan first.");
           setLoading(false);
         }
-      } catch {
-        setError("Failed to load latest scan.");
+      })
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : "Failed to load latest scan.");
         setLoading(false);
-      }
-    }
-    resolveLatestScan();
+      });
   }, [scanIdParam]);
 
   const fetchViolations = useCallback(async () => {
-    if (!resolvedScanId) {
+    if (!effectiveScanId) {
       return;
     }
 
@@ -116,7 +111,7 @@ export default function ViolationsPage() {
     }
 
     const params = new URLSearchParams({
-      scanId: resolvedScanId,
+      scanId: effectiveScanId,
       page: String(currentPage),
       limit: "25",
     });
@@ -132,7 +127,7 @@ export default function ViolationsPage() {
 
       // If filtering by exceptions, also fetch ACCEPTABLE_RISK and merge
       if (activeTab === "EXCEPTIONS") {
-        const params2 = new URLSearchParams({ scanId: resolvedScanId, page: "1", limit: "100", status: "ACCEPTABLE_RISK" });
+        const params2 = new URLSearchParams({ scanId: effectiveScanId, page: "1", limit: "100", status: "ACCEPTABLE_RISK" });
         const resp2 = await fetch(`/api/violations?${params2}`);
         if (resp2.ok) {
           const extra: ViolationsResponse = await resp2.json();
@@ -147,7 +142,7 @@ export default function ViolationsPage() {
     } finally {
       setLoading(false);
     }
-  }, [resolvedScanId, activeTab, currentPage]);
+  }, [effectiveScanId, activeTab, currentPage]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- data fetching pattern requires setState
@@ -215,7 +210,7 @@ export default function ViolationsPage() {
 
   // ─────────────── Render ───────────────
 
-  if (!resolvedScanId && !loading && error) {
+  if (!effectiveScanId && !loading && error) {
     return (
       <AppShell>
         <div className="flex-1 flex items-center justify-center">

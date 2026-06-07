@@ -116,8 +116,30 @@ export default function AgencyDashboard() {
 
   useEffect(() => {
     if (!session) return;
-    loadAgency();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    fetch("/api/agency")
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to load agencies");
+        return res.json();
+      })
+      .then(async (data) => {
+        if (data.isMasterAdmin) setIsMasterAdmin(true);
+        if (data.canCreate) setCanCreate(true);
+        if (data.agencies?.length > 0) {
+          const agencyId = data.agencies[0].id;
+          const detailRes = await fetch(`/api/agency/${agencyId}`);
+          if (!detailRes.ok) throw new Error("Failed to load agency details");
+          const detail = await detailRes.json();
+          setAgency(detail.agency);
+          setBrandName(detail.agency.brandName);
+          setPrimaryColor(detail.agency.primaryColor);
+          setAccentColor(detail.agency.accentColor);
+          setSupportEmail(detail.agency.supportEmail || "");
+        } else {
+          setShowCreateForm(true);
+        }
+      })
+      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load"))
+      .finally(() => setLoading(false));
   }, [session]);
 
   const createAgency = async () => {
