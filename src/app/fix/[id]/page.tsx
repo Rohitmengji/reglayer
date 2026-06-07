@@ -22,6 +22,8 @@ import { useParams } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { PageLoading } from "@/components/ui/page-loading";
+import { PageError } from "@/components/ui/page-error";
 import {
   CheckCircle2,
   Copy,
@@ -110,11 +112,7 @@ export default function FixFlowPage() {
   if (loading) {
     return (
       <AppShell>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="animate-pulse text-neutral-500 dark:text-neutral-400">
-            Preparing your fix flow...
-          </div>
-        </div>
+        <PageLoading message="Preparing your fix flow..." />
       </AppShell>
     );
   }
@@ -122,12 +120,13 @@ export default function FixFlowPage() {
   if (error || !data) {
     return (
       <AppShell>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="text-center">
-            <p className="text-red-500 font-medium">{error ?? "Something went wrong"}</p>
-            <p className="text-neutral-500 mt-2 text-sm">Unable to load fix cards for this scan.</p>
-          </div>
-        </div>
+        <PageError
+          title="Couldn\u2019t load fix flow"
+          message="We\u2019re having trouble preparing your fixes. Please try again."
+          onRetry={() => window.location.reload()}
+          fallbackHref="/scans"
+          fallbackLabel="Back to Scans"
+        />
       </AppShell>
     );
   }
