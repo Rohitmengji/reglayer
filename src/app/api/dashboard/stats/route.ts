@@ -27,18 +27,29 @@ export async function GET() {
   }
 
   try {
-  // Scope to user's workspace
+  // Scope: users see only their own scans; master admins see all workspace scans
+  const user = await prisma.user.findUnique({
+    where: { email: session.user.email },
+    select: { id: true, isMasterAdmin: true },
+  });
+
+  if (!user) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+
   const membership = await prisma.workspaceMember.findFirst({
-    where: { user: { email: session.user.email } },
+    where: { userId: user.id },
     select: { workspaceId: true },
   });
 
-  const workspaceFilter = membership ? { workspaceId: membership.workspaceId } : {};
+  const scopeFilter = user.isMasterAdmin && membership
+    ? { workspaceId: membership.workspaceId }
+    : { userId: user.id };
 
   const [totalScans, recentScans, violationStats] = await Promise.all([
-    prisma.scan.count({ where: { status: "COMPLETED", ...workspaceFilter } }),
+    prisma.scan.count({ where: { status: "COMPLETED", ...scopeFilter } }),
     prisma.scan.findMany({
-      where: { status: "COMPLETED", ...workspaceFilter },
+      where: { status: "COMPLETED", ...scopeFilter },
       orderBy: { createdAt: "desc" },
       take: 10,
       select: {
@@ -51,6 +62,7 @@ export async function GET() {
     }),
     prisma.violation.groupBy({
       by: ["ruleId", "impact"],
+      where: { scan: scopeFilter },
       _count: { ruleId: true },
       orderBy: { _count: { ruleId: "desc" } },
       take: 10,

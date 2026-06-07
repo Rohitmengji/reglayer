@@ -17,7 +17,7 @@
  *      Uses existing chart components (ScoreLineChart, ViolationAreaChart).
  */
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -72,61 +72,47 @@ export default function TrendsPage() {
   const HISTORY_PER_PAGE = 10;
 
   // Fetch URL for latest scan if not provided
-  const [resolvedUrl, setResolvedUrl] = useState(url);
+  const [autoResolvedUrl, setAutoResolvedUrl] = useState("");
+  const resolvedUrl = url || autoResolvedUrl;
 
   useEffect(() => {
-    if (url) {
-      setResolvedUrl(url);
-      return;
-    }
+    if (url) return;
     // Auto-resolve from latest scan
-    async function resolve() {
-      try {
-        const resp = await fetch("/api/scans?limit=1");
-        if (!resp.ok) {
-          setError("No scans found. Run a scan first to see trends.");
-          setLoading(false);
-          return;
-        }
-        const json = await resp.json();
+    fetch("/api/scans?limit=1")
+      .then((resp) => {
+        if (!resp.ok) throw new Error("No scans found. Run a scan first to see trends.");
+        return resp.json();
+      })
+      .then((json) => {
         if (json?.scans?.[0]?.url) {
-          setResolvedUrl(json.scans[0].url);
+          setAutoResolvedUrl(json.scans[0].url);
         } else {
           setError("No scans found. Run a scan first to see trends.");
           setLoading(false);
         }
-      } catch {
-        setError("Failed to load scan data.");
+      })
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : "Failed to load scan data.");
         setLoading(false);
-      }
-    }
-    resolve();
+      });
   }, [url]);
 
   // Fetch trend data
-  const fetchTrends = useCallback(async () => {
-    if (!resolvedUrl) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const params = new URLSearchParams({ url: resolvedUrl });
-      const resp = await fetch(`/api/trends?${params}`);
-      if (!resp.ok) {
-        const err = await resp.json().catch(() => ({ message: "Failed to load trends" }));
-        throw new Error(err.message ?? `Error ${resp.status}`);
-      }
-      const result: TrendsApiResponse = await resp.json();
-      setData(result);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load trends");
-    } finally {
-      setLoading(false);
-    }
-  }, [resolvedUrl]);
-
   useEffect(() => {
-    fetchTrends();
-  }, [fetchTrends]);
+    if (!resolvedUrl) return;
+    const params = new URLSearchParams({ url: resolvedUrl });
+    fetch(`/api/trends?${params}`)
+      .then((resp) => {
+        if (!resp.ok) return resp.json().catch(() => ({ message: "Failed to load trends" })).then((e) => { throw new Error(e.message ?? `Error ${resp.status}`); });
+        return resp.json();
+      })
+      .then((result: TrendsApiResponse) => {
+        setData(result);
+        setError(null);
+      })
+      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load trends"))
+      .finally(() => setLoading(false));
+  }, [resolvedUrl]);
 
   // Compute cutoff date for time filtering
   const [now] = useState(() => Date.now());

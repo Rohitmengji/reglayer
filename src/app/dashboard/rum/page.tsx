@@ -81,21 +81,12 @@ export default function RumPage() {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    fetchData();
+    fetch(`/api/rum/events?period=${period}`)
+      .then((res) => res.ok ? res.json() : Promise.reject())
+      .then((d) => setData(d))
+      .catch(() => { /* ignore */ })
+      .finally(() => setLoading(false));
   }, [period]);
-
-  async function fetchData() {
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/rum/events?period=${period}`);
-      if (res.ok) {
-        setData(await res.json());
-      }
-    } catch {
-      // ignore
-    }
-    setLoading(false);
-  }
 
   function copySnippet() {
     const snippet = `<script src="${data?.snippet || `${window.location.origin}/api/rum/snippet?key=YOUR_SITE_KEY`}" async></script>`;

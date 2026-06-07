@@ -388,8 +388,8 @@ export function generateLearningPaths(categories: CategoryScore[]): Personalized
     .sort((a, b) => a.score - b.score);
 
   return sorted.map((cat, idx) => {
-    const module = LEARNING_MODULES.find((m) => m.category === cat.category);
-    if (!module) return null;
+    const learningModule = LEARNING_MODULES.find((m) => m.category === cat.category);
+    if (!learningModule) return null;
 
     let reason: string;
     if (cat.score < 50) {
@@ -402,7 +402,7 @@ export function generateLearningPaths(categories: CategoryScore[]): Personalized
 
     return {
       category: cat.category,
-      module,
+      module: learningModule,
       priority: idx + 1,
       reason,
       categoryScore: cat.score,

@@ -6,7 +6,7 @@
  * HOW: Uses Node.js crypto module. Encryption key from ENCRYPTION_KEY env var. IV is random per encryption.
  */
 import "server-only";
-import { createCipheriv, createDecipheriv, randomBytes } from "crypto";
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from "crypto";
 
 /**
  * AES-256-GCM encryption for sensitive data (OAuth tokens, secrets).
@@ -26,7 +26,6 @@ function getKey(): Buffer {
   }
   // Derive from NEXTAUTH_SECRET as fallback
   const secret = process.env.NEXTAUTH_SECRET || "dev-fallback-secret-not-for-production";
-  const { createHash } = require("crypto");
   return createHash("sha256").update(secret).digest();
 }
 
