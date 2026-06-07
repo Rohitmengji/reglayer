@@ -510,7 +510,7 @@ function AccountTab() {
                 placeholder="Type DELETE"
                 value={deleteConfirmText}
                 onChange={(e) => setDeleteConfirmText(e.target.value)}
-                className="max-w-[200px] text-sm"
+                className="max-w-50 text-sm"
               />
               <div className="flex items-center gap-2">
                 <Button

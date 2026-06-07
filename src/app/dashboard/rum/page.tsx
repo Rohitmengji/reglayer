@@ -236,7 +236,7 @@ export default function RumPage() {
                 {agg.topSelectors.slice(0, 10).map((s, i) => (
                   <div key={i} className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-2">
-                      <code className="text-xs bg-muted px-1 rounded truncate max-w-[200px]">
+                      <code className="text-xs bg-muted px-1 rounded truncate max-w-50">
                         {s.selector}
                       </code>
                       <Badge variant="outline" className="text-[10px]">
@@ -263,7 +263,7 @@ export default function RumPage() {
                     <span
                       className={`w-2 h-2 rounded-full ${BARRIER_COLORS[ev.type] || "bg-gray-400"}`}
                     />
-                    <span className="font-mono truncate max-w-[120px]">{ev.selector}</span>
+                    <span className="font-mono truncate max-w-30">{ev.selector}</span>
                     <Badge variant="outline" className="text-[10px]">
                       {BARRIER_LABELS[ev.type] || ev.type}
                     </Badge>
