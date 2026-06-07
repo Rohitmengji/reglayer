@@ -37,6 +37,8 @@ import { Shield, LayoutDashboard, Scan, Globe, Grid3X3, Moon, Sun, Languages, Cr
 import { useI18n } from "@/components/i18n-provider";
 import { SUPPORTED_LOCALES } from "@/lib/i18n/translations";
 import { useState } from "react";
+import { useFeatures } from "@/hooks/use-features";
+import { SIDEBAR_FEATURE_MAP } from "@/lib/features/feature-catalog";
 
 const mainNav = [
   { name: "Dashboard", key: "nav.dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -63,6 +65,15 @@ export function Sidebar({ onNavigate }: SidebarProps) {
   const { resolvedTheme, setTheme, mounted } = useTheme();
   const { locale, setLocale, t } = useI18n();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const { hasFeature } = useFeatures();
+
+  // Filter nav items by feature access
+  const visibleNav = mainNav.filter((item) => {
+    const basePath = item.href.split("?")[0];
+    const featureId = SIDEBAR_FEATURE_MAP[basePath];
+    if (!featureId) return true; // No gate = always show
+    return hasFeature(featureId);
+  });
 
   const NavItem = ({ item }: { item: { name: string; key: string; href: string; icon: React.ComponentType<{ className?: string }> } }) => {
     const basePath = item.href.split("?")[0];
@@ -101,13 +112,13 @@ export function Sidebar({ onNavigate }: SidebarProps) {
       <nav className="flex-1 px-3 pb-3 space-y-5">
         {/* Main */}
         <div className="space-y-0.5">
-          {mainNav.map((item) => (
+          {visibleNav.map((item) => (
             <NavItem key={item.name} item={item} />
           ))}
         </div>
 
         {/* Master Admin */}
-        {(session?.user as unknown as { isMasterAdmin?: boolean })?.isMasterAdmin && (
+        {session?.user?.isMasterAdmin && (
           <div className="space-y-0.5">
             <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-red-400">Admin</p>
             <Link
@@ -122,6 +133,19 @@ export function Sidebar({ onNavigate }: SidebarProps) {
             >
               <Crown className="h-4 w-4" />
               Admin Panel
+            </Link>
+            <Link
+              href="/admin/features"
+              onClick={onNavigate}
+              className={cn(
+                "flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-all duration-150",
+                pathname === "/admin/features"
+                  ? "bg-red-600 text-white"
+                  : "text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+              )}
+            >
+              <Shield className="h-4 w-4" />
+              Feature Gates
             </Link>
           </div>
         )}

@@ -102,64 +102,75 @@ export const authOptions: NextAuthOptions = {
     signIn: "/auth/login",
   },
   callbacks: {
-    async signIn({ user, account }) {
+    async signIn({ user }) {
       // Ensure user exists in the database
       if (user?.email) {
-        const dbUser = await prisma.user.upsert({
-          where: { email: user.email },
-          update: { name: user.name || undefined, image: user.image || undefined },
-          create: { email: user.email, name: user.name || null, image: user.image || null },
-        });
-
-        // Early access: auto-add first 100 users to default workspace until July 31, 2026
-        const EARLY_ACCESS_DEADLINE = new Date("2026-07-31T23:59:59Z");
-        const EARLY_ACCESS_LIMIT = 100;
-
-        if (new Date() <= EARLY_ACCESS_DEADLINE) {
-          const existingMembership = await prisma.workspaceMember.findFirst({
-            where: { userId: dbUser.id },
+        try {
+          const dbUser = await prisma.user.upsert({
+            where: { email: user.email },
+            update: { name: user.name || undefined, image: user.image || undefined },
+            create: { email: user.email, name: user.name || null, image: user.image || null },
           });
 
-          if (!existingMembership) {
-            // Check total workspace members to enforce 100-user cap
-            const defaultWorkspace = await prisma.workspace.findFirst({
-              orderBy: { createdAt: "asc" },
+          // Early access: auto-add first 100 users to default workspace until July 31, 2026
+          const EARLY_ACCESS_DEADLINE = new Date("2026-07-31T23:59:59Z");
+          const EARLY_ACCESS_LIMIT = 100;
+
+          if (new Date() <= EARLY_ACCESS_DEADLINE) {
+            const existingMembership = await prisma.workspaceMember.findFirst({
+              where: { userId: dbUser.id },
             });
 
-            if (defaultWorkspace) {
-              const memberCount = await prisma.workspaceMember.count({
-                where: { workspaceId: defaultWorkspace.id },
+            if (!existingMembership) {
+              const defaultWorkspace = await prisma.workspace.findFirst({
+                orderBy: { createdAt: "asc" },
               });
 
-              if (memberCount < EARLY_ACCESS_LIMIT) {
-                await prisma.workspaceMember.create({
-                  data: {
-                    userId: dbUser.id,
-                    workspaceId: defaultWorkspace.id,
-                    role: "MEMBER",
-                  },
+              if (defaultWorkspace) {
+                const memberCount = await prisma.workspaceMember.count({
+                  where: { workspaceId: defaultWorkspace.id },
                 });
-                // Set plan to FREE for auto-added users
-                await prisma.user.update({
-                  where: { id: dbUser.id },
-                  data: { plan: "FREE" },
-                });
+
+                if (memberCount < EARLY_ACCESS_LIMIT) {
+                  // Use upsert to prevent race condition on concurrent signups
+                  await prisma.workspaceMember.upsert({
+                    where: {
+                      userId_workspaceId: {
+                        userId: dbUser.id,
+                        workspaceId: defaultWorkspace.id,
+                      },
+                    },
+                    update: {},
+                    create: {
+                      userId: dbUser.id,
+                      workspaceId: defaultWorkspace.id,
+                      role: "MEMBER",
+                    },
+                  });
+                  await prisma.user.update({
+                    where: { id: dbUser.id },
+                    data: { plan: "FREE" },
+                  });
+                }
               }
             }
           }
+        } catch {
+          // Auth should not fail due to workspace provisioning errors.
+          // User can still sign in; workspace membership can be retried later.
         }
       }
       return true;
     },
     async jwt({ token, user }) {
       if (user) {
-        token.role = (user as unknown as { role: string }).role;
+        token.role = user.role;
       }
       // Refresh isMasterAdmin from DB (non-blocking)
       if (token.email) {
         try {
           const dbUser = await prisma.user.findUnique({
-            where: { email: token.email as string },
+            where: { email: token.email },
             select: { isMasterAdmin: true },
           });
           token.isMasterAdmin = dbUser?.isMasterAdmin ?? false;
@@ -171,8 +182,8 @@ export const authOptions: NextAuthOptions = {
     },
     async session({ session, token }) {
       if (session.user) {
-        (session.user as unknown as { role: string }).role = token.role as string;
-        (session.user as unknown as { isMasterAdmin: boolean }).isMasterAdmin = token.isMasterAdmin as boolean;
+        session.user.role = token.role;
+        session.user.isMasterAdmin = token.isMasterAdmin ?? false;
       }
       return session;
     },

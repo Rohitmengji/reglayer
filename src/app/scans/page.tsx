@@ -59,7 +59,7 @@ export default function ScansPage() {
   const [dateFilter, setDateFilter] = useState<string>("all");
   const { data: session } = useSession();
   const { t } = useI18n();
-  const isAdmin = (session?.user as unknown as { role?: string })?.role === "admin";
+  const isAdmin = session?.user?.role === "admin";
 
   useEffect(() => {
     fetch("/api/scans")
