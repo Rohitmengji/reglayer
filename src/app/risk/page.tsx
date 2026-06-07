@@ -31,8 +31,10 @@ export default function RiskPage() {
   const searchParams = useSearchParams();
   const siteId = searchParams.get("siteId");
   const [score, setScore] = useState<RiskScore | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(!!siteId);
+  const [error, setError] = useState<string | null>(
+    siteId ? null : "No site selected. Please select a site from your dashboard."
+  );
 
   const loadRisk = useCallback(async () => {
     if (!siteId) {
@@ -53,8 +55,15 @@ export default function RiskPage() {
   }, [siteId]);
 
   useEffect(() => {
-    loadRisk();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (!siteId) return;
+    fetch(`/api/sites/${siteId}/risk`)
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to load risk score");
+        return res.json();
+      })
+      .then((data) => setScore(data.score || null))
+      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load"))
+      .finally(() => setLoading(false));
   }, [siteId]);
 
   if (loading) {

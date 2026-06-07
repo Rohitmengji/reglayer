@@ -63,9 +63,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.classList.toggle("dark", effective === "dark");
     document.documentElement.classList.toggle("light", effective === "light");
     initialized.current = true;
-    setThemeState(t);
-    setResolvedTheme(effective);
-    setMounted(true);
+    // Batch state updates via queueMicrotask to avoid synchronous setState in effect
+    queueMicrotask(() => {
+      setThemeState(t);
+      setResolvedTheme(effective);
+      setMounted(true);
+    });
   }, []);
 
   // Apply theme changes after initialization

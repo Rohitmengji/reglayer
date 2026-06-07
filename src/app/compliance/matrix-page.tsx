@@ -78,7 +78,6 @@ function ComplianceContent() {
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
 
     function doFetch(id: string) {
       fetch(`/api/scans/${id}/wcag-matrix`)
