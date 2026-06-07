@@ -79,8 +79,6 @@ export default function AnalyticsPage() {
 
   useEffect(() => {
     let cancelled = false;
-    setError(null);
-    setLoading(true);
     fetch(`/api/analytics?days=${period}`)
       .then((r) => {
         if (!r.ok) throw new Error("Failed");

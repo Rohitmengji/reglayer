@@ -7,35 +7,20 @@
  */
 
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
+import { requireFeature } from "@/lib/features/require-feature";
 
 export async function GET() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-  }
+  const guard = await requireFeature("executive");
+  if (!guard.allowed) return guard.response;
 
   try {
-    // Scope: users see only their own scans; master admins see all workspace scans
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      select: { id: true, isMasterAdmin: true },
-    });
+    // guard already resolved user + workspace — no duplicate queries
+    const { userId, workspaceId, isMasterAdmin } = guard;
 
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    const membership = await prisma.workspaceMember.findFirst({
-      where: { userId: user.id },
-      select: { workspaceId: true },
-    });
-
-    const scopeFilter = user.isMasterAdmin && membership
-      ? { workspaceId: membership.workspaceId }
-      : { userId: user.id };
+    const scopeFilter = isMasterAdmin && workspaceId
+      ? { workspaceId }
+      : { userId };
 
     // Get all completed scans
     const allScans = await prisma.scan.findMany({

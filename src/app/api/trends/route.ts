@@ -15,6 +15,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
+import { requireFeature } from "@/lib/features/require-feature";
 
 interface ScoreTrendPoint {
   date: string;
@@ -33,6 +34,10 @@ interface ViolationTrendPoint {
 
 export async function GET(request: NextRequest) {
   try {
+    // Feature gate: trends is PRO+
+    const guard = await requireFeature("trends");
+    if (!guard.allowed) return guard.response;
+
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
       return NextResponse.json(
