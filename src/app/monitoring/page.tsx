@@ -22,6 +22,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
+import { PageLoading } from "@/components/ui/page-loading";
+import { PageError } from "@/components/ui/page-error";
 import {
   Clock,
   Plus,
@@ -146,12 +148,7 @@ export default function MonitoringPage() {
   if (loading) {
     return (
       <AppShell>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="flex items-center gap-3">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-neutral-200 border-t-neutral-900 dark:border-neutral-700 dark:border-t-white" />
-            <span className="text-sm text-neutral-500">Loading monitors...</span>
-          </div>
-        </div>
+        <PageLoading message="Loading your monitors..." />
       </AppShell>
     );
   }
@@ -182,7 +179,7 @@ export default function MonitoringPage() {
         {error && (
           <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/20 px-4 py-3 text-sm text-red-700 dark:text-red-300 flex items-center gap-2">
             <AlertTriangle className="h-4 w-4 shrink-0" />
-            {error}
+            Something went wrong. Please try again.
           </div>
         )}
 

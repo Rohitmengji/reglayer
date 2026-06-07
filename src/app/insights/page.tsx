@@ -11,6 +11,8 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
+import { PageLoading } from "@/components/ui/page-loading";
+import { PageError } from "@/components/ui/page-error";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -74,9 +76,7 @@ export default function InsightsPage() {
     <Suspense
       fallback={
         <AppShell>
-          <div className="flex-1 flex items-center justify-center">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-neutral-300 dark:border-neutral-600 border-t-neutral-900 dark:border-t-white" />
-          </div>
+          <PageLoading message="Generating insights..." />
         </AppShell>
       }
     >
@@ -137,11 +137,7 @@ function InsightsContent() {
   if (loading) {
     return (
       <AppShell>
-        <div className="flex-1 flex flex-col items-center justify-center gap-3">
-          <Loader2 className="h-8 w-8 animate-spin text-neutral-400" />
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">{t("insights.loading")}</p>
-          <p className="text-xs text-neutral-400">{t("insights.loadingSubtitle")}</p>
-        </div>
+        <PageLoading message="Generating insights..." />
       </AppShell>
     );
   }
@@ -149,13 +145,12 @@ function InsightsContent() {
   if (error || !data) {
     return (
       <AppShell>
-        <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-12 text-center">
-          <Brain className="h-12 w-12 text-neutral-300 mx-auto mb-4" />
-          <p className="text-lg font-medium text-neutral-700 dark:text-neutral-200">{error || "No data"}</p>
-          <Link href="/dashboard" className="text-sm text-blue-600 mt-2 inline-block">
-            {t("insights.runScanFirst")}
-          </Link>
-        </div>
+        <PageError
+          title="Couldn\u2019t load insights"
+          message="We need scan data to generate insights. Run a scan first, then come back here."
+          fallbackHref="/dashboard"
+          fallbackLabel="Run a Scan"
+        />
       </AppShell>
     );
   }
