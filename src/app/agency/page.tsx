@@ -15,6 +15,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { PageLoading } from "@/components/ui/page-loading";
+import { PageError } from "@/components/ui/page-error";
 import { Building2, Palette, Users, Key, Plus, Trash2, Copy } from "lucide-react";
 
 interface Agency {
@@ -235,9 +237,7 @@ export default function AgencyDashboard() {
   if (loading) {
     return (
       <AppShell>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-neutral-900 dark:border-white" />
-        </div>
+        <PageLoading message="Loading agency settings..." />
       </AppShell>
     );
   }
@@ -323,9 +323,11 @@ export default function AgencyDashboard() {
   if (error && !agency) {
     return (
       <AppShell>
-        <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4">
-          <p className="text-red-700 dark:text-red-300">{error}</p>
-        </div>
+        <PageError
+          title="Couldn\u2019t load agency"
+          message="We\u2019re having trouble loading your agency settings. Please try again."
+          onRetry={() => window.location.reload()}
+        />
       </AppShell>
     );
   }

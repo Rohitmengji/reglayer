@@ -11,6 +11,8 @@
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageLoading } from "@/components/ui/page-loading";
+import { PageError } from "@/components/ui/page-error";
 import {
   TrendingUp,
   TrendingDown,
@@ -71,11 +73,14 @@ interface AnalyticsData {
 export default function AnalyticsPage() {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [period, setPeriod] = useState(30);
   const { t } = useI18n();
 
   useEffect(() => {
     let cancelled = false;
+    setError(null);
+    setLoading(true);
     fetch(`/api/analytics?days=${period}`)
       .then((r) => {
         if (!r.ok) throw new Error("Failed");
@@ -87,33 +92,39 @@ export default function AnalyticsPage() {
           setLoading(false);
         }
       })
-      .catch(() => { if (!cancelled) setLoading(false); });
+      .catch(() => { if (!cancelled) { setError("Unable to load analytics. Please try again."); setLoading(false); } });
     return () => { cancelled = true; };
   }, [period]);
 
   if (loading) {
     return (
       <AppShell>
-        <div className="flex-1 flex items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-neutral-300 dark:border-neutral-600 border-t-neutral-900 dark:border-t-white" />
-        </div>
+        <PageLoading message="Loading analytics..." />
       </AppShell>
     );
   }
 
-  if (!data || data.overview.totalScans === 0) {
+  if (error || (!data || data.overview.totalScans === 0)) {
     return (
       <AppShell>
-        <div className="space-y-6">
-          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{t("analytics.title")}</h1>
-          <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-12 text-center">
-            <BarChart3 className="h-12 w-12 text-neutral-300 mx-auto mb-4" />
-            <p className="text-lg font-medium text-neutral-700 dark:text-neutral-200">{t("analytics.empty")}</p>
-            <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-              {t("analytics.emptySubtitle")}
-            </p>
+        {error ? (
+          <PageError
+            title="Couldn\u2019t load analytics"
+            message={error}
+            onRetry={() => { setError(null); setLoading(true); }}
+          />
+        ) : (
+          <div className="space-y-6">
+            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{t("analytics.title")}</h1>
+            <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-12 text-center">
+              <BarChart3 className="h-12 w-12 text-neutral-300 mx-auto mb-4" />
+              <p className="text-lg font-medium text-neutral-700 dark:text-neutral-200">{t("analytics.empty")}</p>
+              <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
+                {t("analytics.emptySubtitle")}
+              </p>
+            </div>
           </div>
-        </div>
+        )}
       </AppShell>
     );
   }

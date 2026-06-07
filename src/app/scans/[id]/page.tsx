@@ -10,6 +10,7 @@
 
 import { use, useEffect, useState } from "react";
 import { AppShell } from "@/components/layout/app-shell";
+import { PageLoading } from "@/components/ui/page-loading";
 import { useScanStore } from "@/stores/scanStore";
 import { ScoreCard } from "@/components/dashboard/score-card";
 import { ViolationCard } from "@/components/scanner/violation-card";
@@ -52,9 +53,7 @@ export default function ScanDetailPage({
   if (loading) {
     return (
       <AppShell>
-        <div className="flex-1 flex items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-neutral-300 dark:border-neutral-600 border-t-neutral-900 dark:border-t-white" />
-        </div>
+        <PageLoading message="Loading scan details..." />
       </AppShell>
     );
   }
