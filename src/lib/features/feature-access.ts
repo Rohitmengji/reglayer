@@ -1,115 +1,115 @@
 /**
- * RegLayer — Feature Access Control
+ * RegLayer — Feature Access Control (Server-Side)
  *
- * WHY: Gating product modules per workspace based on plan + master admin overrides.
- *
- * WHAT: `hasFeature(workspaceId, featureId)` — single function to check access.
- *       `getWorkspaceFeatures(workspaceId)` — returns all enabled features for sidebar.
- *
- * HOW:
- * 1. Check workspace plan → get default features for that plan
- * 2. Check WorkspaceFeature overrides (master admin grants/revokes)
- * 3. Check expiration on granted features
- * 4. Return final boolean
- *
- * Master admins bypass all feature gates.
+ * Single-query resolution of workspace feature access.
+ * No N+1, no redundant lookups, no session re-fetching.
  */
 
 import { prisma } from "@/lib/database/prisma";
-import { getDefaultFeatures, FEATURE_CATALOG } from "./feature-catalog";
+import { getDefaultFeatures, FEATURE_CATALOG, type FeatureDefinition } from "./feature-catalog";
+import type { Plan } from "@/generated/prisma/client";
+
+type AccessReason = "plan_default" | "admin_granted" | "admin_revoked" | "expired" | "not_in_plan";
 
 interface FeatureAccessResult {
   enabled: boolean;
-  reason: "plan_default" | "admin_granted" | "admin_revoked" | "expired" | "not_in_plan";
+  reason: AccessReason;
+}
+
+interface DetailedFeature extends FeatureDefinition {
+  enabled: boolean;
+  source: "plan" | "granted" | "revoked" | "expired";
+  override: {
+    grantedBy: string;
+    grantedAt: Date;
+    expiresAt: Date | null;
+    note: string | null;
+  } | null;
 }
 
 /**
- * Check if a workspace has access to a specific feature.
+ * Resolve all feature access for a workspace in ONE query.
+ * Returns the plan + resolved feature set + detailed breakdown.
+ */
+async function resolveWorkspace(workspaceId: string) {
+  return prisma.workspace.findUnique({
+    where: { id: workspaceId },
+    select: { plan: true, featureOverrides: true },
+  });
+}
+
+/**
+ * Compute enabled features from plan + overrides.
+ * Pure function — no DB calls.
+ */
+function computeEnabledFeatures(
+  plan: Plan,
+  overrides: { feature: string; enabled: boolean; expiresAt: Date | null }[]
+): Set<string> {
+  const enabled = new Set(getDefaultFeatures(plan));
+  const now = new Date();
+
+  for (const override of overrides) {
+    const isExpired = override.expiresAt != null && now > override.expiresAt;
+    if (isExpired) {
+      enabled.delete(override.feature);
+    } else if (override.enabled) {
+      enabled.add(override.feature);
+    } else {
+      enabled.delete(override.feature);
+    }
+  }
+
+  return enabled;
+}
+
+/**
+ * Check single feature access for a workspace.
+ * Single DB query — returns enabled + reason.
  */
 export async function hasFeature(
   workspaceId: string,
   featureId: string
 ): Promise<FeatureAccessResult> {
-  const workspace = await prisma.workspace.findUnique({
-    where: { id: workspaceId },
-    select: { plan: true },
-  });
+  const workspace = await resolveWorkspace(workspaceId);
+  if (!workspace) return { enabled: false, reason: "not_in_plan" };
 
-  if (!workspace) {
-    return { enabled: false, reason: "not_in_plan" };
-  }
-
-  const planDefault = getDefaultFeatures(workspace.plan);
-  const isInPlan = planDefault.includes(featureId);
-
-  // Check for override
-  const override = await prisma.workspaceFeature.findUnique({
-    where: { workspaceId_feature: { workspaceId, feature: featureId } },
-  });
+  const override = workspace.featureOverrides.find((o) => o.feature === featureId);
+  const isInPlan = getDefaultFeatures(workspace.plan).includes(featureId);
 
   if (override) {
-    // Check expiration
     if (override.expiresAt && new Date() > override.expiresAt) {
       return { enabled: false, reason: "expired" };
     }
-    if (override.enabled) {
-      return { enabled: true, reason: "admin_granted" };
-    }
-    return { enabled: false, reason: "admin_revoked" };
+    return { enabled: override.enabled, reason: override.enabled ? "admin_granted" : "admin_revoked" };
   }
 
-  // No override — use plan default
   return { enabled: isInPlan, reason: isInPlan ? "plan_default" : "not_in_plan" };
 }
 
 /**
- * Get all enabled features for a workspace.
- * Returns feature IDs that are accessible (plan default + overrides - revocations - expired).
+ * Get all enabled feature IDs for a workspace. Single query.
  */
 export async function getWorkspaceFeatures(workspaceId: string): Promise<string[]> {
-  const workspace = await prisma.workspace.findUnique({
-    where: { id: workspaceId },
-    select: { plan: true, featureOverrides: true },
-  });
-
+  const workspace = await resolveWorkspace(workspaceId);
   if (!workspace) return [];
-
-  const planDefaults = new Set(getDefaultFeatures(workspace.plan));
-
-  // Apply overrides
-  for (const override of workspace.featureOverrides) {
-    if (override.expiresAt && new Date() > override.expiresAt) {
-      // Expired grant — treat as not having it
-      planDefaults.delete(override.feature);
-      continue;
-    }
-    if (override.enabled) {
-      planDefaults.add(override.feature);
-    } else {
-      planDefaults.delete(override.feature);
-    }
-  }
-
-  return Array.from(planDefaults);
+  return Array.from(computeEnabledFeatures(workspace.plan, workspace.featureOverrides));
 }
 
 /**
- * Get features with full metadata for admin UI.
+ * Full feature matrix for admin UI. Single query.
  */
-export async function getWorkspaceFeaturesDetailed(workspaceId: string) {
-  const workspace = await prisma.workspace.findUnique({
-    where: { id: workspaceId },
-    select: { plan: true, featureOverrides: true },
-  });
-
+export async function getWorkspaceFeaturesDetailed(workspaceId: string): Promise<DetailedFeature[]> {
+  const workspace = await resolveWorkspace(workspaceId);
   if (!workspace) return [];
 
   const planDefaults = getDefaultFeatures(workspace.plan);
+  const now = new Date();
 
   return FEATURE_CATALOG.map((feature) => {
     const override = workspace.featureOverrides.find((o) => o.feature === feature.id);
     const isInPlan = planDefaults.includes(feature.id);
-    const isExpired = override?.expiresAt ? new Date() > override.expiresAt : false;
+    const isExpired = override?.expiresAt != null && now > override.expiresAt;
 
     let enabled: boolean;
     let source: "plan" | "granted" | "revoked" | "expired";
@@ -130,12 +130,7 @@ export async function getWorkspaceFeaturesDetailed(workspaceId: string) {
       enabled,
       source,
       override: override
-        ? {
-            grantedBy: override.grantedBy,
-            grantedAt: override.grantedAt,
-            expiresAt: override.expiresAt,
-            note: override.note,
-          }
+        ? { grantedBy: override.grantedBy, grantedAt: override.grantedAt, expiresAt: override.expiresAt, note: override.note }
         : null,
     };
   });

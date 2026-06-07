@@ -10,9 +10,14 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
 import { createAgencySchema } from "@/lib/validations/agency";
+import { requireFeature } from "@/lib/features/require-feature";
 
 export async function POST(request: NextRequest) {
   try {
+    // Feature gate: agency is enterprise-only
+    const guard = await requireFeature("agency");
+    if (!guard.allowed) return guard.response;
+
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
@@ -78,6 +83,10 @@ export async function POST(request: NextRequest) {
 
 export async function GET(_request: NextRequest) {
   try {
+    // Feature gate: agency is enterprise-only
+    const guard = await requireFeature("agency");
+    if (!guard.allowed) return guard.response;
+
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
