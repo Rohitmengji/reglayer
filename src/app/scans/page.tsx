@@ -8,6 +8,8 @@
  * HOW: Fetches /api/scans on mount, renders sortable table with scan metadata and score badges.
  */
 
+import { PageLoading } from "@/components/ui/page-loading";
+import { PageError } from "@/components/ui/page-error";
 import { useEffect, useState, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { AppShell } from "@/components/layout/app-shell";
@@ -50,6 +52,7 @@ interface ScanRecord {
 export default function ScansPage() {
   const [scans, setScans] = useState<ScanRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedScans, setSelectedScans] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [severityFilter, setSeverityFilter] = useState<string>("all");
@@ -65,7 +68,10 @@ export default function ScansPage() {
         setScans(data.scans || []);
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch(() => {
+        setError("Unable to load your scans right now. Please try again.");
+        setLoading(false);
+      });
   }, []);
 
   // Filtered scans
@@ -279,9 +285,14 @@ export default function ScansPage() {
 
         {/* Scan List */}
         {loading ? (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-neutral-300 dark:border-neutral-600 border-t-neutral-900 dark:border-t-white" />
-          </div>
+          <PageLoading message="Loading your scans..." />
+        ) : error ? (
+          <PageError
+            title="Couldn\u2019t load scans"
+            message={error}
+            onRetry={() => { setError(null); setLoading(true); fetch("/api/scans").then(r => r.json()).then(d => setScans(d.scans || [])).catch(() => setError("Unable to load your scans right now. Please try again.")).finally(() => setLoading(false)); }}
+            fallbackHref="/dashboard"
+          />
         ) : scans.length === 0 ? (
           <EmptyState
             icon={BarChart3}

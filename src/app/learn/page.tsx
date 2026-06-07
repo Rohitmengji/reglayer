@@ -15,6 +15,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageLoading } from "@/components/ui/page-loading";
+import { PageError } from "@/components/ui/page-error";
 import {
   BookOpen,
   ChevronDown,
@@ -67,8 +69,8 @@ export default function LearnPage() {
         setAllModules(data.allModules);
         setWeakestCategory(data.weakestCategory);
         setOverallScore(data.overallScore);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load");
+      } catch {
+        setError("We couldn\u2019t load your learning paths. Please try again.");
       } finally {
         setLoading(false);
       }
@@ -79,13 +81,7 @@ export default function LearnPage() {
   if (loading) {
     return (
       <AppShell>
-        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-          <div className="relative">
-            <div className="h-12 w-12 animate-spin rounded-full border-3 border-neutral-200 dark:border-neutral-700 border-t-indigo-500" />
-            <BookOpen className="h-5 w-5 text-indigo-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
-          </div>
-          <p className="text-sm text-neutral-500 animate-pulse">Building your learning paths...</p>
-        </div>
+        <PageLoading message="Building your learning paths..." />
       </AppShell>
     );
   }
@@ -93,14 +89,12 @@ export default function LearnPage() {
   if (error) {
     return (
       <AppShell>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="rounded-2xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-12 text-center max-w-md">
-            <div className="mx-auto mb-6 h-20 w-20 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center">
-              <BookOpen className="h-10 w-10 text-neutral-300" />
-            </div>
-            <p className="text-sm text-neutral-500">{error}</p>
-          </div>
-        </div>
+        <PageError
+          title="Couldn\u2019t load learning paths"
+          message={error}
+          onRetry={() => window.location.reload()}
+          fallbackHref="/dashboard"
+        />
       </AppShell>
     );
   }

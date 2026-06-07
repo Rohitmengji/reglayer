@@ -18,6 +18,8 @@ import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { EmptyState } from "@/components/ui/empty-state";
+import { PageLoading } from "@/components/ui/page-loading";
+import { PageError } from "@/components/ui/page-error";
 import { Button } from "@/components/ui/button";
 import { EnhancedViolationCard } from "@/components/violations/EnhancedViolationCard";
 import {
@@ -359,13 +361,13 @@ export default function ViolationsPage() {
 
           {/* Violations List */}
           {loading ? (
-            <div className="flex items-center justify-center py-16">
-              <div className="h-8 w-8 animate-spin rounded-full border-2 border-neutral-300 dark:border-neutral-600 border-t-neutral-900 dark:border-t-white" />
-            </div>
+            <PageLoading message="Loading violations..." />
           ) : error ? (
-            <div className="text-center py-16 px-4">
-              <p className="text-red-500 font-medium text-sm">{error}</p>
-            </div>
+            <PageError
+              title="Couldn\u2019t load violations"
+              message="We\u2019re having trouble loading your violations. Please try again."
+              onRetry={() => fetchViolations()}
+            />
           ) : data && data.violations.length === 0 ? (
             activeTab === "ALL" && !scanIdParam ? (
               <EmptyState

@@ -14,6 +14,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { PageLoading } from "@/components/ui/page-loading";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2, Key, GitBranch, Bell, Copy, Eye, EyeOff, Sparkles, Zap, SlidersHorizontal, AlertTriangle, User, Download, Shield, LogOut, Pencil, X } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
@@ -274,7 +275,10 @@ function AccountTab() {
 
   useEffect(() => {
     fetch("/api/account")
-      .then((r) => r.ok ? r.json() : null)
+      .then((r) => {
+        if (r.status === 401) { signOut({ callbackUrl: "/auth/login" }); return null; }
+        return r.ok ? r.json() : null;
+      })
       .then((d) => {
         if (d?.user) {
           setProfile(d.user);
@@ -295,9 +299,14 @@ function AccountTab() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: name.trim() || undefined, email: email.trim() || undefined }),
       });
+      if (res.status === 401) {
+        signOut({ callbackUrl: "/auth/login" });
+        return;
+      }
       if (res.ok) {
         const data = await res.json();
         setProfile(data.user);
+        setEditing(false);
         setProfileStatus({ type: "success", message: "Profile updated successfully" });
       } else {
         const data = await res.json();
@@ -351,7 +360,7 @@ function AccountTab() {
   }
 
   if (!profile) {
-    return <div className="text-center py-8 text-sm text-neutral-500">Loading profile...</div>;
+    return <PageLoading message="Loading your profile..." />;
   }
 
   return (
@@ -367,7 +376,7 @@ function AccountTab() {
             <CardDescription>Update your name and email address.</CardDescription>
           </div>
           {!editing && (
-            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setEditing(true)}>
+            <Button variant="outline" size="sm" className="gap-1.5 cursor-pointer" onClick={() => setEditing(true)}>
               <Pencil className="h-3.5 w-3.5" />
               Edit
             </Button>
@@ -410,14 +419,14 @@ function AccountTab() {
             )}
             {editing && (
               <div className="flex items-center gap-2">
-                <Button type="submit" size="sm" disabled={saving}>
+                <Button type="submit" size="sm" disabled={saving} className="cursor-pointer">
                   {saving ? "Saving..." : "Save Changes"}
                 </Button>
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="gap-1.5"
+                  className="gap-1.5 cursor-pointer"
                   onClick={() => {
                     setEditing(false);
                     setName(profile.name || "");
