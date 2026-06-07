@@ -7,6 +7,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
+import { rateLimitSync, rateLimitHeaders } from "@/lib/rate-limit";
 
 /**
  * Security headers applied to ALL responses.
@@ -101,6 +102,7 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/report/") ||
     pathname.startsWith("/api/auth/") ||
     pathname.startsWith("/api/health") ||
+    pathname.startsWith("/api/openapi") ||
     pathname.startsWith("/api/badge") ||
     pathname.startsWith("/api/certificate/") ||
     pathname.startsWith("/api/conversion") ||
@@ -143,6 +145,21 @@ export async function proxy(request: NextRequest) {
     const loginUrl = new URL("/auth/login", request.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return applySecurityHeaders(NextResponse.redirect(loginUrl));
+  }
+
+  // Global rate limit for all authenticated API requests (120 req/min per IP)
+  if (pathname.startsWith("/api/")) {
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      request.headers.get("x-real-ip") || "anonymous";
+    const globalLimit = { limit: 120, windowSec: 60 };
+    const rl = rateLimitSync(`global:${ip}`, globalLimit, "global");
+    if (!rl.success) {
+      const res = NextResponse.json(
+        { error: "Too many requests. Please slow down." },
+        { status: 429, headers: rateLimitHeaders(rl) }
+      );
+      return applySecurityHeaders(res);
+    }
   }
 
   const response = NextResponse.next();

@@ -21,23 +21,29 @@ export async function GET(request: NextRequest) {
     const limit = Number(request.nextUrl.searchParams.get("limit")) || 50;
     const url = request.nextUrl.searchParams.get("url");
 
-    // Scope to user's workspace or userId
+    // Scope: users see only their own scans; master admins see all workspace scans
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
-      select: { id: true },
+      select: { id: true, isMasterAdmin: true },
     });
 
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
     const membership = await prisma.workspaceMember.findFirst({
-      where: { user: { email: session.user.email } },
+      where: { userId: user.id },
       select: { workspaceId: true },
     });
 
+    // Master admins see all scans in their workspace; regular users see only their own
+    const scopeFilter = user.isMasterAdmin && membership
+      ? { workspaceId: membership.workspaceId }
+      : { userId: user.id };
+
     const where = {
       ...(url ? { url, status: "COMPLETED" as const } : {}),
-      OR: [
-        ...(membership ? [{ workspaceId: membership.workspaceId }] : []),
-        ...(user ? [{ userId: user.id }] : []),
-      ],
+      ...scopeFilter,
     };
 
     const scans = await prisma.scan.findMany({

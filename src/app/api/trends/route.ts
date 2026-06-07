@@ -53,11 +53,31 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Scope: users see only their own scans; master admins see all workspace scans
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { id: true, isMasterAdmin: true },
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    const membership = await prisma.workspaceMember.findFirst({
+      where: { userId: user.id },
+      select: { workspaceId: true },
+    });
+
+    const scopeFilter = user.isMasterAdmin && membership
+      ? { workspaceId: membership.workspaceId }
+      : { userId: user.id };
+
     // Build where clause
     const where: Record<string, unknown> = {
       url,
       status: "COMPLETED",
       score: { not: null },
+      ...scopeFilter,
     };
 
     if (fromStr || toStr) {
