@@ -22,8 +22,8 @@
  * ---------------------------------------------------------
  */
 
-import { useState, useEffect, useCallback } from "react";
-import { useSession } from "next-auth/react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useSession, signOut } from "next-auth/react";
 import { useRouter, usePathname } from "next/navigation";
 import { Sidebar } from "./sidebar";
 import { Menu, X } from "lucide-react";
@@ -35,6 +35,7 @@ export function AppShell({ children, bare }: { children: React.ReactNode; bare?:
   const router = useRouter();
   const pathname = usePathname();
   const [workspaceVerified, setWorkspaceVerified] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
 
   const handleWorkspaceCheck = useCallback(() => {
     setWorkspaceVerified(true);
@@ -46,27 +47,51 @@ export function AppShell({ children, bare }: { children: React.ReactNode; bare?:
 
   useEffect(() => {
     if (status === "loading" || workspaceVerified) return;
-    if (status === "unauthenticated") return;
+    if (status === "unauthenticated") {
+      signOut({ callbackUrl: "/auth/login" });
+      return;
+    }
 
-    const isMasterAdmin = (session?.user as { isMasterAdmin?: boolean } | undefined)?.isMasterAdmin;
+    const isMasterAdmin = session?.user?.isMasterAdmin;
     if (isMasterAdmin) {
-      // Use queueMicrotask to avoid synchronous setState in effect
-      queueMicrotask(handleWorkspaceCheck);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- master admins bypass workspace check; no async needed
+      handleWorkspaceCheck();
       return;
     }
 
     if (session?.user?.email) {
-      fetch("/api/team")
-        .then((r) => r.json())
+      // Cancel any in-flight workspace check
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+
+      fetch("/api/team", { signal: controller.signal })
+        .then((r) => {
+          if (r.status === 401) {
+            signOut({ callbackUrl: "/auth/login" });
+            return null;
+          }
+          return r.json();
+        })
         .then((data) => {
+          if (!data) return;
           if (!data.workspace) {
             handleNoAccess();
           } else {
             handleWorkspaceCheck();
           }
         })
-        .catch(handleWorkspaceCheck);
+        .catch((err) => {
+          if (err.name !== "AbortError") {
+            // On network failure, allow access (fail open for workspace check)
+            handleWorkspaceCheck();
+          }
+        });
     }
+
+    return () => {
+      abortRef.current?.abort();
+    };
   }, [session, status, pathname, workspaceVerified, handleWorkspaceCheck, handleNoAccess]);
 
   // Bare mode: skip shell, just render children (used when embedded in tabbed layouts)
@@ -80,7 +105,10 @@ export function AppShell({ children, bare }: { children: React.ReactNode; bare?:
   if (showLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-neutral-50 dark:bg-neutral-950">
-        <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full" />
+        <div className="flex flex-col items-center gap-3">
+          <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full" />
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">Loading...</p>
+        </div>
       </div>
     );
   }

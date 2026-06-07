@@ -64,9 +64,12 @@ interface RateLimitEntry {
 const memoryStore = new Map<string, RateLimitEntry>();
 
 let lastCleanup = Date.now();
+const CLEANUP_INTERVAL_MS = 60_000;
+const MAX_STORE_SIZE = 10_000;
+
 function cleanup() {
   const now = Date.now();
-  if (now - lastCleanup < 60_000) return;
+  if (now - lastCleanup < CLEANUP_INTERVAL_MS && memoryStore.size < MAX_STORE_SIZE) return;
   lastCleanup = now;
   for (const [key, entry] of memoryStore) {
     if (entry.resetAt < now) memoryStore.delete(key);
