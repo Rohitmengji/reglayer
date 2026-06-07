@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Key, GitBranch, Bell, Copy, Eye, EyeOff, Sparkles, Zap, SlidersHorizontal, AlertTriangle, User, Download, Shield, LogOut } from "lucide-react";
+import { Plus, Trash2, Key, GitBranch, Bell, Copy, Eye, EyeOff, Sparkles, Zap, SlidersHorizontal, AlertTriangle, User, Download, Shield, LogOut, Pencil, X } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 import { signOut } from "next-auth/react";
 
@@ -264,6 +264,7 @@ function AccountTab() {
   const [profile, setProfile] = useState<{ id: string; email: string; name: string | null; image: string | null; plan: string; createdAt: string } | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [profileStatus, setProfileStatus] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [exporting, setExporting] = useState(false);
@@ -357,12 +358,20 @@ function AccountTab() {
     <div className="space-y-6">
       {/* Profile Information */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-sm flex items-center gap-2">
-            <User className="h-4 w-4 text-blue-500" />
-            Profile Information
-          </CardTitle>
-          <CardDescription>Update your name and email address.</CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="text-sm flex items-center gap-2">
+              <User className="h-4 w-4 text-blue-500" />
+              Profile Information
+            </CardTitle>
+            <CardDescription>Update your name and email address.</CardDescription>
+          </div>
+          {!editing && (
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setEditing(true)}>
+              <Pencil className="h-3.5 w-3.5" />
+              Edit
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           <form onSubmit={handleProfileUpdate} className="space-y-4 max-w-md">
@@ -373,6 +382,8 @@ function AccountTab() {
                 placeholder="Your name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                readOnly={!editing}
+                className={!editing ? "bg-neutral-50 dark:bg-neutral-900 cursor-default" : ""}
               />
             </div>
             <div>
@@ -382,6 +393,8 @@ function AccountTab() {
                 placeholder="your@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                readOnly={!editing}
+                className={!editing ? "bg-neutral-50 dark:bg-neutral-900 cursor-default" : ""}
               />
             </div>
             <div className="flex items-center gap-3">
@@ -395,9 +408,28 @@ function AccountTab() {
                 {profileStatus.message}
               </p>
             )}
-            <Button type="submit" size="sm" disabled={saving}>
-              {saving ? "Saving..." : "Save Changes"}
-            </Button>
+            {editing && (
+              <div className="flex items-center gap-2">
+                <Button type="submit" size="sm" disabled={saving}>
+                  {saving ? "Saving..." : "Save Changes"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => {
+                    setEditing(false);
+                    setName(profile.name || "");
+                    setEmail(profile.email);
+                    setProfileStatus(null);
+                  }}
+                >
+                  <X className="h-3.5 w-3.5" />
+                  Cancel
+                </Button>
+              </div>
+            )}
           </form>
         </CardContent>
       </Card>
