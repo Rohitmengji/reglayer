@@ -121,7 +121,7 @@ export function ProductTour() {
     <>
       {/* Highlight ring around target — fixed position */}
       <div
-        className="fixed z-[9998] rounded-xl pointer-events-none border-2 border-blue-500/70 transition-all duration-300 ease-out"
+        className="fixed z-9998 rounded-xl pointer-events-none border-2 border-blue-500/70 transition-all duration-300 ease-out"
         style={{ top: rect.top, left: rect.left, width: rect.width, height: rect.height }}
       >
         <div className="absolute -inset-1 rounded-xl border border-blue-400/30 animate-pulse" />
@@ -129,7 +129,7 @@ export function ProductTour() {
 
       {/* Tooltip — fixed position */}
       <div
-        className="fixed z-[9999] w-[280px]"
+        className="fixed z-9999 w-70"
         style={{ top: tooltip.top, left: tooltip.left }}
         key={step}
       >
