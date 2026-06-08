@@ -175,7 +175,7 @@ export default function SkillsPage() {
               </div>
               {/* Level Progress */}
               {nextLevel && (
-                <div className="mt-4 w-full max-w-[180px]">
+                <div className="mt-4 w-full max-w-45">
                   <div className="flex items-center justify-between text-[10px] text-neutral-400 mb-1">
                     <span>{currentLevelInfo.level}</span>
                     <span>{nextLevel.level}</span>
