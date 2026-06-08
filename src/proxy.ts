@@ -104,6 +104,7 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/api/health") ||
     pathname.startsWith("/api/openapi") ||
     pathname.startsWith("/api/badge") ||
+    pathname.startsWith("/api/webhooks/stripe") ||
     pathname.startsWith("/api/certificate/") ||
     pathname.startsWith("/api/conversion") ||
     pathname.startsWith("/api/demo-scan") ||
