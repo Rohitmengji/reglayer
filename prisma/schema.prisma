@@ -95,6 +95,7 @@ model Workspace {
   apiKeys      ApiKey[]
   agencyClient AgencyClient?
   featureOverrides WorkspaceFeature[]
+  proofs       ComplianceProof[]
 
   @@map("workspaces")
 }
@@ -164,6 +165,7 @@ model Site {
   scans       Scan[]
   schedules   Schedule[]
   riskScores  LitigationRiskScore[]
+  proofs      ComplianceProof[]
 
   @@unique([workspaceId, url])
   @@map("sites")
@@ -566,4 +568,42 @@ model LitigationWeight {
   updatedAt       DateTime @updatedAt
 
   @@map("litigation_weights")
+}
+
+// ─────────────────────────────────────────────
+// Compliance Proof Vault
+// ─────────────────────────────────────────────
+
+model ComplianceProof {
+  id            String        @id @default(cuid())
+  siteId        String
+  scanId        String?
+  workspaceId   String
+  type          ProofType
+  title         String
+  description   String?
+  score         Float?
+  standard      String        // e.g. "WCAG 2.1 AA", "EN 301 549", "Section 508"
+  evidence      Json          // snapshot of scan data, violation counts, etc.
+  hash          String        // SHA-256 hash for tamper detection
+  issuedAt      DateTime      @default(now())
+  expiresAt     DateTime?     // optional: proof validity period
+  revokedAt     DateTime?     // set if score drops below threshold
+  revokedReason String?
+
+  site          Site          @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  workspace     Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, issuedAt])
+  @@index([siteId, issuedAt])
+  @@index([hash])
+  @@map("compliance_proofs")
+}
+
+enum ProofType {
+  SCAN_CERTIFICATE
+  COMPLIANCE_SNAPSHOT
+  REMEDIATION_RECORD
+  AUDIT_ATTESTATION
+  CONTINUOUS_MONITORING
 }
