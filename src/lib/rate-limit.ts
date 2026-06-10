@@ -26,7 +26,8 @@ function getRedis(): Redis | null {
   if (redis) return redis;
   const url = process.env.UPSTASH_REDIS_REST_URL;
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-  if (url && token) {
+  // Reject placeholder/invalid URLs
+  if (url && token && url.startsWith("https://") && !url.includes("replace_me")) {
     redis = new Redis({ url, token });
     return redis;
   }
@@ -114,6 +115,7 @@ interface RateLimitResult {
 /**
  * Check rate limit for an identifier.
  * Uses Redis when configured, falls back to in-memory.
+ * If Redis is unreachable, gracefully falls back instead of crashing.
  */
 export async function rateLimit(
   identifier: string,
@@ -123,13 +125,17 @@ export async function rateLimit(
   const limiter = getRedisLimiter(prefix, config.limit, config.windowSec);
 
   if (limiter) {
-    const result = await limiter.limit(identifier);
-    return {
-      success: result.success,
-      limit: result.limit,
-      remaining: result.remaining,
-      resetAt: result.reset,
-    };
+    try {
+      const result = await limiter.limit(identifier);
+      return {
+        success: result.success,
+        limit: result.limit,
+        remaining: result.remaining,
+        resetAt: result.reset,
+      };
+    } catch {
+      // Redis unreachable — fall through to in-memory
+    }
   }
 
   // Fallback to in-memory

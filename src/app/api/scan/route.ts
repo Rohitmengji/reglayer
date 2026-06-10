@@ -30,6 +30,9 @@ import { getPlanContext, getMonthlyScansCount } from "@/lib/credits/plan-context
 import { rateLimit, RATE_LIMITS, rateLimitHeaders } from "@/lib/rate-limit";
 import { AuthenticationError } from "@/lib/scanner/auth";
 
+// Allow up to 90 seconds for scan execution (browser launch + navigation + axe analysis)
+export const maxDuration = 90;
+
 export async function POST(request: NextRequest) {
   const apiLogger = logger.withContext({ route: "POST /api/scan" });
 

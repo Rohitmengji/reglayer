@@ -25,6 +25,7 @@
  */
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { AppShell } from "@/components/layout/app-shell";
 import { ScanForm } from "@/components/scanner/scan-form";
@@ -57,6 +58,7 @@ interface DashboardStats {
 }
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [scanResult, setScanResult] = useState<ScanResponse | null>(null);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
@@ -97,6 +99,10 @@ export default function DashboardPage() {
       .then((r) => r.ok ? r.json() : null)
       .then((d) => d && setStats(d))
       .catch(() => {});
+    // Navigate to the scan detail page
+    if (data.scan?.id) {
+      router.push(`/scans/${data.scan.id}`);
+    }
   }
 
   async function handleExportPDF() {
