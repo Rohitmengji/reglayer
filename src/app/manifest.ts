@@ -12,18 +12,30 @@ import type { MetadataRoute } from "next";
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "RegLayer — Accessibility Scanner",
+    name: "RegLayer — Web Accessibility Compliance Platform",
     short_name: "RegLayer",
-    description: "Developer-native compliance infrastructure for WCAG accessibility scanning.",
+    description: "Enterprise accessibility compliance platform. Automated WCAG scanning, litigation risk scoring, and continuous monitoring.",
     start_url: "/dashboard",
     display: "standalone",
     background_color: "#ffffff",
     theme_color: "#111827",
+    orientation: "portrait-primary",
+    categories: ["productivity", "developer", "business"],
     icons: [
       {
         src: "/favicon.ico",
         sizes: "any",
         type: "image/x-icon",
+      },
+      {
+        src: "/icon-192.png",
+        sizes: "192x192",
+        type: "image/png",
+      },
+      {
+        src: "/icon-512.png",
+        sizes: "512x512",
+        type: "image/png",
       },
     ],
   };

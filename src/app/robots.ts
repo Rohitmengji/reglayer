@@ -18,8 +18,8 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: "*",
-        allow: ["/", "/pricing", "/privacy"],
-        disallow: ["/dashboard", "/scans", "/settings", "/admin", "/api/", "/team", "/insights", "/priorities"],
+        allow: ["/", "/pricing", "/privacy", "/cookie-policy", "/contact", "/features", "/auth/login", "/request-access", "/api-reference", "/docs"],
+        disallow: ["/dashboard", "/scans", "/settings", "/admin", "/api/", "/team", "/insights", "/priorities", "/executive", "/agency", "/vault", "/guard", "/regulations", "/testing", "/violations", "/trends", "/compliance", "/analytics", "/automation", "/manage", "/crawl", "/risk", "/report/"],
       },
     ],
     sitemap: `${baseUrl}/sitemap.xml`,
