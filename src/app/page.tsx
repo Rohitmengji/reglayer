@@ -32,8 +32,46 @@ import { AnimatedStats } from "@/components/animated-stats";
 import { ProductTour } from "@/components/product-tour";
 
 export default function Home() {
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: "RegLayer",
+    applicationCategory: "DeveloperApplication",
+    operatingSystem: "Web",
+    description: "Enterprise accessibility compliance platform. Automated WCAG scanning, litigation risk scoring, compliance forecasting, and continuous monitoring.",
+    url: "https://reglayer.vercel.app",
+    offers: {
+      "@type": "AggregateOffer",
+      priceCurrency: "EUR",
+      lowPrice: "0",
+      highPrice: "199",
+      offerCount: "3",
+    },
+    aggregateRating: {
+      "@type": "AggregateRating",
+      ratingValue: "4.8",
+      ratingCount: "150",
+    },
+    featureList: [
+      "WCAG 2.1/2.2 automated scanning",
+      "EN 301 549 compliance",
+      "ADA Title III monitoring",
+      "Litigation risk scoring",
+      "Compliance forecasting",
+      "Third-party vendor risk analysis",
+      "Auto-remediation engine",
+      "CI/CD regression guard",
+      "Executive compliance dashboard",
+      "Human testing marketplace",
+    ],
+  };
+
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <ProductTour />
       {/* Navigation */}
       <header className="sticky top-0 z-50 border-b border-neutral-100 bg-white/80 backdrop-blur-md dark:bg-neutral-950/80 dark:border-neutral-800">

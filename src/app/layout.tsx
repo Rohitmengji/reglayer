@@ -61,31 +61,56 @@ function getMetadataBase(): URL {
 
 export const metadata: Metadata = {
   title: {
-    default: "RegLayer — Accessibility Scanner",
+    default: "RegLayer — Web Accessibility Compliance Platform",
     template: "%s | RegLayer",
   },
-  description: "Developer-native compliance infrastructure. Scan websites for accessibility issues, generate WCAG reports, and ship inclusive products.",
+  description: "Enterprise accessibility compliance platform. Automated WCAG scanning, litigation risk scoring, compliance forecasting, and continuous monitoring. Trusted by teams shipping inclusive products.",
+  keywords: ["accessibility", "WCAG", "ADA compliance", "EN 301 549", "accessibility scanner", "a11y", "web accessibility", "compliance monitoring", "accessibility audit", "Section 508", "EAA", "VPAT"],
   metadataBase: getMetadataBase(),
+  alternates: {
+    canonical: "/",
+  },
   openGraph: {
-    title: "RegLayer — Accessibility Scanner",
-    description: "Developer-native compliance infrastructure. Scan websites for WCAG violations, generate audit reports, and build accessible products.",
+    title: "RegLayer — Web Accessibility Compliance Platform",
+    description: "Enterprise accessibility compliance platform. Automated WCAG scanning, litigation risk scoring, compliance forecasting, and continuous monitoring.",
     url: "/",
     siteName: "RegLayer",
     locale: "en_US",
     type: "website",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "RegLayer — Web Accessibility Compliance Platform",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "RegLayer — Accessibility Scanner",
-    description: "Developer-native compliance infrastructure for WCAG accessibility.",
+    title: "RegLayer — Web Accessibility Compliance Platform",
+    description: "Automated WCAG scanning, litigation risk scoring, and compliance forecasting for enterprise teams.",
+    images: ["/og-image.png"],
   },
   robots: {
     index: true,
     follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
   },
   icons: {
     icon: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
   },
+  verification: {
+    google: process.env.GOOGLE_SITE_VERIFICATION || undefined,
+  },
+  category: "technology",
 };
 
 export default async function RootLayout({
