@@ -28,6 +28,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { Sidebar } from "./sidebar";
 import { Menu, X } from "lucide-react";
 import { useIsEmbedded } from "./embedded-context";
+import { OnboardingChecklist } from "@/components/onboarding/checklist";
 
 export function AppShell({ children, bare }: { children: React.ReactNode; bare?: boolean }) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -156,6 +157,9 @@ export function AppShell({ children, bare }: { children: React.ReactNode; bare?:
 
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 flex-1 w-full flex flex-col">{children}</div>
       </main>
+
+      {/* Onboarding checklist — floating bottom-right */}
+      <OnboardingChecklist />
     </div>
   );
 }
