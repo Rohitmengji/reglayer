@@ -1,0 +1,8 @@
+<svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="RegLayer">
+  <rect width="48" height="48" rx="11" fill="#FAFAFA"></rect>
+  <g transform="translate(11 11)" fill="none" stroke="#09090B" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M13 1.5 24.5 7.5 13 13.5 1.5 7.5 13 1.5Z" fill="#09090B"></path>
+    <path d="M1.5 13 13 19 24.5 13"></path>
+    <path d="M1.5 18.5 13 24.5 24.5 18.5"></path>
+  </g>
+</svg>

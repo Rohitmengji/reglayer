@@ -1,9 +1,10 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Clock, Calendar, Share2, BookmarkPlus } from "lucide-react";
+import { ArrowLeft, Clock, Calendar } from "lucide-react";
 import { articles, type ArticleContent } from "./content";
 import { ArticleEditorWrapper } from "./editor-wrapper";
+import { ArticleActions } from "@/components/blog/article-actions";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -33,14 +34,7 @@ export default async function ArticlePage({ params }: PageProps) {
             <ArrowLeft className="h-4 w-4" />
             Back to Blog
           </Link>
-          <div className="flex items-center gap-3">
-            <button className="p-2 rounded-lg text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors" aria-label="Share article">
-              <Share2 className="h-4 w-4" />
-            </button>
-            <button className="p-2 rounded-lg text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors" aria-label="Bookmark article">
-              <BookmarkPlus className="h-4 w-4" />
-            </button>
-          </div>
+          <ArticleActions title={article.title} slug={slug} />
         </div>
       </header>
 
