@@ -230,15 +230,15 @@ export function CommandPalette() {
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm animate-in fade-in duration-150"
+        className="fixed inset-0 z-9999 bg-black/50 backdrop-blur-sm animate-in fade-in duration-150"
         onClick={() => setOpen(false)}
         aria-hidden
       />
 
       {/* Palette */}
-      <div className="fixed inset-0 z-[10000] flex items-start justify-center pt-[15vh] px-4">
+      <div className="fixed inset-0 z-10000 flex items-start justify-center pt-[15vh] px-4">
         <div
-          className="w-full max-w-[560px] overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-2xl dark:border-neutral-700 dark:bg-neutral-900 animate-in slide-in-from-top-2 fade-in duration-200"
+          className="w-full max-w-140 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-2xl dark:border-neutral-700 dark:bg-neutral-900 animate-in slide-in-from-top-2 fade-in duration-200"
           role="dialog"
           aria-label="Command palette"
           onKeyDown={handleKeyDown}
@@ -263,7 +263,7 @@ export function CommandPalette() {
           </div>
 
           {/* Results */}
-          <div ref={listRef} className="max-h-[360px] overflow-y-auto overscroll-contain p-2" role="listbox">
+          <div ref={listRef} className="max-h-90 overflow-y-auto overscroll-contain p-2" role="listbox">
             {filtered.length === 0 ? (
               <div className="py-8 text-center text-sm text-neutral-500 dark:text-neutral-400">
                 No results for &quot;{query}&quot;

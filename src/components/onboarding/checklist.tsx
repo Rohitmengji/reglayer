@@ -106,7 +106,7 @@ export function OnboardingChecklist() {
   if (completed === total && localStorage.getItem(COMPLETED_KEY)) return null;
 
   return (
-    <div className="fixed bottom-6 right-6 z-[9990] w-[340px] animate-in slide-in-from-bottom-4 fade-in duration-300">
+    <div className="fixed bottom-6 right-6 z-9990 w-85 animate-in slide-in-from-bottom-4 fade-in duration-300">
       <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
         {/* Header */}
         <button
@@ -153,19 +153,22 @@ export function OnboardingChecklist() {
             ) : (
               <ChevronUp className="h-4 w-4 text-neutral-400" />
             )}
-            <button
+            <span
+              role="button"
+              tabIndex={0}
               onClick={(e) => { e.stopPropagation(); dismiss(); }}
-              className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800"
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.stopPropagation(); dismiss(); } }}
+              className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer"
               aria-label="Dismiss checklist"
             >
               <X className="h-3.5 w-3.5 text-neutral-400" />
-            </button>
+            </span>
           </div>
         </button>
 
         {/* Tasks */}
         {expanded && (
-          <div className="border-t border-neutral-100 dark:border-neutral-800 px-2 py-2 space-y-0.5 max-h-[260px] overflow-y-auto">
+          <div className="border-t border-neutral-100 dark:border-neutral-800 px-2 py-2 space-y-0.5 max-h-65 overflow-y-auto">
             {tasks.map((task) => (
               <button
                 key={task.id}

@@ -139,7 +139,7 @@ export function ProgressStreak() {
           <Calendar className="h-3 w-3" />
           Last 30 days
         </div>
-        <div className="flex gap-[3px]">
+        <div className="flex gap-0.75">
           {data.last30Days.map((day, i) => (
             <div
               key={day.date}

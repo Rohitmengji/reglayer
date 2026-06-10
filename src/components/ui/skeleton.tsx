@@ -102,7 +102,7 @@ export function SkeletonTable({ rows = 5, cols = 4 }: { rows?: number; cols?: nu
           {Array.from({ length: cols }).map((_, col) => (
             <Skeleton
               key={col}
-              className={cn("h-3 flex-1", col === 0 && "max-w-[200px]")}
+              className={cn("h-3 flex-1", col === 0 && "max-w-50")}
             />
           ))}
         </div>
