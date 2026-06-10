@@ -297,7 +297,7 @@ export default function TeamPage() {
                       </div>
 
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-[10px] text-neutral-400 dark:text-neutral-500 hidden sm:block">
+                        <span className="text-[10px] text-neutral-500 dark:text-neutral-500 hidden sm:block">
                           {new Date(member.joinedAt).toLocaleDateString()}
                         </span>
 

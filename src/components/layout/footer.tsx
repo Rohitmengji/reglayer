@@ -64,7 +64,7 @@ export function Footer() {
       </div>
       <div className="mx-auto max-w-6xl px-6">
         <div className="border-t border-neutral-200 dark:border-neutral-700 mt-8 pt-6 flex justify-center">
-          <p className="text-xs text-neutral-400 dark:text-neutral-500">© {new Date().getFullYear()} RegLayer. All rights reserved.</p>
+          <p className="text-xs text-neutral-500 dark:text-neutral-500">© {new Date().getFullYear()} RegLayer. All rights reserved.</p>
         </div>
       </div>
     </footer>

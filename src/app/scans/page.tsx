@@ -416,7 +416,7 @@ export default function ScansPage() {
                     {isAdmin && (
                       <button
                         onClick={() => handleDelete(scan.id)}
-                        className="rounded-md p-1.5 text-neutral-400 dark:text-neutral-300 hover:bg-red-50 dark:hover:bg-red-950 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                        className="rounded-md p-1.5 text-neutral-500 dark:text-neutral-300 hover:bg-red-50 dark:hover:bg-red-950 hover:text-red-600 dark:hover:text-red-400 transition-colors"
                         title="Delete Scan (Admin only)"
                       >
                         <Trash2 className="h-4 w-4" />

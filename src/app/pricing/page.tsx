@@ -250,7 +250,7 @@ export default function PricingPage() {
           <h2 className="text-2xl font-bold text-white dark:text-neutral-900">
             Ready to meet EAA compliance?
           </h2>
-          <p className="mt-2 text-neutral-400 dark:text-neutral-500 max-w-lg mx-auto">
+          <p className="mt-2 text-neutral-500 dark:text-neutral-500 max-w-lg mx-auto">
             Start scanning in under 60 seconds. No credit card required for the free plan.
           </p>
           <Link

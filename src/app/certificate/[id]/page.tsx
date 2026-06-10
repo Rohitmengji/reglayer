@@ -174,7 +174,7 @@ export default function CertificatePage() {
             {/* Header */}
             <div className="flex items-center justify-center gap-2 mb-1">
               <Shield className="h-4 w-4 text-neutral-900 dark:text-white" />
-              <p className="text-[9px] font-semibold tracking-[0.25em] uppercase text-neutral-400 dark:text-neutral-500">
+              <p className="text-[9px] font-semibold tracking-[0.25em] uppercase text-neutral-500 dark:text-neutral-500">
                 RegLayer Verified
               </p>
             </div>
@@ -254,7 +254,7 @@ export default function CertificatePage() {
 
             {/* Dates + ID footer */}
             <div className="mt-5 pt-4 border-t border-neutral-100 dark:border-neutral-800">
-              <div className="flex items-center justify-center gap-5 text-[11px] text-neutral-400 dark:text-neutral-500">
+              <div className="flex items-center justify-center gap-5 text-[11px] text-neutral-500 dark:text-neutral-500">
                 <span className="flex items-center gap-1">
                   <Calendar className="h-3 w-3" />
                   Issued {new Date(cert.issuedAt).toLocaleDateString()}
