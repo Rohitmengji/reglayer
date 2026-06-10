@@ -116,6 +116,14 @@ export function AppShell({ children, bare }: { children: React.ReactNode; bare?:
 
   return (
     <div className="flex h-screen overflow-hidden bg-neutral-50 dark:bg-neutral-950">
+      {/* Skip to content — visible on focus for keyboard users */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-9999 focus:rounded-lg focus:bg-indigo-600 focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-white focus:shadow-lg focus:outline-none"
+      >
+        Skip to main content
+      </a>
+
       {/* Mobile overlay */}
       {mobileOpen && (
         <div
@@ -143,7 +151,7 @@ export function AppShell({ children, bare }: { children: React.ReactNode; bare?:
       </div>
 
       {/* Main content */}
-      <main className="flex-1 flex flex-col overflow-y-auto">
+      <main id="main-content" className="flex-1 flex flex-col overflow-y-auto">
         {/* Mobile header */}
         <div className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-4 lg:hidden">
           <button

@@ -262,8 +262,13 @@ export function CommandPalette() {
             </kbd>
           </div>
 
+          {/* Screen reader announcement */}
+          <div className="sr-only" aria-live="polite" aria-atomic="true">
+            {filtered.length === 0 && query ? `No results for ${query}` : `${filtered.length} results available`}
+          </div>
+
           {/* Results */}
-          <div ref={listRef} className="max-h-90 overflow-y-auto overscroll-contain p-2" role="listbox">
+          <div ref={listRef} className="max-h-90 overflow-y-auto overscroll-contain p-2" role="listbox" aria-label="Commands">
             {filtered.length === 0 ? (
               <div className="py-8 text-center text-sm text-neutral-500 dark:text-neutral-400">
                 No results for &quot;{query}&quot;
@@ -271,7 +276,7 @@ export function CommandPalette() {
             ) : (
               Object.entries(grouped).map(([group, items]) => (
                 <div key={group} className="mb-1">
-                  <div className="px-2 py-1.5 text-[11px] font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+                  <div className="px-2 py-1.5 text-[11px] font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400" role="presentation">
                     {groupLabels[group] ?? group}
                   </div>
                   {items.map((item) => {
@@ -322,7 +327,7 @@ export function CommandPalette() {
 
           {/* Footer hint */}
           <div className="flex items-center justify-between border-t border-neutral-100 px-4 py-2 dark:border-neutral-800">
-            <div className="flex items-center gap-3 text-[11px] text-neutral-400 dark:text-neutral-500">
+            <div className="flex items-center gap-3 text-[11px] text-neutral-500 dark:text-neutral-400">
               <span className="flex items-center gap-1">
                 <kbd className="inline-flex h-4 w-4 items-center justify-center rounded border border-neutral-200 text-[9px] dark:border-neutral-700">↑</kbd>
                 <kbd className="inline-flex h-4 w-4 items-center justify-center rounded border border-neutral-200 text-[9px] dark:border-neutral-700">↓</kbd>
@@ -337,7 +342,7 @@ export function CommandPalette() {
                 close
               </span>
             </div>
-            <div className="text-[10px] text-neutral-400 dark:text-neutral-500">
+            <div className="text-[10px] text-neutral-500 dark:text-neutral-400">
               <Shield className="inline h-3 w-3 mr-0.5 -mt-0.5" />
               RegLayer
             </div>
