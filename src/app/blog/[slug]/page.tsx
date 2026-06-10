@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Clock, Calendar } from "lucide-react";
-import { articles, type ArticleContent } from "./content";
+import { articles } from "./content";
 import { ArticleEditorWrapper } from "./editor-wrapper";
 import { ArticleActions } from "@/components/blog/article-actions";
 

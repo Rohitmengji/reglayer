@@ -25,6 +25,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { useRouter, usePathname } from "next/navigation";
+import Image from "next/image";
 import { Sidebar } from "./sidebar";
 import { Menu, X } from "lucide-react";
 import { useIsEmbedded } from "./embedded-context";
@@ -160,8 +161,8 @@ export function AppShell({ children, bare }: { children: React.ReactNode; bare?:
           >
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
-          <img src="/assests/reglayer-logo-light.svg" alt="RegLayer" className="h-7 dark:hidden" />
-          <img src="/assests/reglayer-logo-dark.svg" alt="RegLayer" className="h-7 hidden dark:block" />
+          <Image src="/assests/reglayer-logo-light.svg" alt="RegLayer" width={120} height={28} className="h-7 w-auto dark:hidden" />
+          <Image src="/assests/reglayer-logo-dark.svg" alt="RegLayer" width={120} height={28} className="h-7 w-auto hidden dark:block" />
         </div>
 
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 flex-1 w-full flex flex-col">{children}</div>
