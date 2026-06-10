@@ -1,0 +1,12 @@
+<svg width="176" height="38" viewBox="0 0 176 38" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="RegLayer">
+  <defs>
+    
+  </defs>
+  <rect x="0.6" y="0.6" width="36.8" height="36.8" rx="9" fill="none" stroke="#27272A" stroke-width="1.2"></rect>
+  <g transform="translate(8 8)" fill="none" stroke="#A1A1AA" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M11 1.5 20.5 6.5 11 11.5 1.5 6.5 11 1.5Z" fill="#A1A1AA"></path>
+    <path d="M1.5 11 11 16 20.5 11"></path>
+    <path d="M1.5 15.5 11 20.5 20.5 15.5"></path>
+  </g>
+  <text x="50" y="25" font-family="Geist, -apple-system, system-ui, sans-serif" font-size="20" font-weight="500" letter-spacing="-0.6" fill="#A1A1AA">RegLayer</text>
+</svg>
