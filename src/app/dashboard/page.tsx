@@ -32,10 +32,11 @@ import { ScanForm } from "@/components/scanner/scan-form";
 import { ScoreCard } from "@/components/dashboard/score-card";
 import { ViolationCard } from "@/components/scanner/violation-card";
 import { ComplianceTrend } from "@/components/charts/compliance-trend";
+import { ViolationsChart } from "@/components/charts/dashboard-charts";
 import { OnboardingFlow } from "@/components/onboarding/onboarding-flow";
+import { RoleOnboarding, type UserPersona } from "@/components/onboarding/role-onboarding";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { useScanStore } from "@/stores/scanStore";
 import { useI18n } from "@/components/i18n-provider";
 import { Download, Activity, Target, AlertTriangle, Globe, TrendingUp, TrendingDown, Sparkles, Zap } from "lucide-react";
@@ -64,11 +65,21 @@ export default function DashboardPage() {
   const [statsLoading, setStatsLoading] = useState(true);
   const [credits, setCredits] = useState<{ used: number; limit: number; totalAvailable: number; remaining: number; daysUntilReset: number; unlimited: boolean } | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showRoleOnboarding, setShowRoleOnboarding] = useState(false);
+  const [persona, setPersona] = useState<UserPersona | null>(null);
   const { setScanResult: persistResult } = useScanStore();
   const { t } = useI18n();
   const { data: session } = useSession();
 
   useEffect(() => {
+    // Check if user has selected a persona
+    const storedPersona = localStorage.getItem("reglayer_persona") as UserPersona | null;
+    if (storedPersona) {
+      setPersona(storedPersona);
+    } else {
+      setShowRoleOnboarding(true);
+    }
+
     fetch("/api/dashboard/stats")
       .then((r) => {
         if (!r.ok) throw new Error("Failed");
@@ -146,6 +157,17 @@ export default function DashboardPage() {
               // Trigger scan form with the URL — set it in sessionStorage for ScanForm to pick up
               sessionStorage.setItem("reglayer_onboarding_url", url);
               window.dispatchEvent(new Event("onboarding-scan"));
+            }}
+          />
+        )}
+
+        {/* Role-based onboarding — shown once on first visit */}
+        {showRoleOnboarding && (
+          <RoleOnboarding
+            userName={session?.user?.name}
+            onComplete={(p) => {
+              setPersona(p);
+              setShowRoleOnboarding(false);
             }}
           />
         )}
@@ -285,64 +307,46 @@ export default function DashboardPage() {
           </div>
         )}
         {!statsLoading && stats && stats.recentScans.length > 0 && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Recent Scans */}
-            <Card>
-              <CardContent className="p-5">
-                <h3 className="text-sm font-semibold text-neutral-700 dark:text-neutral-200 mb-3">{t("dashboard.recentScans")}</h3>
-                <div className="space-y-2">
-                  {stats.recentScans.slice(0, 5).map((scan) => (
-                    <Link
-                      key={scan.id}
-                      href={`/report/${scan.id}`}
-                      className="flex items-center justify-between rounded-lg p-2 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm text-neutral-800 dark:text-neutral-200 truncate">{scan.url}</p>
-                        <p className="text-xs text-neutral-500 dark:text-neutral-400">{new Date(scan.date).toLocaleDateString()}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {scan.violations > 0 && (
-                          <span className="text-xs text-neutral-500 dark:text-neutral-400">{t("dashboard.issues", { count: scan.violations })}</span>
-                        )}
-                        <span className={`text-sm font-bold ${
-                          scan.score >= 90 ? "text-green-600" :
-                          scan.score >= 70 ? "text-yellow-600" :
-                          "text-red-600"
-                        }`}>
-                          {scan.score}
-                        </span>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Top Violations */}
-            <Card>
-              <CardContent className="p-5">
-                <h3 className="text-sm font-semibold text-neutral-700 dark:text-neutral-200 mb-3">{t("dashboard.topIssues")}</h3>
-                <div className="space-y-2">
-                  {stats.topViolations.slice(0, 5).map((v) => (
-                    <div key={v.ruleId} className="flex items-center justify-between rounded-lg p-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <Badge variant={v.impact as "critical" | "serious" | "moderate" | "minor"}>
-                          {v.impact}
-                        </Badge>
-                        <code className="text-xs text-neutral-700 dark:text-neutral-300 truncate">{v.ruleId}</code>
-                      </div>
-                      <span className="text-xs font-medium text-neutral-500">{v.count}×</span>
+          <Card>
+            <CardContent className="p-5">
+              <h3 className="text-sm font-semibold text-neutral-700 dark:text-neutral-200 mb-3">{t("dashboard.recentScans")}</h3>
+              <div className="space-y-2">
+                {stats.recentScans.slice(0, 5).map((scan) => (
+                  <Link
+                    key={scan.id}
+                    href={`/report/${scan.id}`}
+                    className="flex items-center justify-between rounded-lg p-2.5 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 border border-transparent hover:border-indigo-100 dark:hover:border-indigo-900/40 transition-all cursor-pointer"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm text-neutral-800 dark:text-neutral-200 truncate">{scan.url}</p>
+                      <p className="text-xs text-neutral-500 dark:text-neutral-400">{new Date(scan.date).toLocaleDateString()}</p>
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+                    <div className="flex items-center gap-2">
+                      {scan.violations > 0 && (
+                        <span className="text-xs text-neutral-500 dark:text-neutral-400">{t("dashboard.issues", { count: scan.violations })}</span>
+                      )}
+                      <span className={`text-sm font-bold ${
+                        scan.score >= 90 ? "text-green-600" :
+                        scan.score >= 70 ? "text-yellow-600" :
+                        "text-red-600"
+                      }`}>
+                        {scan.score}
+                      </span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         {/* Compliance Trend */}
         <ComplianceTrend />
+
+        {/* Analytics Charts */}
+        {!statsLoading && stats && stats.totalScans > 0 && (
+          <DashboardAnalytics stats={stats} />
+        )}
 
         {/* Results */}
         {scanResult && (
@@ -443,6 +447,123 @@ function StatCard({ label, value, icon, trend }: { label: string; value: string;
       </div>
       <p className="text-2xl font-bold text-neutral-900 dark:text-white">{value}</p>
       <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">{label}</p>
+    </div>
+  );
+}
+
+function DashboardAnalytics({ stats }: { stats: DashboardStats }) {
+  // Map ruleIds to categories using the same logic as priorityEngine
+  const CATEGORY_MAP: Record<string, string> = {
+    "color-contrast": "Color",
+    "image-alt": "Images",
+    "label": "Forms",
+    "button-name": "Interactive",
+    "link-name": "Navigation",
+    "html-has-lang": "Structure",
+    "document-title": "Structure",
+    "meta-viewport": "Structure",
+    "heading-order": "Structure",
+    "list": "Structure",
+    "aria-hidden-focus": "ARIA",
+    "aria-valid-attr": "ARIA",
+    "aria-valid-attr-value": "ARIA",
+    "aria-required-attr": "ARIA",
+    "aria-roles": "ARIA",
+    "bypass": "Navigation",
+    "frame-title": "Frames",
+    "landmark-one-main": "Landmarks",
+    "region": "Landmarks",
+    "duplicate-id": "HTML",
+    "tabindex": "Keyboard",
+    "focus-order-semantics": "Keyboard",
+    "keyboard": "Keyboard",
+  };
+
+  // Aggregate violations by category × severity
+  const categoryMap = new Map<string, { critical: number; serious: number; moderate: number; minor: number }>();
+
+  for (const v of stats.topViolations) {
+    const category = CATEGORY_MAP[v.ruleId] || "Other";
+    const existing = categoryMap.get(category) || { critical: 0, serious: 0, moderate: 0, minor: 0 };
+    const impact = v.impact as "critical" | "serious" | "moderate" | "minor";
+    if (impact in existing) {
+      existing[impact] += v.count;
+    }
+    categoryMap.set(category, existing);
+  }
+
+  // Convert to chart data, sorted by total issues descending
+  const violationData = Array.from(categoryMap.entries())
+    .map(([category, counts]) => ({ category, ...counts }))
+    .sort((a, b) => (b.critical + b.serious + b.moderate + b.minor) - (a.critical + a.serious + a.moderate + a.minor))
+    .slice(0, 6);
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <ViolationsChart data={violationData} />
+      <PriorityFixes topViolations={stats.topViolations} />
+    </div>
+  );
+}
+
+function PriorityFixes({ topViolations }: { topViolations: Array<{ ruleId: string; impact: string; count: number }> }) {
+  const impactColor: Record<string, string> = {
+    critical: "bg-red-500",
+    serious: "bg-amber-500",
+    moderate: "bg-blue-500",
+    minor: "bg-neutral-400",
+  };
+
+  const impactBadge: Record<string, string> = {
+    critical: "bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+    serious: "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+    moderate: "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+    minor: "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400",
+  };
+
+  const fixes = topViolations.slice(0, 5);
+  const totalIssues = fixes.reduce((sum, v) => sum + v.count, 0);
+
+  return (
+    <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-5">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">Priority Fixes</h3>
+          <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">Fix these first for maximum impact</p>
+        </div>
+        <span className="text-lg font-bold tabular-nums text-neutral-900 dark:text-white">{totalIssues}<span className="text-xs font-normal text-neutral-500 dark:text-neutral-400 ml-1">issues</span></span>
+      </div>
+      <div className="space-y-2.5">
+        {fixes.map((v, i) => (
+          <div key={v.ruleId} className="flex items-center gap-3 rounded-lg border border-neutral-100 dark:border-neutral-800 p-3">
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-neutral-100 dark:bg-neutral-800 text-[10px] font-bold text-neutral-500 dark:text-neutral-400">
+              {i + 1}
+            </span>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <code className="text-xs font-medium text-neutral-900 dark:text-white truncate">{v.ruleId}</code>
+                <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase ${impactBadge[v.impact] ?? impactBadge.minor}`}>
+                  {v.impact}
+                </span>
+              </div>
+              <div className="mt-1 flex items-center gap-2">
+                <div className="flex-1 h-1.5 rounded-full bg-neutral-100 dark:bg-neutral-800 overflow-hidden">
+                  <div
+                    className={`h-full rounded-full ${impactColor[v.impact] ?? impactColor.minor}`}
+                    style={{ width: `${Math.min(100, (v.count / Math.max(totalIssues, 1)) * 100 * 2)}%` }}
+                  />
+                </div>
+                <span className="text-[10px] font-medium text-neutral-500 dark:text-neutral-400 tabular-nums">{v.count}×</span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      {fixes.length === 0 && (
+        <div className="text-center py-6 text-sm text-neutral-400 dark:text-neutral-500">
+          No violations found — great job!
+        </div>
+      )}
     </div>
   );
 }
