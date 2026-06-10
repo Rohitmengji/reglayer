@@ -5,19 +5,27 @@
  *
  * WHY: Users need to visualize their compliance score over time.
  * WHAT: Line chart showing score history with trend indicator (improving/declining).
- * HOW: Receives data points array, renders SVG/canvas chart with hover tooltips.
+ * HOW: Recharts area chart with gradient fill, custom tooltip, and responsive sizing.
  */
 
 import { useScanStore } from "@/stores/scanStore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useI18n } from "@/components/i18n-provider";
+import {
+  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
+} from "recharts";
+import { TrendingUp, TrendingDown } from "lucide-react";
 
-/**
- * Compliance Trend Chart
- *
- * Displays score history over time as a simple sparkline chart.
- * Uses scan history from the store to show compliance trends.
- */
+function TrendTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number }>; label?: string }) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 shadow-lg">
+      <p className="text-[10px] font-medium text-neutral-500 dark:text-neutral-400">{label}</p>
+      <p className="text-sm font-bold text-neutral-900 dark:text-white">{payload[0].value}%</p>
+    </div>
+  );
+}
+
 export function ComplianceTrend() {
   const { scanHistory } = useScanStore();
   const { t } = useI18n();
@@ -32,136 +40,82 @@ export function ComplianceTrend() {
     .reverse()
     .map((entry) => ({
       score: entry.scan.summary.score,
-      timestamp: entry.scan.timestamp,
+      date: new Date(entry.scan.timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
       url: entry.scan.url,
     }));
-
-  const maxScore = 100;
-  const minScore = 0;
-  const chartHeight = 120;
-  const chartWidth = 600;
-  const padding = 20;
-
-  const pointSpacing =
-    (chartWidth - padding * 2) / Math.max(dataPoints.length - 1, 1);
-
-  const points = dataPoints.map((dp, i) => ({
-    x: padding + i * pointSpacing,
-    y:
-      chartHeight -
-      padding -
-      ((dp.score - minScore) / (maxScore - minScore)) *
-        (chartHeight - padding * 2),
-    ...dp,
-  }));
-
-  const pathD = points
-    .map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`)
-    .join(" ");
-
-  // Gradient fill path
-  const fillD = `${pathD} L ${points[points.length - 1].x} ${chartHeight - padding} L ${points[0].x} ${chartHeight - padding} Z`;
 
   const latestScore = dataPoints[dataPoints.length - 1]?.score ?? 0;
   const previousScore = dataPoints[dataPoints.length - 2]?.score ?? latestScore;
   const trend = latestScore - previousScore;
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className="overflow-hidden">
+      <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-sm font-medium text-neutral-600">
-            {t("complianceTrend.title")}
-          </CardTitle>
-          <div className="flex items-center gap-2">
-            <span className="text-2xl font-bold text-neutral-900">
+          <div>
+            <CardTitle className="text-sm font-semibold text-neutral-900 dark:text-white">
+              {t("complianceTrend.title")}
+            </CardTitle>
+            <p className="text-[11px] text-neutral-400 dark:text-neutral-500 mt-0.5">
+              {dataPoints.length} scans over {dataPoints[0]?.date} — {dataPoints[dataPoints.length - 1]?.date}
+            </p>
+          </div>
+          <div className="text-right">
+            <span className="text-3xl font-bold tabular-nums text-neutral-900 dark:text-white">
               {latestScore}
             </span>
             <span
-              className={`text-sm font-medium ${
+              className={`ml-2 inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
                 trend > 0
-                  ? "text-green-600"
+                  ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
                   : trend < 0
-                  ? "text-red-600"
-                  : "text-neutral-500"
+                  ? "bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                  : "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400"
               }`}
             >
-              {trend > 0 ? "↑" : trend < 0 ? "↓" : "→"}{" "}
-              {Math.abs(trend).toFixed(1)}
+              {trend > 0 ? <TrendingUp className="h-3 w-3" /> : trend < 0 ? <TrendingDown className="h-3 w-3" /> : null}
+              {trend > 0 ? "+" : ""}{trend.toFixed(1)}
             </span>
           </div>
         </div>
       </CardHeader>
-      <CardContent>
-        <svg
-          viewBox={`0 0 ${chartWidth} ${chartHeight}`}
-          className="w-full h-32"
-          preserveAspectRatio="none"
-        >
-          {/* Grid lines */}
-          {[0, 25, 50, 75, 100].map((val) => {
-            const y =
-              chartHeight -
-              padding -
-              ((val - minScore) / (maxScore - minScore)) *
-                (chartHeight - padding * 2);
-            return (
-              <line
-                key={val}
-                x1={padding}
-                y1={y}
-                x2={chartWidth - padding}
-                y2={y}
-                stroke="#e5e7eb"
-                strokeWidth="0.5"
-              />
-            );
-          })}
-
-          {/* Gradient fill */}
-          <defs>
-            <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#16a34a" stopOpacity="0.2" />
-              <stop offset="100%" stopColor="#16a34a" stopOpacity="0" />
-            </linearGradient>
-          </defs>
-          <path d={fillD} fill="url(#scoreGradient)" />
-
-          {/* Line */}
-          <path
-            d={pathD}
-            fill="none"
-            stroke="#16a34a"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-
-          {/* Points */}
-          {points.map((p, i) => (
-            <circle
-              key={i}
-              cx={p.x}
-              cy={p.y}
-              r="3"
-              fill="white"
-              stroke="#16a34a"
-              strokeWidth="2"
+      <CardContent className="pt-2 pb-4">
+        <ResponsiveContainer width="100%" height={200}>
+          <AreaChart data={dataPoints} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+            <defs>
+              <linearGradient id="trendGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#6366f1" stopOpacity={0.3} />
+                <stop offset="100%" stopColor="#6366f1" stopOpacity={0.02} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.04)" vertical={false} />
+            <XAxis
+              dataKey="date"
+              tick={{ fontSize: 10, fill: "#9ca3af" }}
+              axisLine={false}
+              tickLine={false}
+              interval={Math.max(0, Math.floor(dataPoints.length / 5) - 1)}
             />
-          ))}
-        </svg>
-
-        <div className="mt-2 flex justify-between text-xs text-neutral-500 dark:text-neutral-400">
-          <span>
-            {new Date(dataPoints[0].timestamp).toLocaleDateString()}
-          </span>
-          <span>{dataPoints.length} scans</span>
-          <span>
-            {new Date(
-              dataPoints[dataPoints.length - 1].timestamp
-            ).toLocaleDateString()}
-          </span>
-        </div>
+            <YAxis
+              domain={["dataMin - 10", 100]}
+              tick={{ fontSize: 10, fill: "#9ca3af" }}
+              axisLine={false}
+              tickLine={false}
+              tickFormatter={(v) => `${v}%`}
+              width={40}
+            />
+            <Tooltip content={<TrendTooltip />} cursor={{ stroke: "#6366f1", strokeWidth: 1, strokeDasharray: "4 4" }} />
+            <Area
+              type="natural"
+              dataKey="score"
+              stroke="#6366f1"
+              strokeWidth={2.5}
+              fill="url(#trendGradient)"
+              dot={false}
+              activeDot={{ r: 6, fill: "#6366f1", strokeWidth: 3, stroke: "#ffffff" }}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
       </CardContent>
     </Card>
   );

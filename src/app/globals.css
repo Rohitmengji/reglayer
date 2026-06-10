@@ -54,13 +54,23 @@ input:focus-within {
 }
 
 .dark {
-  --background: #09090b;
-  --foreground: #f4f4f5;
-  --muted: #a1a1aa;
-  --border: #27272a;
-  --accent: #3b82f6;
+  /* Designed dark palette — warm-tinted neutrals, not pure zinc */
+  --background: #0c0c10;        /* Deep navy-black, warmer than pure black */
+  --foreground: #ededf0;        /* Soft white, not harsh #fff */
+  --muted: #8b8b99;             /* Lavender-grey for secondary text */
+  --border: #1e1e2a;            /* Subtle purple-tinted borders */
+  --accent: #6366f1;            /* Indigo-500 — vibrant on dark without glare */
   --accent-foreground: #ffffff;
-  --surface: #18181b;
+  --surface: #13131a;           /* Elevated card surface — discernible from bg */
+
+  /* Extended dark palette */
+  --card: #16161f;              /* Card backgrounds */
+  --card-hover: #1a1a26;       /* Card hover states */
+  --sidebar: #0f0f14;          /* Sidebar slightly darker */
+  --success: #34d399;          /* Emerald-400 (brighter for dark bg) */
+  --warning: #fbbf24;          /* Amber-400 */
+  --danger: #f87171;           /* Red-400 */
+  --info: #60a5fa;             /* Blue-400 */
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -74,19 +84,33 @@ input:focus-within {
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-surface: var(--surface);
+  --color-card: var(--card, var(--surface));
+  --color-card-hover: var(--card-hover, var(--surface));
+  --color-sidebar: var(--sidebar, var(--background));
+  --color-success: var(--success, #10b981);
+  --color-warning: var(--warning, #f59e0b);
+  --color-danger: var(--danger, #ef4444);
+  --color-info: var(--info, #3b82f6);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not(.light) {
-    --background: #09090b;
-    --foreground: #f4f4f5;
-    --muted: #a1a1aa;
-    --border: #27272a;
-    --accent: #3b82f6;
+    --background: #0c0c10;
+    --foreground: #ededf0;
+    --muted: #8b8b99;
+    --border: #1e1e2a;
+    --accent: #6366f1;
     --accent-foreground: #ffffff;
-    --surface: #18181b;
+    --surface: #13131a;
+    --card: #16161f;
+    --card-hover: #1a1a26;
+    --sidebar: #0f0f14;
+    --success: #34d399;
+    --warning: #fbbf24;
+    --danger: #f87171;
+    --info: #60a5fa;
   }
 }
 
