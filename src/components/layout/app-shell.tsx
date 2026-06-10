@@ -160,7 +160,8 @@ export function AppShell({ children, bare }: { children: React.ReactNode; bare?:
           >
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
-          <span className="text-sm font-bold text-neutral-900 dark:text-white">RegLayer</span>
+          <img src="/assests/reglayer-logo-light.svg" alt="RegLayer" className="h-7 dark:hidden" />
+          <img src="/assests/reglayer-logo-dark.svg" alt="RegLayer" className="h-7 hidden dark:block" />
         </div>
 
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 flex-1 w-full flex flex-col">{children}</div>

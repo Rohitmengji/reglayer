@@ -23,18 +23,23 @@ export default function manifest(): MetadataRoute.Manifest {
     categories: ["productivity", "developer", "business"],
     icons: [
       {
-        src: "/favicon.ico",
+        src: "/assests/favicon.svg",
         sizes: "any",
-        type: "image/x-icon",
+        type: "image/svg+xml",
       },
       {
-        src: "/icon-192.png",
-        sizes: "192x192",
+        src: "/assests/favicon-32.png",
+        sizes: "32x32",
         type: "image/png",
       },
       {
-        src: "/icon-512.png",
+        src: "/assests/favicon-512.png",
         sizes: "512x512",
+        type: "image/png",
+      },
+      {
+        src: "/assests/apple-touch-icon-180.png",
+        sizes: "180x180",
         type: "image/png",
       },
     ],
