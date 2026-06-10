@@ -96,6 +96,7 @@ model Workspace {
   agencyClient AgencyClient?
   featureOverrides WorkspaceFeature[]
   proofs       ComplianceProof[]
+  guardPolicies GuardPolicy[]
 
   @@map("workspaces")
 }
@@ -166,6 +167,7 @@ model Site {
   schedules   Schedule[]
   riskScores  LitigationRiskScore[]
   proofs      ComplianceProof[]
+  guardPolicies GuardPolicy[]
 
   @@unique([workspaceId, url])
   @@map("sites")
@@ -606,4 +608,41 @@ enum ProofType {
   REMEDIATION_RECORD
   AUDIT_ATTESTATION
   CONTINUOUS_MONITORING
+}
+
+// ─────────────────────────────────────────────
+// CI/CD Regression Guard
+// ─────────────────────────────────────────────
+
+model GuardPolicy {
+  id                  String    @id @default(cuid())
+  siteId              String
+  workspaceId         String
+  name                String
+  enabled             Boolean   @default(true)
+
+  // Absolute thresholds
+  minScore            Float     @default(80)
+  maxCritical         Int       @default(0)
+  maxSerious          Int       @default(3)
+
+  // Regression tolerances
+  maxScoreDrop        Float     @default(5)
+  maxNewViolations    Int       @default(5)
+
+  // Baseline
+  autoPromoteBaseline Boolean   @default(true)
+  baselineScanId      String?
+  baselineScore       Float?
+  baselineLockedAt    DateTime?
+
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  site                Site      @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  workspace           Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([siteId, name])
+  @@index([workspaceId])
+  @@map("guard_policies")
 }
