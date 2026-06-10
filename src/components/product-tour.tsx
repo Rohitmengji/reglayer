@@ -132,6 +132,8 @@ export function ProductTour() {
         className="fixed z-9999 w-70"
         style={{ top: tooltip.top, left: tooltip.left }}
         key={step}
+        role="region"
+        aria-label={`Product tour: ${current.title}`}
       >
         {/* Arrow pointing to element */}
         {tooltip.placement === "below" && (
@@ -175,7 +177,7 @@ export function ProductTour() {
             <div className="flex items-center gap-1.5">
               <button
                 onClick={dismiss}
-                className="text-[11px] px-2 py-0.5 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors"
+                className="text-[11px] px-2 py-0.5 text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200 transition-colors"
               >
                 Skip
               </button>

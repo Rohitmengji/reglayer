@@ -205,7 +205,7 @@ export function DemoScan() {
         </div>
       )}
 
-      <p className="mt-3 text-xs text-neutral-400 text-center">
+      <p className="mt-3 text-xs text-neutral-500 dark:text-neutral-400 text-center">
         No signup required · 3 free scans/hour · Results in under 30 seconds
       </p>
     </div>

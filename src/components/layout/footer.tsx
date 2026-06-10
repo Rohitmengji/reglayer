@@ -37,7 +37,7 @@ export function Footer() {
             </p>
           </div>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-3">Product</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-3">Product</p>
             <ul className="space-y-1">
               <li><Link href="/features" className="inline-block py-1 text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white">Features</Link></li>
               <li><Link href="/pricing" className="inline-block py-1 text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white">Pricing</Link></li>
@@ -45,7 +45,7 @@ export function Footer() {
             </ul>
           </div>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-3">Legal</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-3">Legal</p>
             <ul className="space-y-1">
               <li><Link href="/privacy" className="inline-block py-1 text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white">Privacy Policy</Link></li>
               <li><Link href="/terms" className="inline-block py-1 text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white">Terms of Service</Link></li>
@@ -53,7 +53,7 @@ export function Footer() {
             </ul>
           </div>
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-3">Support</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-3">Support</p>
             <ul className="space-y-1">
               <li><Link href="/docs" className="inline-block py-1 text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white">Documentation</Link></li>
               <li><Link href="/api-reference" className="inline-block py-1 text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white">API Reference</Link></li>
