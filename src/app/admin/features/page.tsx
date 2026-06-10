@@ -203,7 +203,7 @@ export default function AdminFeaturesPage() {
           <Card className="lg:col-span-1">
             <CardContent className="p-4 space-y-3">
               <div className="relative">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-neutral-400" />
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-neutral-500 dark:text-neutral-400" />
                 <input
                   type="text"
                   placeholder="Search workspaces..."
@@ -214,7 +214,7 @@ export default function AdminFeaturesPage() {
               </div>
 
               {loading ? (
-                <div className="text-center py-8 text-neutral-400 text-sm">Loading...</div>
+                <div className="text-center py-8 text-neutral-500 dark:text-neutral-400 text-sm">Loading...</div>
               ) : (
                 <div className="space-y-1 max-h-[60vh] overflow-y-auto">
                   {filteredWorkspaces.map((ws) => (
@@ -248,7 +248,7 @@ export default function AdminFeaturesPage() {
           <Card className="lg:col-span-2">
             <CardContent className="p-4">
               {!selectedWorkspace ? (
-                <div className="flex flex-col items-center justify-center h-64 text-neutral-400">
+                <div className="flex flex-col items-center justify-center h-64 text-neutral-500 dark:text-neutral-400">
                   <Crown className="h-8 w-8 mb-2" />
                   <p className="text-sm">Select a workspace to manage features</p>
                 </div>
@@ -265,7 +265,7 @@ export default function AdminFeaturesPage() {
 
                   {Object.entries(groupedFeatures).map(([category, items]) => (
                     <div key={category}>
-                      <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-2">
+                      <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-2">
                         {categoryLabels[category] || category}
                       </h3>
                       <div className="space-y-1">
@@ -287,7 +287,7 @@ export default function AdminFeaturesPage() {
                                   <Badge className="text-[9px] bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">EXPIRED</Badge>
                                 )}
                                 {feature.override?.expiresAt && feature.source === "granted" && (
-                                  <span className="text-[10px] text-neutral-400 flex items-center gap-0.5">
+                                  <span className="text-[10px] text-neutral-500 dark:text-neutral-400 flex items-center gap-0.5">
                                     <Clock className="h-3 w-3" />
                                     {new Date(feature.override.expiresAt).toLocaleDateString()}
                                   </span>
@@ -295,7 +295,7 @@ export default function AdminFeaturesPage() {
                               </div>
                               <p className="text-[11px] text-neutral-500 truncate">{feature.description}</p>
                               {feature.override?.note && (
-                                <p className="text-[10px] text-neutral-400 italic mt-0.5">{feature.override.note}</p>
+                                <p className="text-[10px] text-neutral-500 dark:text-neutral-400 italic mt-0.5">{feature.override.note}</p>
                               )}
                             </div>
 
@@ -304,7 +304,7 @@ export default function AdminFeaturesPage() {
                               {feature.override && (
                                 <button
                                   onClick={() => revertOverride(feature.id)}
-                                  className="p-1.5 rounded text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-700"
+                                  className="p-1.5 rounded text-neutral-500 dark:text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-700"
                                   title="Revert to plan default"
                                 >
                                   <Undo2 className="h-3.5 w-3.5" />
@@ -315,7 +315,7 @@ export default function AdminFeaturesPage() {
                               {!feature.enabled && (
                                 <button
                                   onClick={() => setTrialFeature(trialFeature === feature.id ? null : feature.id)}
-                                  className="p-1.5 rounded text-neutral-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                                  className="p-1.5 rounded text-neutral-500 dark:text-neutral-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20"
                                   title="Grant trial access"
                                 >
                                   <Clock className="h-3.5 w-3.5" />

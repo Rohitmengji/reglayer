@@ -382,7 +382,7 @@ export default function AdminPage() {
             <Card key={stat.label}>
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 mb-1">
-                  <stat.icon className="h-4 w-4 text-neutral-400" />
+                  <stat.icon className="h-4 w-4 text-neutral-500 dark:text-neutral-400" />
                   <span className="text-xs text-neutral-500 dark:text-neutral-400">{stat.label}</span>
                 </div>
                 <p className="text-2xl font-bold text-neutral-900 dark:text-white">{stat.value}</p>
@@ -464,19 +464,19 @@ export default function AdminPage() {
         {grantCreditsUser && (() => {
           const targetUser = data.users.find((u) => u.id === grantCreditsUser);
           return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => { setGrantCreditsUser(null); setGrantCreditsAmount(""); setGrantCreditsReason(""); }}>
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-label="Grant AI Credits" onClick={() => { setGrantCreditsUser(null); setGrantCreditsAmount(""); setGrantCreditsReason(""); }}>
               <div className="w-full max-w-sm bg-white dark:bg-neutral-900 rounded-xl shadow-xl p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center justify-between">
                   <h3 className="text-base font-semibold text-neutral-900 dark:text-white flex items-center gap-2">
                     <Coins className="h-4 w-4 text-amber-500" /> Grant AI Credits
                   </h3>
-                  <button onClick={() => { setGrantCreditsUser(null); setGrantCreditsAmount(""); setGrantCreditsReason(""); }} className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200">
+                  <button onClick={() => { setGrantCreditsUser(null); setGrantCreditsAmount(""); setGrantCreditsReason(""); }} className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200">
                     <X className="h-4 w-4" />
                   </button>
                 </div>
                 <div className="text-sm text-neutral-600 dark:text-neutral-300">
                   <p>User: <span className="font-medium">{targetUser?.name || targetUser?.email}</span></p>
-                  <p className="text-xs text-neutral-400 mt-0.5">
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
                     Current bonus: {targetUser?.bonusCredits ?? 0} · Grants this month: {targetUser?.creditGrantsThisMonth ?? 0}/3
                   </p>
                 </div>
@@ -506,7 +506,7 @@ export default function AdminPage() {
                   </div>
                 </div>
                 <div className="flex items-center justify-between pt-2">
-                  <span className="text-xs text-neutral-400">{3 - (targetUser?.creditGrantsThisMonth ?? 0)} grants remaining this month</span>
+                  <span className="text-xs text-neutral-500 dark:text-neutral-400">{3 - (targetUser?.creditGrantsThisMonth ?? 0)} grants remaining this month</span>
                   <div className="flex gap-2">
                     <Button size="sm" variant="ghost" onClick={() => { setGrantCreditsUser(null); setGrantCreditsAmount(""); setGrantCreditsReason(""); }}>
                       Cancel
@@ -534,7 +534,7 @@ export default function AdminPage() {
           {/* Search & Filter Bar */}
           <div className="flex flex-col sm:flex-row gap-2 mb-3">
             <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-400" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-500 dark:text-neutral-400" />
               <input
                 type="text"
                 placeholder="Search by name or email..."
@@ -681,7 +681,7 @@ export default function AdminPage() {
                     (userRoleFilter === "MASTER_ADMIN" ? user.isMasterAdmin : user.role === userRoleFilter);
                   return matchesSearch && matchesRole;
                 }).length === 0 && (
-                  <div className="px-4 py-8 text-center text-sm text-neutral-400">
+                  <div className="px-4 py-8 text-center text-sm text-neutral-500 dark:text-neutral-400">
                     No users match your filters
                   </div>
                 )}

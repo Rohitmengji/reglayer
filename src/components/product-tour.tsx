@@ -150,7 +150,7 @@ export function ProductTour() {
             </span>
             <button
               onClick={dismiss}
-              className="p-0.5 rounded text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-colors"
+              className="p-0.5 rounded text-neutral-500 dark:text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-colors"
               aria-label="Close tour"
             >
               <X className="h-3.5 w-3.5" />

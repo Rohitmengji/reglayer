@@ -224,7 +224,7 @@ export function ScanForm({ onScanComplete }: ScanFormProps) {
             {/* Animated progress bar */}
             <div className="w-full h-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
               <div
-                className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-1000 ease-out"
+                className="h-full bg-linear-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-1000 ease-out"
                 style={{ width: `${((currentStage + 1) / SCAN_STAGES.length) * 100}%` }}
               />
             </div>

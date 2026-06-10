@@ -129,7 +129,7 @@ export default function RegulationsPage() {
       {/* Filters */}
       <div className="mb-6 flex flex-wrap gap-3">
         <div className="relative">
-          <Globe className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Globe className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500 dark:text-gray-400" />
           <select
             value={geo}
             onChange={(e) => setGeo(e.target.value)}
@@ -139,7 +139,7 @@ export default function RegulationsPage() {
               <option key={o.value} value={o.value}>{o.label}</option>
             ))}
           </select>
-          <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500 dark:text-gray-400" />
         </div>
         <div className="relative">
           <select
@@ -151,7 +151,7 @@ export default function RegulationsPage() {
               <option key={o.value} value={o.value}>{o.label}</option>
             ))}
           </select>
-          <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500 dark:text-gray-400" />
         </div>
       </div>
 
@@ -285,7 +285,7 @@ export default function RegulationsPage() {
                     </p>
                   </div>
                   <ChevronDown
-                    className={`h-5 w-5 text-gray-400 transition-transform ${expandedReg === reg.id ? "rotate-180" : ""}`}
+                    className={`h-5 w-5 text-gray-500 dark:text-gray-400 transition-transform ${expandedReg === reg.id ? "rotate-180" : ""}`}
                   />
                 </button>
                 {expandedReg === reg.id && (

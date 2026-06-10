@@ -160,17 +160,17 @@ export function Sidebar({ onNavigate }: SidebarProps) {
               {currentWs?.name || "RegLayer"}
             </p>
             {currentWs && (
-              <p className="text-[10px] text-neutral-400 uppercase tracking-wider">{currentWs.plan}</p>
+              <p className="text-[10px] text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">{currentWs.plan}</p>
             )}
           </div>
           {workspaces.length > 1 && (
-            <ChevronsUpDown className="h-3.5 w-3.5 text-neutral-400 shrink-0" />
+            <ChevronsUpDown className="h-3.5 w-3.5 text-neutral-500 dark:text-neutral-400 shrink-0" />
           )}
         </button>
 
         {wsOpen && workspaces.length > 1 && (
           <div className="mt-1 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-lg py-1 z-50 relative">
-            <p className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-neutral-400">Workspaces</p>
+            <p className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">Workspaces</p>
             {workspaces.map((ws) => (
               <button
                 key={ws.id}
@@ -187,7 +187,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                 </div>
                 <div className="min-w-0 flex-1 text-left">
                   <p className="truncate text-neutral-800 dark:text-neutral-200">{ws.name}</p>
-                  <p className="text-[10px] text-neutral-400">{ws.plan} · {ws.role}</p>
+                  <p className="text-[10px] text-neutral-500 dark:text-neutral-400">{ws.plan} · {ws.role}</p>
                 </div>
                 {ws.id === activeWs && <Check className="h-3.5 w-3.5 text-green-500 shrink-0" />}
               </button>
@@ -256,7 +256,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                   {session.user.name || session.user.email?.split("@")[0]}
                 </p>
               </div>
-              <ChevronDown className={cn("h-3.5 w-3.5 text-neutral-400 transition-transform", userMenuOpen && "rotate-180")} />
+              <ChevronDown className={cn("h-3.5 w-3.5 text-neutral-500 dark:text-neutral-400 transition-transform", userMenuOpen && "rotate-180")} />
             </button>
 
             {userMenuOpen && (

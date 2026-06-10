@@ -316,7 +316,7 @@ export default function AgencyDashboard() {
                     placeholder="my-agency"
                     className="font-mono"
                   />
-                  <p className="text-xs text-neutral-400">{createSlug || "my-agency"}.reglayer.dev</p>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400">{createSlug || "my-agency"}.reglayer.dev</p>
                 </div>
                 <Button
                   onClick={createAgency}
@@ -604,7 +604,7 @@ export default function AgencyDashboard() {
                       <span className="ml-2 text-xs text-neutral-500">{key.label}</span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="text-xs text-neutral-400">
+                      <span className="text-xs text-neutral-500 dark:text-neutral-400">
                         {key.lastUsedAt ? `Used ${new Date(key.lastUsedAt).toLocaleDateString()}` : "Never used"}
                       </span>
                       <Button size="sm" variant="ghost" onClick={() => revokeApiKey(key.id)}>

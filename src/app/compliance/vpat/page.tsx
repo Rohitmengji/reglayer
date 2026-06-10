@@ -127,7 +127,7 @@ export default function VPATPage() {
     if (c === "Supports") return <CheckCircle className="h-4 w-4 text-green-500" />;
     if (c === "Partially Supports") return <AlertCircle className="h-4 w-4 text-yellow-500" />;
     if (c === "Does Not Support") return <XCircle className="h-4 w-4 text-red-500" />;
-    return <span className="h-4 w-4 text-gray-400">—</span>;
+    return <span className="h-4 w-4 text-gray-500 dark:text-gray-400">—</span>;
   }
 
   return (

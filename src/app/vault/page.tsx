@@ -155,7 +155,7 @@ export default function VaultPage() {
       {/* Proof List */}
       {proofs.length === 0 ? (
         <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-12 text-center dark:border-gray-600 dark:bg-gray-800/50">
-          <FileCheck className="mx-auto mb-3 h-12 w-12 text-gray-400" />
+          <FileCheck className="mx-auto mb-3 h-12 w-12 text-gray-500 dark:text-gray-400" />
           <h3 className="text-lg font-medium text-gray-900 dark:text-white">No proofs yet</h3>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             Compliance proofs are automatically generated when scans complete with passing scores.

@@ -167,7 +167,7 @@ export default function TrendsPage() {
             <p className="text-neutral-600 dark:text-neutral-300 font-medium">
               {error || "No trend data available"}
             </p>
-            <p className="text-sm text-neutral-400 mt-2">
+            <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-2">
               Run multiple scans of the same URL to see trends over time.
             </p>
           </div>
@@ -198,7 +198,7 @@ export default function TrendsPage() {
                 </a>
               )}
               {data.summary && (
-                <p className="text-xs text-neutral-400 mt-1">
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
                   <Calendar className="h-3 w-3 inline mr-1" />
                   {data.summary.totalScans} scan{data.summary.totalScans !== 1 ? "s" : ""} since{" "}
                   {new Date(data.summary.firstScanAt).toLocaleDateString()}
@@ -244,7 +244,7 @@ export default function TrendsPage() {
               {filteredScoreTrend.length > 1 ? (
                 <ScoreLineChart data={filteredScoreTrend} />
               ) : (
-                <div className="flex items-center justify-center h-48 text-sm text-neutral-400">
+                <div className="flex items-center justify-center h-48 text-sm text-neutral-500 dark:text-neutral-400">
                   Need 2+ scans to show trend chart
                 </div>
               )}
@@ -262,7 +262,7 @@ export default function TrendsPage() {
               {filteredViolationTrend.length > 1 ? (
                 <ViolationAreaChart data={filteredViolationTrend} />
               ) : (
-                <div className="flex items-center justify-center h-48 text-sm text-neutral-400">
+                <div className="flex items-center justify-center h-48 text-sm text-neutral-500 dark:text-neutral-400">
                   Need 2+ scans to show violation trends
                 </div>
               )}
@@ -313,7 +313,7 @@ export default function TrendsPage() {
                           </td>
                           <td className="py-2 px-4 text-right">
                             {idx === paginatedHistory.length - 1 && historyPage === historyPages ? (
-                              <span className="text-neutral-400">—</span>
+                              <span className="text-neutral-500 dark:text-neutral-400">—</span>
                             ) : change > 0 ? (
                               <span className="inline-flex items-center gap-0.5 text-green-600">
                                 <TrendingUp className="h-3 w-3" />+{change.toFixed(1)}
@@ -323,7 +323,7 @@ export default function TrendsPage() {
                                 <TrendingDown className="h-3 w-3" />{change.toFixed(1)}
                               </span>
                             ) : (
-                              <span className="text-neutral-400">0</span>
+                              <span className="text-neutral-500 dark:text-neutral-400">0</span>
                             )}
                           </td>
                           <td className="py-2 pl-4 text-right">

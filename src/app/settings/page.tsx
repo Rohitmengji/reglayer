@@ -243,7 +243,7 @@ function PlanUsageTab() {
                       {val === true || val === "full" ? "✓ Included" : typeof val === "number" ? `${val === -1 ? "∞" : val}` : String(val)}
                     </span>
                   ) : (
-                    <span className="text-xs font-medium text-neutral-400">
+                    <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
                       {val === "basic" || val === "summary" ? `${String(val)} only` : "✗ Not included"}
                     </span>
                   )}
@@ -407,7 +407,7 @@ function AccountTab() {
               />
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-[11px] text-neutral-400">
+              <span className="text-[11px] text-neutral-500 dark:text-neutral-400">
                 Member since {new Date(profile.createdAt).toLocaleDateString()}
               </span>
               <Badge variant="secondary" className="text-[10px]">{profile.plan}</Badge>
@@ -796,7 +796,7 @@ function ApiKeysTab() {
               <div>
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-medium text-neutral-900 dark:text-white">{key.name}</p>
-                  <code className="text-xs text-neutral-400">{key.prefix}••••••••</code>
+                  <code className="text-xs text-neutral-500 dark:text-neutral-400">{key.prefix}••••••••</code>
                 </div>
                 <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
                   Created {new Date(key.createdAt).toLocaleDateString()}
@@ -978,7 +978,7 @@ function AlertsTab() {
             <li><strong>Critical Violations</strong> — triggers if critical count exceeds threshold</li>
             <li><strong>Total Violations</strong> — triggers if violation count exceeds threshold</li>
           </ul>
-          <p className="text-xs text-neutral-400 mt-3">
+          <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-3">
             All triggers are logged in the audit trail and dispatched via webhook.
           </p>
         </CardContent>

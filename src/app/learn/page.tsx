@@ -208,11 +208,11 @@ export default function LearnPage() {
                       </div>
                       <p className="text-xs text-neutral-500 mt-1">{path.module.description}</p>
                       <div className="flex items-center gap-3 mt-2.5">
-                        <span className="text-[11px] text-neutral-400 flex items-center gap-1">
+                        <span className="text-[11px] text-neutral-500 dark:text-neutral-400 flex items-center gap-1">
                           <BookOpen className="h-3 w-3" />
                           {path.module.lessons.length} lessons
                         </span>
-                        <span className="text-[11px] text-neutral-400 flex items-center gap-1">
+                        <span className="text-[11px] text-neutral-500 dark:text-neutral-400 flex items-center gap-1">
                           <Clock className="h-3 w-3" />
                           {pathMinutes} min
                         </span>
@@ -231,7 +231,7 @@ export default function LearnPage() {
                   </div>
                   {/* Reason tag */}
                   <div className="mt-3 ml-15">
-                    <p className="text-[11px] text-neutral-400 italic pl-15">{path.reason}</p>
+                    <p className="text-[11px] text-neutral-500 dark:text-neutral-400 italic pl-15">{path.reason}</p>
                   </div>
                 </div>
 
@@ -271,7 +271,7 @@ function ScoreBadge({ score }: { score: number }) {
 
   return (
     <span className={`text-sm font-black ${color}`}>
-      {score}<span className="text-[10px] font-normal text-neutral-400">/100</span>
+      {score}<span className="text-[10px] font-normal text-neutral-500 dark:text-neutral-400">/100</span>
     </span>
   );
 }
@@ -299,7 +299,7 @@ function LessonCard({ lesson, index, expanded, codeTab, onCodeTabChange, onToggl
         <span className={`flex items-center justify-center w-6 h-6 rounded-full text-[10px] font-bold shrink-0 transition-colors ${
           expanded
             ? "bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400"
-            : "bg-neutral-100 dark:bg-neutral-800 text-neutral-400"
+            : "bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400"
         }`}>
           {index}
         </span>
@@ -309,7 +309,7 @@ function LessonCard({ lesson, index, expanded, codeTab, onCodeTabChange, onToggl
           <p className="text-sm font-medium text-neutral-800 dark:text-neutral-200 group-hover:text-indigo-700 dark:group-hover:text-indigo-300 transition-colors">
             {lesson.title}
           </p>
-          <p className="text-xs text-neutral-400 mt-0.5 truncate">{lesson.description}</p>
+          <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5 truncate">{lesson.description}</p>
         </div>
 
         {/* Meta */}
@@ -317,12 +317,12 @@ function LessonCard({ lesson, index, expanded, codeTab, onCodeTabChange, onToggl
           <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-md border ${diffColor}`}>
             {lesson.difficulty}
           </span>
-          <span className="text-[11px] text-neutral-400 flex items-center gap-0.5 w-10 justify-end">
+          <span className="text-[11px] text-neutral-500 dark:text-neutral-400 flex items-center gap-0.5 w-10 justify-end">
             <Clock className="h-3 w-3" />
             {lesson.estimatedMinutes}m
           </span>
           {expanded ? (
-            <ChevronDown className="h-4 w-4 text-neutral-400 shrink-0" />
+            <ChevronDown className="h-4 w-4 text-neutral-500 dark:text-neutral-400 shrink-0" />
           ) : (
             <ChevronRight className="h-4 w-4 text-neutral-300 group-hover:text-neutral-500 transition-colors shrink-0" />
           )}
@@ -344,7 +344,7 @@ function LessonCard({ lesson, index, expanded, codeTab, onCodeTabChange, onToggl
             </div>
             {/* WCAG Tags */}
             <div className="flex items-center gap-2 flex-wrap mt-4 pt-3 border-t border-neutral-100 dark:border-neutral-800">
-              <span className="text-[10px] font-medium text-neutral-400">WCAG:</span>
+              <span className="text-[10px] font-medium text-neutral-500 dark:text-neutral-400">WCAG:</span>
               {lesson.wcagCriteria.map((c) => (
                 <span
                   key={c}
@@ -551,7 +551,7 @@ function LessonQuiz({ lessonId }: { lessonId: string }) {
                   <Trophy className="h-3 w-3" />
                   Best score: <strong>{bestScore}%</strong>
                   {attempt < MAX_ATTEMPTS && (
-                    <span className="ml-1 text-neutral-400">
+                    <span className="ml-1 text-neutral-500 dark:text-neutral-400">
                       &middot; {attemptsRemaining} {attemptsRemaining === 1 ? "retry" : "retries"} left
                     </span>
                   )}
@@ -735,7 +735,7 @@ function LessonQuiz({ lessonId }: { lessonId: string }) {
                   Retry ({MAX_ATTEMPTS - attempt} left)
                 </button>
               ) : (
-                <span className="text-[11px] text-neutral-400 italic">No retries remaining</span>
+                <span className="text-[11px] text-neutral-500 dark:text-neutral-400 italic">No retries remaining</span>
               )}
             </div>
           </div>
@@ -821,7 +821,7 @@ function LessonQuiz({ lessonId }: { lessonId: string }) {
                     className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
                       a.score === bestScore
                         ? "bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400"
-                        : "bg-neutral-100 dark:bg-neutral-800 text-neutral-400"
+                        : "bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400"
                     }`}
                   >
                     #{a.attempt}: {a.score}%
@@ -938,7 +938,7 @@ function LessonQuiz({ lessonId }: { lessonId: string }) {
           </p>
         )}
         <div className="flex items-center justify-between gap-3">
-          <p className="text-[11px] text-neutral-400">
+          <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
             {allAnswered
               ? "All questions answered — ready to submit"
               : `${questions.length - Object.keys(selectedAnswers).length} questions remaining`}

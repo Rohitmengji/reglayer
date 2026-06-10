@@ -183,7 +183,7 @@ function InsightsContent() {
                     <CardTitle className="text-sm">{entry.ruleId}</CardTitle>
                   </div>
                   {entry.cached && (
-                    <span className="text-xs text-neutral-400">cached</span>
+                    <span className="text-xs text-neutral-500 dark:text-neutral-400">cached</span>
                   )}
                 </div>
               </CardHeader>
@@ -237,7 +237,7 @@ function InsightsContent() {
                 {/* Effort & Priority */}
                 <div className="flex items-center gap-6 pt-3 border-t border-neutral-100 dark:border-neutral-700">
                   <div className="flex items-center gap-2">
-                    <Gauge className="h-4 w-4 text-neutral-400" />
+                    <Gauge className="h-4 w-4 text-neutral-500 dark:text-neutral-400" />
                     <span className="text-xs text-neutral-500 dark:text-neutral-400">{t("insights.effort")}</span>
                     <Badge variant="secondary">{str(entry.insight.effort)}</Badge>
                   </div>

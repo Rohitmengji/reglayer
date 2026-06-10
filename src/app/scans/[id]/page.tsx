@@ -195,7 +195,7 @@ function MetaCard({
   return (
     <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4">
       <div className="flex items-center gap-2">
-        <Icon className="h-4 w-4 text-neutral-400" />
+        <Icon className="h-4 w-4 text-neutral-500 dark:text-neutral-400" />
         <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">{label}</p>
       </div>
       <p className="mt-1 truncate text-sm font-semibold text-neutral-900 dark:text-white">

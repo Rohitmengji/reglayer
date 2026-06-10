@@ -311,7 +311,7 @@ export default function SchedulesPage() {
                     {schedule.nextRunAt && schedule.enabled && (
                       <span className="text-xs text-neutral-500 dark:text-neutral-400">
                         Next run: <strong className="text-neutral-700 dark:text-neutral-200">{relativeTime(schedule.nextRunAt)}</strong>
-                        <span className="ml-1 text-neutral-400">
+                        <span className="ml-1 text-neutral-500 dark:text-neutral-400">
                           ({new Date(schedule.nextRunAt).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })} at {new Date(schedule.nextRunAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })})
                         </span>
                       </span>
@@ -320,7 +320,7 @@ export default function SchedulesPage() {
                   {(schedule.lastRunAt || schedule.lastScore != null) && (
                     <div className="mt-2 flex items-center gap-3">
                       {schedule.lastRunAt && (
-                        <span className="text-xs text-neutral-400">
+                        <span className="text-xs text-neutral-500 dark:text-neutral-400">
                           Last ran {relativeTime(new Date(Date.now() - (Date.now() - new Date(schedule.lastRunAt).getTime())))} — {new Date(schedule.lastRunAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })} at {new Date(schedule.lastRunAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                         </span>
                       )}
@@ -334,7 +334,7 @@ export default function SchedulesPage() {
                         </span>
                       )}
                       {schedule.lastViolations != null && (
-                        <span className="text-xs text-neutral-400">
+                        <span className="text-xs text-neutral-500 dark:text-neutral-400">
                           {schedule.lastViolations} violation{schedule.lastViolations !== 1 ? "s" : ""}
                         </span>
                       )}
@@ -346,7 +346,7 @@ export default function SchedulesPage() {
                     {schedule.enabled ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
                   </Button>
                   <Button variant="ghost" size="icon" title="Delete" onClick={() => handleDelete(schedule.id)}>
-                    <Trash2 className="h-4 w-4 text-neutral-400 hover:text-red-500" />
+                    <Trash2 className="h-4 w-4 text-neutral-500 dark:text-neutral-400 hover:text-red-500" />
                   </Button>
                 </div>
               </div>

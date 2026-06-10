@@ -88,7 +88,7 @@ export function DemoScan() {
               <p className="text-sm font-medium text-neutral-900 dark:text-white mt-0.5 truncate">
                 {result.pageTitle || result.url}
               </p>
-              <p className="text-xs text-neutral-400 mt-1">Scanned in {(result.scanDuration / 1000).toFixed(1)}s</p>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">Scanned in {(result.scanDuration / 1000).toFixed(1)}s</p>
             </div>
             <div className={`shrink-0 flex items-center justify-center h-16 w-16 rounded-full border-4 ${getScoreRing(result.score)}`}>
               <span className={`text-xl font-bold ${getScoreColor(result.score)}`}>{result.score}</span>
@@ -121,7 +121,7 @@ export function DemoScan() {
                       {v.impact}
                     </span>
                     <span className="text-xs text-neutral-700 dark:text-neutral-300 truncate flex-1">{v.description}</span>
-                    <span className="text-xs text-neutral-400 shrink-0">×{v.count}</span>
+                    <span className="text-xs text-neutral-500 dark:text-neutral-400 shrink-0">×{v.count}</span>
                   </div>
                 ))}
               </div>
@@ -145,7 +145,7 @@ export function DemoScan() {
             </button>
           </div>
 
-          <p className="text-[10px] text-neutral-400 text-center mt-4">
+          <p className="text-[10px] text-neutral-500 dark:text-neutral-400 text-center mt-4">
             {result.totalViolations} total violations found · Sign up to get AI fix suggestions, VPAT reports, and continuous monitoring
           </p>
         </div>
@@ -157,7 +157,7 @@ export function DemoScan() {
     <div className="mx-auto mt-10 max-w-xl px-4 sm:px-0" data-tour="scan-input">
       <form onSubmit={handleScan} className="relative">
         <div className="flex items-center rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-lg overflow-hidden focus-within:border-neutral-400 dark:focus-within:border-neutral-500 transition-colors">
-          <Globe className="h-5 w-5 text-neutral-400 ml-3 sm:ml-4 shrink-0" />
+          <Globe className="h-5 w-5 text-neutral-500 dark:text-neutral-400 ml-3 sm:ml-4 shrink-0" />
           <input
             type="text"
             value={url}

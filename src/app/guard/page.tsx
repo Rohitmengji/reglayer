@@ -136,7 +136,7 @@ export default function GuardPage() {
       {/* Policy List */}
       {policies.length === 0 && !showCreate ? (
         <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-12 text-center dark:border-gray-600 dark:bg-gray-800/50">
-          <ShieldAlert className="mx-auto mb-3 h-12 w-12 text-gray-400" />
+          <ShieldAlert className="mx-auto mb-3 h-12 w-12 text-gray-500 dark:text-gray-400" />
           <h3 className="text-lg font-medium text-gray-900 dark:text-white">
             No guard policies yet
           </h3>
@@ -161,7 +161,7 @@ export default function GuardPage() {
                     {policy.enabled ? (
                       <ShieldCheck className="h-4 w-4 text-green-600" />
                     ) : (
-                      <ShieldAlert className="h-4 w-4 text-gray-400" />
+                      <ShieldAlert className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                     )}
                     <h3 className="font-semibold text-gray-900 dark:text-white">
                       {policy.name}

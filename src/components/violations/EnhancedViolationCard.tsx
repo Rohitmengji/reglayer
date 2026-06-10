@@ -298,7 +298,7 @@ export function EnhancedViolationCard({ violation, onStatusChange }: EnhancedVio
                       aria-selected={state.status === opt.value}
                     >
                       {opt.label}
-                      {opt.requiresNote && <span className="text-neutral-400 ml-auto">(note)</span>}
+                      {opt.requiresNote && <span className="text-neutral-500 dark:text-neutral-400 ml-auto">(note)</span>}
                     </button>
                   ))}
                 </div>
@@ -367,18 +367,18 @@ export function EnhancedViolationCard({ violation, onStatusChange }: EnhancedVio
                   Status changed to <strong>{STATUS_CONFIG[state.status]?.label ?? state.status}</strong>
                   {violation.statusUpdatedByName && ` by ${violation.statusUpdatedByName}`}
                 </span>
-                <span className="ml-auto text-neutral-400">
+                <span className="ml-auto text-neutral-500 dark:text-neutral-400">
                   {formatRelativeTime(state.statusUpdatedAt)}
                 </span>
               </div>
             ) : (
-              <p className="text-xs text-neutral-400 italic">No status changes yet</p>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 italic">No status changes yet</p>
             )}
             {state.verifiedAt && (
               <div className="flex items-center gap-2 text-xs text-green-600 dark:text-green-400">
                 <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
                 <span>Fix verified by re-scan</span>
-                <span className="ml-auto text-neutral-400">
+                <span className="ml-auto text-neutral-500 dark:text-neutral-400">
                   {formatRelativeTime(state.verifiedAt)}
                 </span>
               </div>
@@ -416,7 +416,7 @@ export function EnhancedViolationCard({ violation, onStatusChange }: EnhancedVio
               minLength={10}
               autoFocus
             />
-            <p className="mt-1 text-xs text-neutral-400">
+            <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
               {noteText.trim().length}/10 characters minimum
             </p>
             <div className="flex justify-end gap-2 mt-4">

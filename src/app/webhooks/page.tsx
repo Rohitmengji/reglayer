@@ -269,7 +269,7 @@ export default function WebhooksPage() {
               <CardContent className="p-12 text-center">
                 <Webhook className="h-12 w-12 text-neutral-200 mx-auto mb-4" />
                 <p className="text-neutral-600 dark:text-neutral-300 font-medium">No webhooks configured</p>
-                <p className="text-sm text-neutral-400 mt-1">
+                <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
                   Add an endpoint to receive real-time event notifications.
                 </p>
               </CardContent>
@@ -284,7 +284,7 @@ export default function WebhooksPage() {
                     <div className={`h-2 w-2 rounded-full ${hook.enabled ? "bg-green-500" : "bg-neutral-300"}`} />
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-neutral-900 dark:text-white">{hook.name}</p>
-                      <p className="text-xs text-neutral-400 truncate">{hook.url}</p>
+                      <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate">{hook.url}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -358,7 +358,7 @@ export default function WebhooksPage() {
                         {d.error && <p className="text-xs text-red-500">{d.error}</p>}
                       </div>
                     </div>
-                    <div className="flex items-center gap-4 text-xs text-neutral-400">
+                    <div className="flex items-center gap-4 text-xs text-neutral-500 dark:text-neutral-400">
                       <span>HTTP {d.statusCode}</span>
                       <span>{d.duration}ms</span>
                       <span className="flex items-center gap-1">

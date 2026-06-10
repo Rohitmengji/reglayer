@@ -121,7 +121,7 @@ export default function CertificatePage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 flex items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-neutral-400" />
+        <Loader2 className="h-6 w-6 animate-spin text-neutral-500 dark:text-neutral-400" />
       </div>
     );
   }
@@ -213,21 +213,21 @@ export default function CertificatePage() {
 
             {/* URL */}
             <div className="flex items-center justify-center gap-1.5 text-xs mt-4">
-              <Globe className="h-3 w-3 text-neutral-400" />
+              <Globe className="h-3 w-3 text-neutral-500 dark:text-neutral-400" />
               <a href={cert.url} target="_blank" rel="noopener noreferrer" className="text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors truncate max-w-75">
                 {cert.url}
               </a>
-              <ExternalLink className="h-2.5 w-2.5 text-neutral-400" />
+              <ExternalLink className="h-2.5 w-2.5 text-neutral-500 dark:text-neutral-400" />
             </div>
 
             {/* Details + Violations inline */}
             <div className="mt-5 grid grid-cols-2 gap-2 max-w-xs mx-auto text-xs">
               <div className="rounded-lg bg-neutral-50 dark:bg-neutral-800/40 px-3 py-2 text-center">
-                <p className="text-[9px] font-medium text-neutral-400 uppercase tracking-wider">Standard</p>
+                <p className="text-[9px] font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">Standard</p>
                 <p className="font-bold text-neutral-900 dark:text-white text-[13px]">{cert.standard}</p>
               </div>
               <div className="rounded-lg bg-neutral-50 dark:bg-neutral-800/40 px-3 py-2 text-center">
-                <p className="text-[9px] font-medium text-neutral-400 uppercase tracking-wider">WCAG Level</p>
+                <p className="text-[9px] font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">WCAG Level</p>
                 <p className="font-bold text-neutral-900 dark:text-white text-[13px]">{cert.wcagLevel}</p>
               </div>
             </div>
@@ -270,7 +270,7 @@ export default function CertificatePage() {
                 </p>
               )}
               <p className="text-[9px] text-neutral-300 dark:text-neutral-600 font-mono mt-2">{cert.id}</p>
-              <p className="text-[9px] text-neutral-400 mt-0.5">
+              <p className="text-[9px] text-neutral-500 dark:text-neutral-400 mt-0.5">
                 Verified by <a href="https://reglayer.vercel.app" className="text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors">RegLayer</a>
               </p>
             </div>

@@ -41,7 +41,7 @@ export default function Error({
           We encountered an error loading this page. Please try again.
         </p>
         {error.digest && (
-          <p className="text-xs text-neutral-400 font-mono">
+          <p className="text-xs text-neutral-500 dark:text-neutral-400 font-mono">
             Reference: {error.digest}
           </p>
         )}
