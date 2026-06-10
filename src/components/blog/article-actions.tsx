@@ -1,8 +1,14 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Share2, BookmarkPlus, BookmarkCheck, Link2, Mail, X } from "lucide-react";
+import { Share2, BookmarkPlus, BookmarkCheck, Link2, Mail } from "lucide-react";
 import { toast } from "sonner";
+
+function getInitialBookmark(slug: string): boolean {
+  if (typeof window === "undefined") return false;
+  const bookmarks: string[] = JSON.parse(localStorage.getItem("reglayer-bookmarks") || "[]");
+  return bookmarks.includes(slug);
+}
 
 interface ArticleActionsProps {
   title: string;
@@ -10,14 +16,9 @@ interface ArticleActionsProps {
 }
 
 export function ArticleActions({ title, slug }: ArticleActionsProps) {
-  const [bookmarked, setBookmarked] = useState(false);
+  const [bookmarked, setBookmarked] = useState(() => getInitialBookmark(slug));
   const [shareOpen, setShareOpen] = useState(false);
   const shareRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const bookmarks: string[] = JSON.parse(localStorage.getItem("reglayer-bookmarks") || "[]");
-    setBookmarked(bookmarks.includes(slug));
-  }, [slug]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
