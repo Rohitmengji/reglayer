@@ -33,11 +33,11 @@ import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { cn } from "@/lib/utils/cn";
 import { useTheme } from "@/components/theme-provider";
-import { Shield, LayoutDashboard, Scan, Globe, Grid3X3, Moon, Sun, Languages, Crown, ChevronDown, Settings, BarChart3, Zap, Plug, LogOut, AlertTriangle, TrendingUp, Building2, PieChart } from "lucide-react";
+import { Shield, LayoutDashboard, Scan, Globe, Grid3X3, Moon, Sun, Languages, Crown, ChevronDown, Settings, BarChart3, Zap, Plug, LogOut, AlertTriangle, TrendingUp, Building2, PieChart, ChevronsUpDown, Check } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 import { SUPPORTED_LOCALES } from "@/lib/i18n/translations";
-import { useState } from "react";
-import { useFeatures } from "@/hooks/use-features";
+import { useState, useEffect, useRef } from "react";
+import { useFeatures, invalidateFeatureCache } from "@/hooks/use-features";
 import { SIDEBAR_FEATURE_MAP } from "@/lib/features/feature-catalog";
 
 const mainNav = [
@@ -66,6 +66,49 @@ export function Sidebar({ onNavigate }: SidebarProps) {
   const { locale, setLocale, t } = useI18n();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const { hasFeature } = useFeatures();
+  const [wsOpen, setWsOpen] = useState(false);
+  const [workspaces, setWorkspaces] = useState<{ id: string; name: string; slug: string; plan: string; role: string; memberCount: number }[]>([]);
+  const [activeWs, setActiveWs] = useState<string>("");
+  const wsRef = useRef<HTMLDivElement>(null);
+
+  // Fetch workspaces
+  useEffect(() => {
+    if (!session?.user) return;
+    fetch("/api/workspaces")
+      .then((r) => r.ok ? r.json() : Promise.reject())
+      .then((data) => {
+        setWorkspaces(data.workspaces ?? []);
+        // Set active from cookie or first workspace
+        const cookieWs = document.cookie.match(/reglayer-workspace=([^;]+)/)?.[1];
+        const active = data.workspaces?.find((w: { id: string }) => w.id === cookieWs) || data.workspaces?.[0];
+        if (active) setActiveWs(active.id);
+      })
+      .catch(() => {});
+  }, [session]);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (wsRef.current && !wsRef.current.contains(e.target as Node)) setWsOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  const switchWorkspace = (wsId: string) => {
+    setActiveWs(wsId);
+    setWsOpen(false);
+    fetch("/api/workspaces", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ workspaceId: wsId }),
+    }).then(() => {
+      invalidateFeatureCache();
+      window.location.reload();
+    });
+  };
+
+  const currentWs = workspaces.find((w) => w.id === activeWs);
 
   // Filter nav items by feature access
   const visibleNav = mainNav.filter((item) => {
@@ -98,18 +141,63 @@ export function Sidebar({ onNavigate }: SidebarProps) {
 
   return (
     <aside className="flex h-full w-64 flex-col bg-neutral-50 dark:bg-neutral-900 border-r border-neutral-200/60 dark:border-neutral-800">
-      {/* Brand */}
-      <div className="flex h-14 items-center gap-2.5 px-5">
-        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-neutral-900 dark:bg-white">
-          <Shield className="h-4 w-4 text-white dark:text-neutral-900" />
-        </div>
-        <span className="text-[15px] font-semibold tracking-tight text-neutral-900 dark:text-white">
-          RegLayer
-        </span>
+      {/* Workspace Switcher */}
+      <div className="px-3 pt-3 pb-3 border-b border-neutral-200/60 dark:border-neutral-800" ref={wsRef}>
+        <button
+          onClick={() => workspaces.length > 1 ? setWsOpen(!wsOpen) : undefined}
+          className={cn(
+            "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2.5 transition-colors",
+            workspaces.length > 1
+              ? "hover:bg-neutral-200/60 dark:hover:bg-neutral-800 cursor-pointer"
+              : "cursor-default"
+          )}
+        >
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-neutral-900 dark:bg-white">
+            <Shield className="h-4 w-4 text-white dark:text-neutral-900" />
+          </div>
+          <div className="min-w-0 flex-1 text-left">
+            <p className="truncate text-[13px] font-semibold text-neutral-900 dark:text-white">
+              {currentWs?.name || "RegLayer"}
+            </p>
+            {currentWs && (
+              <p className="text-[10px] text-neutral-400 uppercase tracking-wider">{currentWs.plan}</p>
+            )}
+          </div>
+          {workspaces.length > 1 && (
+            <ChevronsUpDown className="h-3.5 w-3.5 text-neutral-400 shrink-0" />
+          )}
+        </button>
+
+        {wsOpen && workspaces.length > 1 && (
+          <div className="mt-1 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-lg py-1 z-50 relative">
+            <p className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-neutral-400">Workspaces</p>
+            {workspaces.map((ws) => (
+              <button
+                key={ws.id}
+                onClick={() => switchWorkspace(ws.id)}
+                className={cn(
+                  "flex w-full items-center gap-2.5 px-3 py-2 text-[13px] transition-colors",
+                  ws.id === activeWs
+                    ? "bg-neutral-100 dark:bg-neutral-800 font-medium"
+                    : "hover:bg-neutral-50 dark:hover:bg-neutral-800/50"
+                )}
+              >
+                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-neutral-200 dark:bg-neutral-700 text-[10px] font-bold text-neutral-600 dark:text-neutral-300">
+                  {ws.name.charAt(0).toUpperCase()}
+                </div>
+                <div className="min-w-0 flex-1 text-left">
+                  <p className="truncate text-neutral-800 dark:text-neutral-200">{ws.name}</p>
+                  <p className="text-[10px] text-neutral-400">{ws.plan} · {ws.role}</p>
+                </div>
+                {ws.id === activeWs && <Check className="h-3.5 w-3.5 text-green-500 shrink-0" />}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 pb-3 space-y-5">
+      <nav className="flex-1 overflow-y-auto px-3 pt-3 pb-3 space-y-5">
         {/* Main */}
         <div className="space-y-0.5">
           {visibleNav.map((item) => (

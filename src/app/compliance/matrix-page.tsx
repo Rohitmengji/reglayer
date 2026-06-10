@@ -156,7 +156,7 @@ function ComplianceContent() {
 
           {/* Scan Selector */}
           {scans.length > 1 && (
-            <div className="relative w-full sm:w-auto sm:max-w-65">
+            <div className="relative w-full sm:w-auto sm:max-w-[260px]">
               <select
                 value={activeScanId || ""}
                 onChange={(e) => router.push(`/compliance?scan=${e.target.value}`)}
