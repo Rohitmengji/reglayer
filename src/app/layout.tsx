@@ -79,7 +79,7 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "/og-image.png",
+        url: "/assests/reglayer-og.png",
         width: 1200,
         height: 630,
         alt: "RegLayer — Web Accessibility Compliance Platform",
@@ -90,7 +90,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "RegLayer — Web Accessibility Compliance Platform",
     description: "Automated WCAG scanning, litigation risk scoring, and compliance forecasting for enterprise teams.",
-    images: ["/og-image.png"],
+    images: ["/assests/reglayer-og.png"],
   },
   robots: {
     index: true,
@@ -104,8 +104,11 @@ export const metadata: Metadata = {
     },
   },
   icons: {
-    icon: "/favicon.ico",
-    apple: "/apple-touch-icon.png",
+    icon: [
+      { url: "/assests/favicon.svg", type: "image/svg+xml" },
+      { url: "/assests/favicon-32.png", sizes: "32x32", type: "image/png" },
+    ],
+    apple: "/assests/apple-touch-icon-180.png",
   },
   verification: {
     google: process.env.GOOGLE_SITE_VERIFICATION || undefined,

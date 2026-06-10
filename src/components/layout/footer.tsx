@@ -20,7 +20,6 @@
  */
 
 import Link from "next/link";
-import { Shield } from "lucide-react";
 
 export function Footer() {
   return (
@@ -29,8 +28,11 @@ export function Footer() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
           <div>
             <div className="flex items-center gap-2 mb-4">
-              <Shield className="h-5 w-5 text-neutral-700 dark:text-neutral-300" />
-              <span className="font-bold text-neutral-900 dark:text-white">RegLayer</span>
+              <img
+                src="/assests/reglayer-logo-footer.svg"
+                alt="RegLayer"
+                className="h-8"
+              />
             </div>
             <p className="text-xs text-neutral-500 leading-relaxed">
               Web Accessibility compliance platform. Automated scanning, monitoring, and reporting for global standards.
