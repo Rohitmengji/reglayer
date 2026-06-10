@@ -97,6 +97,7 @@ model Workspace {
   featureOverrides WorkspaceFeature[]
   proofs       ComplianceProof[]
   guardPolicies GuardPolicy[]
+  auditRequests AuditRequest[]
 
   @@map("workspaces")
 }
@@ -168,6 +169,7 @@ model Site {
   riskScores  LitigationRiskScore[]
   proofs      ComplianceProof[]
   guardPolicies GuardPolicy[]
+  auditRequests AuditRequest[]
 
   @@unique([workspaceId, url])
   @@map("sites")
@@ -645,4 +647,60 @@ model GuardPolicy {
   @@unique([siteId, name])
   @@index([workspaceId])
   @@map("guard_policies")
+}
+
+// ─────────────────────────────────────────────
+// Human Testing Network
+// ─────────────────────────────────────────────
+
+model Tester {
+  id              String    @id @default(cuid())
+  name            String
+  email           String    @unique
+  bio             String?
+  expertise       String[]
+  certifications  String[]
+  assistiveTech   String[]
+  disabilities    String[]
+  hourlyRate      Float     @default(0)
+  currency        String    @default("USD")
+  availability    String    @default("available") // available | limited | unavailable
+  completedAudits Int       @default(0)
+  averageRating   Float     @default(0)
+  region          String    @default("US")
+  languages       String[]
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  auditRequests   AuditRequest[]
+
+  @@map("testers")
+}
+
+model AuditRequest {
+  id              String    @id @default(cuid())
+  workspaceId     String
+  siteId          String
+  testerId        String?
+  type            String    // full-audit | screen-reader-test | keyboard-test | etc.
+  status          String    @default("draft") // draft | submitted | matched | in-progress | review | completed | cancelled
+  scope           String
+  requirements    String?
+  urgency         String    @default("standard") // standard | rush | critical
+  budget          Float?
+  currency        String    @default("USD")
+  findings        Json?
+  combinedScore   Float?
+  automatedScore  Float?
+  manualScore     Float?
+  createdAt       DateTime  @default(now())
+  completedAt     DateTime?
+
+  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  site            Site      @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  tester          Tester?   @relation(fields: [testerId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, status])
+  @@index([testerId])
+  @@map("audit_requests")
 }
