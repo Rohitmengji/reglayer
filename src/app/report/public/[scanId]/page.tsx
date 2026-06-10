@@ -117,10 +117,10 @@ export default async function PublicReportPage({ params }: PageProps) {
           <h1 className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">
             Accessibility Score: {score}%
           </h1>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-1">
+          <p className="text-sm text-neutral-600 dark:text-neutral-300 mb-1">
             {scan.url}
           </p>
-          <p className="text-xs text-neutral-400 dark:text-neutral-500">
+          <p className="text-xs text-neutral-500 dark:text-neutral-400">
             Scanned {new Date(scan.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
           </p>
           <div className={`inline-flex items-center gap-1.5 mt-4 px-3 py-1 rounded-full text-xs font-medium ${
@@ -136,7 +136,7 @@ export default async function PublicReportPage({ params }: PageProps) {
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-12">
           <StatCard label="Total Issues" value={scan.totalViolations ?? 0} />
-          <StatCard label="Critical" value={scan.critical ?? 0} color="text-red-500" />
+          <StatCard label="Critical" value={scan.critical ?? 0} color={scan.critical === 0 ? "text-emerald-500" : "text-red-500"} />
           <StatCard label="Serious" value={scan.serious ?? 0} color="text-amber-500" />
           <StatCard label="Pages Scanned" value={pagesScanned} color="text-blue-500" />
         </div>
@@ -146,7 +146,7 @@ export default async function PublicReportPage({ params }: PageProps) {
           <h2 className="text-lg font-semibold text-neutral-900 dark:text-white mb-2">
             Want this for your site?
           </h2>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6 max-w-md mx-auto">
+          <p className="text-sm text-neutral-600 dark:text-neutral-300 mb-6 max-w-md mx-auto">
             Get automated WCAG compliance scanning, real-time monitoring, and detailed remediation guidance. Free to start.
           </p>
           <Link
@@ -160,8 +160,8 @@ export default async function PublicReportPage({ params }: PageProps) {
 
         {/* Powered by */}
         <div className="mt-8 text-center">
-          <p className="text-xs text-neutral-400 dark:text-neutral-600">
-            Powered by <Link href="/" className="font-medium text-indigo-500 hover:text-indigo-600">RegLayer</Link> — Web Accessibility Compliance Platform
+          <p className="text-xs text-neutral-500 dark:text-neutral-400">
+            Powered by <Link href="/" className="font-medium text-indigo-500 hover:text-indigo-400">RegLayer</Link> — Web Accessibility Compliance Platform
           </p>
         </div>
       </main>
@@ -171,9 +171,9 @@ export default async function PublicReportPage({ params }: PageProps) {
 
 function StatCard({ label, value, color = "text-neutral-900 dark:text-white" }: { label: string; value: number; color?: string }) {
   return (
-    <div className="rounded-lg border border-neutral-200 bg-white p-4 text-center dark:border-neutral-800 dark:bg-neutral-900">
-      <div className={`text-2xl font-bold tabular-nums ${color}`}>{value}</div>
-      <div className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">{label}</div>
+    <div className="rounded-lg border border-neutral-200 bg-white p-4 text-center dark:border-neutral-800 dark:bg-neutral-900" role="group" aria-label={`${label}: ${value}`}>
+      <div className={`text-2xl font-bold tabular-nums ${color}`} aria-hidden="true">{value}</div>
+      <div className="text-xs text-neutral-600 dark:text-neutral-300 mt-1">{label}</div>
     </div>
   );
 }
