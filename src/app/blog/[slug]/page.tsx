@@ -25,11 +25,9 @@ export default async function ArticlePage({ params }: PageProps) {
   if (!article) notFound();
   return (
     <div className="space-y-6">
-      {/* Admin Editor (only renders for admin users) */}
-      <ArticleEditorWrapper slug={slug} article={article} />
-
-      {/* Navigation */}
-      <header className="border-b border-neutral-100 dark:border-neutral-800/50">
+      <ArticleEditorWrapper slug={slug} article={article}>
+        {/* Navigation */}
+        <header className="border-b border-neutral-100 dark:border-neutral-800/50">
         <div className="mx-auto max-w-4xl px-6 py-3 flex items-center justify-between">
           <Link href="/blog" className="flex items-center gap-2 text-sm text-neutral-500 dark:text-neutral-400 hover:text-accent transition-colors">
             <ArrowLeft className="h-4 w-4" />
@@ -143,6 +141,7 @@ export default async function ArticlePage({ params }: PageProps) {
           </div>
         )}
       </article>
+      </ArticleEditorWrapper>
     </div>
   );
 }

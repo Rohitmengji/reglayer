@@ -45,9 +45,10 @@ interface ArticleData {
 interface ArticleEditorProps {
   article: ArticleData;
   onUpdate: (updated: ArticleData) => void;
+  onEditingChange?: (editing: boolean) => void;
 }
 
-export function ArticleEditor({ article, onUpdate }: ArticleEditorProps) {
+export function ArticleEditor({ article, onUpdate, onEditingChange }: ArticleEditorProps) {
   const { data: session } = useSession();
   const [editing, setEditing] = useState(false);
   const [aiMode, setAiMode] = useState(false);
@@ -71,6 +72,7 @@ export function ArticleEditor({ article, onUpdate }: ArticleEditorProps) {
 
   function startEditing() {
     setEditing(true);
+    onEditingChange?.(true);
     setEditTitle(article.title);
     setEditExcerpt(article.excerpt);
     setEditSections((article.content?.sections ?? []) as Section[]);
@@ -79,6 +81,7 @@ export function ArticleEditor({ article, onUpdate }: ArticleEditorProps) {
 
   function cancelEditing() {
     setEditing(false);
+    onEditingChange?.(false);
     setAiMode(false);
     setAiSuggestion(null);
     setError(null);
@@ -106,6 +109,7 @@ export function ArticleEditor({ article, onUpdate }: ArticleEditorProps) {
       const { article: updated } = await res.json();
       onUpdate({ ...article, ...updated });
       setEditing(false);
+      onEditingChange?.(false);
       setAiSuggestion(null);
       setChangeNote("");
     } catch (err) {
