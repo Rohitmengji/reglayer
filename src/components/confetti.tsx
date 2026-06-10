@@ -164,7 +164,7 @@ export function ConfettiCanvas() {
   return (
     <canvas
       ref={canvasRef}
-      className="pointer-events-none fixed inset-0 z-[99999]"
+      className="pointer-events-none fixed inset-0 z-99999"
       style={{ display: "none" }}
       aria-hidden="true"
     />
