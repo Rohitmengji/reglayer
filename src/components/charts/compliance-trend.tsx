@@ -151,7 +151,7 @@ export function ComplianceTrend() {
           ))}
         </svg>
 
-        <div className="mt-2 flex justify-between text-xs text-neutral-400">
+        <div className="mt-2 flex justify-between text-xs text-neutral-500 dark:text-neutral-400">
           <span>
             {new Date(dataPoints[0].timestamp).toLocaleDateString()}
           </span>

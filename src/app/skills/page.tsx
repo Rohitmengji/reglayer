@@ -176,7 +176,7 @@ export default function SkillsPage() {
               {/* Level Progress */}
               {nextLevel && (
                 <div className="mt-4 w-full max-w-45">
-                  <div className="flex items-center justify-between text-[10px] text-neutral-400 mb-1">
+                  <div className="flex items-center justify-between text-[10px] text-neutral-500 dark:text-neutral-400 mb-1">
                     <span>{currentLevelInfo.level}</span>
                     <span>{nextLevel.level}</span>
                   </div>
@@ -186,7 +186,7 @@ export default function SkillsPage() {
                       style={{ width: `${animateScore ? levelProgress : 0}%` }}
                     />
                   </div>
-                  <p className="text-[10px] text-neutral-400 mt-1 text-center">
+                  <p className="text-[10px] text-neutral-500 dark:text-neutral-400 mt-1 text-center">
                     {currentLevelInfo.max - profile.overallScore} points to {nextLevel.level}
                   </p>
                 </div>
@@ -258,7 +258,7 @@ export default function SkillsPage() {
         <div>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">Category Mastery</h2>
-            <span className="text-xs text-neutral-400">
+            <span className="text-xs text-neutral-500 dark:text-neutral-400">
               {profile.categories.filter(c => c.score >= 85).length}/{profile.categories.length} mastered
             </span>
           </div>
@@ -296,7 +296,7 @@ export default function SkillsPage() {
               <CardContent className="py-10 text-center">
                 <Award className="h-12 w-12 text-neutral-200 dark:text-neutral-700 mx-auto mb-3" />
                 <p className="text-sm font-medium text-neutral-500">No badges yet</p>
-                <p className="text-xs text-neutral-400 mt-1">Keep scanning and fixing to unlock achievements!</p>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">Keep scanning and fixing to unlock achievements!</p>
               </CardContent>
             </Card>
           )}
@@ -370,7 +370,7 @@ function CategoryCard({ category }: { category: CategoryScore }) {
   const TrendIcon = category.trend === "improving" ? TrendingUp :
                     category.trend === "declining" ? TrendingDown : Minus;
   const trendColor = category.trend === "improving" ? "text-emerald-500" :
-                     category.trend === "declining" ? "text-red-500" : "text-neutral-400";
+                     category.trend === "declining" ? "text-red-500" : "text-neutral-500 dark:text-neutral-400";
   const trendLabel = category.trend === "improving" ? "Improving" :
                      category.trend === "declining" ? "Declining" : "Stable";
 
@@ -395,7 +395,7 @@ function CategoryCard({ category }: { category: CategoryScore }) {
           style={{ width: `${category.score}%` }}
         />
       </div>
-      <p className="text-[10px] text-neutral-400 mt-2">
+      <p className="text-[10px] text-neutral-500 dark:text-neutral-400 mt-2">
         {category.violationCount} violation{category.violationCount !== 1 ? "s" : ""} found
       </p>
     </div>

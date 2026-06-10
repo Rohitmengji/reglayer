@@ -300,7 +300,7 @@ export default function FixFlowPage() {
                 <Zap className="w-4 h-4 text-yellow-500" />
                 Fixing this earns ~<span className="font-bold text-neutral-900 dark:text-white">{currentCard.pointGain}</span> AIS points
               </div>
-              <span className="text-xs text-neutral-400">
+              <span className="text-xs text-neutral-500 dark:text-neutral-400">
                 Card {currentIndex + 1} of {totalCards}
               </span>
             </div>

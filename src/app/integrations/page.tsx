@@ -353,7 +353,7 @@ export default function IntegrationsPage() {
         <Card>
           <CardContent className="py-4">
             <div className="flex items-start gap-3">
-              <Plug className="h-5 w-5 text-neutral-400 shrink-0 mt-0.5" />
+              <Plug className="h-5 w-5 text-neutral-500 dark:text-neutral-400 shrink-0 mt-0.5" />
               <div>
                 <p className="text-sm font-medium text-neutral-900 dark:text-white">Custom Integrations via API</p>
                 <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">

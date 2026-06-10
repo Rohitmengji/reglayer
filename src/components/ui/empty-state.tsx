@@ -25,7 +25,7 @@ interface EmptyStateProps {
 
 export function EmptyState({
   icon: Icon,
-  iconColor = "text-neutral-400",
+  iconColor = "text-neutral-500 dark:text-neutral-400",
   title,
   description,
   actionLabel,
@@ -86,7 +86,7 @@ export function EmptyState({
       {/* Tips */}
       {tips && tips.length > 0 && (
         <div className="mt-8 w-full max-w-sm">
-          <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-3">
+          <p className="text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider mb-3">
             Getting Started
           </p>
           <div className="space-y-2 text-left">

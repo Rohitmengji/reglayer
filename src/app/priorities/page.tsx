@@ -181,7 +181,7 @@ function PrioritiesContent() {
               <p className="text-2xl font-bold text-neutral-900 dark:text-white">
                 {hours > 0 ? `${hours}h ` : ""}{mins}m
               </p>
-              <p className="text-xs text-neutral-400">{report.allFixes.length} fixes total</p>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">{report.allFixes.length} fixes total</p>
             </div>
           </div>
         </div>
@@ -296,7 +296,7 @@ function FixCard({ fix, variant }: { fix: PrioritizedFix; variant: "quickwin" | 
               {fix.impact}
             </Badge>
             <code className="text-xs text-neutral-500 dark:text-neutral-400 truncate max-w-30">{fix.ruleId}</code>
-            <span className="text-xs text-neutral-400">{fix.category}</span>
+            <span className="text-xs text-neutral-500 dark:text-neutral-400">{fix.category}</span>
           </div>
           <p className="text-sm font-medium text-neutral-900 dark:text-white truncate">{fix.help}</p>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-neutral-500 dark:text-neutral-400">
@@ -313,7 +313,7 @@ function FixCard({ fix, variant }: { fix: PrioritizedFix; variant: "quickwin" | 
             <span className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${difficultyColors[fix.fixDifficulty]}`}>
               {fix.fixDifficulty}
             </span>
-            <span className="text-xs text-neutral-400">{fix.estimatedMinutes}m</span>
+            <span className="text-xs text-neutral-500 dark:text-neutral-400">{fix.estimatedMinutes}m</span>
           </div>
         </div>
       </div>

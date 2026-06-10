@@ -243,9 +243,9 @@ export function ScanAuthSection({ onAuthChange, scanUrl }: ScanAuthSectionProps)
           )}
         </div>
         {expanded ? (
-          <ChevronDown className="h-4 w-4 text-neutral-400" />
+          <ChevronDown className="h-4 w-4 text-neutral-500 dark:text-neutral-400" />
         ) : (
-          <ChevronRight className="h-4 w-4 text-neutral-400" />
+          <ChevronRight className="h-4 w-4 text-neutral-500 dark:text-neutral-400" />
         )}
       </button>
 
@@ -268,15 +268,15 @@ export function ScanAuthSection({ onAuthChange, scanUrl }: ScanAuthSectionProps)
                   >
                     <div>
                       <span className="font-medium">{config.name}</span>
-                      <span className="ml-2 text-xs text-neutral-400">{config.method}</span>
+                      <span className="ml-2 text-xs text-neutral-500 dark:text-neutral-400">{config.method}</span>
                       {config.domain && (
-                        <span className="ml-2 text-xs text-neutral-400">{config.domain}</span>
+                        <span className="ml-2 text-xs text-neutral-500 dark:text-neutral-400">{config.domain}</span>
                       )}
                     </div>
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); handleDeleteSaved(config.id); }}
-                      className="p-1 text-neutral-400 hover:text-red-500 transition-colors"
+                      className="p-1 text-neutral-500 dark:text-neutral-400 hover:text-red-500 transition-colors"
                     >
                       <Trash2 className="h-3 w-3" />
                     </button>
@@ -448,7 +448,7 @@ export function ScanAuthSection({ onAuthChange, scanUrl }: ScanAuthSectionProps)
                       <button
                         type="button"
                         onClick={() => setHeaderEntries(headerEntries.filter((_, idx) => idx !== i))}
-                        className="p-1 text-neutral-400 hover:text-red-500"
+                        className="p-1 text-neutral-500 dark:text-neutral-400 hover:text-red-500"
                       >
                         <Trash2 className="h-3 w-3" />
                       </button>
@@ -511,7 +511,7 @@ export function ScanAuthSection({ onAuthChange, scanUrl }: ScanAuthSectionProps)
                       <button
                         type="button"
                         onClick={() => setCookieEntries(cookieEntries.filter((_, idx) => idx !== i))}
-                        className="p-1 text-neutral-400 hover:text-red-500"
+                        className="p-1 text-neutral-500 dark:text-neutral-400 hover:text-red-500"
                       >
                         <Trash2 className="h-3 w-3" />
                       </button>

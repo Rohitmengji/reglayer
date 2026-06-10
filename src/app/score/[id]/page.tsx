@@ -80,7 +80,7 @@ export default function AISScorePage() {
             </h1>
             <p className="text-sm text-neutral-500 mt-1 truncate max-w-md">{data.url}</p>
           </div>
-          <div className="text-sm text-neutral-400">
+          <div className="text-sm text-neutral-500 dark:text-neutral-400">
             Scanned {new Date(data.scannedAt).toLocaleDateString()}
           </div>
         </div>
@@ -248,7 +248,7 @@ export default function AISScorePage() {
                     >
                       {action.impact}
                     </Badge>
-                    <ChevronRight className="h-4 w-4 text-neutral-400 shrink-0" />
+                    <ChevronRight className="h-4 w-4 text-neutral-500 dark:text-neutral-400 shrink-0" />
                   </div>
                 ))}
               </div>
@@ -285,7 +285,7 @@ function DimensionCard({
             <span className={color}>{icon}</span>
             <span className="text-sm font-medium">{title}</span>
           </div>
-          <span className="text-xs text-neutral-400">{weight}</span>
+          <span className="text-xs text-neutral-500 dark:text-neutral-400">{weight}</span>
         </div>
         <div className="flex items-end justify-between mb-2">
           <span className="text-2xl font-bold">{dimension.score}</span>

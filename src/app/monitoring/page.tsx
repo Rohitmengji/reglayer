@@ -214,7 +214,7 @@ export default function MonitoringPage() {
                     URL to Monitor
                   </label>
                   <div className="relative">
-                    <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
+                    <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-500 dark:text-neutral-400" />
                     <Input
                       type="url"
                       placeholder="https://example.com"
@@ -248,7 +248,7 @@ export default function MonitoringPage() {
                         }`}>
                           {preset.label}
                         </p>
-                        <p className="text-[10px] text-neutral-400 mt-0.5">{preset.description}</p>
+                        <p className="text-[10px] text-neutral-500 dark:text-neutral-400 mt-0.5">{preset.description}</p>
                       </button>
                     ))}
                   </div>
@@ -313,7 +313,7 @@ export default function MonitoringPage() {
                         {schedule.enabled ? (
                           <PlayCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                         ) : (
-                          <PauseCircle className="h-5 w-5 text-neutral-400" />
+                          <PauseCircle className="h-5 w-5 text-neutral-500 dark:text-neutral-400" />
                         )}
                       </div>
 
@@ -343,13 +343,13 @@ export default function MonitoringPage() {
                                 <AlertTriangle className="h-3 w-3" />
                                 {schedule.lastViolations} violations
                               </span>
-                              <span className="flex items-center gap-1 text-[11px] text-neutral-400">
+                              <span className="flex items-center gap-1 text-[11px] text-neutral-500 dark:text-neutral-400">
                                 <Calendar className="h-3 w-3" />
                                 {schedule.lastScanAt ? new Date(schedule.lastScanAt).toLocaleDateString() : "—"}
                               </span>
                             </>
                           ) : (
-                            <span className="text-[11px] text-neutral-400 flex items-center gap-1">
+                            <span className="text-[11px] text-neutral-500 dark:text-neutral-400 flex items-center gap-1">
                               <Timer className="h-3 w-3" />
                               Awaiting first scan
                             </span>

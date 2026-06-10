@@ -146,7 +146,7 @@ export default async function PublicReportPage({ params }: ReportPageProps) {
                 
                 <div className="mt-4 space-y-1.5">
                   <div className="flex items-center gap-2 justify-center sm:justify-start text-[13px] text-neutral-500 dark:text-neutral-400">
-                    <ExternalLink className="h-3.5 w-3.5 shrink-0 text-neutral-400" />
+                    <ExternalLink className="h-3.5 w-3.5 shrink-0 text-neutral-500 dark:text-neutral-400" />
                     <a href={scan.url} target="_blank" rel="noopener noreferrer" className="hover:text-neutral-900 dark:hover:text-white truncate max-w-65 sm:max-w-95 transition-colors">
                       {scan.url}
                     </a>
@@ -200,7 +200,7 @@ export default async function PublicReportPage({ params }: ReportPageProps) {
               <h2 className="text-sm font-semibold text-neutral-900 dark:text-white tracking-tight">
                 Violations
               </h2>
-              <span className="text-xs font-medium text-neutral-400 tabular-nums">({scan.violations.length})</span>
+              <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400 tabular-nums">({scan.violations.length})</span>
             </div>
             {scan.violations.map((v) => {
               const borderColor: Record<string, string> = {
@@ -215,7 +215,7 @@ export default async function PublicReportPage({ params }: ReportPageProps) {
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                       <ImpactBadge impact={v.impact} />
-                      <code className="text-[11px] text-neutral-400 font-mono">{v.ruleId}</code>
+                      <code className="text-[11px] text-neutral-500 dark:text-neutral-400 font-mono">{v.ruleId}</code>
                     </div>
                     <p className="font-semibold text-neutral-900 dark:text-white leading-snug">{v.help}</p>
                     <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1 leading-relaxed">{v.description}</p>
@@ -251,7 +251,7 @@ export default async function PublicReportPage({ params }: ReportPageProps) {
                         <div key={i} className="rounded-lg bg-neutral-50 dark:bg-neutral-800/50 p-3 border border-neutral-100 dark:border-neutral-700/50">
                           <code className="text-[11px] text-neutral-700 dark:text-neutral-300 break-all block font-mono leading-relaxed">{el.html}</code>
                           {el.target && (
-                            <p className="text-[11px] text-neutral-400 mt-1.5 font-mono">{el.target.join(" > ")}</p>
+                            <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-1.5 font-mono">{el.target.join(" > ")}</p>
                           )}
                         </div>
                       ))}

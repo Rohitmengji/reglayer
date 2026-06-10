@@ -175,7 +175,7 @@ export default function AnalyticsPage() {
               ) : data.trend.direction === "declining" ? (
                 <TrendingDown className="h-4 w-4 text-red-500" />
               ) : (
-                <Minus className="h-4 w-4 text-neutral-400" />
+                <Minus className="h-4 w-4 text-neutral-500 dark:text-neutral-400" />
               )
             }
             subtitle={data.trend.direction}
@@ -231,7 +231,7 @@ export default function AnalyticsPage() {
                     <p className="text-2xl font-bold text-green-700">{data.forecast.weeksTo90}</p>
                   </div>
                 )}
-                <p className="text-xs text-neutral-400">
+                <p className="text-xs text-neutral-500 dark:text-neutral-400">
                   Confidence: {Math.round(data.forecast.confidence * 100)}%
                 </p>
               </div>
@@ -308,7 +308,7 @@ export default function AnalyticsPage() {
                     key={v.ruleId}
                     className="flex items-center gap-4 rounded-lg p-3 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
                   >
-                    <span className="text-sm font-bold text-neutral-400 w-6">
+                    <span className="text-sm font-bold text-neutral-500 dark:text-neutral-400 w-6">
                       #{i + 1}
                     </span>
                     <div className="flex-1 min-w-0">
@@ -330,7 +330,7 @@ export default function AnalyticsPage() {
                     </div>
                     <div className="text-right">
                       <p className="text-lg font-bold text-neutral-900 dark:text-white">{v.count}</p>
-                      <p className="text-xs text-neutral-400">occurrences</p>
+                      <p className="text-xs text-neutral-500 dark:text-neutral-400">occurrences</p>
                     </div>
                   </div>
                 ))}
@@ -356,7 +356,7 @@ export default function AnalyticsPage() {
                   >
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-neutral-900 dark:text-white truncate">{u.url}</p>
-                      <p className="text-xs text-neutral-400">{u.scans} scans</p>
+                      <p className="text-xs text-neutral-500 dark:text-neutral-400">{u.scans} scans</p>
                     </div>
                     <div className="flex items-center gap-2">
                       {u.trend === "improving" && <TrendingUp className="h-4 w-4 text-green-500" />}
@@ -402,7 +402,7 @@ function MetricCard({
         <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">{label}</p>
       </div>
       <p className="text-2xl font-bold text-neutral-900 dark:text-white">{value}</p>
-      {subtitle && <p className="text-xs text-neutral-400 mt-1">{subtitle}</p>}
+      {subtitle && <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">{subtitle}</p>}
     </div>
   );
 }
@@ -474,7 +474,7 @@ function TrendChart({
         ))}
       </svg>
 
-      <div className="flex justify-between text-xs text-neutral-400 px-7 mt-1">
+      <div className="flex justify-between text-xs text-neutral-500 dark:text-neutral-400 px-7 mt-1">
         <span>{dataPoints[0]?.date}</span>
         <span>{dataPoints[dataPoints.length - 1]?.date}</span>
       </div>

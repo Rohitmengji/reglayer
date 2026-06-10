@@ -268,7 +268,7 @@ export default function ViolationsPage() {
           <SummaryCard
             label="Exceptions"
             value={totalExceptions}
-            icon={<Shield className="h-4 w-4 text-neutral-400" />}
+            icon={<Shield className="h-4 w-4 text-neutral-500 dark:text-neutral-400" />}
             active={activeTab === "EXCEPTIONS"}
             onClick={() => handleTabChange("EXCEPTIONS")}
           />
@@ -347,7 +347,7 @@ export default function ViolationsPage() {
                 Select all on this page
               </span>
               {data.total > 0 && (
-                <span className="ml-auto text-xs text-neutral-400">
+                <span className="ml-auto text-xs text-neutral-500 dark:text-neutral-400">
                   {data.total} violation{data.total !== 1 ? "s" : ""}
                 </span>
               )}
@@ -384,7 +384,7 @@ export default function ViolationsPage() {
                 <p className="text-neutral-600 dark:text-neutral-300 font-medium">
                   No violations in this category
                 </p>
-                <p className="text-sm text-neutral-400 mt-1">
+                <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
                   {activeTab === "ALL" ? "This scan has no violations. Great job!" : "Try a different filter."}
                 </p>
               </div>

@@ -81,7 +81,7 @@ export default function SiteTrendsPage() {
     return (
       <AppShell>
         <div className="flex items-center justify-center min-h-[60vh]">
-          <Loader2 className="h-6 w-6 animate-spin text-neutral-400" />
+          <Loader2 className="h-6 w-6 animate-spin text-neutral-500 dark:text-neutral-400" />
         </div>
       </AppShell>
     );
@@ -124,7 +124,7 @@ export default function SiteTrendsPage() {
                 </a>
               )}
               {summary && (
-                <p className="text-xs text-neutral-400 mt-1">
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
                   <Calendar className="h-3 w-3 inline mr-1" />
                   {summary.totalScans} scans since {new Date(summary.firstScanAt).toLocaleDateString()}
                 </p>
@@ -249,7 +249,7 @@ export default function SiteTrendsPage() {
                                   {Math.round(change)}
                                 </span>
                               ) : (
-                                <span className="text-xs text-neutral-400">—</span>
+                                <span className="text-xs text-neutral-500 dark:text-neutral-400">—</span>
                               )}
                             </td>
                             <td className="py-2.5 px-3 text-right">

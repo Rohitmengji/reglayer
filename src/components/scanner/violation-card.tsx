@@ -119,7 +119,7 @@ const STATUS_OPTIONS = [
   { value: "open", label: "Open", icon: AlertTriangle, color: "text-neutral-500" },
   { value: "in-progress", label: "In Progress", icon: Clock, color: "text-blue-600" },
   { value: "fixed", label: "Fixed", icon: CheckCircle2, color: "text-green-600" },
-  { value: "ignored", label: "Ignored", icon: MinusCircle, color: "text-neutral-400" },
+  { value: "ignored", label: "Ignored", icon: MinusCircle, color: "text-neutral-500 dark:text-neutral-400" },
   { value: "wont-fix", label: "Won't Fix", icon: XCircle, color: "text-red-400" },
 ] as const;
 

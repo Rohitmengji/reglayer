@@ -159,7 +159,7 @@ export default function TestingPage() {
 
       {audits.length === 0 ? (
         <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-12 text-center dark:border-gray-600 dark:bg-gray-800/50">
-          <UserCheck className="mx-auto mb-3 h-12 w-12 text-gray-400" />
+          <UserCheck className="mx-auto mb-3 h-12 w-12 text-gray-500 dark:text-gray-400" />
           <h3 className="text-lg font-medium text-gray-900 dark:text-white">
             No audit requests yet
           </h3>

@@ -118,7 +118,7 @@ export function OnboardingFlow({ userName, onComplete, onStartScan }: Onboarding
 
       <div className="space-y-3">
         <div className="relative">
-          <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
+          <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-500 dark:text-neutral-400" />
           <input
             type="url"
             value={url}
@@ -157,7 +157,7 @@ export function OnboardingFlow({ userName, onComplete, onStartScan }: Onboarding
         </button>
       </div>
 
-      <p className="text-[11px] text-neutral-400 text-center">
+      <p className="text-[11px] text-neutral-500 dark:text-neutral-400 text-center">
         Takes about 10-30 seconds depending on page complexity
       </p>
     </div>,
@@ -186,7 +186,7 @@ export function OnboardingFlow({ userName, onComplete, onStartScan }: Onboarding
             <item.icon className={`h-4 w-4 ${item.color} shrink-0`} />
             <div>
               <p className="text-xs font-medium text-neutral-800 dark:text-neutral-200">{item.label}</p>
-              <p className="text-[10px] text-neutral-400">{item.desc}</p>
+              <p className="text-[10px] text-neutral-500 dark:text-neutral-400">{item.desc}</p>
             </div>
           </div>
         ))}
@@ -206,7 +206,7 @@ export function OnboardingFlow({ userName, onComplete, onStartScan }: Onboarding
       {/* Close button */}
       <button
         onClick={handleDismiss}
-        className="absolute top-4 right-4 p-1.5 rounded-md text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+        className="absolute top-4 right-4 p-1.5 rounded-md text-neutral-500 dark:text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
         aria-label="Skip onboarding"
       >
         <X className="h-4 w-4" />

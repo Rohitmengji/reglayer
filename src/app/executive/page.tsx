@@ -347,7 +347,7 @@ export default function ExecutiveDashboardPage() {
                       </div>
                     </div>
                     {i % 3 === 0 && (
-                      <span className="text-[10px] text-neutral-400 truncate w-full text-center">
+                      <span className="text-[10px] text-neutral-500 dark:text-neutral-400 truncate w-full text-center">
                         {new Date(point.week).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
                       </span>
                     )}
@@ -407,7 +407,7 @@ export default function ExecutiveDashboardPage() {
                               ? "text-green-600 dark:text-green-400"
                               : site.trend < 0
                               ? "text-red-600 dark:text-red-400"
-                              : "text-neutral-400"
+                              : "text-neutral-500 dark:text-neutral-400"
                           }`}>
                             {site.trend > 0 ? (
                               <ArrowUpRight className="h-3 w-3" />

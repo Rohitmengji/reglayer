@@ -471,7 +471,7 @@ export default function ScreenReaderPage() {
                             : "hover:bg-neutral-50 dark:hover:bg-neutral-800/50"
                         }`}
                       >
-                        <span className="text-xs text-neutral-400 font-mono w-6 shrink-0 pt-0.5">
+                        <span className="text-xs text-neutral-500 dark:text-neutral-400 font-mono w-6 shrink-0 pt-0.5">
                           {step.index + 1}
                         </span>
                         <div className="flex-1 min-w-0">

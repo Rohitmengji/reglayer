@@ -156,7 +156,7 @@ export default function CrawlPage() {
                 )}
               </Button>
               {crawling && (
-                <p className="text-xs text-neutral-400 text-center">
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 text-center">
                   {t("crawl.durationNote")}
                 </p>
               )}
@@ -235,7 +235,7 @@ export default function CrawlPage() {
                       {/* URL */}
                       <div className="flex-1 min-w-0">
                         <p className="text-sm text-neutral-900 dark:text-white truncate">{page.url}</p>
-                        <p className="text-xs text-neutral-400">Depth {page.depth}</p>
+                        <p className="text-xs text-neutral-500 dark:text-neutral-400">Depth {page.depth}</p>
                       </div>
 
                       {/* Violations */}

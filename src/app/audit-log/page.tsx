@@ -132,7 +132,7 @@ export default function AuditLogPage() {
               <div className="text-center py-12">
                 <ClipboardList className="h-10 w-10 text-neutral-300 dark:text-neutral-600 mx-auto mb-3" />
                 <p className="text-sm text-neutral-500 dark:text-neutral-400">No activity recorded yet.</p>
-                <p className="text-xs text-neutral-400 mt-1">Actions like scans, team changes, and settings updates will appear here.</p>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">Actions like scans, team changes, and settings updates will appear here.</p>
               </div>
             ) : (
               <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
@@ -158,12 +158,12 @@ export default function AuditLogPage() {
                           )}
                         </div>
                         {log.metadata && Object.keys(log.metadata).length > 0 && (
-                          <p className="text-[10px] text-neutral-400 mt-1 truncate">
+                          <p className="text-[10px] text-neutral-500 dark:text-neutral-400 mt-1 truncate">
                             {JSON.stringify(log.metadata)}
                           </p>
                         )}
                       </div>
-                      <span className="text-[10px] text-neutral-400 shrink-0 mt-1">
+                      <span className="text-[10px] text-neutral-500 dark:text-neutral-400 shrink-0 mt-1">
                         {new Date(log.createdAt).toLocaleString()}
                       </span>
                     </div>

@@ -146,7 +146,7 @@ function CompareContent() {
           <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-6 text-center">
             <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-2">{t("compare.baseBefore")}</p>
             <p className="text-4xl font-black text-neutral-700 dark:text-neutral-200">{Math.round(base.score)}</p>
-            <p className="text-xs text-neutral-400 mt-2 truncate">{base.url}</p>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-2 truncate">{base.url}</p>
             <p className="text-xs text-neutral-300">
               {new Date(base.scannedAt).toLocaleDateString()}
             </p>
@@ -167,7 +167,7 @@ function CompareContent() {
               {delta.score > 0 ? "+" : ""}
               {delta.score.toFixed(1)}
             </div>
-            <p className="text-xs text-neutral-400">{t("compare.scoreChange")}</p>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400">{t("compare.scoreChange")}</p>
           </div>
 
           {/* Head */}
@@ -178,7 +178,7 @@ function CompareContent() {
             }`}>
               {Math.round(head.score)}
             </p>
-            <p className="text-xs text-neutral-400 mt-2 truncate">{head.url}</p>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-2 truncate">{head.url}</p>
             <p className="text-xs text-neutral-300">
               {new Date(head.scannedAt).toLocaleDateString()}
             </p>

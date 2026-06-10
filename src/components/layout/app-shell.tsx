@@ -119,6 +119,7 @@ export function AppShell({ children, bare }: { children: React.ReactNode; bare?:
       {mobileOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          role="presentation"
           onClick={() => setMobileOpen(false)}
         />
       )}
@@ -133,6 +134,9 @@ export function AppShell({ children, bare }: { children: React.ReactNode; bare?:
         className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-200 ease-in-out lg:hidden ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
+        role="dialog"
+        aria-modal={mobileOpen}
+        aria-label="Navigation"
       >
         <Sidebar onNavigate={() => setMobileOpen(false)} />
       </div>

@@ -64,7 +64,7 @@ export function DeltaCards({ delta, streak, currentViolations, currentCritical }
             {streak && streak.currentStreak >= 3 ? (
               <Flame className="h-4 w-4 text-orange-500" />
             ) : (
-              <Minus className="h-4 w-4 text-neutral-400" />
+              <Minus className="h-4 w-4 text-neutral-500 dark:text-neutral-400" />
             )}
           </div>
           <p className="text-2xl font-bold text-neutral-900 dark:text-white">

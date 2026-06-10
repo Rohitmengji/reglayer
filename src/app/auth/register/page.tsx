@@ -152,7 +152,7 @@ export default function RegisterPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
-              <p className="text-[11px] text-neutral-400">Must be 8+ characters with uppercase, lowercase, and a number</p>
+              <p className="text-[11px] text-neutral-500 dark:text-neutral-400">Must be 8+ characters with uppercase, lowercase, and a number</p>
             </div>
 
             {error && (

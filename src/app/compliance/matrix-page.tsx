@@ -168,7 +168,7 @@ function ComplianceContent() {
                   </option>
                 ))}
               </select>
-              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400 pointer-events-none" />
+              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-500 dark:text-neutral-400 pointer-events-none" />
             </div>
           )}
         </div>
@@ -192,7 +192,7 @@ function ComplianceContent() {
               style={{ width: `${passRate}%` }}
             />
           </div>
-          <div className="flex justify-between mt-2 text-[10px] text-neutral-400">
+          <div className="flex justify-between mt-2 text-[10px] text-neutral-500 dark:text-neutral-400">
             <span>0%</span>
             <span>WCAG 2.1 Level AA Target: 100%</span>
             <span>100%</span>
@@ -253,7 +253,7 @@ function ComplianceContent() {
                     >
                       {entry.status === "pass" && <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />}
                       {entry.status === "fail" && <XCircle className="h-4 w-4 text-red-600 shrink-0" />}
-                      {entry.status === "not-tested" && <Minus className="h-4 w-4 text-neutral-400 shrink-0" />}
+                      {entry.status === "not-tested" && <Minus className="h-4 w-4 text-neutral-500 dark:text-neutral-400 shrink-0" />}
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">
                           <span className="text-xs font-bold text-neutral-700 dark:text-neutral-200">{entry.criterion}</span>

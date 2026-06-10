@@ -222,7 +222,7 @@ export default function ScansPage() {
                 ) : getTrend(0) === "down" ? (
                   <TrendingDown className="h-4 w-4 text-red-500" />
                 ) : (
-                  <Minus className="h-4 w-4 text-neutral-400" />
+                  <Minus className="h-4 w-4 text-neutral-500 dark:text-neutral-400" />
                 )
               }
             />
@@ -234,7 +234,7 @@ export default function ScansPage() {
           <div className="flex flex-col sm:flex-row gap-3">
             {/* Search */}
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-500 dark:text-neutral-400" />
               <input
                 type="text"
                 value={searchQuery}
@@ -246,7 +246,7 @@ export default function ScansPage() {
 
             {/* Severity Filter */}
             <div className="relative">
-              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
+              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-500 dark:text-neutral-400" />
               <select
                 value={severityFilter}
                 onChange={(e) => setSeverityFilter(e.target.value)}
@@ -320,7 +320,7 @@ export default function ScansPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            <p className="text-xs text-neutral-400">
+            <p className="text-xs text-neutral-500 dark:text-neutral-400">
               {t("scans.selectHint")}
             </p>
             {filteredScans.map((scan, index) => (
@@ -390,7 +390,7 @@ export default function ScansPage() {
 
                   {/* Meta */}
                   <div className="hidden md:block text-right">
-                    <p className="text-xs text-neutral-400">
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400">
                       {new Date(scan.createdAt).toLocaleDateString("en-US", {
                         month: "short",
                         day: "numeric",
