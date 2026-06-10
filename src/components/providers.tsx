@@ -29,6 +29,8 @@ import { useState } from "react";
 import { ThemeProvider } from "@/components/theme-provider";
 import { I18nProvider } from "@/components/i18n-provider";
 import { BrandProvider, type BrandContextType } from "@/components/layout/BrandProvider";
+import { CommandPalette } from "@/components/command-palette";
+import { ConfettiCanvas } from "@/components/confetti";
 
 const DEFAULT_BRAND: BrandContextType = {
   brandName: "RegLayer",
@@ -61,6 +63,8 @@ export function Providers({ children, brand }: { children: React.ReactNode; bran
         <ThemeProvider>
           <I18nProvider>
             <BrandProvider brand={brand ?? DEFAULT_BRAND}>
+              <CommandPalette />
+              <ConfettiCanvas />
               {children}
             </BrandProvider>
           </I18nProvider>
