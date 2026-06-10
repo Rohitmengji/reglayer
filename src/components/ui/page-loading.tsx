@@ -14,7 +14,7 @@ interface PageLoadingProps {
 export function PageLoading({ message = "Loading..." }: PageLoadingProps) {
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
-      <Loader2 className="h-8 w-8 animate-spin text-neutral-400 dark:text-neutral-500" />
+      <Loader2 className="h-8 w-8 animate-spin text-neutral-500 dark:text-neutral-500" />
       <p className="text-sm text-neutral-500 dark:text-neutral-400">{message}</p>
     </div>
   );

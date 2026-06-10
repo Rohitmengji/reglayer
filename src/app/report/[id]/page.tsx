@@ -70,7 +70,7 @@ export default async function PublicReportPage({ params }: ReportPageProps) {
           <div className="flex items-center gap-2">
             <Shield className="h-4.5 w-4.5 text-neutral-900 dark:text-white" />
             <span className="font-semibold text-sm text-neutral-900 dark:text-white tracking-tight">RegLayer</span>
-            <span className="text-xs text-neutral-400 dark:text-neutral-500 ml-0.5">/</span>
+            <span className="text-xs text-neutral-500 dark:text-neutral-500 ml-0.5">/</span>
             <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">Report</span>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
@@ -135,7 +135,7 @@ export default async function PublicReportPage({ params }: ReportPageProps) {
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
                   <span className={`text-3xl font-black tracking-tight ${scoreColor}`}>{Math.round(score)}</span>
-                  <span className="text-[10px] text-neutral-400 dark:text-neutral-500 font-medium -mt-0.5">/ 100</span>
+                  <span className="text-[10px] text-neutral-500 dark:text-neutral-500 font-medium -mt-0.5">/ 100</span>
                 </div>
               </div>
 
@@ -151,7 +151,7 @@ export default async function PublicReportPage({ params }: ReportPageProps) {
                       {scan.url}
                     </a>
                   </div>
-                  <div className="flex items-center gap-2 justify-center sm:justify-start text-[13px] text-neutral-400 dark:text-neutral-500">
+                  <div className="flex items-center gap-2 justify-center sm:justify-start text-[13px] text-neutral-500 dark:text-neutral-500">
                     <Clock className="h-3.5 w-3.5 shrink-0" />
                     <span>{new Date(scan.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
                     {scan.duration && (
@@ -286,7 +286,7 @@ export default async function PublicReportPage({ params }: ReportPageProps) {
         </div>
 
         {/* Footer */}
-        <footer className="text-center text-xs text-neutral-400 dark:text-neutral-500 pt-6 border-t border-neutral-100 dark:border-neutral-800/50 space-y-2.5">
+        <footer className="text-center text-xs text-neutral-500 dark:text-neutral-500 pt-6 border-t border-neutral-100 dark:border-neutral-800/50 space-y-2.5">
           <div className="flex items-center justify-center gap-3">
             <Link href="/scans" className="text-xs text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition-colors">← All Scans</Link>
             <span className="text-neutral-200 dark:text-neutral-700">·</span>

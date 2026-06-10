@@ -415,7 +415,7 @@ export default function AdminPage() {
                           </p>
                           <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate">{req.user.email}</p>
                           {req.message && (
-                            <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5 italic truncate">
+                            <p className="text-xs text-neutral-500 dark:text-neutral-500 mt-0.5 italic truncate">
                               &ldquo;{req.message}&rdquo;
                             </p>
                           )}

@@ -179,7 +179,7 @@ export default function RequestAccessPage() {
           </CardContent>
         </Card>
 
-        <p className="text-center text-xs text-neutral-400 dark:text-neutral-500">
+        <p className="text-center text-xs text-neutral-500 dark:text-neutral-500">
           {t("requestAccess.adminNotice")}
         </p>
       </div>
