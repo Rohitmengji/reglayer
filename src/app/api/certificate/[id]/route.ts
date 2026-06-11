@@ -7,6 +7,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/database/prisma";
+import { applyRateLimit } from "@/lib/rate-limit-middleware";
 
 /**
  * GET /api/certificate/[id]
@@ -15,14 +16,19 @@ import { prisma } from "@/lib/database/prisma";
  * Can be shared publicly as proof of accessibility compliance.
  */
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // Public path (bypasses the proxy's global limiter) — cap ID enumeration
+  const blocked = await applyRateLimit(request, "api");
+  if (blocked) return blocked;
+
   const { id } = await params;
 
+  // Only counts are needed — don't pull every violation row for a public page
   const scan = await prisma.scan.findUnique({
     where: { id },
-    include: { violations: true },
+    include: { _count: { select: { violations: true } } },
   });
 
   if (!scan || scan.status !== "COMPLETED") {
@@ -62,7 +68,7 @@ export async function GET(
       serious: seriousCount,
       moderate: scan.moderate ?? 0,
       minor: scan.minor ?? 0,
-      total: scan.violations.length,
+      total: scan._count.violations,
     },
     verificationUrl: `https://reglayer.vercel.app/certificate/${scan.id}`,
   };
