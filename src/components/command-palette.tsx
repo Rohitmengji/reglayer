@@ -113,6 +113,7 @@ export function CommandPalette() {
   // Focus input when opened
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: reset palette state when it opens (driven by external `open` prop)
       setQuery("");
       setActiveIndex(0);
       setTimeout(() => inputRef.current?.focus(), 50);
@@ -179,6 +180,7 @@ export function CommandPalette() {
 
   // Reset active index when results change
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: snap selection back to the first result whenever the result set changes
     setActiveIndex(0);
   }, [filtered.length]);
 

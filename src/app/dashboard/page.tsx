@@ -32,6 +32,15 @@ import { AppShell } from "@/components/layout/app-shell";
 import { ScanForm } from "@/components/scanner/scan-form";
 import { ScoreCard } from "@/components/dashboard/score-card";
 import { ViolationCard } from "@/components/scanner/violation-card";
+import { OnboardingFlow } from "@/components/onboarding/onboarding-flow";
+import { RoleOnboarding } from "@/components/onboarding/role-onboarding";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { useScanStore } from "@/stores/scanStore";
+import { useI18n } from "@/components/i18n-provider";
+import { Download, Activity, Target, AlertTriangle, Globe, TrendingUp, TrendingDown, Sparkles, Zap } from "lucide-react";
+import Link from "next/link";
+import type { ScanResult, ComplianceReport } from "@/lib/types";
 
 // Charts pull in recharts (~100KB gz) — load them lazily so the dashboard's
 // initial bundle stays lean. Both render null while empty, so a null loading
@@ -44,15 +53,6 @@ const ViolationsChart = dynamic(
   () => import("@/components/charts/dashboard-charts").then((m) => m.ViolationsChart),
   { ssr: false, loading: () => null }
 );
-import { OnboardingFlow } from "@/components/onboarding/onboarding-flow";
-import { RoleOnboarding } from "@/components/onboarding/role-onboarding";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { useScanStore } from "@/stores/scanStore";
-import { useI18n } from "@/components/i18n-provider";
-import { Download, Activity, Target, AlertTriangle, Globe, TrendingUp, TrendingDown, Sparkles, Zap } from "lucide-react";
-import Link from "next/link";
-import type { ScanResult, ComplianceReport } from "@/lib/types";
 
 interface ScanResponse {
   scan: ScanResult;
@@ -85,6 +85,7 @@ export default function DashboardPage() {
     // Show role onboarding until the user has picked a persona
     // (RoleOnboarding persists the selection to localStorage itself)
     if (!localStorage.getItem("reglayer_persona")) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: localStorage is client-only; reading it in an effect avoids a hydration mismatch
       setShowRoleOnboarding(true);
     }
 

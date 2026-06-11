@@ -79,6 +79,7 @@ export default function AnalyticsPage() {
 
   useEffect(() => {
     let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: reset request state before refetching when period changes
     setError(null);
     setLoading(true);
     fetch(`/api/analytics?days=${period}`)
