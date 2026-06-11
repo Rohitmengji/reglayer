@@ -34,7 +34,7 @@ import { ViolationCard } from "@/components/scanner/violation-card";
 import { ComplianceTrend } from "@/components/charts/compliance-trend";
 import { ViolationsChart } from "@/components/charts/dashboard-charts";
 import { OnboardingFlow } from "@/components/onboarding/onboarding-flow";
-import { RoleOnboarding, type UserPersona } from "@/components/onboarding/role-onboarding";
+import { RoleOnboarding } from "@/components/onboarding/role-onboarding";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useScanStore } from "@/stores/scanStore";
@@ -66,21 +66,20 @@ export default function DashboardPage() {
   const [credits, setCredits] = useState<{ used: number; limit: number; totalAvailable: number; remaining: number; daysUntilReset: number; unlimited: boolean } | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showRoleOnboarding, setShowRoleOnboarding] = useState(false);
-  const [persona, setPersona] = useState<UserPersona | null>(null);
   const { setScanResult: persistResult } = useScanStore();
   const { t } = useI18n();
   const { data: session } = useSession();
 
   useEffect(() => {
-    // Check if user has selected a persona
-    const storedPersona = localStorage.getItem("reglayer_persona") as UserPersona | null;
-    if (storedPersona) {
-      setPersona(storedPersona);
-    } else {
+    // Show role onboarding until the user has picked a persona
+    // (RoleOnboarding persists the selection to localStorage itself)
+    if (!localStorage.getItem("reglayer_persona")) {
       setShowRoleOnboarding(true);
     }
 
-    fetch("/api/dashboard/stats")
+    const controller = new AbortController();
+
+    fetch("/api/dashboard/stats", { signal: controller.signal })
       .then((r) => {
         if (!r.ok) throw new Error("Failed");
         return r.json();
@@ -93,12 +92,16 @@ export default function DashboardPage() {
         }
       })
       .catch(() => {})
-      .finally(() => setStatsLoading(false));
+      .finally(() => {
+        if (!controller.signal.aborted) setStatsLoading(false);
+      });
 
-    fetch("/api/credits")
+    fetch("/api/credits", { signal: controller.signal })
       .then((r) => r.ok ? r.json() : null)
       .then((d) => d && setCredits(d.credits))
       .catch(() => {});
+
+    return () => controller.abort();
   }, []);
 
   function handleScanComplete(result: unknown) {
@@ -119,20 +122,25 @@ export default function DashboardPage() {
   async function handleExportPDF() {
     if (!scanResult) return;
 
-    const response = await fetch("/api/reports", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(scanResult),
-    });
+    try {
+      const response = await fetch("/api/reports", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(scanResult),
+      });
 
-    if (response.ok) {
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `reglayer-report-${scanResult.scan.id}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `reglayer-report-${scanResult.scan.id}.pdf`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    } catch {
+      // Swallow network failures (matches existing silent-failure UX) so the
+      // click handler can't surface an unhandled promise rejection
     }
   }
 
@@ -165,10 +173,7 @@ export default function DashboardPage() {
         {showRoleOnboarding && (
           <RoleOnboarding
             userName={session?.user?.name}
-            onComplete={(p) => {
-              setPersona(p);
-              setShowRoleOnboarding(false);
-            }}
+            onComplete={() => setShowRoleOnboarding(false)}
           />
         )}
 

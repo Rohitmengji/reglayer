@@ -80,6 +80,19 @@ export default function ScreenReaderPage() {
       window.speechSynthesis.removeEventListener("voiceschanged", loadVoices);
     };
   }, []);
+
+  // Stop playback on unmount — speechSynthesis is a global, so without this
+  // narration keeps speaking (and queued timeouts keep firing) after the user
+  // navigates away
+  useEffect(() => {
+    return () => {
+      if (playIntervalRef.current) clearTimeout(playIntervalRef.current);
+      if (speakTimeoutRef.current) clearTimeout(speakTimeoutRef.current);
+      if (typeof window !== "undefined" && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
   const stepsContainerRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll the step list to keep current step visible
