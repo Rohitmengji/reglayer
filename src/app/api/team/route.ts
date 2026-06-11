@@ -42,15 +42,28 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // select (not include) — fetch only the fields the response uses, so we
+  // never pull sensitive user scalars like passwordHash out of the database
   const user = await prisma.user.findUnique({
     where: { email: session.user.email },
-    include: {
+    select: {
+      isMasterAdmin: true,
       memberships: {
-        include: {
+        select: {
+          role: true,
           workspace: {
-            include: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              plan: true,
               members: {
-                include: { user: { select: { id: true, name: true, email: true, plan: true, isMasterAdmin: true } } },
+                select: {
+                  id: true,
+                  role: true,
+                  joinedAt: true,
+                  user: { select: { id: true, name: true, email: true, plan: true, isMasterAdmin: true } },
+                },
                 orderBy: { joinedAt: "asc" },
               },
             },

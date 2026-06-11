@@ -26,13 +26,24 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { useSession } from "next-auth/react";
 import { AppShell } from "@/components/layout/app-shell";
 import { ScanForm } from "@/components/scanner/scan-form";
 import { ScoreCard } from "@/components/dashboard/score-card";
 import { ViolationCard } from "@/components/scanner/violation-card";
-import { ComplianceTrend } from "@/components/charts/compliance-trend";
-import { ViolationsChart } from "@/components/charts/dashboard-charts";
+
+// Charts pull in recharts (~100KB gz) — load them lazily so the dashboard's
+// initial bundle stays lean. Both render null while empty, so a null loading
+// state introduces no layout shift.
+const ComplianceTrend = dynamic(
+  () => import("@/components/charts/compliance-trend").then((m) => m.ComplianceTrend),
+  { ssr: false, loading: () => null }
+);
+const ViolationsChart = dynamic(
+  () => import("@/components/charts/dashboard-charts").then((m) => m.ViolationsChart),
+  { ssr: false, loading: () => null }
+);
 import { OnboardingFlow } from "@/components/onboarding/onboarding-flow";
 import { RoleOnboarding } from "@/components/onboarding/role-onboarding";
 import { Button } from "@/components/ui/button";
