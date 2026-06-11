@@ -7,6 +7,7 @@
  */
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/database/prisma";
+import { applyRateLimit } from "@/lib/rate-limit-middleware";
 
 /**
  * Accessibility Score Badge API
@@ -35,6 +36,11 @@ function recalculateScore(violations: { impact: string; affectedElements: unknow
   return Math.round(Math.max(0, Math.min(100, 100 - totalPenalty)));
 }
 export async function GET(request: NextRequest) {
+  // Public path (bypasses the proxy's global limiter) and a cache-busting
+  // ?url= goes straight to the database — keep a per-IP ceiling
+  const blocked = await applyRateLimit(request, "api");
+  if (blocked) return blocked;
+
   const url = request.nextUrl.searchParams.get("url");
   const style = request.nextUrl.searchParams.get("style") || "flat";
   const label = request.nextUrl.searchParams.get("label") || "accessibility";

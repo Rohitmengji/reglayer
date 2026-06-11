@@ -8,6 +8,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/database/prisma";
 import { stripe, priceIdToPlan } from "@/lib/billing/stripe";
+import { logger } from "@/lib/telemetry/logger";
+
+const log = logger.withContext({ service: "stripe-webhook" });
 
 export async function POST(request: NextRequest) {
   if (!stripe) {
@@ -25,7 +28,7 @@ export async function POST(request: NextRequest) {
   try {
     event = stripe.webhooks.constructEvent(body, signature, process.env.STRIPE_WEBHOOK_SECRET);
   } catch (err) {
-    console.error("[stripe] Webhook signature verification failed:", err);
+    log.error("Webhook signature verification failed", { action: "verify", error: err instanceof Error ? err.message : String(err) });
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
@@ -97,13 +100,13 @@ export async function POST(request: NextRequest) {
         const customerId = typeof invoice.customer === "string" ? invoice.customer : null;
         if (customerId) {
           // Could send email notification here
-          console.warn(`[stripe] Payment failed for customer ${customerId}`);
+          log.warn("Payment failed", { action: "invoice.payment_failed", customerId });
         }
         break;
       }
     }
   } catch (err) {
-    console.error("[stripe] Webhook handler error:", err);
+    log.error("Webhook handler error", { action: "handle", error: err instanceof Error ? err.message : String(err) });
     return NextResponse.json({ error: "Handler failed" }, { status: 500 });
   }
 

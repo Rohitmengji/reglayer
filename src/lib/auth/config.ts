@@ -27,6 +27,14 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/database/prisma";
+import { rateLimit } from "@/lib/rate-limit";
+
+/**
+ * Login attempts per IP+email per 5 minutes. Deliberately generous — it only
+ * exists to stop credential-stuffing/brute-force, never a legitimate user
+ * retrying a password (register/forgot-password use the stricter auth tier).
+ */
+const LOGIN_RATE_LIMIT = { limit: 30, windowSec: 300 };
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -44,7 +52,21 @@ export const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "email", placeholder: "admin@reglayer.dev" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
+        // Brute-force guard — the credentials callback is a public path that
+        // bypasses the proxy's global API rate limit
+        const ip =
+          (Array.isArray(req?.headers?.["x-forwarded-for"])
+            ? req.headers["x-forwarded-for"][0]
+            : req?.headers?.["x-forwarded-for"])?.split(",")[0]?.trim() ||
+          "anonymous";
+        const rl = await rateLimit(
+          `login:${ip}:${credentials?.email ?? "unknown"}`,
+          LOGIN_RATE_LIMIT,
+          "login"
+        );
+        if (!rl.success) return null;
+
         // Dev seed accounts — credentials from env vars (NOT hardcoded)
         const masterEmail = process.env.SEED_MASTER_EMAIL;
         const masterPass = process.env.SEED_MASTER_PASSWORD;
