@@ -135,6 +135,26 @@ export async function proxy(request: NextRequest) {
   }
 
   // Protected paths — require auth
+  // Exception: API routes that accept Bearer API-key auth directly (route validates the key)
+  const isBearerAuthRoute =
+    pathname.startsWith("/api/scan") ||
+    pathname.startsWith("/api/crawl") ||
+    pathname.startsWith("/api/scans") ||
+    pathname.startsWith("/api/violations");
+
+  const authHeader = request.headers.get("authorization");
+  const hasBearerToken = authHeader?.startsWith("Bearer ");
+
+  if (isBearerAuthRoute && hasBearerToken) {
+    // Let through — the route handler validates the API key itself
+    const response = NextResponse.next();
+    if (isAgency) {
+      response.headers.set("x-agency-hostname", hostname.split(":")[0]);
+      if (agencySlug) response.headers.set("x-agency-slug", agencySlug);
+    }
+    return applySecurityHeaders(response);
+  }
+
   const token = await getToken({ req: request });
 
   if (!token) {

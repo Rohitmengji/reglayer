@@ -7,15 +7,12 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
+import { authenticateRequest } from "@/lib/auth/api-key";
 
 export async function GET(request: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-  }
+  const auth = await authenticateRequest(request);
+  if (!auth.ok) return auth.response;
 
   try {
     const limit = Number(request.nextUrl.searchParams.get("limit")) || 50;
@@ -24,7 +21,7 @@ export async function GET(request: NextRequest) {
     // Scope: users see only their own scans; master admins see all workspace scans
     // (single query — membership rides along instead of a second round trip)
     const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
+      where: { email: auth.userEmail },
       select: {
         id: true,
         isMasterAdmin: true,

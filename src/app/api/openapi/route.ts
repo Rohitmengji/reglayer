@@ -48,7 +48,8 @@ const OPENAPI_SPEC = {
         tags: ["Scans"],
         summary: "Start an accessibility scan",
         description:
-          "Initiates an accessibility scan on the specified URL. Returns scan results including violations, score, and compliance data. Supports authenticated scanning via auth configs.",
+          "Initiates an accessibility scan on the specified URL. Returns scan results including violations, score, and compliance data. Accepts Bearer API key or session cookie.",
+        security: [{ BearerAuth: [] }, { SessionCookie: [] }],
         requestBody: {
           required: true,
           content: {
@@ -114,7 +115,8 @@ const OPENAPI_SPEC = {
         operationId: "listScans",
         tags: ["Scans"],
         summary: "List all scans",
-        description: "Returns paginated list of all scans for the authenticated user's workspace.",
+        description: "Returns paginated list of all scans for the authenticated user's workspace. Accepts Bearer API key or session cookie.",
+        security: [{ BearerAuth: [] }, { SessionCookie: [] }],
         parameters: [
           { name: "page", in: "query", schema: { type: "integer", default: 1 } },
           { name: "limit", in: "query", schema: { type: "integer", default: 20, maximum: 100 } },
@@ -186,7 +188,8 @@ const OPENAPI_SPEC = {
         operationId: "startCrawl",
         tags: ["Crawls"],
         summary: "Start a multi-page site crawl",
-        description: "Crawls a website up to maxPages, scanning each page for accessibility violations.",
+        description: "Crawls a website up to maxPages, scanning each page for accessibility violations. Accepts Bearer API key or session cookie.",
+        security: [{ BearerAuth: [] }, { SessionCookie: [] }],
         requestBody: {
           required: true,
           content: {
@@ -206,7 +209,8 @@ const OPENAPI_SPEC = {
         operationId: "listViolations",
         tags: ["Violations"],
         summary: "List all violations across scans",
-        description: "Aggregated view of all violations in the workspace with filtering and pagination.",
+        description: "Aggregated view of all violations in the workspace with filtering and pagination. Accepts Bearer API key or session cookie.",
+        security: [{ BearerAuth: [] }, { SessionCookie: [] }],
         parameters: [
           { name: "impact", in: "query", schema: { type: "string", enum: ["critical", "serious", "moderate", "minor"] } },
           { name: "status", in: "query", schema: { type: "string", enum: ["open", "fixed", "ignored", "in_progress"] } },
@@ -465,8 +469,7 @@ const OPENAPI_SPEC = {
       BearerAuth: {
         type: "http",
         scheme: "bearer",
-        bearerFormat: "JWT",
-        description: "JWT token from NextAuth.js session or API key",
+        description: "API key (format: rl_...) issued from Settings → API Keys. Used for CI/CD and programmatic access to /api/scan, /api/crawl, /api/scans, /api/violations, /api/gate.",
       },
       SessionCookie: {
         type: "apiKey",

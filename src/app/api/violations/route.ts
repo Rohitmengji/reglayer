@@ -12,11 +12,10 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
 import { ViolationStatus } from "@/generated/prisma/client";
 import { getFilteredViolations, getStatusSummary } from "@/lib/violations/status";
+import { authenticateRequest } from "@/lib/auth/api-key";
 
 /**
  * GET /api/violations
@@ -32,13 +31,8 @@ import { getFilteredViolations, getStatusSummary } from "@/lib/violations/status
  */
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        { error: "AUTH_REQUIRED", message: "Authentication required" },
-        { status: 401 }
-      );
-    }
+    const auth = await authenticateRequest(request);
+    if (!auth.ok) return auth.response;
 
     const { searchParams } = request.nextUrl;
     const scanId = searchParams.get("scanId");
@@ -74,7 +68,7 @@ export async function GET(request: NextRequest) {
     // independent, so fetch them in parallel
     const [user, scan] = await Promise.all([
       prisma.user.findUnique({
-        where: { email: session.user.email },
+        where: { email: auth.userEmail },
         select: { id: true, memberships: { select: { workspaceId: true } } },
       }),
       prisma.scan.findUnique({

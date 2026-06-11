@@ -20,15 +20,14 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
 import { scanRequestSchema } from "@/lib/validations/scan";
 import { validateScanUrl } from "@/lib/validations/ssrf";
 import { performScan } from "@/services/scanService";
-import { authOptions } from "@/lib/auth/config";
 import { logger } from "@/lib/telemetry/logger";
 import { getPlanContext, getMonthlyScansCount } from "@/lib/credits/plan-context";
 import { rateLimit, RATE_LIMITS, rateLimitHeaders } from "@/lib/rate-limit";
 import { AuthenticationError } from "@/lib/scanner/auth";
+import { authenticateRequest } from "@/lib/auth/api-key";
 
 // Allow up to 90 seconds for scan execution (browser launch + navigation + axe analysis)
 export const maxDuration = 90;
@@ -36,15 +35,13 @@ export const maxDuration = 90;
 export async function POST(request: NextRequest) {
   const apiLogger = logger.withContext({ route: "POST /api/scan" });
 
-  // Authentication required
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-  }
+  // Authentication: API key (preferred) or session fallback
+  const auth = await authenticateRequest(request);
+  if (!auth.ok) return auth.response;
 
-  // Rate limit by IP
-  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-  const rl = await rateLimit(`scan:${ip}`, RATE_LIMITS.scan, "scan");
+  // Rate limit: by key ID for API keys (CI runners share IPs), by IP for sessions
+  const rateLimitKey = auth.via === "key" ? `scan:key:${auth.keyId}` : `scan:${request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown"}`;
+  const rl = await rateLimit(rateLimitKey, RATE_LIMITS.scan, "scan");
   if (!rl.success) {
     return NextResponse.json(
       { error: "Too many requests. Please wait before scanning again." },
@@ -81,7 +78,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Enforce scan limit (resolved via role + plan hierarchy)
-    const planCtx = await getPlanContext();
+    const planCtx = await getPlanContext(auth.via === "key" ? auth.userEmail : undefined);
     if (planCtx) {
       const limit = planCtx.effectiveScansPerMonth;
       if (limit !== -1) {
@@ -96,7 +93,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Delegate to service layer
-    const result = await performScan({ url, options, userEmail: session?.user?.email || undefined });
+    const result = await performScan({ url, options, userEmail: auth.userEmail });
 
     return NextResponse.json(result, { status: 200 });
   } catch (error) {

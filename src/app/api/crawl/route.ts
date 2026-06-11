@@ -6,13 +6,12 @@
  * HOW: Creates crawl job, discovers pages via link following, queues individual scans per page.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth/config";
 import { z } from "zod";
 import { crawlSite } from "@/lib/scanner/crawler/siteCrawler";
 import { getPlanContext } from "@/lib/credits/plan-context";
 import { validateScanUrl } from "@/lib/validations/ssrf";
 import { applyRateLimit } from "@/lib/rate-limit-middleware";
+import { authenticateRequest } from "@/lib/auth/api-key";
 
 const crawlSchema = z.object({
   url: z.string().url(),
@@ -24,13 +23,13 @@ const crawlSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  const blocked = await applyRateLimit(request, "crawl");
-  if (blocked) return blocked;
+  // Rate limit: use key ID for API key auth, IP for session
+  const auth = await authenticateRequest(request);
+  if (!auth.ok) return auth.response;
 
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const rateLimitId = auth.via === "key" ? `crawl:key:${auth.keyId}` : undefined;
+  const blocked = await applyRateLimit(request, "crawl", rateLimitId);
+  if (blocked) return blocked;
 
   let body: unknown;
   try {
@@ -57,7 +56,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Enforce page limit based on plan
-  const planCtx = await getPlanContext();
+  const planCtx = await getPlanContext(auth.via === "key" ? auth.userEmail : undefined);
   if (planCtx && !planCtx.isMasterAdmin) {
     const pageLimit = planCtx.limits.pagesPerScan;
     if (pageLimit !== -1 && maxPages > pageLimit) {

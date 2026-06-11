@@ -34,13 +34,23 @@ export interface PlanContext {
 /**
  * Get the current user's plan context for limit enforcement.
  * Returns null if unauthenticated.
+ *
+ * @param emailOverride - If provided, resolve plan context for this email
+ *   instead of the session user (used for API-key-authenticated requests).
  */
-export async function getPlanContext(): Promise<PlanContext | null> {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.email) return null;
+export async function getPlanContext(emailOverride?: string): Promise<PlanContext | null> {
+  let email: string | undefined;
+
+  if (emailOverride) {
+    email = emailOverride;
+  } else {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) return null;
+    email = session.user.email;
+  }
 
   const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
+    where: { email },
     select: { id: true, email: true, plan: true, isMasterAdmin: true },
   });
 

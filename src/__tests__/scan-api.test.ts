@@ -6,6 +6,7 @@
  * HOW: Mocks scanner, Prisma, auth. Tests: invalid URL, no credits, successful scan, error handling.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { NextResponse } from "next/server";
 
 // Mock all external dependencies
 vi.mock("server-only", () => ({}));
@@ -16,6 +17,10 @@ vi.mock("next-auth", () => ({
 
 vi.mock("@/lib/auth/config", () => ({
   authOptions: {},
+}));
+
+vi.mock("@/lib/auth/api-key", () => ({
+  authenticateRequest: vi.fn(),
 }));
 
 vi.mock("@/services/scanService", () => ({
@@ -52,6 +57,7 @@ import { performScan } from "@/services/scanService";
 import { getPlanContext, getMonthlyScansCount } from "@/lib/credits/plan-context";
 import { rateLimit } from "@/lib/rate-limit";
 import { validateScanUrl } from "@/lib/validations/ssrf";
+import { authenticateRequest } from "@/lib/auth/api-key";
 import { POST } from "@/app/api/scan/route";
 
 function makeRequest(body: unknown): Request {
@@ -65,10 +71,14 @@ function makeRequest(body: unknown): Request {
 describe("POST /api/scan", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Default: authenticated user
-    vi.mocked(getServerSession).mockResolvedValue({
-      user: { email: "test@example.com" },
-    } as any);
+    // Default: authenticated user via session
+    vi.mocked(authenticateRequest).mockResolvedValue({
+      ok: true,
+      userEmail: "test@example.com",
+      userId: "user1",
+      workspaceId: "ws1",
+      via: "session",
+    });
     vi.mocked(rateLimit).mockResolvedValue({
       success: true,
       limit: 10,
@@ -80,7 +90,10 @@ describe("POST /api/scan", () => {
   });
 
   it("returns 401 when not authenticated", async () => {
-    vi.mocked(getServerSession).mockResolvedValue(null);
+    vi.mocked(authenticateRequest).mockResolvedValue({
+      ok: false,
+      response: NextResponse.json({ error: "Authentication required. Provide a Bearer API key or sign in." }, { status: 401 }),
+    } as any);
 
     const req = makeRequest({ url: "https://example.com" });
     const res = await POST(req as any);

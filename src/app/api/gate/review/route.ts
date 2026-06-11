@@ -6,9 +6,8 @@
  * HOW: Scans the provided URL, compares with base branch scan, posts results as PR comment.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { createHash } from "crypto";
 import { validateScanUrl } from "@/lib/validations/ssrf";
-import { prisma } from "@/lib/database/prisma";
+import { authenticateApiKey } from "@/lib/auth/api-key";
 import { z } from "zod";
 import { postPRReview, postIssueComments } from "@/lib/integrations/github-review";
 import type { PRReviewViolation } from "@/lib/integrations/github-review";
@@ -52,31 +51,19 @@ const reviewGateSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  // API key authentication
-  const authHeader = request.headers.get("authorization");
-  const apiKey = authHeader?.replace("Bearer ", "");
+  // API key authentication (required — gate is key-only)
+  const keyResult = await authenticateApiKey(request);
 
-  if (!apiKey) {
+  if (keyResult.status === "no-key") {
     return NextResponse.json(
       { error: "Authorization required. Use: Authorization: Bearer <api-key>" },
       { status: 401 }
     );
   }
 
-  const prefix = apiKey.substring(0, 8);
-  const keyHash = createHash("sha256").update(apiKey).digest("hex");
-  const keyRecord = await prisma.apiKey.findFirst({
-    where: { prefix, keyHash, expiresAt: { gt: new Date() } },
-  });
-
-  if (!keyRecord) {
-    return NextResponse.json({ error: "Invalid API key" }, { status: 403 });
+  if (keyResult.status === "invalid") {
+    return NextResponse.json({ error: "Invalid or expired API key" }, { status: 403 });
   }
-
-  await prisma.apiKey.update({
-    where: { id: keyRecord.id },
-    data: { lastUsedAt: new Date() },
-  }).catch(() => {});
 
   let body: unknown;
   try {

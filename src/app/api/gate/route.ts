@@ -6,9 +6,8 @@
  * HOW: Runs a scan, compares score against threshold. Returns { passed: boolean, score, threshold }.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/database/prisma";
-import { createHash } from "crypto";
 import { validateScanUrl } from "@/lib/validations/ssrf";
+import { authenticateApiKey } from "@/lib/auth/api-key";
 import { z } from "zod";
 
 /**
@@ -38,33 +37,19 @@ const gateSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  // API key authentication
-  const authHeader = request.headers.get("authorization");
-  const apiKey = authHeader?.replace("Bearer ", "");
+  // API key authentication (required — gate is key-only)
+  const keyResult = await authenticateApiKey(request);
 
-  if (!apiKey) {
+  if (keyResult.status === "no-key") {
     return NextResponse.json(
       { error: "Authorization required. Use: Authorization: Bearer <api-key>" },
       { status: 401 }
     );
   }
 
-  // Validate API key — hash and compare against stored key hash
-  const prefix = apiKey.substring(0, 8);
-  const keyHash = createHash("sha256").update(apiKey).digest("hex");
-  const keyRecord = await prisma.apiKey.findFirst({
-    where: { prefix, keyHash, expiresAt: { gt: new Date() } },
-  });
-
-  if (!keyRecord) {
-    return NextResponse.json({ error: "Invalid API key" }, { status: 403 });
+  if (keyResult.status === "invalid") {
+    return NextResponse.json({ error: "Invalid or expired API key" }, { status: 403 });
   }
-
-  // Update last used timestamp
-  await prisma.apiKey.update({
-    where: { id: keyRecord.id },
-    data: { lastUsedAt: new Date() },
-  }).catch(() => {/* non-critical */});
 
   let body: unknown;
   try {

@@ -5,31 +5,23 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { createHash } from "crypto";
-import { prisma } from "@/lib/database/prisma";
+import { authenticateApiKey } from "@/lib/auth/api-key";
 import { evaluateGuard } from "@/lib/guard/guardEngine";
 
 export async function POST(request: NextRequest) {
   try {
-    // API key authentication (for CI/CD use)
-    const authHeader = request.headers.get("authorization");
-    const apiKey = authHeader?.replace("Bearer ", "");
+    // API key authentication (required — guard is key-only)
+    const keyResult = await authenticateApiKey(request);
 
-    if (!apiKey) {
+    if (keyResult.status === "no-key") {
       return NextResponse.json(
         { error: "Authorization required. Use: Authorization: Bearer <api-key>" },
         { status: 401 }
       );
     }
 
-    const prefix = apiKey.substring(0, 8);
-    const keyHash = createHash("sha256").update(apiKey).digest("hex");
-    const keyRecord = await prisma.apiKey.findFirst({
-      where: { prefix, keyHash, expiresAt: { gt: new Date() } },
-    });
-
-    if (!keyRecord) {
-      return NextResponse.json({ error: "Invalid API key" }, { status: 403 });
+    if (keyResult.status === "invalid") {
+      return NextResponse.json({ error: "Invalid or expired API key" }, { status: 403 });
     }
 
     const body = await request.json();
