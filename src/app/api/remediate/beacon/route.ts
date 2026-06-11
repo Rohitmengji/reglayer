@@ -19,7 +19,6 @@ import { createHash } from "crypto";
 export async function GET(request: NextRequest) {
   const apiKey = request.nextUrl.searchParams.get("key") || "";
   const fixCount = parseInt(request.nextUrl.searchParams.get("fixes") || "0", 10);
-  const _pageUrl = request.nextUrl.searchParams.get("url") || "";
 
   // Validate API key (non-blocking — fire and forget)
   if (apiKey && fixCount > 0) {

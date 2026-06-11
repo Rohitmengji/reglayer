@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
-import { getProof, verifyProof, revokeProof } from "@/lib/vault/proofEngine";
+import { getProof } from "@/lib/vault/proofEngine";
 
 export async function GET(
   _request: NextRequest,

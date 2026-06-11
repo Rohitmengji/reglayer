@@ -18,8 +18,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   BarChart3,
-  TrendingUp,
-  TrendingDown,
   Shield,
   AlertTriangle,
   Globe,

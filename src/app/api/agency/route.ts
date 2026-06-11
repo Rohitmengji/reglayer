@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET(_request: NextRequest) {
+export async function GET() {
   try {
     // Feature gate: agency is enterprise-only
     const guard = await requireFeature("agency");

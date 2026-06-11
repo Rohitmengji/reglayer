@@ -19,7 +19,7 @@
  * ---------------------------------------------------------
  */
 
-import { SEVERITY_WEIGHTS, COMPLIANCE_THRESHOLDS } from "@/lib/constants";
+import { COMPLIANCE_THRESHOLDS } from "@/lib/constants";
 import type { ScanSummary, ViolationImpact } from "@/lib/types";
 import type { AxeViolation } from "./axeScanner";
 

@@ -17,14 +17,12 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Brain,
-  Loader2,
   Users,
   Wrench,
   Code2,
   Gauge,
   Sparkles,
 } from "lucide-react";
-import Link from "next/link";
 import { handleUpgradeResponse } from "@/lib/upgrade-prompt";
 import { useI18n } from "@/components/i18n-provider";
 

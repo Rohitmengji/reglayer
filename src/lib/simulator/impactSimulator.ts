@@ -129,7 +129,7 @@ export async function simulateImpact(scanId: string): Promise<SimulationResult |
 
 type ViolationData = { ruleId: string; impact: string; description: string; affectedElements: unknown; wcagCriteria: string | null };
 
-function simulateLowVisionBlur(violations: ViolationData[], total: number): DisabilitySimulation {
+function simulateLowVisionBlur(violations: ViolationData[], _total: number): DisabilitySimulation {
   const relevant = violations.filter((v) =>
     ["color-contrast", "text-spacing", "resize-text", "target-size"].includes(v.ruleId)
   );
@@ -158,7 +158,7 @@ function simulateLowVisionBlur(violations: ViolationData[], total: number): Disa
   };
 }
 
-function simulateLowVisionTunnel(violations: ViolationData[], total: number): DisabilitySimulation {
+function simulateLowVisionTunnel(violations: ViolationData[], _total: number): DisabilitySimulation {
   const relevant = violations.filter((v) =>
     ["focus-visible", "bypass", "heading-order", "landmark-one-main", "region"].includes(v.ruleId)
   );

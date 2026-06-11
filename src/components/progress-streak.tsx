@@ -23,7 +23,7 @@
  */
 
 import { useState, useEffect } from "react";
-import { Flame, Trophy, TrendingUp, Calendar, Shield } from "lucide-react";
+import { Flame, Trophy, Calendar } from "lucide-react";
 
 interface StreakData {
   currentStreak: number;
@@ -140,7 +140,7 @@ export function ProgressStreak() {
           Last 30 days
         </div>
         <div className="flex gap-0.75">
-          {data.last30Days.map((day, i) => (
+          {data.last30Days.map((day) => (
             <div
               key={day.date}
               className={`h-6 flex-1 rounded-[3px] transition-colors ${

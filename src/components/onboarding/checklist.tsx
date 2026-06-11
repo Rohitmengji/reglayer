@@ -30,7 +30,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import {
   CheckCircle2, Circle, ChevronDown, ChevronUp, X,
-  Globe, Scan, Users, Plug, Sparkles, Trophy,
+  Globe, Scan, Users, Plug, Sparkles,
 } from "lucide-react";
 import { fireConfetti } from "@/components/confetti";
 

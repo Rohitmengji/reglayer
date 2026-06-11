@@ -73,7 +73,8 @@ export async function GET(request: NextRequest) {
       quiz = generateQuiz(lessonId!, user.id, Math.min(count, 10));
     }
 
-    // Strip correctIndex before sending to client
+    // Strip correctIndex before sending to client (intentional omit via destructure)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const clientQuestions = quiz.questions.map(({ correctIndex, ...rest }) => rest);
 
     return NextResponse.json({

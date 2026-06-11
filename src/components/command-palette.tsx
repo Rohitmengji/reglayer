@@ -31,7 +31,7 @@ import {
   Search, LayoutDashboard, Scan, Globe, Grid3X3, Settings,
   BarChart3, Zap, Plug, AlertTriangle, TrendingUp, Building2,
   PieChart, Shield, FileText, Users, Bell, Key, Moon, Sun,
-  ArrowRight, Hash, Sparkles, Clock, Star,
+  ArrowRight, Sparkles, Clock, Star,
 } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
 
@@ -48,17 +48,6 @@ interface CommandItem {
 }
 
 // ─── Fuzzy Match ──────────────────────────────────────────────────────────────
-
-function fuzzyMatch(query: string, text: string): boolean {
-  const q = query.toLowerCase();
-  const t = text.toLowerCase();
-  if (t.includes(q)) return true;
-  let qi = 0;
-  for (let i = 0; i < t.length && qi < q.length; i++) {
-    if (t[i] === q[qi]) qi++;
-  }
-  return qi === q.length;
-}
 
 function fuzzyScore(query: string, text: string): number {
   const q = query.toLowerCase();

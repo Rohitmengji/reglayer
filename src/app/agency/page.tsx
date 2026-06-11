@@ -61,7 +61,6 @@ export default function AgencyDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [isMasterAdmin, setIsMasterAdmin] = useState(false);
   const [canCreate, setCanCreate] = useState(false);
 
   // Create agency form
@@ -92,7 +91,6 @@ export default function AgencyDashboard() {
       const res = await fetch("/api/agency");
       if (!res.ok) throw new Error("Failed to load agencies");
       const data = await res.json();
-      if (data.isMasterAdmin) setIsMasterAdmin(true);
       if (data.canCreate) setCanCreate(true);
       if (data.agencies?.length > 0) {
         const agencyId = data.agencies[0].id;
@@ -122,7 +120,6 @@ export default function AgencyDashboard() {
         return res.json();
       })
       .then(async (data) => {
-        if (data.isMasterAdmin) setIsMasterAdmin(true);
         if (data.canCreate) setCanCreate(true);
         if (data.agencies?.length > 0) {
           const agencyId = data.agencies[0].id;

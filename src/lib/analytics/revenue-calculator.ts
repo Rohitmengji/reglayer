@@ -228,7 +228,7 @@ export function calculateRevenueImpact(
 function assessLegalRisk(
   accessibility: AccessibilityData,
   region: string,
-  annualLoss: number
+  _annualLoss: number
 ): RevenueImpactResult["legalRisk"] {
   const laws: string[] = [];
 

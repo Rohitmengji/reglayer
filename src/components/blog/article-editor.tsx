@@ -19,11 +19,11 @@
  * - PATCH /api/blog/[slug] to save (always creates version first)
  */
 
-import { useState, useCallback, useRef } from "react";
+import { useState } from "react";
 import { useSession } from "next-auth/react";
 import {
   Pencil, X, Save, Sparkles, RotateCcw, Check, AlertTriangle,
-  Loader2, History, Eye,
+  Loader2, History,
 } from "lucide-react";
 
 interface Section {

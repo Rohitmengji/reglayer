@@ -85,7 +85,7 @@ function CompareContent() {
         setError(t("compare.fetchFailed"));
         setLoading(false);
       });
-  }, [baseId, headId]);
+  }, [baseId, headId, t]);
 
   if (loading) {
     return (
