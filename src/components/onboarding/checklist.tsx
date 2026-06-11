@@ -55,8 +55,9 @@ export function OnboardingChecklist() {
   const [loading, setLoading] = useState(true);
 
   // Fetch onboarding status from server (authoritative)
+  const userEmail = session?.user?.email;
   useEffect(() => {
-    if (!session?.user) return;
+    if (!userEmail) return;
     let cancelled = false;
     fetch("/api/onboarding/status")
       .then((r) => (r.ok ? r.json() : null))
@@ -90,7 +91,7 @@ export function OnboardingChecklist() {
         }
       });
     return () => { cancelled = true; };
-  }, [session]);
+  }, [userEmail]);
 
   // Celebrate on completion
   useEffect(() => {
