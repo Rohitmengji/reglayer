@@ -1,7 +1,7 @@
 /**
  * GET /api/onboarding/status
- * Returns boolean flags for each onboarding step.
- * Used by the floating checklist widget.
+ * Returns boolean flags for each onboarding step + user's persona/dismissed state.
+ * Used by the floating checklist widget and role onboarding overlay.
  */
 
 import { NextResponse } from "next/server";
@@ -17,7 +17,7 @@ export async function GET() {
 
   const user = await prisma.user.findUnique({
     where: { email: session.user.email },
-    select: { id: true },
+    select: { id: true, persona: true, onboardingDismissed: true, createdAt: true },
   });
 
   if (!user) {
@@ -43,9 +43,14 @@ export async function GET() {
   ]);
 
   return NextResponse.json({
+    // Onboarding visibility state (server-authoritative)
+    persona: user.persona,
+    onboardingDismissed: user.onboardingDismissed,
+    totalScans: scanCount,
+    // Task completion flags
     hasSite: siteCount > 0,
     hasScan: scanCount > 0,
-    hasTeammate: teamCount > 1, // More than just the owner
+    hasTeammate: teamCount > 1,
     hasIntegration: integrationCount > 0,
     hasFixed: false, // TODO: track when user fixes first issue
   });

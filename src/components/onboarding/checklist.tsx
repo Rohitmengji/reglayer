@@ -54,31 +54,42 @@ export function OnboardingChecklist() {
   const [tasks, setTasks] = useState<OnboardingTask[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Check dismissed state
-  useEffect(() => {
-    const val = localStorage.getItem(DISMISSED_KEY);
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: localStorage is client-only; reading it in an effect avoids a hydration mismatch
-    setDismissed(val === "true");
-  }, []);
-
-  // Fetch onboarding status
+  // Fetch onboarding status from server (authoritative)
   useEffect(() => {
     if (!session?.user) return;
+    let cancelled = false;
     fetch("/api/onboarding/status")
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
+        if (cancelled) return;
         if (!data) {
-          // API doesn't exist yet — show with defaults
           setTasks(getDefaultTasks({}));
-        } else {
-          setTasks(getDefaultTasks(data));
+          setDismissed(true); // No data = hide
+          setLoading(false);
+          return;
         }
+
+        // Server-side visibility decision:
+        // Hide if: user dismissed it server-side, OR user has ≥5 scans (they know what they're doing)
+        const shouldHide = data.onboardingDismissed || data.totalScans >= 5;
+        setDismissed(shouldHide);
+
+        // Sync localStorage for consistency
+        if (shouldHide) {
+          localStorage.setItem(DISMISSED_KEY, "true");
+        }
+
+        setTasks(getDefaultTasks(data));
         setLoading(false);
       })
       .catch(() => {
-        setTasks(getDefaultTasks({}));
-        setLoading(false);
+        if (!cancelled) {
+          setTasks(getDefaultTasks({}));
+          setDismissed(true);
+          setLoading(false);
+        }
       });
+    return () => { cancelled = true; };
   }, [session]);
 
   // Celebrate on completion
@@ -98,16 +109,18 @@ export function OnboardingChecklist() {
   const dismiss = useCallback(() => {
     localStorage.setItem(DISMISSED_KEY, "true");
     setDismissed(true);
+    // Persist dismissal to server (so it survives across devices)
+    fetch("/api/onboarding/dismiss", { method: "POST" }).catch(() => {});
   }, []);
 
   // Don't show if not logged in, dismissed, or loading
   if (!session?.user || dismissed || loading || total === 0) return null;
 
-  // Hide if all completed for more than 3 days
+  // Hide if all completed
   if (completed === total && localStorage.getItem(COMPLETED_KEY)) return null;
 
   return (
-    <div className="fixed bottom-6 right-6 z-9990 w-85 animate-in slide-in-from-bottom-4 fade-in duration-300">
+    <div className="fixed bottom-4 right-4 z-40 w-72 sm:w-80 sm:bottom-6 sm:right-6 animate-in slide-in-from-bottom-4 fade-in duration-300">
       <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
         {/* Header */}
         <button

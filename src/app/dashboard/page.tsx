@@ -82,14 +82,26 @@ export default function DashboardPage() {
   const { data: session } = useSession();
 
   useEffect(() => {
-    // Show role onboarding until the user has picked a persona
-    // (RoleOnboarding persists the selection to localStorage itself)
-    if (!localStorage.getItem("reglayer_persona")) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: localStorage is client-only; reading it in an effect avoids a hydration mismatch
-      setShowRoleOnboarding(true);
-    }
-
     const controller = new AbortController();
+
+    // Fetch onboarding status from server (authoritative source)
+    fetch("/api/onboarding/status", { signal: controller.signal })
+      .then((r) => r.ok ? r.json() : null)
+      .then((onboarding) => {
+        if (!onboarding) return;
+        // Show role picker ONLY if:
+        // - User has no persona set (server-side)
+        // - User has fewer than 3 scans (genuinely new, not a veteran on a new browser)
+        if (!onboarding.persona && onboarding.totalScans < 3) {
+          setShowRoleOnboarding(true);
+          // Sync localStorage for fast subsequent loads
+          localStorage.removeItem("reglayer_persona");
+        } else if (onboarding.persona) {
+          // Seed localStorage from server (handles new device scenario)
+          localStorage.setItem("reglayer_persona", onboarding.persona);
+        }
+      })
+      .catch(() => {});
 
     fetch("/api/dashboard/stats", { signal: controller.signal })
       .then((r) => {

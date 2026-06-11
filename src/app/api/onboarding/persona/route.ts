@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
+import { prisma } from "@/lib/database/prisma";
 
 const VALID_PERSONAS = ["developer", "designer", "legal", "executive"] as const;
 
@@ -15,7 +16,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid persona" }, { status: 400 });
   }
 
-  // Store persona preference (in metadata or a settings table)
-  // For now, we acknowledge it — the client stores in localStorage
+  // Persist persona to DB
+  await prisma.user.update({
+    where: { email: session.user.email },
+    data: { persona: body.persona },
+  });
+
   return NextResponse.json({ success: true, persona: body.persona });
 }
