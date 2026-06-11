@@ -112,18 +112,89 @@ RegLayer is an enterprise accessibility compliance operating system. It combines
 - **Database indexes:** Optimized queries on all hot paths
 - **Plan gating:** Feature access controlled by workspace plan tier
 
+### 15. Lawsuit Risk Score Engine
+- **Predictive legal liability:** 0–100 score based on 2025 ADA filing patterns
+- **6 high-litigation violations:** Weighted model (image-alt, label, color-contrast, link-name, keyboard, form-labels)
+- **Industry multipliers:** E-commerce 1.8×, restaurant 1.7×, healthcare 1.6×, etc.
+- **Geography multipliers:** NY 1.9×, FL 1.7×, CA 1.6×, EU 1.8×
+- **Financial exposure estimate:** Dollar liability per violation pattern
+- **Risk tiers:** LOW / MODERATE / HIGH / CRITICAL with color-coded badges
+- **Executive narrative:** Plain-English explanation for non-technical stakeholders
+- **Legal disclaimer:** Non-dismissable notice on all risk displays
+
+### 16. Compliance Proof Vault
+- **Cryptographic timestamping:** SHA-256 hash chains for tamper-evident records
+- **Event types:** Scan completed, violation detected, status changed, report generated, vault exported
+- **Chain verification:** Recalculate all hashes to detect tampering
+- **PDF export:** Court-admissible compliance evidence with chain of custody
+- **Automated recording:** Events captured after every scan and violation status change
+
+### 17. CI/CD Regression Guard
+- **Guard policies:** Per-site threshold configuration
+- **Deploy blocking:** Exit code 1 on critical violations or score regression
+- **GitHub integration:** PR comments with violation summary and fix suggestions
+- **CLI support:** `reglayer check --url --threshold --block-on-critical`
+- **Baseline comparison:** Detect new violations introduced in a PR
+
+### 18. Regulation Deadline Intelligence
+- **7 regulations seeded:** EAA, ADA Title II/III, HHS Section 504, Section 508, AODA, EN 301 549
+- **Obligation engine:** Auto-maps regulations to your industry + geography
+- **Countdown timers:** Days remaining to each applicable deadline
+- **Urgency classification:** CRITICAL (<30d), HIGH (30–90d), MEDIUM (90–180d), LOW (180d+)
+- **Compliance gap count:** Violations failing each regulation's required criteria
+
+### 19. White-Label Agency Platform
+- **Full rebranding:** Custom domain, logo, colors, favicon, brand name
+- **Client management:** Add/remove clients, each with isolated workspace
+- **Agency API keys:** Programmatic access with SHA-256 hashed storage
+- **Plans:** STARTER (10 clients), PROFESSIONAL (50, full white-label), ENTERPRISE (unlimited)
+- **Branded emails:** Agency logo + colors in all transactional emails
+- **Revenue share model:** Configurable platform fee percentage
+
+### 20. Human Testing Network
+- **Validator profiles:** Disability types, assistive tech, OS, browser
+- **Test requests:** Specify URL, user journeys, required AT, budget
+- **Matching engine:** Auto-match validators by AT + disability + availability
+- **Payment tracking:** Budget hold, per-validator payment, platform fee (30%)
+- **Session management:** Assigned → Started → Submitted → Approved flow
+- **Quality ratings:** 1–5 client ratings per session
+
+### 21. Notification System
+- **In-app bell:** Unread count badge + dropdown in header
+- **Notification types:** Scan complete, new violations, weekly digest, compliance alerts
+- **Read/unread management:** Mark individual or all as read
+- **Preferences:** Per-type opt-in/out for email + in-app channels
+- **Weekly digest cron:** Scheduled summary of compliance status
+
+### 22. Onboarding UX
+- **Role-based personalization:** Developer / Designer / Legal / Executive personas
+- **Getting started checklist:** 5-step widget (add site, scan, invite, connect CI, fix)
+- **Server-side state:** Persona + dismissal persisted to DB (cross-device)
+- **Smart visibility:** Hides for returning users (≥5 scans or dismissed)
+- **Confetti celebration:** On checklist completion
+
+### 23. Blog CMS
+- **Admin editor:** Rich text editing with version history
+- **AI generation:** GPT-powered article drafts
+- **Article states:** DRAFT → PUBLISHED → ARCHIVED
+- **SEO:** Meta tags, structured data, sitemap integration
+
 ---
 
 ## Technical Metrics
 
 | Metric | Value |
 |--------|-------|
-| Total source files | ~120+ |
-| API endpoints | 35+ |
-| UI pages | 25+ |
-| Components | 40+ |
-| Dependencies | 50+ |
-| Test files | 12 |
+| Total source files | ~200+ |
+| API endpoints | 107 |
+| UI pages | 70 |
+| Components | 50+ |
+| Dependencies | 55+ |
+| Test files | 15 |
+| Tests passing | 198 |
+| Prisma models | 29 |
+| Prisma enums | 10 |
+| i18n languages | 7 |
 | Scan duration (avg) | 6-18s |
 | Journey scan duration | 30-90s |
 | PDF size (avg) | ~17KB |

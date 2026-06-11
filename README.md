@@ -1,40 +1,115 @@
 # RegLayer
 
-**Developer-native compliance infrastructure** — an enterprise-grade accessibility scanner platform built with Next.js.
-
-RegLayer scans web pages for WCAG 2.1 / ADA / Section 508 violations, generates compliance reports, and provides AI-powered remediation guidance.
+**The accessibility compliance operating system** — enterprise-grade WCAG scanning, lawsuit risk intelligence, automated remediation, and regulatory deadline tracking. Built for engineering teams, compliance officers, and accessibility agencies.
 
 ![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)
+![Prisma](https://img.shields.io/badge/Prisma-7-2D3748?logo=prisma)
+![Tests](https://img.shields.io/badge/Tests-198_passing-brightgreen)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
-## Features
+## Why RegLayer
 
+Over 5,000 ADA lawsuits targeted websites in 2025 — a 37% surge. 94.8% of websites still fail basic WCAG checks. Overlay solutions are getting fined (accessiBe: $1M FTC fine). No tool provides the governance documentation courts require.
+
+RegLayer is the first platform that combines automated scanning with **lawsuit risk scoring**, **cryptographic compliance proof**, and **regulation deadline intelligence** — turning accessibility from a developer checkbox into executive-level risk management.
+
+---
+
+## Platform Features
+
+### Core Scanning Engine
 | Feature | Description |
 |---------|-------------|
-| **Accessibility Scanning** | Powered by axe-core 4.11 + Playwright for real browser evaluation |
-| **Multi-page Crawling** | Crawl up to 10 pages from a single domain in one scan |
-| **Compliance Engine** | WCAG 2.1 AA, ADA Title III, Section 508 rule evaluation |
-| **PDF Reports** | Export compliance reports with scores, violations, and recommendations |
-| **Screenshot Evidence** | Capture full-page screenshots as visual evidence |
-| **AI Explanations** | GPT-4o-mini powered plain-language violation explanations |
-| **Async Queue** | Background job processing for long-running scans |
-| **Scheduled Scans** | Cron-based recurring scans for continuous monitoring |
-| **Compliance Trends** | Track accessibility scores over time |
-| **Authentication** | NextAuth.js with credentials provider |
-| **Persistent History** | Scan history stored locally with Zustand |
+| **Single-page Scan** | axe-core 4.11 + Playwright real-browser evaluation |
+| **Multi-page Crawl** | BFS crawler with configurable depth/concurrency (up to 10 pages) |
+| **Authenticated Scanning** | Scan behind login walls with stored credentials |
+| **User Journey Testing** | Multi-step flow scanning (checkout, login, forms) |
+| **Design System Scanner** | Scan Storybook components individually |
+| **Screenshot Evidence** | Full-page capture at 1280×720 for visual proof |
+| **Async Queue** | Non-blocking job processing with polling |
+| **Scan Comparison** | Side-by-side diff between any two scans |
+
+### Intelligence & Risk
+| Feature | Description |
+|---------|-------------|
+| **Lawsuit Risk Score** | Predictive legal liability score (0–100) based on 2025 filing patterns |
+| **Financial Exposure** | Estimated dollar exposure from violation profile |
+| **Industry/Geography Multipliers** | Risk adjusted for your sector (e-commerce 1.8×) and state (NY 1.9×) |
+| **Compliance Forecasting** | Predict future compliance trajectory |
+| **Vendor Risk Scanner** | Third-party accessibility risk assessment |
+| **AI Explanations** | GPT-4o-mini powered plain-language violation context |
+
+### Compliance & Regulatory
+| Feature | Description |
+|---------|-------------|
+| **WCAG 2.1 AA** | Full 50-criteria evaluation |
+| **EAA (EN 301 549)** | European Accessibility Act compliance |
+| **ADA Title II/III** | US federal accessibility standards |
+| **Section 508** | Federal contractor requirements |
+| **VPAT/ACR Generator** | Auto-generated conformance reports |
+| **Regulation Deadline Engine** | Countdown timers for applicable deadlines |
+| **Compliance Proof Vault** | Cryptographically timestamped audit trail |
+
+### Remediation & Automation
+| Feature | Description |
+|---------|-------------|
+| **Auto-Remediation Engine** | Server-side DOM transforms (lang, skip-links, landmarks, alt-text) |
+| **Drop-in Fix Script** | <2KB vanilla JS snippet for instant client-side fixes |
+| **CI/CD Regression Guard** | Block deploys when critical violations introduced |
+| **Scheduled Monitoring** | Cron-based recurring scans with alert rules |
+| **Priority Engine** | AI-driven fix prioritization by impact |
+
+### Business & Agency
+| Feature | Description |
+|---------|-------------|
+| **White-Label Platform** | Agencies resell under their own brand (custom domain, logo, colors) |
+| **Multi-Tenant Workspaces** | Full data isolation per organization |
+| **Revenue Impact Calculator** | Dollar cost per violation using disability prevalence data |
+| **Human Testing Network** | Crowdsourced validation by users with disabilities |
+| **Executive Dashboard** | C-suite risk overview with financial exposure |
+
+### Integrations & Notifications
+| Feature | Description |
+|---------|-------------|
+| **GitHub** | PR review with inline fix suggestions, issue creation |
+| **Slack** | Rich Block Kit messages to channels |
+| **Email (SMTP)** | Scan complete, new violations, weekly digest |
+| **Webhooks** | Custom HTTP endpoints for all scan events |
+| **Real User Monitoring** | ~3KB JS snippet detecting 9 barrier types in production |
+
+### Platform Infrastructure
+| Feature | Description |
+|---------|-------------|
+| **RBAC** | Owner → Admin → Member → Viewer per workspace |
+| **API Key Auth** | SHA-256 hashed keys with timing-safe comparison |
+| **Audit Log** | Full action trail with actor, timestamp, IP |
+| **i18n** | 7 EU languages (EN, DE, FR, ES, IT, NL, PT) |
+| **Blog CMS** | Admin editor with AI generation |
+| **Feature Gates** | Plan-based access control per workspace |
+
+---
 
 ## Tech Stack
 
-- **Framework:** Next.js 16 (App Router, Turbopack)
-- **Language:** TypeScript 5
-- **Styling:** Tailwind CSS v4
-- **Scanner:** Playwright + axe-core (manual injection)
-- **State:** Zustand (client) + React Query (server)
-- **Auth:** NextAuth.js 4
-- **AI:** OpenAI GPT-4o-mini
-- **PDF:** jsPDF + jspdf-autotable
-- **Validation:** Zod
+| Layer | Technology |
+|-------|-----------|
+| **Framework** | Next.js 16 (App Router, Turbopack, Server Components) |
+| **Language** | TypeScript 5 (strict mode) |
+| **Database** | PostgreSQL (Neon serverless) via Prisma 7 ORM |
+| **Auth** | NextAuth.js 4 (Google OAuth + Credentials + JWT) |
+| **Styling** | Tailwind CSS v4 |
+| **State** | Zustand (client) + React Query (server) |
+| **Scanner** | Playwright + axe-core + @sparticuz/chromium |
+| **AI** | OpenAI GPT-4o-mini |
+| **Monitoring** | Sentry (errors) + Upstash Redis (rate limits) |
+| **Email** | Nodemailer / SMTP |
+| **PDF** | jsPDF + jspdf-autotable |
+| **Validation** | Zod |
+| **Testing** | Vitest + Playwright (E2E) |
+| **Deployment** | Vercel (serverless) |
+
+---
 
 ## Getting Started
 
@@ -54,81 +129,177 @@ npx playwright install chromium
 
 ### Environment Variables
 
-Create a `.env` file:
+Create a `.env.local` file:
 
 ```env
-NEXT_PUBLIC_APP_NAME=RegLayer
-NEXT_PUBLIC_APP_VERSION=0.1.0
-SCAN_TIMEOUT=30000
-MAX_CONCURRENT_SCANS=5
+# Database
+DATABASE_URL=postgresql://user:pass@host:5432/neondb
 
 # Auth
 NEXTAUTH_URL=http://localhost:3000
 NEXTAUTH_SECRET=your-secret-here
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
 
-# OpenAI (optional — AI features disabled without this)
+# Email
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=...
+SMTP_PASS=...
+
+# AI (optional — features degrade gracefully without)
 OPENAI_API_KEY=sk-...
+
+# Rate Limiting
+UPSTASH_REDIS_REST_URL=...
+UPSTASH_REDIS_REST_TOKEN=...
+
+# Monitoring
+SENTRY_DSN=...
 ```
 
-### Run Development Server
+### Development
 
 ```bash
-npm run dev
+npm run dev          # Start dev server (Turbopack)
+npm test             # Run unit tests (Vitest)
+npm run test:e2e     # Run E2E tests (Playwright)
+npm run lint         # ESLint
+npm run build        # Production build
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
 
-### Build for Production
-
-```bash
-npm run build
-npm start
-```
-
-## API Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/scan` | Run accessibility scan on a URL |
-| POST | `/api/scan/async` | Enqueue async scan job |
-| GET | `/api/scan/async?jobId=...` | Poll async job status |
-| POST | `/api/scan/crawl` | Multi-page crawl scan |
-| POST | `/api/reports` | Generate PDF compliance report |
-| POST | `/api/ai/explain` | AI-powered violation explanation |
-| GET/POST | `/api/schedules` | Manage recurring scan schedules |
-| GET | `/api/health` | Health check |
-
-## Authentication
-
-Default credentials for development:
-
-- **Email:** admin@reglayer.dev
-- **Password:** reglayer2024
+---
 
 ## Project Structure
 
 ```
 src/
-├── app/                    # Next.js App Router pages & API routes
-│   ├── api/               # REST API endpoints
-│   ├── dashboard/         # Main scanner dashboard
-│   ├── scans/             # Scan history & detail views
-│   ├── settings/          # Schedule management
-│   └── auth/              # Login page
-├── components/            # React components
-│   ├── ui/                # Primitives (Button, Card, Input, Badge)
-│   ├── scanner/           # Scanner-specific components
-│   ├── charts/            # Compliance trend charts
-│   └── layout/            # App shell, navigation
-├── lib/                   # Core business logic
-│   ├── scanner/           # Scan engine, pipelines, normalization
-│   ├── regulations/       # Compliance rules & evaluation
-│   ├── ai/               # AI explainers & summaries
-│   ├── queue/            # Job queue & scheduler
-│   └── telemetry/        # Structured logging
-├── stores/               # Zustand state stores
-└── hooks/                # React Query hooks
+├── app/                         # Next.js App Router (70 pages, 107 API routes)
+│   ├── api/                     # REST API endpoints
+│   │   ├── scan/                # Scanning endpoints
+│   │   ├── violations/          # Violation management
+│   │   ├── auth/                # Authentication flows
+│   │   ├── agency/              # White-label agency APIs
+│   │   ├── notifications/       # In-app notification system
+│   │   ├── onboarding/          # Onboarding state management
+│   │   └── cron/                # Scheduled job handlers
+│   ├── dashboard/               # Main dashboard + sub-pages
+│   ├── risk/                    # Lawsuit risk score page
+│   ├── vault/                   # Compliance proof vault
+│   ├── regulations/             # Regulation deadline intelligence
+│   ├── agency/                  # White-label agency admin
+│   ├── testing/                 # Human testing network
+│   └── auth/                    # Login, register, forgot-password
+├── components/                  # React components (50+)
+│   ├── ui/                      # Design system primitives
+│   ├── layout/                  # App shell, sidebar, footer, brand provider
+│   ├── onboarding/              # Role selector, getting started checklist
+│   ├── risk/                    # Risk score badge, breakdown, context form
+│   ├── scanner/                 # Scan form, violation cards
+│   ├── charts/                  # Compliance trend, dashboard charts
+│   └── notifications/           # Bell icon, notification dropdown
+├── lib/                         # Core business logic
+│   ├── scanner/                 # Scan engine, crawlers, pipelines
+│   │   ├── accessibility/       # axe-core integration, normalization
+│   │   ├── browser/             # Playwright/Chromium management
+│   │   └── pipelines/           # Scan orchestration
+│   ├── risk/                    # Litigation risk scoring engine
+│   ├── vault/                   # Compliance proof with hash chains
+│   ├── regulations/             # Regulation deadline engine
+│   ├── compliance/              # Policy evaluator, VPAT generator
+│   ├── guard/                   # CI/CD regression guard engine
+│   ├── testing/                 # Human testing network logic
+│   ├── intelligence/            # AIS engine, alerts, regression detection
+│   ├── auth/                    # NextAuth config, RBAC
+│   ├── email/                   # Nodemailer service, branded templates
+│   ├── ai/                      # OpenAI explainers, structured output
+│   ├── integrations/            # GitHub, Slack, webhook dispatchers
+│   ├── queue/                   # Job queue, scheduler, workers
+│   ├── credits/                 # Plan limits, credit tracking
+│   ├── database/                # Prisma client, repositories
+│   └── i18n/                    # 7 EU language translations
+├── services/                    # Service layer (scanService)
+├── stores/                      # Zustand state (scanStore)
+├── hooks/                       # React hooks (features, trends, violations)
+└── __tests__/                   # Unit tests (15 test files, 198 passing)
 ```
+
+---
+
+## Database Schema
+
+29 models organized into domains:
+
+| Domain | Models |
+|--------|--------|
+| **Identity** | User, PasswordReset, CreditGrant |
+| **Multi-tenancy** | Workspace, WorkspaceMember, WorkspaceFeature |
+| **Scanning** | Site, Scan, Violation, Schedule |
+| **Integrations** | Webhook, ApiKey, Integration, AuthConfig, NotificationPreference |
+| **Agency** | Agency, AgencyClient, AgencyApiKey |
+| **Risk & Compliance** | LitigationRiskScore, LitigationWeight, ComplianceProof, GuardPolicy |
+| **Marketplace** | Tester, AuditRequest |
+| **Content** | Article, ArticleVersion |
+| **Analytics** | AuditLog, ConversionEvent, AccessRequest |
+
+---
+
+## API Overview
+
+107 API routes organized by domain:
+
+| Domain | Key Endpoints | Auth |
+|--------|--------------|------|
+| **Scanning** | `POST /api/scan`, `POST /api/scan/crawl` | Session / API Key |
+| **Violations** | `GET /api/violations`, `PATCH /api/violations/status` | Session |
+| **Risk** | `GET /api/risk`, `POST /api/risk/recalculate` | Session |
+| **Vault** | `GET /api/vault/events`, `POST /api/vault/export` | Session |
+| **Agency** | `POST /api/agency`, `PATCH /api/agency/[id]` | Owner |
+| **Notifications** | `GET /api/notifications/inbox`, `PATCH /api/notifications/read` | Session |
+| **CI/CD** | `POST /api/gate/review` | API Key |
+| **Integrations** | `POST /api/integrations/github/issues` | Session |
+| **Admin** | `GET /api/admin`, `POST /api/admin` | Master Admin |
+| **Public** | `GET /api/badge/[siteId]`, `GET /api/health` | None |
+
+Full API reference available at `/api-reference` in the running app.
+
+---
+
+## Testing
+
+```bash
+npm test                # Unit tests (Vitest)
+npm run test:e2e        # E2E tests (Playwright)
+npm run visual-audit    # Visual regression screenshots
+```
+
+- 15 test suites, 198 tests passing
+- Coverage: rate-limit, RBAC, scan API, queue, scheduler, compliance, auth
+
+---
+
+## Deployment
+
+Deployed on Vercel with:
+- Serverless functions (60s timeout for scan endpoints)
+- Neon PostgreSQL (serverless Postgres)
+- Upstash Redis (rate limiting)
+- Sentry (error tracking)
+
+```bash
+npm run build    # Verify production build
+vercel deploy    # Deploy to Vercel
+```
+
+---
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development workflow, coding standards, and PR process.
+
+---
 
 ## License
 
