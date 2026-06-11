@@ -79,7 +79,19 @@ RegLayer evolves from a scan tool into the **compliance operating system** for E
 
 ---
 
-## ✅ Phase 4: Scale & Enterprise (PARTIALLY COMPLETE)
+## ✅ Phase 4: Scale & Enterprise (COMPLETE)
+
+### 4.1 — Authenticated Scanning ✅
+- Cookie-based auth injection for scans
+- Encrypted credential storage (AuthConfig model)
+- Form-fill automation for gated content
+- Session management across multi-page crawls
+
+### 4.2 — API-First Platform ✅
+- Full REST API (107 routes) with Zod validation
+- API key auth with SHA-256 hashed storage
+- Rate limiting via Upstash Redis
+- OpenAPI reference page at /api-reference
 
 ### 4.3 — Design System Compliance ✅
 - Scan Storybook instances (stories.json / index.json)
@@ -88,68 +100,71 @@ RegLayer evolves from a scan tool into the **compliance operating system** for E
 - Usage count tracking for impact prioritization
 - Support for Storybook 6+ and 7+
 
-### 4.1 — Multi-Region Scanning ⬜
-- Scan from US, EU, APAC regions
-- Detect geo-specific content/accessibility differences
-- CDN-aware: test what users actually see
-
-### 4.2 — Authenticated Scanning ⬜
-- Cookie-based auth injection for scans
-- OAuth flow recording (scan as authenticated user)
-- Form-fill automation for gated content
-- Session management across multi-page crawls
-
-### 4.4 — API-First Platform ⬜
-- Full REST API with OpenAPI spec
-- SDKs: Node.js, Python, Go
-- Usage metering and billing integration (Stripe)
-- Rate limiting via Redis/Upstash
+### 4.4 — White-Label Agency Platform ✅
+- Full rebranding: custom domain, logo, colors, brand name
+- Agency client management with workspace isolation
+- Agency API keys for programmatic access
+- Plans: STARTER / PROFESSIONAL / ENTERPRISE
+- Branded email templates
 
 ---
 
-## Phase 5: Market Differentiation (NEXT)
+## ✅ Phase 5: Market Differentiation (COMPLETE)
 
-### 5.1 — Custom Compliance Policies
-- Policy builder: define custom rules
-- Policy templates: WCAG 2.1, EAA, Section 508, AODA
-- Compliance scoring weights per policy
-- Exception management: mark "accepted risk" violations
+### 5.1 — Lawsuit Risk Score Engine ✅
+- Predictive legal liability (0–100) based on 2025 ADA filing patterns
+- Industry/geography multipliers from public lawsuit data
+- Financial exposure estimates per violation pattern
+- Risk tier classification: LOW / MODERATE / HIGH / CRITICAL
+- Executive-readable risk narrative
 
-### 5.2 — Executive Compliance Dashboard
-- Portfolio-level compliance posture for CTOs
-- Heat map: which properties are at risk
-- SLA tracking: "95% of properties above 80 score"
-- Board-level exportable compliance summary
+### 5.2 — Compliance Proof Vault ✅
+- Cryptographically timestamped (SHA-256 hash chains) audit trail
+- Auto-recording after every scan + violation status change
+- Chain integrity verification
+- PDF vault export for legal defense
 
-### 5.3 — Regulatory Intelligence Feed
-- Track EU regulatory changes (EAA amendments)
-- Auto-update compliance rules when regulations change
-- Country-specific compliance requirements
-- Notification: "New regulation affects 12 of your properties"
+### 5.3 — CI/CD Regression Guard ✅
+- Guard policies with per-site threshold configuration
+- GitHub App integration (PR comments + Checks API)
+- CLI support for pipeline blocking
+- Baseline comparison for regression detection
 
-### 5.4 — Compliance Certification
-- "RegLayer Certified" badge for websites
-- Public compliance status page
-- Continuous verification (badge revoked if score drops)
-- Trust signal for customers/regulators
+### 5.4 — Regulation Deadline Intelligence ✅
+- 7 regulations seeded with real compliance dates
+- Obligation engine maps regulations to industry + geography
+- Countdown timers with urgency classification
+- Gap analysis against each regulation's WCAG requirements
 
-### 5.5 — Accessibility Testing Marketplace
-- Manual audit booking (connect with certified auditors)
-- Assistive technology testing
-- User testing with people with disabilities
-- Combined automated + manual compliance score
+### 5.5 — Human Testing Network ✅
+- Validator profiles with disability types + assistive tech
+- Test request marketplace with budget and turnaround
+- Matching engine: AT + disability + availability
+- Payment tracking structure (ready for Stripe integration)
+
+### 5.6 — Notification System ✅
+- In-app notification bell with unread count
+- Email notifications (scan complete, weekly digest)
+- Per-type preference management
+- Weekly digest cron job
+
+### 5.7 — Onboarding & Personalization ✅
+- Role-based onboarding (Developer/Designer/Legal/Executive)
+- Getting started checklist (server-authoritative state)
+- Smart visibility logic (hides for veteran users)
+- Cross-device persistence via database
 
 ---
 
-## Implementation Priority (Next 5 Features)
+## Phase 6: Revenue & Growth (NEXT)
 
 | # | Feature | Impact | Effort | Why Now |
 |---|---------|--------|--------|---------|
 | 1 | **Stripe billing** | Critical | Medium | Revenue — users can't upgrade plans today |
-| 2 | **Redis rate limiting** | Critical | Low | Current in-memory rate limits don't work on serverless |
-| 3 | **Authenticated scanning** | High | Medium | Most enterprise apps are behind login walls |
-| 4 | **OpenAPI spec + SDKs** | High | Medium | Developer adoption, partner integrations |
-| 5 | **Custom policies** | High | Medium | Enterprise differentiation — every org has unique rules |
+| 2 | **Multi-region scanning** | High | Medium | Detect geo-specific accessibility differences |
+| 3 | **Custom compliance policies** | High | Medium | Enterprise differentiation |
+| 4 | **Public API SDKs** | High | Medium | Developer adoption, partner integrations |
+| 5 | **Compliance certification badge** | Medium | Low | Public trust signal for verified sites |
 
 ---
 
@@ -159,11 +174,9 @@ RegLayer evolves from a scan tool into the **compliance operating system** for E
 V1 (Shipped):                V2 (Target):
 ──────────────              ──────────────
 In-memory queue    →        Redis + BullMQ (persistent jobs)
-In-memory rate limit →      Upstash Redis (serverless rate limiting)
 In-memory RUM store →       ClickHouse / Tinybird (event analytics)
 Single region scan →        Multi-region (US/EU/APAC)
 Manual plans       →        Stripe billing + usage metering
-No API docs        →        OpenAPI 3.1 + auto-generated SDKs
-12 test files      →        E2E Playwright suite + 80%+ coverage
+15 test files      →        E2E Playwright suite + 80%+ coverage
 Console logging    →        Structured JSON + correlation IDs
 ```
