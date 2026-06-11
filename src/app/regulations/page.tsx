@@ -8,6 +8,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useI18n } from "@/components/i18n-provider";
 import {
   Calendar,
   AlertTriangle,
@@ -79,6 +80,7 @@ const INDUSTRY_OPTIONS = [
 ];
 
 export default function RegulationsPage() {
+  const { t } = useI18n();
   const [deadlines, setDeadlines] = useState<DeadlineAlert[]>([]);
   const [regulations, setRegulations] = useState<RegulationInfo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -118,10 +120,10 @@ export default function RegulationsPage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              Regulation Deadlines
+              {t("regulations.title")}
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Track accessibility regulation deadlines that affect your organization
+              {t("regulations.subtitle")}
             </p>
           </div>
         </div>

@@ -8,6 +8,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useI18n } from "@/components/i18n-provider";
 import {
   ShieldCheck,
   ShieldAlert,
@@ -37,6 +38,7 @@ interface GuardPolicyView {
 }
 
 export default function GuardPage() {
+  const { t } = useI18n();
   const [policies, setPolicies] = useState<GuardPolicyView[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -97,10 +99,10 @@ export default function GuardPage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              Regression Guard
+              {t("guard.title")}
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Block deployments when accessibility quality drops
+              {t("guard.subtitle")}
             </p>
           </div>
         </div>
