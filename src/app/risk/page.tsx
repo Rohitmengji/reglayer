@@ -9,6 +9,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
+import { useI18n } from "@/components/i18n-provider";
 import { RiskScoreBadge } from "@/components/risk/RiskScoreBadge";
 import { RiskBreakdownCard } from "@/components/risk/RiskBreakdownCard";
 import { RiskContextForm } from "@/components/risk/RiskContextForm";
@@ -28,6 +29,7 @@ interface RiskScore {
 }
 
 export default function RiskPage() {
+  const { t } = useI18n();
   const searchParams = useSearchParams();
   const siteId = searchParams.get("siteId");
   const [score, setScore] = useState<RiskScore | null>(null);
@@ -87,9 +89,9 @@ export default function RiskPage() {
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Litigation Risk Score</h1>
+        <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">{t("risk.title")}</h1>
         <p className="text-zinc-500 dark:text-zinc-400 mt-1">
-          Legal exposure analysis based on your site&apos;s accessibility violations.
+          {t("risk.subtitle")}
         </p>
       </div>
 
@@ -114,7 +116,7 @@ export default function RiskPage() {
               <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
                 ${score.estimatedExposure.toLocaleString()}
               </p>
-              <p className="text-xs text-zinc-500">Estimated Legal Exposure</p>
+              <p className="text-xs text-zinc-500">{t("risk.exposure")}</p>
             </div>
             <RiskDisclaimer />
           </div>

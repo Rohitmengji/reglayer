@@ -8,6 +8,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useI18n } from "@/components/i18n-provider";
 import {
   Shield,
   ShieldCheck,
@@ -51,6 +52,7 @@ const TYPE_COLORS: Record<string, string> = {
 };
 
 export default function VaultPage() {
+  const { t } = useI18n();
   const [proofs, setProofs] = useState<Proof[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -118,10 +120,10 @@ export default function VaultPage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              Compliance Proof Vault
+              {t("vault.title")}
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Tamper-evident compliance records for audits and legal defense
+              {t("vault.subtitle")}
             </p>
           </div>
         </div>

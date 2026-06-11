@@ -11,6 +11,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useI18n } from "@/components/i18n-provider";
 import { useSession } from "next-auth/react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -72,6 +73,7 @@ interface ExecutiveData {
 }
 
 export default function ExecutiveDashboardPage() {
+  const { t } = useI18n();
   const { data: session } = useSession();
   const [data, setData] = useState<ExecutiveData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -154,7 +156,7 @@ export default function ExecutiveDashboardPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Executive Dashboard</h1>
+            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{t("nav.executive")}</h1>
             <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
               Portfolio-level accessibility compliance overview
             </p>

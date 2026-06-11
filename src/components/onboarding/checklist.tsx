@@ -28,6 +28,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { useI18n } from "@/components/i18n-provider";
 import {
   CheckCircle2, Circle, ChevronDown, ChevronUp, X,
   Globe, Scan, Users, Plug, Sparkles,
@@ -48,6 +49,7 @@ const COMPLETED_KEY = "reglayer_onboarding_celebrated";
 
 export function OnboardingChecklist() {
   const { data: session } = useSession();
+  const { t } = useI18n();
   const router = useRouter();
   const [expanded, setExpanded] = useState(true);
   const [dismissed, setDismissed] = useState(true); // hidden by default until loaded
@@ -64,7 +66,7 @@ export function OnboardingChecklist() {
       .then((data) => {
         if (cancelled) return;
         if (!data) {
-          setTasks(getDefaultTasks({}));
+          setTasks(getDefaultTasks({}, t));
           setDismissed(true); // No data = hide
           setLoading(false);
           return;
@@ -80,12 +82,12 @@ export function OnboardingChecklist() {
           localStorage.setItem(DISMISSED_KEY, "true");
         }
 
-        setTasks(getDefaultTasks(data));
+        setTasks(getDefaultTasks(data, t));
         setLoading(false);
       })
       .catch(() => {
         if (!cancelled) {
-          setTasks(getDefaultTasks({}));
+          setTasks(getDefaultTasks({}, t));
           setDismissed(true);
           setLoading(false);
         }
@@ -155,7 +157,7 @@ export function OnboardingChecklist() {
 
           <div className="flex-1 min-w-0">
             <div className="text-sm font-semibold text-neutral-900 dark:text-white">
-              {completed === total ? "Setup Complete! 🎉" : "Getting Started"}
+              {completed === total ? t("onboarding.complete") : t("onboarding.gettingStarted")}
             </div>
             <div className="text-xs text-neutral-500 dark:text-neutral-400">
               {completed}/{total} tasks completed
@@ -221,44 +223,44 @@ export function OnboardingChecklist() {
 
 // ─── Default tasks ────────────────────────────────────────────────────────────
 
-function getDefaultTasks(status: Record<string, boolean>): OnboardingTask[] {
+function getDefaultTasks(status: Record<string, boolean>, t: ReturnType<typeof import("@/components/i18n-provider").useI18n>["t"]): OnboardingTask[] {
   return [
     {
       id: "add-site",
-      label: "Add your first site",
-      description: "Register a domain to monitor",
+      label: t("onboarding.addSite"),
+      description: t("onboarding.addSiteDesc"),
       icon: Globe,
       completed: status.hasSite ?? false,
       href: "/manage?tab=sites",
     },
     {
       id: "run-scan",
-      label: "Run your first scan",
-      description: "Scan a URL for accessibility issues",
+      label: t("onboarding.runScan"),
+      description: t("onboarding.runScanDesc"),
       icon: Scan,
       completed: status.hasScan ?? false,
       href: "/dashboard",
     },
     {
       id: "invite-team",
-      label: "Invite a team member",
-      description: "Collaboration makes compliance easier",
+      label: t("onboarding.inviteTeam"),
+      description: t("onboarding.inviteTeamDesc"),
       icon: Users,
       completed: status.hasTeammate ?? false,
       href: "/manage?tab=team",
     },
     {
       id: "connect-ci",
-      label: "Connect CI/CD",
-      description: "Catch regressions before deploy",
+      label: t("onboarding.connectCI"),
+      description: t("onboarding.connectCIDesc"),
       icon: Plug,
       completed: status.hasIntegration ?? false,
       href: "/integrations",
     },
     {
       id: "first-fix",
-      label: "Fix your first issue",
-      description: "Apply an auto-remediation",
+      label: t("onboarding.firstFix"),
+      description: t("onboarding.firstFixDesc"),
       icon: Sparkles,
       completed: status.hasFixed ?? false,
       href: "/violations",

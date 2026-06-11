@@ -16,6 +16,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
+import { useI18n } from "@/components/i18n-provider";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -60,6 +61,7 @@ const CRON_PRESETS = [
 ];
 
 export default function MonitoringPage() {
+  const { t } = useI18n();
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -158,7 +160,7 @@ export default function MonitoringPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Monitoring</h1>
+            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{t("nav.notifications")}</h1>
             <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
               Schedule automated accessibility scans for your websites
             </p>

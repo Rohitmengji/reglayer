@@ -16,6 +16,7 @@
  */
 
 import { useState } from "react";
+import { useI18n } from "@/components/i18n-provider";
 import {
   Code2, Palette, Scale, Briefcase, ArrowRight, Sparkles, Shield,
   BarChart3, FileText, Wrench, Eye, Target, CheckCircle2,
@@ -83,6 +84,7 @@ interface RoleOnboardingProps {
 }
 
 export function RoleOnboarding({ userName, onComplete }: RoleOnboardingProps) {
+  const { t } = useI18n();
   const [selected, setSelected] = useState<UserPersona | null>(null);
   const [step, setStep] = useState<"role" | "confirm">("role");
 
@@ -116,10 +118,10 @@ export function RoleOnboarding({ userName, onComplete }: RoleOnboardingProps) {
                 <Sparkles className="h-6 w-6 text-accent" />
               </div>
               <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">
-                Welcome{userName ? `, ${userName}` : ""}!
+                {t("onboarding.welcome").replace("{name}", userName ? `, ${userName}` : "")}
               </h1>
               <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400 max-w-md mx-auto">
-                Tell us your role so we can personalize your experience. You can always change this later in settings.
+                {t("onboarding.roleTitle")}
               </p>
             </div>
 
@@ -166,7 +168,7 @@ export function RoleOnboarding({ userName, onComplete }: RoleOnboardingProps) {
                 disabled={!selected}
                 className="inline-flex items-center gap-2 rounded-lg bg-neutral-900 dark:bg-white px-6 py-2.5 text-sm font-medium text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                Continue
+                {t("onboarding.continue")}
                 <ArrowRight className="h-4 w-4" />
               </button>
             </div>

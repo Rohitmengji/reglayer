@@ -10,6 +10,7 @@
 
 import { Suspense, lazy } from "react";
 import { useSearchParams } from "next/navigation";
+import { useI18n } from "@/components/i18n-provider";
 import { AppShell } from "@/components/layout/app-shell";
 import { TabNav, type Tab } from "@/components/ui/tab-nav";
 import { EmbeddedProvider } from "@/components/layout/embedded-context";
@@ -32,6 +33,7 @@ const tabs: Tab[] = [
 ];
 
 function AutomationContent() {
+  const { t } = useI18n();
   const searchParams = useSearchParams();
   const activeTab = searchParams.get("tab") || "remediation";
 
@@ -39,7 +41,7 @@ function AutomationContent() {
     <AppShell>
       <div className="flex flex-col gap-6 -mt-2">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Automation</h1>
+          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{t("nav.automation")}</h1>
           <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
             Automated scanning, monitoring, and remediation tools
           </p>

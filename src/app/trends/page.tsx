@@ -18,6 +18,7 @@
  */
 
 import { useState, useEffect, useMemo } from "react";
+import { useI18n } from "@/components/i18n-provider";
 import { useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -61,6 +62,7 @@ interface TrendsApiResponse {
 }
 
 export default function TrendsPage() {
+  const { t } = useI18n();
   const searchParams = useSearchParams();
   const url = searchParams.get("url") ?? "";
 
@@ -184,7 +186,7 @@ export default function TrendsPage() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
               <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">
-                Trends
+                {t("trends.title")}
               </h1>
               {resolvedUrl && (
                 <a

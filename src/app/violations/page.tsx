@@ -15,6 +15,7 @@
  */
 
 import { useEffect, useState, useCallback } from "react";
+import { useI18n } from "@/components/i18n-provider";
 import { useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -58,6 +59,7 @@ const STATUS_TABS: Array<{ key: string; label: string; icon: typeof AlertTriangl
 // ─────────────── Page Component ───────────────
 
 export default function ViolationsPage() {
+  const { t } = useI18n();
   const searchParams = useSearchParams();
   const scanIdParam = searchParams.get("scanId") ?? "";
 
@@ -228,7 +230,7 @@ export default function ViolationsPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Violations</h1>
+            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{t("violations.title")}</h1>
             <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
               Track and manage accessibility issues across your scan
             </p>

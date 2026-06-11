@@ -9,6 +9,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useI18n } from "@/components/i18n-provider";
 import { useSession } from "next-auth/react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -56,6 +57,7 @@ interface AgencyApiKeyDisplay {
 }
 
 export default function AgencyDashboard() {
+  const { t } = useI18n();
   const { data: session } = useSession();
   const [agency, setAgency] = useState<Agency | null>(null);
   const [loading, setLoading] = useState(true);
@@ -266,7 +268,7 @@ export default function AgencyDashboard() {
       <AppShell>
         <div className="space-y-6">
           <div>
-            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Agency</h1>
+            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{t("agency.title")}</h1>
             <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
               White-label accessibility scanning under your own brand.
             </p>
@@ -357,7 +359,7 @@ export default function AgencyDashboard() {
     <AppShell>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Agency Dashboard</h1>
+          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{t("agency.title")}</h1>
           <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
             Manage your white-label brand, clients, and API access.
           </p>

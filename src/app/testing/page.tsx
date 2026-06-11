@@ -8,6 +8,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useI18n } from "@/components/i18n-provider";
 import {
   Users,
   UserCheck,
@@ -56,6 +57,7 @@ const STATUS_STYLES: Record<string, { bg: string; text: string }> = {
 };
 
 export default function TestingPage() {
+  const { t } = useI18n();
   const [audits, setAudits] = useState<AuditRequestView[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -99,10 +101,10 @@ export default function TestingPage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              Human Testing Network
+              {t("testing.title")}
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Book manual accessibility audits with certified testers
+              {t("testing.subtitle")}
             </p>
           </div>
         </div>
