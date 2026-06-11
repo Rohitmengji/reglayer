@@ -76,7 +76,7 @@ export async function GET(
 
     return new NextResponse(csv, {
       headers: {
-        "Content-Type": "text/csv; charset=utf-8",
+        "Content-Type": "text/csv",
         "Content-Disposition": `attachment; filename="reglayer-${id}-violations.csv"`,
       },
     });
@@ -84,7 +84,7 @@ export async function GET(
 
   if (format === "xlsx") {
     const xlsx = generateMinimalXlsx(headers, rows);
-    return new Response(xlsx as unknown as BodyInit, {
+    return new Response(xlsx, {
       headers: {
         "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         "Content-Disposition": `attachment; filename="reglayer-${id}-violations.xlsx"`,
@@ -107,7 +107,7 @@ export async function GET(
 
 // ─── Minimal XLSX (inline, no deps) ───────────────────────────
 
-function generateMinimalXlsx(headers: string[], rows: string[][]): Uint8Array {
+function generateMinimalXlsx(headers: string[], rows: string[][]): Uint8Array<ArrayBuffer> {
   const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const col = (i: number): string => { let r = "", n = i; while (n >= 0) { r = String.fromCharCode(65 + (n % 26)) + r; n = Math.floor(n / 26) - 1; } return r; };
 
@@ -136,7 +136,7 @@ function generateMinimalXlsx(headers: string[], rows: string[][]): Uint8Array {
   ]);
 }
 
-function buildZipBuffer(entries: { path: string; data: string }[]): Uint8Array {
+function buildZipBuffer(entries: { path: string; data: string }[]): Uint8Array<ArrayBuffer> {
   const enc = new TextEncoder();
   const parts: Uint8Array[] = [];
   const cds: Uint8Array[] = [];

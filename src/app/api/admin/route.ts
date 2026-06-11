@@ -6,11 +6,15 @@
  *   POST — Actions: changePlan, assignRole, removeUser, toggleMasterAdmin
  */
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
+import { applyRateLimit } from "@/lib/rate-limit-middleware";
+import { logger } from "@/lib/telemetry/logger";
 import bcrypt from "bcryptjs";
+
+const log = logger.withContext({ service: "admin-api" });
 
 type WorkspaceRole = "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
 
@@ -120,12 +124,15 @@ export async function GET() {
       stats: { totalWorkspaces: workspaces.length, totalUsers: users.length, totalScans, totalSchedules },
     });
   } catch (err) {
-    console.error("[admin API error]", err);
-    return NextResponse.json({ error: String(err) }, { status: 500 });
+    log.error("Failed to load admin overview", { action: "GET", error: err instanceof Error ? err.message : String(err) });
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  const blocked = await applyRateLimit(req, "api");
+  if (blocked) return blocked;
+
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -136,9 +143,41 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
-  const body = await req.json();
+  let body: AdminActionBody;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
   const { action } = body;
 
+  try {
+    return await handleAdminAction(action, body, actor);
+  } catch (err) {
+    log.error("Admin action failed", { action: String(action), actorId: actor.id, error: err instanceof Error ? err.message : String(err) });
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+
+type AdminActor = NonNullable<Awaited<ReturnType<typeof prisma.user.findUnique>>>;
+
+/** Union of fields used across admin actions — each case validates its own required fields. */
+interface AdminActionBody {
+  action?: string;
+  workspaceId?: string;
+  plan?: "FREE" | "PRO" | "ENTERPRISE";
+  userId?: string;
+  targetUserId?: string;
+  role?: WorkspaceRole;
+  name?: string;
+  ownerEmail?: string;
+  email?: string;
+  amount?: number;
+  reason?: string;
+  newPassword?: string;
+}
+
+async function handleAdminAction(action: string | undefined, body: AdminActionBody, actor: AdminActor): Promise<NextResponse> {
   switch (action) {
     // ── Master Admin: Change workspace plan ──────────────────
     case "changePlan": {
@@ -147,7 +186,7 @@ export async function POST(req: Request) {
       }
 
       const { workspaceId, plan } = body;
-      if (!workspaceId || !["FREE", "PRO", "ENTERPRISE"].includes(plan)) {
+      if (!workspaceId || !plan || !["FREE", "PRO", "ENTERPRISE"].includes(plan)) {
         return NextResponse.json({ error: "Invalid workspaceId or plan" }, { status: 400 });
       }
 
@@ -271,7 +310,7 @@ export async function POST(req: Request) {
       }
 
       const validPlans = ["FREE", "PRO", "ENTERPRISE"];
-      const selectedPlan = validPlans.includes(wsPlan) ? wsPlan : "FREE";
+      const selectedPlan = wsPlan && validPlans.includes(wsPlan) ? wsPlan : "FREE";
 
       // Find or create the owner user
       let ownerUser = await prisma.user.findUnique({ where: { email: ownerEmail } });
@@ -315,7 +354,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Missing workspaceId or email" }, { status: 400 });
       }
 
-      const memberRole = ["OWNER", "ADMIN", "MEMBER", "VIEWER"].includes(addRole) ? addRole : "MEMBER";
+      const memberRole = addRole && ["OWNER", "ADMIN", "MEMBER", "VIEWER"].includes(addRole) ? addRole : "MEMBER";
 
       let targetUser = await prisma.user.findUnique({ where: { email: addEmail } });
       if (!targetUser) {
@@ -407,10 +446,13 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "User not found" }, { status: 404 });
       }
 
-      // Remove all memberships, access requests, then the user
-      await prisma.workspaceMember.deleteMany({ where: { userId: deleteUserId } });
-      await prisma.accessRequest.deleteMany({ where: { userId: deleteUserId } });
-      await prisma.user.delete({ where: { id: deleteUserId } });
+      // Remove all memberships, access requests, then the user — atomically,
+      // so a failure partway through can't leave a half-deleted account
+      await prisma.$transaction([
+        prisma.workspaceMember.deleteMany({ where: { userId: deleteUserId } }),
+        prisma.accessRequest.deleteMany({ where: { userId: deleteUserId } }),
+        prisma.user.delete({ where: { id: deleteUserId } }),
+      ]);
 
       await prisma.auditLog.create({
         data: {

@@ -10,9 +10,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
+import { applyRateLimit } from "@/lib/rate-limit-middleware";
+import { logger } from "@/lib/telemetry/logger";
 import bcrypt from "bcryptjs";
 import { PLAN_LIMITS, type PlanType } from "@/lib/credits/plan-limits";
 import { z } from "zod";
+
+const log = logger.withContext({ service: "team-api" });
 
 const inviteSchema = z.object({
   email: z.string().email().max(320),
@@ -86,6 +90,9 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const blocked = await applyRateLimit(request, "api");
+  if (blocked) return blocked;
+
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -171,85 +178,101 @@ export async function POST(request: NextRequest) {
     role: newMember.role,
     joinedAt: newMember.joinedAt,
   }, { status: 201 });
-  } catch {
+  } catch (err) {
+    log.error("Failed to invite member", { action: "POST", error: err instanceof Error ? err.message : String(err) });
     return NextResponse.json({ error: "Failed to invite member" }, { status: 500 });
   }
 }
 
 export async function PATCH(request: NextRequest) {
+  const blocked = await applyRateLimit(request, "api");
+  if (blocked) return blocked;
+
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await request.json();
-  const { memberId, role, plan } = body;
-
-  const currentUser = await prisma.user.findUnique({
-    where: { email: session.user.email },
-    include: { memberships: { include: { workspace: true } } },
-  });
-
-  if (!currentUser || currentUser.memberships.length === 0) {
-    return NextResponse.json({ error: "No workspace found" }, { status: 404 });
-  }
-
-  const myMembership = currentUser.memberships[0];
-
-  // ── Change user plan (Master Admin only) ────────────────────
-  if (plan) {
-    if (!currentUser.isMasterAdmin) {
-      return NextResponse.json({ error: "Forbidden: Only master admins can change user plans" }, { status: 403 });
+  try {
+    const parsed = patchSchema.safeParse(await request.json());
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Invalid input", details: parsed.error.flatten().fieldErrors }, { status: 400 });
     }
-    const { userId } = body;
-    if (!userId) {
-      return NextResponse.json({ error: "userId is required" }, { status: 400 });
-    }
-    const validPlans = ["FREE", "PRO", "ENTERPRISE"];
-    if (!validPlans.includes(plan)) {
-      return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
-    }
-    // Verify target user is in the same workspace
-    const targetMember = await prisma.workspaceMember.findFirst({
-      where: { userId, workspaceId: myMembership.workspaceId },
+    const body = parsed.data;
+    const { memberId, role, plan } = body;
+
+    const currentUser = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      include: { memberships: { include: { workspace: true } } },
     });
-    if (!targetMember) {
-      return NextResponse.json({ error: "User is not in your workspace" }, { status: 404 });
+
+    if (!currentUser || currentUser.memberships.length === 0) {
+      return NextResponse.json({ error: "No workspace found" }, { status: 404 });
     }
-    const updated = await prisma.user.update({
-      where: { id: userId },
-      data: { plan },
+
+    const myMembership = currentUser.memberships[0];
+
+    // ── Change user plan (Master Admin only) ────────────────────
+    if (plan) {
+      if (!currentUser.isMasterAdmin) {
+        return NextResponse.json({ error: "Forbidden: Only master admins can change user plans" }, { status: 403 });
+      }
+      const { userId } = body;
+      if (!userId) {
+        return NextResponse.json({ error: "userId is required" }, { status: 400 });
+      }
+      const validPlans = ["FREE", "PRO", "ENTERPRISE"];
+      if (!validPlans.includes(plan)) {
+        return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
+      }
+      // Verify target user is in the same workspace
+      const targetMember = await prisma.workspaceMember.findFirst({
+        where: { userId, workspaceId: myMembership.workspaceId },
+      });
+      if (!targetMember) {
+        return NextResponse.json({ error: "User is not in your workspace" }, { status: 404 });
+      }
+      const updated = await prisma.user.update({
+        where: { id: userId },
+        data: { plan },
+      });
+      return NextResponse.json({ success: true, userId, plan: updated.plan });
+    }
+
+    // ── Change member role ─────────────────────────────────────
+    if (!memberId || !role) {
+      return NextResponse.json({ error: "memberId and role are required" }, { status: 400 });
+    }
+
+    if (!["OWNER", "ADMIN"].includes(myMembership.role)) {
+      return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
+    }
+
+    // Can't change owner role
+    const target = await prisma.workspaceMember.findUnique({ where: { id: memberId } });
+    if (!target) {
+      return NextResponse.json({ error: "Member not found" }, { status: 404 });
+    }
+    if (target.role === "OWNER") {
+      return NextResponse.json({ error: "Cannot change owner role" }, { status: 403 });
+    }
+
+    const updated = await prisma.workspaceMember.update({
+      where: { id: memberId },
+      data: { role },
     });
-    return NextResponse.json({ success: true, userId, plan: updated.plan });
-  }
 
-  // ── Change member role ─────────────────────────────────────
-  if (!memberId || !role) {
-    return NextResponse.json({ error: "memberId and role are required" }, { status: 400 });
+    return NextResponse.json({ id: updated.id, role: updated.role });
+  } catch (err) {
+    log.error("Failed to update member", { action: "PATCH", error: err instanceof Error ? err.message : String(err) });
+    return NextResponse.json({ error: "Failed to update member" }, { status: 500 });
   }
-
-  if (!["OWNER", "ADMIN"].includes(myMembership.role)) {
-    return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
-  }
-
-  // Can't change owner role
-  const target = await prisma.workspaceMember.findUnique({ where: { id: memberId } });
-  if (!target) {
-    return NextResponse.json({ error: "Member not found" }, { status: 404 });
-  }
-  if (target.role === "OWNER") {
-    return NextResponse.json({ error: "Cannot change owner role" }, { status: 403 });
-  }
-
-  const updated = await prisma.workspaceMember.update({
-    where: { id: memberId },
-    data: { role },
-  });
-
-  return NextResponse.json({ id: updated.id, role: updated.role });
 }
 
 export async function DELETE(request: NextRequest) {
+  const blocked = await applyRateLimit(request, "api");
+  if (blocked) return blocked;
+
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -293,60 +316,69 @@ export async function DELETE(request: NextRequest) {
  * PUT /api/team — Reset password for a workspace member (OWNER/ADMIN only)
  */
 export async function PUT(request: NextRequest) {
+  // Password resets get the stricter auth-tier limit (brute-force surface)
+  const blocked = await applyRateLimit(request, "auth");
+  if (blocked) return blocked;
+
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await request.json();
-  const { userId, newPassword } = body;
+  try {
+    const body: { userId?: unknown; newPassword?: unknown } = await request.json();
+    const { userId, newPassword } = body;
 
-  if (!userId || !newPassword) {
-    return NextResponse.json({ error: "userId and newPassword are required" }, { status: 400 });
+    if (!userId || typeof userId !== "string" || !newPassword || typeof newPassword !== "string") {
+      return NextResponse.json({ error: "userId and newPassword are required" }, { status: 400 });
+    }
+
+    if (newPassword.length < 6) {
+      return NextResponse.json({ error: "Password must be at least 6 characters" }, { status: 400 });
+    }
+
+    const currentUser = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      include: { memberships: true },
+    });
+
+    if (!currentUser || currentUser.memberships.length === 0) {
+      return NextResponse.json({ error: "No workspace found" }, { status: 404 });
+    }
+
+    const myMembership = currentUser.memberships[0];
+    if (!["OWNER", "ADMIN"].includes(myMembership.role)) {
+      return NextResponse.json({ error: "Only owners and admins can reset passwords" }, { status: 403 });
+    }
+
+    // Verify target user is in the same workspace
+    const targetMember = await prisma.workspaceMember.findFirst({
+      where: { userId, workspaceId: myMembership.workspaceId },
+    });
+
+    if (!targetMember) {
+      return NextResponse.json({ error: "User is not in your workspace" }, { status: 404 });
+    }
+
+    // Cannot reset password for owners or higher-role users
+    if (targetMember.role === "OWNER") {
+      return NextResponse.json({ error: "Cannot reset owner's password" }, { status: 403 });
+    }
+
+    // Admin cannot reset another admin's password
+    if (myMembership.role === "ADMIN" && targetMember.role === "ADMIN") {
+      return NextResponse.json({ error: "Cannot reset password for users with equal role" }, { status: 403 });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
+    await prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash: hashedPassword },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    log.error("Failed to reset member password", { action: "PUT", error: err instanceof Error ? err.message : String(err) });
+    return NextResponse.json({ error: "Failed to reset password" }, { status: 500 });
   }
-
-  if (newPassword.length < 6) {
-    return NextResponse.json({ error: "Password must be at least 6 characters" }, { status: 400 });
-  }
-
-  const currentUser = await prisma.user.findUnique({
-    where: { email: session.user.email },
-    include: { memberships: true },
-  });
-
-  if (!currentUser || currentUser.memberships.length === 0) {
-    return NextResponse.json({ error: "No workspace found" }, { status: 404 });
-  }
-
-  const myMembership = currentUser.memberships[0];
-  if (!["OWNER", "ADMIN"].includes(myMembership.role)) {
-    return NextResponse.json({ error: "Only owners and admins can reset passwords" }, { status: 403 });
-  }
-
-  // Verify target user is in the same workspace
-  const targetMember = await prisma.workspaceMember.findFirst({
-    where: { userId, workspaceId: myMembership.workspaceId },
-  });
-
-  if (!targetMember) {
-    return NextResponse.json({ error: "User is not in your workspace" }, { status: 404 });
-  }
-
-  // Cannot reset password for owners or higher-role users
-  if (targetMember.role === "OWNER") {
-    return NextResponse.json({ error: "Cannot reset owner's password" }, { status: 403 });
-  }
-
-  // Admin cannot reset another admin's password
-  if (myMembership.role === "ADMIN" && targetMember.role === "ADMIN") {
-    return NextResponse.json({ error: "Cannot reset password for users with equal role" }, { status: 403 });
-  }
-
-  const hashedPassword = await bcrypt.hash(newPassword, 12);
-  await prisma.user.update({
-    where: { id: userId },
-    data: { passwordHash: hashedPassword },
-  });
-
-  return NextResponse.json({ success: true });
 }
