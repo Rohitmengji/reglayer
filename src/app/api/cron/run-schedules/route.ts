@@ -31,6 +31,7 @@ import { getDueSchedules, markScheduleExecuted, markScheduleFailed } from "@/lib
 import { sendRegressionAlert } from "@/lib/email/service";
 import { dispatchToIntegrations } from "@/lib/integrations/dispatcher";
 import { dispatchWebhookEvent } from "@/lib/integrations/webhookDispatcher";
+import { notifyWorkspace } from "@/lib/notifications/dispatcher";
 import { prisma } from "@/lib/database/prisma";
 import { logger } from "@/lib/telemetry/logger";
 
@@ -262,6 +263,31 @@ async function handleRegression(
 ) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://reglayer.vercel.app";
   const reportUrl = `${appUrl}/scans/${regression.currentScanId}`;
+
+  // In-app notifications for score degradation
+  if (Math.abs(regression.scoreDelta) >= 5) {
+    await notifyWorkspace(workspaceId, {
+      type: "scoreDegraded",
+      title: `Score dropped ${Math.abs(regression.scoreDelta)} points`,
+      body: `${regression.url} score went from ${regression.previousScore} → ${regression.currentScore}`,
+      link: reportUrl,
+      emailSubject: `⚠️ Score drop detected: ${regression.url}`,
+      emailHtml: `<p>Your accessibility score for <strong>${regression.url}</strong> dropped from ${regression.previousScore} to ${regression.currentScore} (${regression.scoreDelta} points).</p><p><a href="${reportUrl}">View report →</a></p>`,
+    }).catch(() => {});
+  }
+
+  // In-app notifications for new critical violations
+  const criticalNew = regression.newViolations.filter((v) => v.impact === "critical");
+  if (criticalNew.length > 0) {
+    await notifyWorkspace(workspaceId, {
+      type: "newViolations",
+      title: `${criticalNew.length} new critical violation${criticalNew.length > 1 ? "s" : ""}`,
+      body: `${regression.url} has new critical accessibility issues that need attention`,
+      link: reportUrl,
+      emailSubject: `🚨 New critical violations: ${regression.url}`,
+      emailHtml: `<p><strong>${criticalNew.length}</strong> new critical violation${criticalNew.length > 1 ? "s" : ""} detected on <strong>${regression.url}</strong>.</p><p><a href="${reportUrl}">View details →</a></p>`,
+    }).catch(() => {});
+  }
 
   // Email alert to workspace owner
   if (ownerEmail) {

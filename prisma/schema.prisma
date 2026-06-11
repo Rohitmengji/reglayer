@@ -752,3 +752,23 @@ enum ArticleStatus {
   PUBLISHED
   ARCHIVED
 }
+
+// ─────────────────────────────────────────────
+// In-App Notifications
+// ─────────────────────────────────────────────
+
+model Notification {
+  id          String    @id @default(cuid())
+  userId      String
+  workspaceId String?
+  type        String    // "scanComplete" | "scoreDegraded" | "newViolations" | "complianceAlert" | "weeklyDigest" | "teamActivity"
+  title       String
+  body        String
+  link        String?
+  readAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([userId, createdAt])
+  @@index([userId, readAt])
+  @@map("notifications")
+}

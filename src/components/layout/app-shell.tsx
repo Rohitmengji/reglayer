@@ -30,6 +30,7 @@ import { Sidebar } from "./sidebar";
 import { Menu, X } from "lucide-react";
 import { useIsEmbedded } from "./embedded-context";
 import { OnboardingChecklist } from "@/components/onboarding/checklist";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 
 export function AppShell({ children, bare }: { children: React.ReactNode; bare?: boolean }) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -153,6 +154,11 @@ export function AppShell({ children, bare }: { children: React.ReactNode; bare?:
 
       {/* Main content */}
       <main id="main-content" className="flex-1 flex flex-col overflow-y-auto">
+        {/* Desktop notification bar */}
+        <div className="hidden lg:flex sticky top-0 z-30 h-12 items-center justify-end border-b border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-6">
+          <NotificationBell />
+        </div>
+
         {/* Mobile header */}
         <div className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-4 lg:hidden">
           <button
@@ -163,6 +169,9 @@ export function AppShell({ children, bare }: { children: React.ReactNode; bare?:
           </button>
           <Image src="/assests/reglayer-logo-light.svg" alt="RegLayer" width={120} height={28} className="dark:hidden" style={{ height: "1.75rem", width: "auto" }} priority />
           <Image src="/assests/reglayer-logo-dark.svg" alt="RegLayer" width={120} height={28} className="hidden dark:block" style={{ height: "1.75rem", width: "auto" }} priority />
+          <div className="ml-auto">
+            <NotificationBell />
+          </div>
         </div>
 
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 flex-1 w-full flex flex-col">{children}</div>
