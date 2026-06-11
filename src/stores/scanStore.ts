@@ -26,50 +26,25 @@ export interface ScanHistoryEntry {
 }
 
 interface ScanState {
-  currentScan: ScanResult | null;
-  currentCompliance: ComplianceReport | null;
   scanHistory: ScanHistoryEntry[];
-  isScanning: boolean;
 
   // Actions
   setScanResult: (scan: ScanResult, compliance: ComplianceReport) => void;
-  setScanning: (isScanning: boolean) => void;
-  clearCurrentScan: () => void;
   getScanById: (id: string) => ScanHistoryEntry | undefined;
-  deleteScan: (id: string) => void;
-  clearHistory: () => void;
 }
 
 export const useScanStore = create<ScanState>()(
   persist(
     (set, get) => ({
-      currentScan: null,
-      currentCompliance: null,
       scanHistory: [],
-      isScanning: false,
 
       setScanResult: (scan, compliance) =>
         set((state) => ({
-          currentScan: scan,
-          currentCompliance: compliance,
           scanHistory: [{ scan, compliance }, ...state.scanHistory].slice(0, 100),
-          isScanning: false,
         })),
-
-      setScanning: (isScanning) => set({ isScanning }),
-
-      clearCurrentScan: () =>
-        set({ currentScan: null, currentCompliance: null }),
 
       getScanById: (id) =>
         get().scanHistory.find((entry) => entry.scan.id === id),
-
-      deleteScan: (id) =>
-        set((state) => ({
-          scanHistory: state.scanHistory.filter((entry) => entry.scan.id !== id),
-        })),
-
-      clearHistory: () => set({ scanHistory: [] }),
     }),
     {
       name: "reglayer-scan-history",

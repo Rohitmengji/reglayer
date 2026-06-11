@@ -21,6 +21,11 @@ import {
   type QuizSession,
   type QuizSubmission,
 } from "@/lib/skills/quiz-engine";
+import { ALL_CATEGORIES, type SkillCategory } from "@/lib/skills/engine";
+
+function isSkillCategory(value: string): value is SkillCategory {
+  return (ALL_CATEGORIES as readonly string[]).includes(value);
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -57,7 +62,13 @@ export async function GET(request: NextRequest) {
 
     let quiz: QuizSession;
     if (category) {
-      quiz = generateCategoryQuiz(category as any, user.id, Math.min(count, 10));
+      if (!isSkillCategory(category)) {
+        return NextResponse.json(
+          { error: "INVALID_PARAMS", message: `Unknown category: ${category}` },
+          { status: 400 },
+        );
+      }
+      quiz = generateCategoryQuiz(category, user.id, Math.min(count, 10));
     } else {
       quiz = generateQuiz(lessonId!, user.id, Math.min(count, 10));
     }
@@ -117,7 +128,13 @@ export async function POST(request: NextRequest) {
     // Regenerate the same quiz (same seed = same questions + correct answers)
     let quiz: QuizSession;
     if (category) {
-      quiz = generateCategoryQuiz(category as any, user.id, answers.length);
+      if (!isSkillCategory(category)) {
+        return NextResponse.json(
+          { error: "INVALID_PARAMS", message: `Unknown category: ${category}` },
+          { status: 400 },
+        );
+      }
+      quiz = generateCategoryQuiz(category, user.id, answers.length);
     } else if (lessonId) {
       quiz = generateQuiz(lessonId, user.id, answers.length);
     } else {

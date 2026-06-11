@@ -26,6 +26,7 @@ import {
 import { getOrCreateWorkspace } from "@/lib/database/workspace";
 import { prisma } from "@/lib/database/prisma";
 import { PLAN_LIMITS, type PlanType } from "@/lib/credits/plan-limits";
+import { logger } from "@/lib/telemetry/logger";
 
 const createScheduleSchema = z.object({
   name: z.string().min(1).max(100),
@@ -151,7 +152,11 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ schedule }, { status: 201 });
   } catch (error) {
-    console.error("[schedules] Error:", error);
+    logger.error("Failed to process schedule request", {
+      service: "schedules-api",
+      action: "POST",
+      error: error instanceof Error ? error.message : String(error),
+    });
     return NextResponse.json(
       { error: "Failed to process schedule request" },
       { status: 500 }

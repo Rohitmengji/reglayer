@@ -62,20 +62,25 @@ export default function ScansPage() {
   const isAdmin = session?.user?.role === "admin";
 
   useEffect(() => {
-    fetch("/api/scans")
-      .then((r) => r.json())
+    const controller = new AbortController();
+    fetch("/api/scans", { signal: controller.signal })
+      .then((r) => {
+        if (!r.ok) throw new Error(`Request failed with status ${r.status}`);
+        return r.json();
+      })
       .then((data) => {
         setScans(data.scans || []);
         setLoading(false);
       })
-      .catch(() => {
+      .catch((err) => {
+        if (err instanceof DOMException && err.name === "AbortError") return;
         setError("Unable to load your scans right now. Please try again.");
         setLoading(false);
       });
+    return () => controller.abort();
   }, []);
 
   // Filtered scans
-  // eslint-disable-next-line react-hooks/purity
   const filteredScans = useMemo(() => {
     let result = scans;
 

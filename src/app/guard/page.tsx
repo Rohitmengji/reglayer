@@ -59,6 +59,7 @@ export default function GuardPage() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: kick off the initial client-side data fetch (sets loading state synchronously)
     loadPolicies();
   }, [loadPolicies]);
 

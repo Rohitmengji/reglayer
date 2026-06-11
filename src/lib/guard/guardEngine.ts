@@ -122,8 +122,8 @@ export async function evaluateGuard(
 
     // Regression checks (only if baseline exists)
     let scoreDelta: number | null = null;
-    let newViolations: Array<{ ruleId: string; impact: string; count: number }> = [];
-    let fixedViolations: Array<{ ruleId: string; impact: string; count: number }> = [];
+    const newViolations: Array<{ ruleId: string; impact: string; count: number }> = [];
+    const fixedViolations: Array<{ ruleId: string; impact: string; count: number }> = [];
 
     if (policy.baselineScanId) {
       const baselineScan = await prisma.scan.findUnique({

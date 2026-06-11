@@ -159,7 +159,7 @@ export async function GET(request: NextRequest) {
 
     return new NextResponse(csv, {
       headers: {
-        "Content-Type": "text/csv; charset=utf-8",
+        "Content-Type": "text/csv",
         "Content-Disposition": `attachment; filename="reglayer-violations-${timestamp}.csv"`,
       },
     });
@@ -168,7 +168,7 @@ export async function GET(request: NextRequest) {
   // XLSX format — minimal Office Open XML
   if (format === "xlsx") {
     const xlsx = generateXlsx(headers, rows);
-    return new Response(xlsx as unknown as BodyInit, {
+    return new Response(xlsx, {
       headers: {
         "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         "Content-Disposition": `attachment; filename="reglayer-violations-${timestamp}.xlsx"`,
@@ -181,7 +181,7 @@ export async function GET(request: NextRequest) {
 
 // ─── Minimal XLSX Generator (No Dependencies) ─────────────────
 
-function generateXlsx(headers: string[], rows: string[][]): Uint8Array {
+function generateXlsx(headers: string[], rows: string[][]): Uint8Array<ArrayBuffer> {
   const escapeXml = (s: string) =>
     s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
@@ -274,7 +274,7 @@ interface ZipEntry {
   data: string;
 }
 
-function buildZip(entries: ZipEntry[]): Uint8Array {
+function buildZip(entries: ZipEntry[]): Uint8Array<ArrayBuffer> {
   const textEncoder = new TextEncoder();
   const parts: Uint8Array[] = [];
   const centralDir: Uint8Array[] = [];

@@ -57,6 +57,7 @@ export function OnboardingChecklist() {
   // Check dismissed state
   useEffect(() => {
     const val = localStorage.getItem(DISMISSED_KEY);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: localStorage is client-only; reading it in an effect avoids a hydration mismatch
     setDismissed(val === "true");
   }, []);
 

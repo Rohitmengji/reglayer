@@ -70,11 +70,18 @@ export async function GET(request: NextRequest) {
       status = statusParam as ViolationStatus;
     }
 
-    // Verify scan belongs to user's workspace
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      select: { id: true, memberships: { select: { workspaceId: true } } },
-    });
+    // Verify scan belongs to user's workspace — the two lookups are
+    // independent, so fetch them in parallel
+    const [user, scan] = await Promise.all([
+      prisma.user.findUnique({
+        where: { email: session.user.email },
+        select: { id: true, memberships: { select: { workspaceId: true } } },
+      }),
+      prisma.scan.findUnique({
+        where: { id: scanId },
+        select: { workspaceId: true },
+      }),
+    ]);
 
     if (!user) {
       return NextResponse.json(
@@ -82,11 +89,6 @@ export async function GET(request: NextRequest) {
         { status: 401 }
       );
     }
-
-    const scan = await prisma.scan.findUnique({
-      where: { id: scanId },
-      select: { workspaceId: true },
-    });
 
     if (!scan) {
       return NextResponse.json(

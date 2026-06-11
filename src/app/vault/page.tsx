@@ -76,6 +76,7 @@ export default function VaultPage() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: kick off the initial client-side data fetch (sets loading state synchronously)
     loadProofs();
   }, [loadProofs]);
 

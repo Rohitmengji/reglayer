@@ -226,7 +226,7 @@ export async function analyzeVendorRisk(scanId: string): Promise<VendorRiskRepor
 
   const vendorMap = new Map<string, { vendor: VendorProfile; violations: typeof scan.violations }>();
   const firstPartyViolations: typeof scan.violations = [];
-  let unattributed = 0;
+  const unattributed = 0;
 
   for (const violation of scan.violations) {
     const elements = violation.affectedElements as Array<{ target?: string[]; html?: string }> | null;
