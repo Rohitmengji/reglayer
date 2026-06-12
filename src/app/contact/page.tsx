@@ -13,8 +13,10 @@ import Link from "next/link";
 import { Footer } from "@/components/layout/footer";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/components/i18n-provider";
 
 export default function ContactPage() {
+  const { t } = useI18n();
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -37,9 +39,9 @@ export default function ContactPage() {
           </Link>
         </div>
 
-        <h1 className="text-3xl font-bold text-neutral-900 dark:text-white mb-2">Contact Us</h1>
+        <h1 className="text-3xl font-bold text-neutral-900 dark:text-white mb-2">{t("contact.title")}</h1>
         <p className="text-neutral-500 dark:text-neutral-400 mb-10">
-          Have a question, need enterprise pricing, or want to report an issue? We&apos;d love to hear from you.
+          {t("contact.subtitle")}
         </p>
 
         <div className="grid gap-10 md:grid-cols-2">
@@ -48,7 +50,7 @@ export default function ContactPage() {
             <div className="flex items-start gap-3">
               <Mail className="h-5 w-5 text-neutral-600 dark:text-neutral-400 mt-0.5" />
               <div>
-                <h3 className="font-medium text-neutral-900 dark:text-white">Email</h3>
+                <h3 className="font-medium text-neutral-900 dark:text-white">{t("contact.email")}</h3>
                 <p className="text-sm text-neutral-600 dark:text-neutral-300">
                   General: <a href="mailto:hello@reglayer.dev" className="text-blue-600">hello@reglayer.dev</a>
                 </p>
@@ -64,9 +66,9 @@ export default function ContactPage() {
             <div className="flex items-start gap-3">
               <MessageSquare className="h-5 w-5 text-neutral-600 dark:text-neutral-400 mt-0.5" />
               <div>
-                <h3 className="font-medium text-neutral-900 dark:text-white">Response Time</h3>
+                <h3 className="font-medium text-neutral-900 dark:text-white">{t("contact.responseTime")}</h3>
                 <p className="text-sm text-neutral-600 dark:text-neutral-300">
-                  We typically respond within 24 hours on business days. Enterprise customers receive priority support.
+                  {t("contact.responseTimeDesc")}
                 </p>
               </div>
             </div>
@@ -74,7 +76,7 @@ export default function ContactPage() {
             <div className="flex items-start gap-3">
               <MapPin className="h-5 w-5 text-neutral-600 dark:text-neutral-400 mt-0.5" />
               <div>
-                <h3 className="font-medium text-neutral-900 dark:text-white">Location</h3>
+                <h3 className="font-medium text-neutral-900 dark:text-white">{t("contact.location")}</h3>
                 <p className="text-sm text-neutral-600 dark:text-neutral-300">
                   RegLayer GmbH<br />
                   Frankfurt am Main, Germany<br />
@@ -92,17 +94,17 @@ export default function ContactPage() {
                   <Mail className="h-6 w-6 text-green-600" />
                 </div>
                 <h3 className="text-lg font-semibold text-neutral-900 dark:text-white mb-2">
-                  Message Sent
+                  {t("contact.sent")}
                 </h3>
                 <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                  Thanks for reaching out! We&apos;ll get back to you within 24 hours.
+                  {t("contact.sentDesc")}
                 </p>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label htmlFor="name" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-                    Name
+                    {t("contact.name")}
                   </label>
                   <input
                     id="name"
@@ -110,12 +112,12 @@ export default function ContactPage() {
                     type="text"
                     required
                     className="w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-900 dark:focus:ring-white"
-                    placeholder="Your name"
+                    placeholder={t("contact.namePlaceholder")}
                   />
                 </div>
                 <div>
                   <label htmlFor="email" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-                    Email
+                    {t("contact.email")}
                   </label>
                   <input
                     id="email"
@@ -123,28 +125,28 @@ export default function ContactPage() {
                     type="email"
                     required
                     className="w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-900 dark:focus:ring-white"
-                    placeholder="you@company.com"
+                    placeholder={t("contact.emailPlaceholder")}
                   />
                 </div>
                 <div>
                   <label htmlFor="subject" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-                    Subject
+                    {t("contact.subject")}
                   </label>
                   <select
                     id="subject"
                     name="subject"
                     className="w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-neutral-900 dark:focus:ring-white"
                   >
-                    <option value="general">General Inquiry</option>
-                    <option value="support">Technical Support</option>
-                    <option value="enterprise">Enterprise Pricing</option>
-                    <option value="partnership">Partnership</option>
-                    <option value="bug">Bug Report</option>
+                    <option value="general">{t("contact.subjectGeneral")}</option>
+                    <option value="support">{t("contact.subjectSupport")}</option>
+                    <option value="enterprise">{t("contact.subjectEnterprise")}</option>
+                    <option value="partnership">{t("contact.subjectPartnership")}</option>
+                    <option value="bug">{t("contact.subjectBug")}</option>
                   </select>
                 </div>
                 <div>
                   <label htmlFor="message" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-                    Message
+                    {t("contact.message")}
                   </label>
                   <textarea
                     id="message"
@@ -152,11 +154,11 @@ export default function ContactPage() {
                     required
                     rows={4}
                     className="w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-900 dark:focus:ring-white resize-none"
-                    placeholder="How can we help?"
+                    placeholder={t("contact.messagePlaceholder")}
                   />
                 </div>
                 <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Sending..." : "Send Message"}
+                  {loading ? t("contact.sending") : t("contact.send")}
                 </Button>
               </form>
             )}
