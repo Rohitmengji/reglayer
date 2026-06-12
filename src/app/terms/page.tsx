@@ -1,19 +1,19 @@
+"use client";
+
 /**
  * RegLayer — Terms of Service Page
  *
  * WHY: Legal requirement — defines the agreement between RegLayer and its users.
  * WHAT: Full ToS covering acceptable use, billing, liability, termination, governing law.
- * HOW: Static content page. Server-rendered for SEO.
+ * HOW: Client component with i18n for titles.
  */
 import { Shield } from "lucide-react";
 import Link from "next/link";
 import { Footer } from "@/components/layout/footer";
-
-export const metadata = {
-  title: "Terms of Service — RegLayer",
-};
+import { useI18n } from "@/components/i18n-provider";
 
 export default function TermsPage() {
+  const { t } = useI18n();
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950">
       <div className="mx-auto max-w-3xl px-6 py-12">
@@ -24,8 +24,8 @@ export default function TermsPage() {
           </Link>
         </div>
 
-        <h1 className="text-3xl font-bold text-neutral-900 dark:text-white mb-2">Terms of Service</h1>
-        <p className="text-sm text-neutral-500 mb-8">Last updated: May 25, 2026</p>
+        <h1 className="text-3xl font-bold text-neutral-900 dark:text-white mb-2">{t("termsOfService.title")}</h1>
+        <p className="text-sm text-neutral-500 mb-8">{t("termsOfService.lastUpdated")}</p>
 
         <div className="prose prose-neutral dark:prose-invert max-w-none text-sm leading-relaxed space-y-6">
           <section>

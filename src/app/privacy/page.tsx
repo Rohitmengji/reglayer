@@ -1,19 +1,19 @@
+"use client";
+
 /**
  * RegLayer — Privacy Policy Page
  *
  * WHY: GDPR requires a public privacy policy for EU users.
  * WHAT: Full privacy policy covering data collection, processing, retention, rights.
- * HOW: Static content page. Server-rendered for SEO.
+ * HOW: Client component with i18n for titles.
  */
 import { Shield } from "lucide-react";
 import Link from "next/link";
 import { Footer } from "@/components/layout/footer";
-
-export const metadata = {
-  title: "Privacy Policy — RegLayer",
-};
+import { useI18n } from "@/components/i18n-provider";
 
 export default function PrivacyPage() {
+  const { t } = useI18n();
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950">
       <div className="mx-auto max-w-3xl px-6 py-12">
@@ -24,8 +24,8 @@ export default function PrivacyPage() {
           </Link>
         </div>
 
-        <h1 className="text-3xl font-bold text-neutral-900 dark:text-white mb-2">Privacy Policy</h1>
-        <p className="text-sm text-neutral-500 mb-8">Last updated: May 25, 2026</p>
+        <h1 className="text-3xl font-bold text-neutral-900 dark:text-white mb-2">{t("privacyPolicy.title")}</h1>
+        <p className="text-sm text-neutral-500 mb-8">{t("privacyPolicy.lastUpdated")}</p>
 
         <div className="prose prose-neutral dark:prose-invert max-w-none text-sm leading-relaxed space-y-6">
           <section>

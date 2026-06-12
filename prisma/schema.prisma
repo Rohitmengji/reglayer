@@ -25,8 +25,6 @@ model User {
   bonusCredits  Int       @default(0)
   creditResetAt DateTime  @default(now())
   isMasterAdmin Boolean   @default(false)
-  persona       String?   // "developer" | "designer" | "legal" | "executive"
-  onboardingDismissed Boolean @default(false)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 

@@ -1,17 +1,15 @@
+"use client";
+
 /**
  * RegLayer — Documentation Hub
  *
  * WHY: Users need a central docs page linking to all documentation sections.
  * WHAT: Card grid linking to: Getting Started, Scanning, Monitoring, Reports, Integrations, Teams.
- * HOW: Server component rendering static links to /docs/* sub-pages.
+ * HOW: Client component with i18n. Renders links to /docs/* sub-pages.
  */
 import { Shield, BookOpen, Rocket, ScanLine, Bell, FileText, Code2, Users } from "lucide-react";
 import Link from "next/link";
-
-export const metadata = {
-  title: "Documentation — RegLayer",
-  description: "Get started with RegLayer. Learn how to scan, monitor, and report on accessibility compliance.",
-};
+import { useI18n } from "@/components/i18n-provider";
 
 const sections = [
   {
@@ -107,6 +105,7 @@ const sections = [
 ];
 
 export default function DocsPage() {
+  const { t } = useI18n();
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950">
       <div className="mx-auto max-w-5xl px-6 py-12">
@@ -120,9 +119,9 @@ export default function DocsPage() {
         <div className="flex items-center gap-3 mb-8">
           <BookOpen className="h-8 w-8 text-neutral-700 dark:text-neutral-300" />
           <div>
-            <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">Documentation</h1>
+            <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">{t("docs.title")}</h1>
             <p className="text-neutral-500 dark:text-neutral-400 text-sm">
-              Everything you need to get started with RegLayer
+              {t("docs.subtitle")}
             </p>
           </div>
         </div>

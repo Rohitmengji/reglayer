@@ -1,19 +1,19 @@
+"use client";
+
 /**
  * RegLayer — Cookie Policy Page
  *
  * WHY: EU ePrivacy Directive requires disclosure of cookie usage.
  * WHAT: Lists all cookies used, their purpose, duration, and necessity.
- * HOW: Static content page. Server-rendered for SEO.
+ * HOW: Client component with i18n for titles.
  */
 import { Shield } from "lucide-react";
 import Link from "next/link";
 import { Footer } from "@/components/layout/footer";
-
-export const metadata = {
-  title: "Cookie Policy — RegLayer",
-};
+import { useI18n } from "@/components/i18n-provider";
 
 export default function CookiePolicyPage() {
+  const { t } = useI18n();
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950">
       <div className="mx-auto max-w-3xl px-6 py-12">
@@ -24,8 +24,8 @@ export default function CookiePolicyPage() {
           </Link>
         </div>
 
-        <h1 className="text-3xl font-bold text-neutral-900 dark:text-white mb-2">Cookie Policy</h1>
-        <p className="text-sm text-neutral-500 mb-8">Last updated: May 25, 2026</p>
+        <h1 className="text-3xl font-bold text-neutral-900 dark:text-white mb-2">{t("cookiePolicy.title")}</h1>
+        <p className="text-sm text-neutral-500 mb-8">{t("cookiePolicy.lastUpdated")}</p>
 
         <div className="prose prose-neutral dark:prose-invert max-w-none text-sm leading-relaxed space-y-6">
           <section>

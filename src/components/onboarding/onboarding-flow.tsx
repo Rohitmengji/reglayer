@@ -27,6 +27,7 @@ import {
   BarChart3,
   X,
 } from "lucide-react";
+import { useI18n } from "@/components/i18n-provider";
 
 interface OnboardingProps {
   userName?: string | null;
@@ -35,6 +36,7 @@ interface OnboardingProps {
 }
 
 export function OnboardingFlow({ userName, onComplete, onStartScan }: OnboardingProps) {
+  const { t } = useI18n();
   const [step, setStep] = useState(0);
   const [url, setUrl] = useState("");
   const [dismissed, setDismissed] = useState(false);
@@ -72,32 +74,31 @@ export function OnboardingFlow({ userName, onComplete, onStartScan }: Onboarding
       </div>
       <div>
         <h2 className="text-xl font-bold text-neutral-900 dark:text-white">
-          Welcome{userName ? `, ${userName}` : ""}! 🎉
+          {t("onboarding.welcome", { name: userName ? `, ${userName}` : "" })}
         </h2>
         <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-2 max-w-sm mx-auto">
-          RegLayer helps you find and fix accessibility issues in your websites.
-          Let&apos;s get started with your first scan.
+          {t("onboarding.welcomeDesc")}
         </p>
       </div>
       <div className="grid grid-cols-3 gap-3 max-w-sm mx-auto">
         <div className="rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/30 p-3 text-center">
           <Target className="h-5 w-5 text-blue-500 mx-auto mb-1" />
-          <p className="text-[10px] font-medium text-blue-700 dark:text-blue-300">Scan</p>
+          <p className="text-[10px] font-medium text-blue-700 dark:text-blue-300">{t("onboarding.scan")}</p>
         </div>
         <div className="rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800/30 p-3 text-center">
           <BarChart3 className="h-5 w-5 text-amber-500 mx-auto mb-1" />
-          <p className="text-[10px] font-medium text-amber-700 dark:text-amber-300">Analyze</p>
+          <p className="text-[10px] font-medium text-amber-700 dark:text-amber-300">{t("onboarding.analyze")}</p>
         </div>
         <div className="rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/30 p-3 text-center">
           <CheckCircle2 className="h-5 w-5 text-emerald-500 mx-auto mb-1" />
-          <p className="text-[10px] font-medium text-emerald-700 dark:text-emerald-300">Fix</p>
+          <p className="text-[10px] font-medium text-emerald-700 dark:text-emerald-300">{t("onboarding.fix")}</p>
         </div>
       </div>
       <button
         onClick={() => setStep(1)}
         className="inline-flex items-center gap-2 rounded-lg bg-neutral-900 dark:bg-white px-6 py-2.5 text-sm font-medium text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors shadow-sm"
       >
-        Get Started
+        {t("onboarding.getStarted")}
         <ArrowRight className="h-4 w-4" />
       </button>
     </div>,
@@ -109,10 +110,10 @@ export function OnboardingFlow({ userName, onComplete, onStartScan }: Onboarding
           <Globe className="h-7 w-7 text-blue-600 dark:text-blue-400" />
         </div>
         <h2 className="text-lg font-bold text-neutral-900 dark:text-white">
-          Run Your First Scan
+          {t("onboarding.firstScanTitle")}
         </h2>
         <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-          Enter any website URL to check for accessibility issues
+          {t("onboarding.firstScanDesc")}
         </p>
       </div>
 
@@ -153,12 +154,12 @@ export function OnboardingFlow({ userName, onComplete, onStartScan }: Onboarding
           }`}
         >
           <Target className="h-4 w-4" />
-          Scan Now
+          {t("onboarding.scanNow")}
         </button>
       </div>
 
       <p className="text-[11px] text-neutral-500 dark:text-neutral-400 text-center">
-        Takes about 10-30 seconds depending on page complexity
+        {t("onboarding.scanTiming")}
       </p>
     </div>,
 
@@ -169,18 +170,18 @@ export function OnboardingFlow({ userName, onComplete, onStartScan }: Onboarding
       </div>
       <div>
         <h2 className="text-lg font-bold text-neutral-900 dark:text-white">
-          You&apos;re All Set!
+          {t("onboarding.allSet")}
         </h2>
         <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-          Here&apos;s what you can do next
+          {t("onboarding.allSetDesc")}
         </p>
       </div>
       <div className="space-y-2.5 text-left max-w-sm mx-auto">
         {[
-          { icon: BarChart3, label: "View scan history", desc: "Track scores over time", color: "text-blue-500" },
-          { icon: Target, label: "Fix violations", desc: "Resolve issues with guided suggestions", color: "text-amber-500" },
-          { icon: BookOpen, label: "Learn accessibility", desc: "Personalized lessons based on your weaknesses", color: "text-emerald-500" },
-          { icon: Sparkles, label: "Track skill score", desc: "Earn badges as you improve", color: "text-violet-500" },
+          { icon: BarChart3, label: t("onboarding.viewHistory"), desc: t("onboarding.viewHistoryDesc"), color: "text-blue-500" },
+          { icon: Target, label: t("onboarding.fixViolations"), desc: t("onboarding.fixViolationsDesc"), color: "text-amber-500" },
+          { icon: BookOpen, label: t("onboarding.learnA11y"), desc: t("onboarding.learnA11yDesc"), color: "text-emerald-500" },
+          { icon: Sparkles, label: t("onboarding.trackSkill"), desc: t("onboarding.trackSkillDesc"), color: "text-violet-500" },
         ].map((item) => (
           <div key={item.label} className="flex items-center gap-3 rounded-lg border border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/30 px-3 py-2.5">
             <item.icon className={`h-4 w-4 ${item.color} shrink-0`} />
@@ -195,7 +196,7 @@ export function OnboardingFlow({ userName, onComplete, onStartScan }: Onboarding
         onClick={handleDismiss}
         className="inline-flex items-center gap-2 rounded-lg bg-neutral-900 dark:bg-white px-6 py-2.5 text-sm font-medium text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors shadow-sm"
       >
-        Start Exploring
+        {t("onboarding.startExploring")}
         <ArrowRight className="h-4 w-4" />
       </button>
     </div>,
