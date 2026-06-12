@@ -13,6 +13,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useI18n } from "@/components/i18n-provider";
 import {
   Play,
   Pause,
@@ -54,6 +55,7 @@ interface ScreenReaderSnapshot {
 }
 
 export default function ScreenReaderPage() {
+  const { t } = useI18n();
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -292,10 +294,10 @@ export default function ScreenReaderPage() {
           <div>
             <h1 className="text-2xl font-bold text-neutral-900 dark:text-white flex items-center gap-2">
               <Eye className="h-6 w-6" />
-              Screen Reader Playback
+              {t("screenReader.title")}
             </h1>
             <p className="text-neutral-600 dark:text-neutral-400 mt-1">
-              Experience any webpage as a screen reader user. Hear and see the exact reading order and announcements.
+              {t("screenReader.subtitle")}
             </p>
           </div>
 
@@ -308,17 +310,17 @@ export default function ScreenReaderPage() {
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleCapture()}
-                  placeholder="Enter URL to analyze (e.g. example.com)"
+                  placeholder={t("screenReader.placeholder")}
                   className="flex-1 min-w-0 px-4 py-2.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <Button onClick={handleCapture} disabled={loading || !url.trim()} className="shrink-0">
                   {loading ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      Capturing...
+                      {t("screenReader.capturing")}
                     </>
                   ) : (
-                    "Capture"
+                    t("screenReader.capture")
                   )}
                 </Button>
               </div>
@@ -326,7 +328,7 @@ export default function ScreenReaderPage() {
                 <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>
               )}
               <p className="mt-2 text-xs text-neutral-500 dark:text-neutral-500">
-                Costs 3 AI credits. Captures the full accessibility tree and generates narration.
+                {t("screenReader.helpText")}
               </p>
             </CardContent>
           </Card>
@@ -341,7 +343,7 @@ export default function ScreenReaderPage() {
                     <Layers className="h-5 w-5 text-neutral-500" />
                     <div>
                       <p className="text-2xl font-bold text-neutral-900 dark:text-white">{snapshot.totalElements}</p>
-                      <p className="text-xs text-neutral-500">Total Elements</p>
+                      <p className="text-xs text-neutral-500">{t("screenReader.totalElements")}</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -350,7 +352,7 @@ export default function ScreenReaderPage() {
                     <Landmark className="h-5 w-5 text-purple-500" />
                     <div>
                       <p className="text-2xl font-bold text-neutral-900 dark:text-white">{snapshot.landmarks}</p>
-                      <p className="text-xs text-neutral-500">Landmarks</p>
+                      <p className="text-xs text-neutral-500">{t("screenReader.landmarks")}</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -359,7 +361,7 @@ export default function ScreenReaderPage() {
                     <Heading className="h-5 w-5 text-amber-500" />
                     <div>
                       <p className="text-2xl font-bold text-neutral-900 dark:text-white">{snapshot.headings}</p>
-                      <p className="text-xs text-neutral-500">Headings</p>
+                      <p className="text-xs text-neutral-500">{t("screenReader.headings")}</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -368,7 +370,7 @@ export default function ScreenReaderPage() {
                     <MousePointer2 className="h-5 w-5 text-blue-500" />
                     <div>
                       <p className="text-2xl font-bold text-neutral-900 dark:text-white">{snapshot.interactiveElements}</p>
-                      <p className="text-xs text-neutral-500">Interactive</p>
+                      <p className="text-xs text-neutral-500">{t("screenReader.interactive")}</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -417,7 +419,7 @@ export default function ScreenReaderPage() {
                         />
                       </div>
                       <p className="text-xs text-neutral-500 mt-1">
-                        Step {currentStep + 1} of {snapshot.steps.length}
+                        {t("screenReader.stepOf", { current: String(currentStep + 1), total: String(snapshot.steps.length) })}
                       </p>
                     </div>
 
@@ -466,7 +468,7 @@ export default function ScreenReaderPage() {
               {/* Step List */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">Reading Order</CardTitle>
+                  <CardTitle className="text-base">{t("screenReader.readingOrder")}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div

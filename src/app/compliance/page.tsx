@@ -14,6 +14,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { TabNav, type Tab } from "@/components/ui/tab-nav";
 import { EmbeddedProvider } from "@/components/layout/embedded-context";
 import { Grid3X3, FileText, ClipboardCheck } from "lucide-react";
+import { useI18n } from "@/components/i18n-provider";
 
 const MatrixPage = lazy(() => import("@/app/compliance/matrix-page"));
 const VpatPage = lazy(() => import("@/app/compliance/vpat/page"));
@@ -26,6 +27,7 @@ const tabs: Tab[] = [
 ];
 
 function ComplianceHub() {
+  const { t } = useI18n();
   const searchParams = useSearchParams();
   const activeTab = searchParams.get("tab") || "matrix";
 
@@ -33,9 +35,9 @@ function ComplianceHub() {
     <AppShell>
       <div className="flex flex-col gap-6 -mt-2">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Compliance</h1>
+          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{t("compliancePage.title")}</h1>
           <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-            WCAG conformance matrix, VPAT generation, and accessibility statements
+            {t("compliancePage.subtitle")}
           </p>
         </div>
 

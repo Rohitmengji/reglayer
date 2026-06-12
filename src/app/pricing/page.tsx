@@ -12,6 +12,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Shield, Check, Zap, Building2, ArrowRight, Globe, Users, Scan, FileText, BarChart3, Webhook, Lock } from "lucide-react";
 import { Footer } from "@/components/layout/footer";
+import { useI18n } from "@/components/i18n-provider";
 
 const plans = [
   {
@@ -92,6 +93,7 @@ const plans = [
 ];
 
 export default function PricingPage() {
+  const { t } = useI18n();
   const [billing, setBilling] = useState<"monthly" | "annual">("annual");
 
   return (
@@ -108,7 +110,7 @@ export default function PricingPage() {
               href="/auth/login"
               className="rounded-md px-4 py-2 text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
             >
-              Sign In
+              {t("pricing.signIn")}
             </Link>
           </div>
         </div>
@@ -122,11 +124,10 @@ export default function PricingPage() {
             EAA Compliance Deadline Passed — Act Now
           </div>
           <h1 className="text-4xl font-black text-neutral-900 dark:text-white sm:text-5xl">
-            Simple, transparent pricing
+            {t("pricing.title")}
           </h1>
           <p className="mt-4 text-lg text-neutral-500 dark:text-neutral-400 max-w-2xl mx-auto">
-            Start free. Upgrade when you need EN 301 549 compliance, team collaboration, 
-            or enterprise features. All plans include a 14-day free trial.
+            {t("pricing.subtitle")}
           </p>
 
           {/* Billing Toggle */}
@@ -139,7 +140,7 @@ export default function PricingPage() {
                   : "text-neutral-500 dark:text-neutral-400"
               }`}
             >
-              Monthly
+              {t("pricing.monthly")}
             </button>
             <button
               onClick={() => setBilling("annual")}
@@ -149,9 +150,9 @@ export default function PricingPage() {
                   : "text-neutral-500 dark:text-neutral-400"
               }`}
             >
-              Annual
+              {t("pricing.annual")}
               <span className="ml-1.5 rounded-full bg-green-100 dark:bg-green-900/50 px-2 py-0.5 text-[10px] font-semibold text-green-700 dark:text-green-300">
-                Save 20%
+                {t("pricing.save20")}
               </span>
             </button>
           </div>
@@ -172,7 +173,7 @@ export default function PricingPage() {
               >
                 {plan.popular && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-neutral-900 dark:bg-white px-3 py-1 text-xs font-semibold text-white dark:text-neutral-900">
-                    Most Popular
+                    {t("pricing.mostPopular")}
                   </div>
                 )}
 
@@ -184,12 +185,12 @@ export default function PricingPage() {
                 <div className="mb-6">
                   {price === 0 ? (
                     <div className="flex items-baseline gap-1">
-                      <span className="text-4xl font-black text-neutral-900 dark:text-white">Free</span>
+                      <span className="text-4xl font-black text-neutral-900 dark:text-white">{t("pricing.free")}</span>
                     </div>
                   ) : (
                     <div className="flex items-baseline gap-1">
                       <span className="text-4xl font-black text-neutral-900 dark:text-white">€{price}</span>
-                      <span className="text-sm text-neutral-500 dark:text-neutral-400">/month</span>
+                      <span className="text-sm text-neutral-500 dark:text-neutral-400">{t("pricing.perMonth")}</span>
                     </div>
                   )}
                   {billing === "annual" && price > 0 && (
@@ -227,20 +228,20 @@ export default function PricingPage() {
         {/* FAQ / Trust */}
         <div className="mt-20 text-center">
           <h2 className="text-2xl font-bold text-neutral-900 dark:text-white mb-8">
-            Trusted by teams across Europe
+            {t("pricing.trustedBy")}
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-3xl mx-auto">
             <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 p-5 bg-white dark:bg-neutral-900">
               <p className="text-3xl font-black text-neutral-900 dark:text-white">50+</p>
-              <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">EN 301 549 criteria checked</p>
+              <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">{t("pricing.criteriaChecked")}</p>
             </div>
             <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 p-5 bg-white dark:bg-neutral-900">
               <p className="text-3xl font-black text-neutral-900 dark:text-white">7</p>
-              <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">EU languages supported</p>
+              <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">{t("pricing.euLanguages")}</p>
             </div>
             <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 p-5 bg-white dark:bg-neutral-900">
               <p className="text-3xl font-black text-neutral-900 dark:text-white">GDPR</p>
-              <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">EU data residency (Frankfurt)</p>
+              <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">{t("pricing.euDataResidency")}</p>
             </div>
           </div>
         </div>
@@ -248,16 +249,16 @@ export default function PricingPage() {
         {/* CTA */}
         <div className="mt-16 rounded-2xl bg-neutral-900 dark:bg-white p-8 sm:p-12 text-center">
           <h2 className="text-2xl font-bold text-white dark:text-neutral-900">
-            Ready to meet EAA compliance?
+            {t("pricing.readyCta")}
           </h2>
           <p className="mt-2 text-neutral-500 dark:text-neutral-500 max-w-lg mx-auto">
-            Start scanning in under 60 seconds. No credit card required for the free plan.
+            {t("pricing.readyDesc")}
           </p>
           <Link
             href="/auth/login"
             className="mt-6 inline-flex items-center gap-2 rounded-lg bg-white dark:bg-neutral-900 px-6 py-3 text-sm font-medium text-neutral-900 dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
           >
-            Start Free Trial <ArrowRight className="h-4 w-4" />
+            {t("pricing.startTrial")} <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
       </main>

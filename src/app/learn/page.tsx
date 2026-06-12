@@ -38,6 +38,7 @@ import {
 import Link from "next/link";
 import { SKILL_CATEGORIES } from "@/lib/skills/engine";
 import type { PersonalizedPath, Lesson, LearningModule } from "@/lib/skills/learning-paths";
+import { useI18n } from "@/components/i18n-provider";
 
 const CATEGORY_ICONS: Record<string, string> = {
   color: "🎨",
@@ -49,6 +50,7 @@ const CATEGORY_ICONS: Record<string, string> = {
 };
 
 export default function LearnPage() {
+  const { t } = useI18n();
   const [paths, setPaths] = useState<PersonalizedPath[]>([]);
   const [allModules, setAllModules] = useState<LearningModule[]>([]);
   const [weakestCategory, setWeakestCategory] = useState<string | null>(null);
@@ -62,14 +64,14 @@ export default function LearnPage() {
     async function load() {
       try {
         const resp = await fetch("/api/learn");
-        if (!resp.ok) throw new Error("Failed to load learning paths");
+        if (!resp.ok) throw new Error(t("learn.errorTitle"));
         const data = await resp.json();
         setPaths(data.paths);
         setAllModules(data.allModules);
         setWeakestCategory(data.weakestCategory);
         setOverallScore(data.overallScore);
       } catch {
-        setError("We couldn\u2019t load your learning paths. Please try again.");
+        setError(t("learn.errorDesc"));
       } finally {
         setLoading(false);
       }
@@ -80,7 +82,7 @@ export default function LearnPage() {
   if (loading) {
     return (
       <AppShell>
-        <PageLoading message="Building your learning paths..." />
+        <PageLoading message={t("learn.loading")} />
       </AppShell>
     );
   }
@@ -89,7 +91,7 @@ export default function LearnPage() {
     return (
       <AppShell>
         <PageError
-          title="Couldn\u2019t load learning paths"
+          title={t("learn.errorTitle")}
           message={error}
           onRetry={() => window.location.reload()}
           fallbackHref="/dashboard"
@@ -123,23 +125,23 @@ export default function LearnPage() {
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <GraduationCap className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Learning Paths</h1>
+                <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{t("learn.title")}</h1>
               </div>
               <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                Personalized curriculum built from your scan results
+                {t("learn.subtitle")}
               </p>
               <div className="flex items-center gap-4 mt-3">
                 <span className="inline-flex items-center gap-1.5 text-xs text-neutral-500">
                   <BookOpen className="h-3.5 w-3.5" />
-                  {totalLessons} lessons
+                  {totalLessons} {t("learn.lessons")}
                 </span>
                 <span className="inline-flex items-center gap-1.5 text-xs text-neutral-500">
                   <Clock className="h-3.5 w-3.5" />
-                  ~{totalMinutes} min total
+                  ~{totalMinutes} {t("learn.minTotal")}
                 </span>
                 <span className="inline-flex items-center gap-1.5 text-xs text-neutral-500">
                   <Target className="h-3.5 w-3.5" />
-                  {displayPaths.length} paths
+                  {displayPaths.length} {t("learn.paths")}
                 </span>
               </div>
             </div>
@@ -148,7 +150,7 @@ export default function LearnPage() {
               className="inline-flex items-center gap-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white/80 dark:bg-neutral-800/80 backdrop-blur-sm px-4 py-2 text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors shrink-0"
             >
               <Award className="h-4 w-4" />
-              Skill Score
+              {t("learn.skillScore")}
             </Link>
           </div>
         </div>

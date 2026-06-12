@@ -23,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { ChevronDown, ChevronRight, Shield, Plus, Trash2, TestTube } from "lucide-react";
 import type { AuthConfig } from "@/lib/validations/auth";
+import { useI18n } from "@/components/i18n-provider";
 import { toast } from "sonner";
 
 interface SavedConfig {
@@ -41,6 +42,7 @@ interface ScanAuthSectionProps {
 }
 
 export function ScanAuthSection({ onAuthChange, scanUrl }: ScanAuthSectionProps) {
+  const { t } = useI18n();
   const [expanded, setExpanded] = useState(false);
   const [method, setMethod] = useState<AuthConfig["method"]>("none");
   const [savedConfigs, setSavedConfigs] = useState<SavedConfig[]>([]);
@@ -235,7 +237,7 @@ export function ScanAuthSection({ onAuthChange, scanUrl }: ScanAuthSectionProps)
       >
         <div className="flex items-center gap-2 text-sm font-medium text-neutral-700 dark:text-neutral-200">
           <Shield className="h-4 w-4 text-violet-500" />
-          Authentication
+          {t("scanAuth.title")}
           {method !== "none" && (
             <span className="text-xs px-1.5 py-0.5 bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300 rounded">
               {method}
@@ -254,7 +256,7 @@ export function ScanAuthSection({ onAuthChange, scanUrl }: ScanAuthSectionProps)
           {/* Saved Configs */}
           {savedConfigs.length > 0 && (
             <div className="space-y-2">
-              <label className="text-xs text-neutral-500">Saved Configs</label>
+              <label className="text-xs text-neutral-500">{t("scanAuth.savedConfigs")}</label>
               <div className="space-y-1">
                 {savedConfigs.map((config) => (
                   <div
@@ -288,7 +290,7 @@ export function ScanAuthSection({ onAuthChange, scanUrl }: ScanAuthSectionProps)
 
           {/* Method Selector */}
           <div className="space-y-2">
-            <label className="text-xs text-neutral-500">Auth Method</label>
+            <label className="text-xs text-neutral-500">{t("scanAuth.authMethod")}</label>
             <div className="grid grid-cols-5 gap-1">
               {(["none", "cookies", "form", "basic", "headers"] as const).map((m) => (
                 <button
@@ -301,7 +303,7 @@ export function ScanAuthSection({ onAuthChange, scanUrl }: ScanAuthSectionProps)
                       : "bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700"
                   }`}
                 >
-                  {m === "none" ? "None" : m === "cookies" ? "Cookies" : m === "form" ? "Form" : m === "basic" ? "Basic" : "Headers"}
+                  {m === "none" ? t("scanAuth.none") : m === "cookies" ? t("scanAuth.cookies") : m === "form" ? t("scanAuth.form") : m === "basic" ? t("scanAuth.basic") : t("scanAuth.headers")}
                 </button>
               ))}
             </div>
@@ -462,7 +464,7 @@ export function ScanAuthSection({ onAuthChange, scanUrl }: ScanAuthSectionProps)
                   onClick={() => setHeaderEntries([...headerEntries, { key: "", value: "" }])}
                   className="text-xs"
                 >
-                  <Plus className="h-3 w-3 mr-1" /> Add Header
+                  <Plus className="h-3 w-3 mr-1" /> {t("scanAuth.addHeader")}
                 </Button>
               </CardContent>
             </Card>
@@ -475,7 +477,7 @@ export function ScanAuthSection({ onAuthChange, scanUrl }: ScanAuthSectionProps)
                   <div key={i} className="grid grid-cols-[1fr_2fr_1fr_auto] gap-2">
                     <Input
                       type="text"
-                      placeholder="name"
+                      placeholder={t("scanAuth.namePlaceholder")}
                       value={entry.name}
                       onChange={(e) => {
                         const updated = [...cookieEntries];
@@ -487,7 +489,7 @@ export function ScanAuthSection({ onAuthChange, scanUrl }: ScanAuthSectionProps)
                     <Input
                       type="password"
                       autoComplete="off"
-                      placeholder="value"
+                      placeholder={t("scanAuth.valuePlaceholder")}
                       value={entry.value}
                       onChange={(e) => {
                         const updated = [...cookieEntries];
@@ -498,7 +500,7 @@ export function ScanAuthSection({ onAuthChange, scanUrl }: ScanAuthSectionProps)
                     />
                     <Input
                       type="text"
-                      placeholder=".example.com"
+                      placeholder={t("scanAuth.domainPlaceholder")}
                       value={entry.domain}
                       onChange={(e) => {
                         const updated = [...cookieEntries];
@@ -525,7 +527,7 @@ export function ScanAuthSection({ onAuthChange, scanUrl }: ScanAuthSectionProps)
                   onClick={() => setCookieEntries([...cookieEntries, { name: "", value: "", domain: "" }])}
                   className="text-xs"
                 >
-                  <Plus className="h-3 w-3 mr-1" /> Add Cookie
+                  <Plus className="h-3 w-3 mr-1" /> {t("scanAuth.addCookie")}
                 </Button>
               </CardContent>
             </Card>
@@ -543,7 +545,7 @@ export function ScanAuthSection({ onAuthChange, scanUrl }: ScanAuthSectionProps)
                 className="text-xs"
               >
                 <TestTube className="h-3 w-3 mr-1" />
-                {isTesting ? "Testing..." : "Test Auth"}
+                {isTesting ? t("scanAuth.testing") : t("scanAuth.testAuth")}
               </Button>
 
               {!showSave ? (
@@ -554,13 +556,13 @@ export function ScanAuthSection({ onAuthChange, scanUrl }: ScanAuthSectionProps)
                   onClick={() => setShowSave(true)}
                   className="text-xs"
                 >
-                  Save for Reuse
+                  {t("scanAuth.saveForReuse")}
                 </Button>
               ) : (
                 <div className="flex items-center gap-2 flex-1">
                   <Input
                     type="text"
-                    placeholder="Config name..."
+                    placeholder={t("scanAuth.configName")}
                     value={saveName}
                     onChange={(e) => setSaveName(e.target.value)}
                     className="text-xs h-8"

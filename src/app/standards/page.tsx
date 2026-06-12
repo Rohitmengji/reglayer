@@ -1,18 +1,16 @@
+"use client";
+
 /**
  * RegLayer — Standards Page
  *
  * WHY: Users need to understand which accessibility standards RegLayer supports.
  * WHAT: Explains WCAG 2.2, ADA, Section 508, EAA, EN 301 549, AODA with key requirements.
- * HOW: Server-rendered static content with standard comparison table.
+ * HOW: Client-rendered content with standard comparison cards.
  */
 import { Shield, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { Footer } from "@/components/layout/footer";
-
-export const metadata = {
-  title: "Standards — RegLayer",
-  description: "Accessibility standards supported by RegLayer: WCAG 2.2, ADA, Section 508, EN 301 549, EAA, and AODA.",
-};
+import { useI18n } from "@/components/i18n-provider";
 
 const standards = [
   {
@@ -66,6 +64,8 @@ const standards = [
 ];
 
 export default function StandardsPage() {
+  const { t } = useI18n();
+
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950">
       <div className="mx-auto max-w-4xl px-6 py-12">
@@ -76,9 +76,9 @@ export default function StandardsPage() {
           </Link>
         </div>
 
-        <h1 className="text-3xl font-bold text-neutral-900 dark:text-white mb-2">Compliance Standards</h1>
+        <h1 className="text-3xl font-bold text-neutral-900 dark:text-white mb-2">{t("standards.title")}</h1>
         <p className="text-neutral-500 dark:text-neutral-400 mb-12">
-          RegLayer tests against major international accessibility standards to ensure your digital products meet regulatory requirements.
+          {t("standards.subtitle")}
         </p>
 
         <div className="space-y-8">

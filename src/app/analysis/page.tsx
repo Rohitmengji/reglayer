@@ -14,6 +14,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { TabNav, type Tab } from "@/components/ui/tab-nav";
 import { EmbeddedProvider } from "@/components/layout/embedded-context";
 import { Eye, Zap, Sparkles, BarChart3, GitCompare } from "lucide-react";
+import { useI18n } from "@/components/i18n-provider";
 
 const ScreenReaderPage = lazy(() => import("@/app/screen-reader/page"));
 const PrioritiesPage = lazy(() => import("@/app/priorities/page"));
@@ -30,6 +31,7 @@ const tabs: Tab[] = [
 ];
 
 function AnalysisContent() {
+  const { t } = useI18n();
   const searchParams = useSearchParams();
   const activeTab = searchParams.get("tab") || "screen-reader";
 
@@ -37,9 +39,9 @@ function AnalysisContent() {
     <AppShell>
       <div className="flex flex-col gap-6 -mt-2">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Analysis</h1>
+          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{t("analysis.title")}</h1>
           <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-            Deep-dive into accessibility issues with specialized tools
+            {t("analysis.subtitle")}
           </p>
         </div>
 

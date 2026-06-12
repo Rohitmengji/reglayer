@@ -28,6 +28,7 @@ import {
 import Link from "next/link";
 import type { SkillProfile, CategoryScore, Badge } from "@/lib/skills/engine";
 import { SKILL_CATEGORIES } from "@/lib/skills/engine";
+import { useI18n } from "@/components/i18n-provider";
 
 const LEVEL_THRESHOLDS = [
   { level: "Novice", min: 0, max: 30 },
@@ -47,6 +48,7 @@ const CATEGORY_ICONS: Record<string, string> = {
 };
 
 export default function SkillsPage() {
+  const { t } = useI18n();
   const [profile, setProfile] = useState<SkillProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -78,7 +80,7 @@ export default function SkillsPage() {
             <div className="h-12 w-12 animate-spin rounded-full border-3 border-neutral-200 dark:border-neutral-700 border-t-indigo-500" />
             <Trophy className="h-5 w-5 text-indigo-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
           </div>
-          <p className="text-sm text-neutral-500 animate-pulse">Calculating your skill score...</p>
+          <p className="text-sm text-neutral-500 animate-pulse">{t("skills.loading")}</p>
         </div>
       </AppShell>
     );
@@ -93,17 +95,17 @@ export default function SkillsPage() {
               <Trophy className="h-10 w-10 text-neutral-300" />
             </div>
             <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200 mb-2">
-              No Skill Data Yet
+              {t("skills.noDataTitle")}
             </h2>
             <p className="text-sm text-neutral-500 mb-6">
-              {error || "Run accessibility scans to start building your developer skill profile and earning badges."}
+              {error || t("skills.noDataDesc")}
             </p>
             <Link
               href="/scans"
               className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 transition-colors"
             >
               <Target className="h-4 w-4" />
-              Run Your First Scan
+              {t("skills.runFirstScan")}
             </Link>
           </div>
         </div>
@@ -197,10 +199,10 @@ export default function SkillsPage() {
             <div className="flex-1 w-full">
               <div className="flex items-center gap-2 mb-1">
                 <Sparkles className="h-5 w-5 text-indigo-500" />
-                <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Developer Skills</h1>
+                <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{t("skills.title")}</h1>
               </div>
               <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-6">
-                Your accessibility expertise, tracked and gamified
+                {t("skills.subtitle")}
               </p>
 
               {/* Stats Row */}
@@ -239,7 +241,7 @@ export default function SkillsPage() {
                   className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition-all hover:shadow-lg hover:shadow-indigo-200 dark:hover:shadow-indigo-900/30"
                 >
                   <BookOpen className="h-4 w-4" />
-                  Start Learning
+                  {t("skills.startLearning")}
                   <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
                 <Link
@@ -247,7 +249,7 @@ export default function SkillsPage() {
                   className="inline-flex items-center gap-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-4 py-2 text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-750 transition-colors"
                 >
                   <Zap className="h-4 w-4" />
-                  New Scan
+                  {t("skills.newScan")}
                 </Link>
               </div>
             </div>
@@ -257,9 +259,9 @@ export default function SkillsPage() {
         {/* Category Breakdown — Visual Grid */}
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">Category Mastery</h2>
+            <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">{t("skills.categoryMastery")}</h2>
             <span className="text-xs text-neutral-500 dark:text-neutral-400">
-              {profile.categories.filter(c => c.score >= 85).length}/{profile.categories.length} mastered
+              {profile.categories.filter(c => c.score >= 85).length}/{profile.categories.length} {t("skills.mastered")}
             </span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -273,7 +275,7 @@ export default function SkillsPage() {
         <div>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">Badges</h2>
+              <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">{t("skills.badges")}</h2>
               <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300">
                 {profile.badges.length}
               </span>
@@ -281,7 +283,7 @@ export default function SkillsPage() {
             {profile.nextBadge && (
               <div className="flex items-center gap-1.5 text-xs text-neutral-500">
                 <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-                Next: <span className="font-medium text-neutral-700 dark:text-neutral-300">{profile.nextBadge.name}</span>
+                {t("skills.next")} <span className="font-medium text-neutral-700 dark:text-neutral-300">{profile.nextBadge.name}</span>
               </div>
             )}
           </div>
@@ -295,8 +297,8 @@ export default function SkillsPage() {
             <Card className="rounded-xl border border-dashed border-neutral-200 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-900/50">
               <CardContent className="py-10 text-center">
                 <Award className="h-12 w-12 text-neutral-200 dark:text-neutral-700 mx-auto mb-3" />
-                <p className="text-sm font-medium text-neutral-500">No badges yet</p>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">Keep scanning and fixing to unlock achievements!</p>
+                <p className="text-sm font-medium text-neutral-500">{t("skills.noBadges")}</p>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">{t("skills.noBadgesDesc")}</p>
               </CardContent>
             </Card>
           )}
@@ -315,7 +317,7 @@ export default function SkillsPage() {
                     Improve {SKILL_CATEGORIES[profile.weakestCategory].name}
                   </p>
                   <p className="text-xs text-indigo-600 dark:text-indigo-400 mt-0.5">
-                    This is your biggest opportunity for growth. Start a personalized learning path.
+                    {t("skills.growthCta")}
                   </p>
                 </div>
                 <ArrowRight className="h-5 w-5 text-indigo-400 group-hover:translate-x-1 transition-transform shrink-0" />
