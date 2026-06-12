@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Share2, BookmarkPlus, BookmarkCheck, Link2, Mail } from "lucide-react";
 import { toast } from "sonner";
+import { useI18n } from "@/components/i18n-provider";
 
 function getInitialBookmark(slug: string): boolean {
   if (typeof window === "undefined") return false;
@@ -16,6 +17,7 @@ interface ArticleActionsProps {
 }
 
 export function ArticleActions({ title, slug }: ArticleActionsProps) {
+  const { t } = useI18n();
   const [bookmarked, setBookmarked] = useState(() => getInitialBookmark(slug));
   const [shareOpen, setShareOpen] = useState(false);
   const shareRef = useRef<HTMLDivElement>(null);

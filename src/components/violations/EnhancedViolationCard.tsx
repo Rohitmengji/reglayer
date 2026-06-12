@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import { useViolationStatus } from "@/hooks/use-violation-status";
 import type { ViolationStatus } from "@/generated/prisma/client";
+import { useI18n } from "@/components/i18n-provider";
 
 // ─────────────── Types ───────────────
 
@@ -118,6 +119,7 @@ const DROPDOWN_OPTIONS: Array<{ value: ViolationStatus; label: string; requiresN
 // ─────────────── Main Component ───────────────
 
 export function EnhancedViolationCard({ violation, onStatusChange }: EnhancedViolationCardProps) {
+  const { t } = useI18n();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [noteDialogOpen, setNoteDialogOpen] = useState(false);
   const [pendingStatus, setPendingStatus] = useState<ViolationStatus | null>(null);

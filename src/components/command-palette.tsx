@@ -34,6 +34,7 @@ import {
   ArrowRight, Sparkles, Clock, Star,
 } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
+import { useI18n } from "@/components/i18n-provider";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -72,6 +73,7 @@ function fuzzyScore(query: string, text: string): number {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function CommandPalette() {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);

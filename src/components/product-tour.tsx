@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { X, ArrowRight } from "lucide-react";
+import { useI18n } from "@/components/i18n-provider";
 
 interface TourStep {
   target: string;
@@ -30,6 +31,7 @@ const TOUR_STEPS: TourStep[] = [
 const STORAGE_KEY = "reglayer_tour_completed";
 
 export function ProductTour() {
+  const { t } = useI18n();
   const [active, setActive] = useState(false);
   const [step, setStep] = useState(0);
   const [rect, setRect] = useState<{ top: number; left: number; width: number; height: number } | null>(null);

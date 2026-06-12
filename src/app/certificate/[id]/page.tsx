@@ -11,6 +11,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { Shield, Award, ExternalLink, Calendar, Globe, Download, Loader2 } from "lucide-react";
+import { useI18n } from "@/components/i18n-provider";
 
 interface CertificateData {
   id: string;
@@ -67,6 +68,7 @@ const levelConfig = {
 };
 
 export default function CertificatePage() {
+  const { t } = useI18n();
   const params = useParams();
   const [cert, setCert] = useState<CertificateData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -131,7 +133,7 @@ export default function CertificatePage() {
       <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 flex items-center justify-center">
         <div className="text-center">
           <Shield className="h-12 w-12 text-neutral-300 mx-auto mb-4" />
-          <h1 className="text-xl font-bold text-neutral-900 dark:text-white">Certificate Not Found</h1>
+          <h1 className="text-xl font-bold text-neutral-900 dark:text-white">{t("certificate.notFound")}</h1>
           <p className="text-sm text-neutral-500 mt-2">This certificate does not exist or has expired.</p>
         </div>
       </div>

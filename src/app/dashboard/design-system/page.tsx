@@ -21,6 +21,7 @@ import {
   Layers,
   Zap,
 } from "lucide-react";
+import { useI18n } from "@/components/i18n-provider";
 
 interface ComponentResult {
   name: string;
@@ -61,6 +62,7 @@ interface Report {
 }
 
 export default function DesignSystemPage() {
+  const { t } = useI18n();
   const [storybookUrl, setStorybookUrl] = useState("");
   const [report, setReport] = useState<Report | null>(null);
   const [loading, setLoading] = useState(false);
@@ -203,7 +205,7 @@ export default function DesignSystemPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Design System Compliance</h1>
+        <h1 className="text-2xl font-bold">{t("designSystem.title")}</h1>
         <p className="text-muted-foreground">
           Scan Storybook to find accessibility issues at the component level. Fix once, fix everywhere.
         </p>

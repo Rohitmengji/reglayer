@@ -13,6 +13,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DollarSign, TrendingDown, AlertTriangle, Shield, Users, BarChart3 } from "lucide-react";
+import { useI18n } from "@/components/i18n-provider";
 
 interface RevenueResult {
   estimatedMonthlyLoss: number;
@@ -28,6 +29,7 @@ interface RevenueResult {
 }
 
 export default function RevenueImpactPage() {
+  const { t } = useI18n();
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<RevenueResult | null>(null);
   const [visitors, setVisitors] = useState("500000");
@@ -62,7 +64,7 @@ export default function RevenueImpactPage() {
     <AppShell>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold">Revenue Impact Calculator</h1>
+          <h1 className="text-2xl font-bold">{t("revenue.title")}</h1>
           <p className="text-muted-foreground">
             Estimate how much revenue you&apos;re losing due to accessibility barriers.
           </p>

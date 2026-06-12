@@ -23,6 +23,7 @@ import {
   Check,
   Radio,
 } from "lucide-react";
+import { useI18n } from "@/components/i18n-provider";
 
 interface RumAggregation {
   siteId: string;
@@ -71,6 +72,7 @@ const BARRIER_COLORS: Record<string, string> = {
 };
 
 export default function RumPage() {
+  const { t } = useI18n();
   const [data, setData] = useState<{
     aggregation: RumAggregation;
     recentEvents: RumEvent[];
@@ -100,7 +102,7 @@ export default function RumPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Real User Monitoring</h1>
+        <h1 className="text-2xl font-bold">{t("rum.title")}</h1>
         <p className="text-muted-foreground">
           Detect accessibility barriers as real users encounter them in production.
         </p>

@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * RegLayer — Integrations Documentation
  *
@@ -7,13 +9,11 @@
  */
 import { Shield, Code2, ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { useI18n } from "@/components/i18n-provider";
 
-export const metadata = {
-  title: "Integrations — RegLayer Docs",
-  description: "Connect RegLayer to your development workflow with API, webhooks, and CI/CD integration.",
-};
 
 export default function IntegrationsPage() {
+  const { t } = useI18n();
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950">
       <div className="mx-auto max-w-3xl px-6 py-12">

@@ -21,6 +21,7 @@ import {
   ArrowUp, Zap, AlertTriangle, ChevronRight,
 } from "lucide-react";
 import type { AISResult, DimensionScore } from "@/lib/intelligence/ais-engine";
+import { useI18n } from "@/components/i18n-provider";
 
 interface ScoreData {
   scanId: string;
@@ -30,6 +31,7 @@ interface ScoreData {
 }
 
 export default function AISScorePage() {
+  const { t } = useI18n();
   const params = useParams();
   const scanId = params.id as string;
   const [data, setData] = useState<ScoreData | null>(null);

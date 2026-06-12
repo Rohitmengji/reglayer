@@ -17,6 +17,7 @@ import {
   BarChart, Bar, ResponsiveContainer,
   XAxis, YAxis, Tooltip, CartesianGrid, Legend,
 } from "recharts";
+import { useI18n } from "@/components/i18n-provider";
 
 /* ─────────────────────────────────────────────────────────────────────────── */
 /* Theme                                                                       */
@@ -58,6 +59,7 @@ interface ViolationData {
 }
 
 export function ViolationsChart({ data }: { data: ViolationData[] }) {
+  const { t } = useI18n();
   if (!data.length) return null;
 
   return (

@@ -3,6 +3,7 @@
 import { AlertCircle, RefreshCw, Home } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/components/i18n-provider";
 
 interface PageErrorProps {
   /** User-friendly error title */
@@ -29,6 +30,7 @@ export function PageError({
   fallbackHref = "/dashboard",
   fallbackLabel = "Go to Dashboard",
 }: PageErrorProps) {
+  const { t } = useI18n();
   return (
     <div className="flex items-center justify-center min-h-[60vh] p-6">
       <div className="max-w-sm text-center space-y-4">

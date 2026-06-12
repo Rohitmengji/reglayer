@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * RegLayer — Reports Documentation
  *
@@ -7,13 +9,11 @@
  */
 import { Shield, FileText, ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { useI18n } from "@/components/i18n-provider";
 
-export const metadata = {
-  title: "Reports & Statements — RegLayer Docs",
-  description: "Generate PDF compliance reports and accessibility statements for WCAG 2.2, ADA, Section 508, and other global standards.",
-};
 
 export default function ReportsPage() {
+  const { t } = useI18n();
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950">
       <div className="mx-auto max-w-3xl px-6 py-12">

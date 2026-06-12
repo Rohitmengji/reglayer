@@ -13,6 +13,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FileText, Download, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { useI18n } from "@/components/i18n-provider";
 
 interface VPATResult {
   metadata: {
@@ -40,6 +41,7 @@ interface VPATResult {
 }
 
 export default function VPATPage() {
+  const { t } = useI18n();
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<VPATResult | null>(null);
   const [productName, setProductName] = useState("");

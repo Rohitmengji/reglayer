@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * RegLayer — Monitoring Documentation
  *
@@ -7,13 +9,11 @@
  */
 import { Shield, Bell, ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { useI18n } from "@/components/i18n-provider";
 
-export const metadata = {
-  title: "Monitoring & Alerts — RegLayer Docs",
-  description: "Set up recurring accessibility scans and configure notifications for compliance changes.",
-};
 
 export default function MonitoringPage() {
+  const { t } = useI18n();
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950">
       <div className="mx-auto max-w-3xl px-6 py-12">

@@ -8,10 +8,12 @@ import {
   Wand2, AlertTriangle,
 } from "lucide-react";
 import Link from "next/link";
+import { useI18n } from "@/components/i18n-provider";
 
 const CATEGORIES = ["WCAG", "EAA", "Legal", "Technical", "Section 508", "Business", "Design"];
 
 export default function CreateArticlePage() {
+  const { t } = useI18n();
   const { data: session } = useSession();
   const router = useRouter();
   const [mode, setMode] = useState<"choose" | "manual" | "ai">("choose");
@@ -163,7 +165,7 @@ export default function CreateArticlePage() {
             <Link href="/blog" className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors">
               <ArrowLeft className="h-4 w-4" />
             </Link>
-            <h1 className="text-xl font-bold text-neutral-900 dark:text-white">Create Article</h1>
+            <h1 className="text-xl font-bold text-neutral-900 dark:text-white">{t("blog.create.title")}</h1>
           </div>
           {(mode === "manual" || generatedArticle) && (
             <button

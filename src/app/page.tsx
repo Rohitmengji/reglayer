@@ -30,8 +30,10 @@ import { Footer } from "@/components/layout/footer";
 import { DemoScan } from "@/components/demo-scan";
 import { AnimatedStats } from "@/components/animated-stats";
 import { ProductTour } from "@/components/product-tour";
+import { useI18n } from "@/components/i18n-provider";
 
 export default function Home() {
+  const { t } = useI18n();
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",

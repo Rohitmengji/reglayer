@@ -14,8 +14,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Wand2, Code, Globe, Copy, Check } from "lucide-react";
+import { useI18n } from "@/components/i18n-provider";
 
 export default function RemediationPage() {
+  const { t } = useI18n();
   const [loading, setLoading] = useState(false);
   const [url, setUrl] = useState("https://");
   const [result, setResult] = useState<{ url: string; totalFixes: number; fixes: Array<{ category: string; description: string; element?: string }> } | null>(null);
@@ -63,7 +65,7 @@ export default function RemediationPage() {
     <AppShell>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold">Auto-Remediation</h1>
+          <h1 className="text-2xl font-bold">{t("remediation.title")}</h1>
           <p className="text-muted-foreground">
             Automatically fix accessibility issues. Deploy a script tag or run server-side remediation.
           </p>

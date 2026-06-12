@@ -27,6 +27,7 @@ import {
   Search,
   Undo2,
 } from "lucide-react";
+import { useI18n } from "@/components/i18n-provider";
 
 interface FeatureDetail {
   id: string;
@@ -53,6 +54,7 @@ interface WorkspaceInfo {
 }
 
 export default function AdminFeaturesPage() {
+  const { t } = useI18n();
   const { data: session } = useSession();
   const router = useRouter();
   const [workspaces, setWorkspaces] = useState<WorkspaceInfo[]>([]);
@@ -193,7 +195,7 @@ export default function AdminFeaturesPage() {
                 <Shield className="h-5 w-5 text-red-500" />
                 Feature Management
               </h1>
-              <p className="text-sm text-neutral-500">Control which modules each workspace can access</p>
+              <p className="text-sm text-neutral-500">{t("admin.features.subtitle")}</p>
             </div>
           </div>
         </div>

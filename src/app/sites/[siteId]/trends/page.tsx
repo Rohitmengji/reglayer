@@ -35,6 +35,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import { useI18n } from "@/components/i18n-provider";
 
 const TIME_RANGES: Array<{ key: TimeRange; label: string }> = [
   { key: "7D", label: "7D" },
@@ -44,6 +45,7 @@ const TIME_RANGES: Array<{ key: TimeRange; label: string }> = [
 ];
 
 export default function SiteTrendsPage() {
+  const { t } = useI18n();
   const params = useParams();
   const siteId = params.siteId as string;
 
