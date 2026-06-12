@@ -8,6 +8,7 @@
 "use client";
 
 import { useState } from "react";
+import { useI18n } from "@/components/i18n-provider";
 
 interface RiskFactor {
   ruleId: string;
@@ -29,6 +30,7 @@ export function RiskBreakdownCard({
   estimatedExposure,
   violationBreakdown,
 }: RiskBreakdownCardProps) {
+  const { t } = useI18n();
   const [expanded, setExpanded] = useState(false);
   const maxContribution = Math.max(...violationBreakdown.map((v) => v.contribution), 1);
 

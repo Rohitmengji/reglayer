@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Globe, AlertTriangle, ArrowRight, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useConversionTracker } from "@/hooks/use-conversion-tracker";
+import { useI18n } from "@/components/i18n-provider";
 
 interface DemoResult {
   score: number;
@@ -19,6 +20,7 @@ interface DemoResult {
 }
 
 export function DemoScan() {
+  const { t } = useI18n();
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<DemoResult | null>(null);

@@ -8,6 +8,7 @@
 "use client";
 
 import { useState } from "react";
+import { useI18n } from "@/components/i18n-provider";
 
 const INDUSTRIES = [
   { value: "ecommerce", label: "E-Commerce" },
@@ -45,6 +46,7 @@ export function RiskContextForm({
   lastCalculated,
   onRecalculated,
 }: RiskContextFormProps) {
+  const { t } = useI18n();
   const [industry, setIndustry] = useState(currentIndustry || "other");
   const [primaryGeo, setPrimaryGeo] = useState(currentGeo || "other");
   const [loading, setLoading] = useState(false);

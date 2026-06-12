@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendingUp, Users, Scan, ArrowRight, Loader2 } from "lucide-react";
+import { useI18n } from "@/components/i18n-provider";
 
 interface FunnelData {
   period: string;
@@ -22,6 +23,7 @@ interface FunnelData {
 }
 
 export default function ConversionsPage() {
+  const { t } = useI18n();
   const [data, setData] = useState<FunnelData | null>(null);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState(30);
@@ -41,8 +43,8 @@ export default function ConversionsPage() {
       <div className="p-6 max-w-5xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Conversion Funnel</h1>
-            <p className="text-sm text-neutral-500 mt-1">Demo scan → Signup → First scan pipeline</p>
+            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{t("admin.conversions.title")}</h1>
+            <p className="text-sm text-neutral-500 mt-1">{t("admin.conversions.subtitle")}</p>
           </div>
           <div className="flex gap-1 rounded-lg border border-neutral-200 dark:border-neutral-700 p-1">
             {[7, 30, 90].map((d) => (

@@ -14,6 +14,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Play, CheckCircle, XCircle, Gauge, Eye, Keyboard, Volume2 } from "lucide-react";
+import { useI18n } from "@/components/i18n-provider";
 
 interface StepResult {
   stepName: string;
@@ -63,6 +64,7 @@ interface Preset {
 }
 
 export default function JourneyPage() {
+  const { t } = useI18n();
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<JourneyResult | null>(null);
   const [presets, setPresets] = useState<Preset[]>([]);
@@ -108,7 +110,7 @@ export default function JourneyPage() {
     <AppShell>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold">User Journey Flow Scanner</h1>
+          <h1 className="text-2xl font-bold">{t("journey.title")}</h1>
           <p className="text-muted-foreground">
             Scan multi-step user flows. Catches accessibility bugs that only appear during navigation.
           </p>

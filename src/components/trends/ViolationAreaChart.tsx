@@ -15,6 +15,7 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import type { ViolationTrendPoint } from "@/lib/analytics/trends";
+import { useI18n } from "@/components/i18n-provider";
 
 interface ViolationAreaChartProps {
   data: ViolationTrendPoint[];
@@ -31,6 +32,7 @@ const LAYERS: Array<{ key: keyof ViolationTrendPoint; color: string; label: stri
 ];
 
 export function ViolationAreaChart({ data, height = 220 }: ViolationAreaChartProps) {
+  const { t } = useI18n();
   const containerRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(600);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);

@@ -14,6 +14,7 @@
 import { TrendingUp, TrendingDown, Minus, Flame, AlertTriangle, Bug, Zap } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import type { ScoreDelta, StreakData } from "@/lib/analytics/trends";
+import { useI18n } from "@/components/i18n-provider";
 
 interface DeltaCardsProps {
   delta: ScoreDelta | null;
@@ -23,6 +24,7 @@ interface DeltaCardsProps {
 }
 
 export function DeltaCards({ delta, streak, currentViolations, currentCritical }: DeltaCardsProps) {
+  const { t } = useI18n();
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
       {/* AIS Score */}

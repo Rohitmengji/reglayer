@@ -25,6 +25,7 @@ import {
   Pencil, X, Save, Sparkles, RotateCcw, Check, AlertTriangle,
   Loader2, History,
 } from "lucide-react";
+import { useI18n } from "@/components/i18n-provider";
 
 interface Section {
   id: string;
@@ -49,6 +50,7 @@ interface ArticleEditorProps {
 }
 
 export function ArticleEditor({ article, onUpdate, onEditingChange }: ArticleEditorProps) {
+  const { t } = useI18n();
   const { data: session } = useSession();
   const [editing, setEditing] = useState(false);
   const [aiMode, setAiMode] = useState(false);

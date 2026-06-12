@@ -24,6 +24,7 @@
 
 import { useState, useEffect } from "react";
 import { Flame, Trophy, Calendar } from "lucide-react";
+import { useI18n } from "@/components/i18n-provider";
 
 interface StreakData {
   currentStreak: number;
@@ -68,6 +69,7 @@ function getFlameColor(days: number): string {
 }
 
 export function ProgressStreak() {
+  const { t } = useI18n();
   const [data, setData] = useState<StreakData | null>(null);
   const [loading, setLoading] = useState(true);
 

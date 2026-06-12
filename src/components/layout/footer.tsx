@@ -21,8 +21,10 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { useI18n } from "@/components/i18n-provider";
 
 export function Footer() {
+  const { t } = useI18n();
   return (
     <footer className="border-t border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900 py-8 sm:py-12">
       <div className="mx-auto max-w-6xl px-6">

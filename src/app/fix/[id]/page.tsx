@@ -34,6 +34,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import type { FixCard } from "@/lib/intelligence/fix-prioritizer";
+import { useI18n } from "@/components/i18n-provider";
 
 interface FixFlowData {
   scanId: string;
@@ -43,6 +44,7 @@ interface FixFlowData {
 }
 
 export default function FixFlowPage() {
+  const { t } = useI18n();
   const params = useParams();
   const scanId = params.id as string;
 

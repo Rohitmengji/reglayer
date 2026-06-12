@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * RegLayer — Team Management Documentation
  *
@@ -7,13 +9,11 @@
  */
 import { Shield, Users, ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { useI18n } from "@/components/i18n-provider";
 
-export const metadata = {
-  title: "Team Management — RegLayer Docs",
-  description: "Manage workspace members with role-based access control and collaboration features.",
-};
 
 export default function TeamManagementPage() {
+  const { t } = useI18n();
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950">
       <div className="mx-auto max-w-3xl px-6 py-12">

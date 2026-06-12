@@ -30,8 +30,10 @@ import { Sidebar } from "./sidebar";
 import { Menu, X } from "lucide-react";
 import { useIsEmbedded } from "./embedded-context";
 import { OnboardingChecklist } from "@/components/onboarding/checklist";
+import { useI18n } from "@/components/i18n-provider";
 
 export function AppShell({ children, bare }: { children: React.ReactNode; bare?: boolean }) {
+  const { t } = useI18n();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { data: session, status } = useSession();
   const router = useRouter();

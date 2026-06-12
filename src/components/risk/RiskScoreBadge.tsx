@@ -7,6 +7,8 @@
 
 "use client";
 
+import { useI18n } from "@/components/i18n-provider";
+
 interface RiskScoreBadgeProps {
   score: number;
   tier: string;
@@ -28,6 +30,7 @@ const TIER_LABELS: Record<string, string> = {
 };
 
 export function RiskScoreBadge({ score, tier, size = 180 }: RiskScoreBadgeProps) {
+  const { t } = useI18n();
   const color = TIER_COLORS[tier] || TIER_COLORS.MODERATE;
   const label = TIER_LABELS[tier] || tier;
   const radius = (size - 20) / 2;
