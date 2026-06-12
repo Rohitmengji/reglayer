@@ -536,6 +536,7 @@ function DashboardAnalytics({ stats }: { stats: DashboardStats }) {
 }
 
 function PriorityFixes({ topViolations }: { topViolations: Array<{ ruleId: string; impact: string; count: number }> }) {
+  const { t } = useI18n();
   const impactColor: Record<string, string> = {
     critical: "bg-red-500",
     serious: "bg-amber-500",
@@ -557,10 +558,10 @@ function PriorityFixes({ topViolations }: { topViolations: Array<{ ruleId: strin
     <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-5">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">Priority Fixes</h3>
-          <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">Fix these first for maximum impact</p>
+          <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">{t("dashboard.priorityFixes")}</h3>
+          <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">{t("dashboard.priorityFixesDesc")}</p>
         </div>
-        <span className="text-lg font-bold tabular-nums text-neutral-900 dark:text-white">{totalIssues}<span className="text-xs font-normal text-neutral-500 dark:text-neutral-400 ml-1">issues</span></span>
+        <span className="text-lg font-bold tabular-nums text-neutral-900 dark:text-white">{totalIssues}<span className="text-xs font-normal text-neutral-500 dark:text-neutral-400 ml-1">{t("dashboard.issues", { count: String(totalIssues) })}</span></span>
       </div>
       <div className="space-y-2.5">
         {fixes.map((v, i) => (
@@ -590,7 +591,7 @@ function PriorityFixes({ topViolations }: { topViolations: Array<{ ruleId: strin
       </div>
       {fixes.length === 0 && (
         <div className="text-center py-6 text-sm text-neutral-400 dark:text-neutral-500">
-          No violations found — great job!
+          {t("dashboard.noViolationsEmpty")}
         </div>
       )}
     </div>

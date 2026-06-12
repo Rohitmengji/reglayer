@@ -14,6 +14,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { TabNav, type Tab } from "@/components/ui/tab-nav";
 import { EmbeddedProvider } from "@/components/layout/embedded-context";
 import { Users, ClipboardList, Plug, Webhook, Bell } from "lucide-react";
+import { useI18n } from "@/components/i18n-provider";
 
 const TeamPage = lazy(() => import("@/app/team/page"));
 const AuditLogPage = lazy(() => import("@/app/audit-log/page"));
@@ -30,6 +31,7 @@ const tabs: Tab[] = [
 ];
 
 function ManageContent() {
+  const { t } = useI18n();
   const searchParams = useSearchParams();
   const activeTab = searchParams.get("tab") || "team";
 
@@ -37,9 +39,9 @@ function ManageContent() {
     <AppShell>
       <div className="flex flex-col gap-6 -mt-2">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Manage</h1>
+          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{t("manage.title")}</h1>
           <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-            Team, integrations, webhooks, and audit trail
+            {t("manage.subtitle")}
           </p>
         </div>
 

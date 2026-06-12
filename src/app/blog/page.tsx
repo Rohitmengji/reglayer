@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { BookOpen, Scale, Shield, FileText, Gavel, Globe, ArrowRight, Clock, Calendar, Plus } from "lucide-react";
+import { useI18n } from "@/components/i18n-provider";
 
 interface Article {
   slug: string;
@@ -114,6 +115,7 @@ function formatDate(dateStr: string) {
 }
 
 export default function BlogPage() {
+  const { t } = useI18n();
   const { data: session } = useSession();
   const isAdmin = session?.user?.isMasterAdmin || session?.user?.role === "admin" || session?.user?.role === "owner";
   const featured = articles.filter((a) => a.featured);
@@ -127,22 +129,22 @@ export default function BlogPage() {
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <BookOpen className="h-5 w-5 text-accent" />
-              <span className="text-xs font-semibold uppercase tracking-wider text-accent">Blog</span>
+              <span className="text-xs font-semibold uppercase tracking-wider text-accent">{t("blog.title")}</span>
             </div>
             {isAdmin && (
               <Link
                 href="/blog/create"
                 className="flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-white hover:bg-accent/90 transition-colors"
               >
-                <Plus className="h-3 w-3" /> New Article
+                <Plus className="h-3 w-3" /> {t("blog.newArticle")}
               </Link>
             )}
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold text-neutral-900 dark:text-white leading-tight max-w-2xl">
-            Accessibility compliance, explained for practitioners.
+            {t("blog.heading")}
           </h1>
           <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-300 max-w-xl leading-relaxed">
-            No marketing fluff. Deep technical content on WCAG, ADA, EAA, Section 508, and the legal landscape — written by engineers and compliance specialists.
+            {t("blog.subtitle")}
           </p>
 
           {/* Category pills */}
@@ -163,7 +165,7 @@ export default function BlogPage() {
       {/* Featured Articles */}
       <section className="mx-auto max-w-5xl px-6">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-4">
-          Featured
+          {t("blog.featured")}
         </h2>
         <div className="grid gap-4 sm:grid-cols-2">
           {featured.map((article) => (
@@ -193,7 +195,7 @@ export default function BlogPage() {
                   {formatDate(article.date)}
                 </span>
                 <span className="flex items-center gap-1 text-xs font-medium text-accent opacity-0 group-hover:opacity-100 transition-opacity">
-                  Read <ArrowRight className="h-3 w-3" />
+                  {t("blog.read")} <ArrowRight className="h-3 w-3" />
                 </span>
               </div>
             </Link>
@@ -204,7 +206,7 @@ export default function BlogPage() {
       {/* All Articles */}
       <section className="mx-auto max-w-5xl px-6 pt-2 border-t border-neutral-100 dark:border-neutral-800/50">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-4">
-          All Articles
+          {t("blog.allArticles")}
         </h2>
         <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
           {rest.map((article) => (
@@ -239,20 +241,20 @@ export default function BlogPage() {
       <section className="mx-auto max-w-5xl px-6">
         <div className="rounded-xl bg-neutral-50 dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 p-8 text-center">
           <h2 className="text-base font-bold text-neutral-900 dark:text-white mb-2">
-            Stay ahead of regulatory changes.
+          {t("blog.newsletterHeading")}
           </h2>
           <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-6 max-w-md mx-auto">
-            Get monthly deep dives on accessibility law, technical guides, and enforcement updates. No spam.
+            {t("blog.newsletterDesc")}
           </p>
           <div className="flex items-center justify-center gap-2 max-w-sm mx-auto">
             <input
               type="email"
-              placeholder="your@email.com"
+              placeholder={t("blog.emailPlaceholder")}
               className="flex-1 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-4 py-2.5 text-sm text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500 outline-none focus:ring-2 focus:ring-accent/50"
               aria-label="Email address"
             />
             <button className="rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-white hover:bg-accent/90 transition-colors shadow-sm">
-              Subscribe
+              {t("blog.subscribe")}
             </button>
           </div>
         </div>
