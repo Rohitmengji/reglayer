@@ -8,6 +8,7 @@
 "use client";
 
 import { useState } from "react";
+import { ModernSelect } from "@/components/ui/modern-select";
 import { useI18n } from "@/components/i18n-provider";
 
 const INDUSTRIES = [
@@ -82,31 +83,21 @@ export function RiskContextForm({
           <label htmlFor="industry" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
             Industry
           </label>
-          <select
-            id="industry"
-            value={industry}
-            onChange={(e) => setIndustry(e.target.value)}
-            className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-md bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-sm"
-          >
-            {INDUSTRIES.map((i) => (
-              <option key={i.value} value={i.value}>{i.label}</option>
-            ))}
-          </select>
+          <ModernSelect
+              options={INDUSTRIES}
+              value={industry}
+              onChange={setIndustry}
+            />
         </div>
         <div>
           <label htmlFor="geography" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
             Primary Geography
           </label>
-          <select
-            id="geography"
-            value={primaryGeo}
-            onChange={(e) => setPrimaryGeo(e.target.value)}
-            className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-md bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-sm"
-          >
-            {GEOGRAPHIES.map((g) => (
-              <option key={g.value} value={g.value}>{g.label}</option>
-            ))}
-          </select>
+          <ModernSelect
+              options={GEOGRAPHIES}
+              value={primaryGeo}
+              onChange={setPrimaryGeo}
+            />
         </div>
       </div>
 

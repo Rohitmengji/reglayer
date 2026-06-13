@@ -15,6 +15,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2, Clock, Play, Pause } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
+import { ModernSelect } from "@/components/ui/modern-select";
 
 interface Schedule {
   id: string;
@@ -187,11 +188,11 @@ export default function SchedulesPage() {
               <Input type="url" placeholder="https://example.com" value={url} onChange={(e) => setUrl(e.target.value)} required />
               <div>
                 <label className="text-xs font-medium text-neutral-600 dark:text-neutral-300 mb-1 block">Frequency</label>
-                <select
-                  className="w-full rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm text-neutral-900 dark:text-white"
+                <ModernSelect
+                  options={[...CRON_PRESETS.map((p) => ({ value: p.value, label: p.label })), { value: "custom", label: "Custom cron expression" }]}
                   value={useCustomCron ? "custom" : cron}
-                  onChange={(e) => {
-                    if (e.target.value === "custom") {
+                  onChange={(v) => {
+                    if (v === "custom") {
                       setUseCustomCron(true);
                       setCustomHour("09");
                       setCustomMinute("00");
@@ -199,39 +200,26 @@ export default function SchedulesPage() {
                       setCron("0 9 * * *");
                     } else {
                       setUseCustomCron(false);
-                      setCron(e.target.value);
+                      setCron(v);
                     }
                   }}
-                >
-                  {CRON_PRESETS.map((preset) => (
-                    <option key={preset.value} value={preset.value}>{preset.label}</option>
-                  ))}
-                  <option value="custom">Custom cron expression</option>
-                </select>
+                />
                 {useCustomCron && (
                   <div className="mt-3 space-y-3 rounded-lg border border-neutral-200 dark:border-neutral-700 p-3 bg-neutral-50 dark:bg-neutral-800/50">
                     <div>
                       <label className="text-xs font-medium text-neutral-600 dark:text-neutral-300 mb-1.5 block">Time</label>
                       <div className="flex items-center gap-2">
-                        <select
-                          className="rounded-md border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-2 py-1.5 text-sm text-neutral-900 dark:text-white"
+                        <ModernSelect
+                          options={Array.from({ length: 24 }, (_, i) => ({ value: String(i).padStart(2, "0"), label: String(i).padStart(2, "0") }))}
                           value={customHour}
-                          onChange={(e) => { setCustomHour(e.target.value); setCron(buildCustomCron(e.target.value, customMinute, customDays)); }}
-                        >
-                          {Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0")).map((h) => (
-                            <option key={h} value={h}>{h}</option>
-                          ))}
-                        </select>
+                          onChange={(v) => { setCustomHour(v); setCron(buildCustomCron(v, customMinute, customDays)); }}
+                        />
                         <span className="text-sm font-medium text-neutral-500">:</span>
-                        <select
-                          className="rounded-md border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-2 py-1.5 text-sm text-neutral-900 dark:text-white"
+                        <ModernSelect
+                          options={[{ value: "00", label: "00" }, { value: "15", label: "15" }, { value: "30", label: "30" }, { value: "45", label: "45" }]}
                           value={customMinute}
-                          onChange={(e) => { setCustomMinute(e.target.value); setCron(buildCustomCron(customHour, e.target.value, customDays)); }}
-                        >
-                          {["00", "15", "30", "45"].map((m) => (
-                            <option key={m} value={m}>{m}</option>
-                          ))}
-                        </select>
+                          onChange={(v) => { setCustomMinute(v); setCron(buildCustomCron(customHour, v, customDays)); }}
+                        />
                       </div>
                     </div>
                     <div>

@@ -107,31 +107,39 @@ export function CookieConsent() {
               {showDetails && (
                 <div className="mt-4 space-y-3">
                   <label className="flex items-center gap-3 rounded-lg border border-neutral-100 dark:border-neutral-800 p-3">
-                    <input type="checkbox" checked disabled className="rounded" />
+                    <span className="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full bg-green-500 cursor-not-allowed">
+                      <span className="inline-block h-3.5 w-3.5 translate-x-4 rounded-full bg-white shadow-sm transition-transform" />
+                    </span>
                     <div>
                       <p className="text-sm font-medium text-neutral-900 dark:text-white">{t("cookie.essential")}</p>
                       <p className="text-xs text-neutral-500">{t("cookie.essentialDesc")}</p>
                     </div>
                   </label>
                   <label className="flex items-center gap-3 rounded-lg border border-neutral-100 dark:border-neutral-800 p-3 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800">
-                    <input
-                      type="checkbox"
-                      checked={consent.analytics}
-                      onChange={(e) => setConsent({ ...consent, analytics: e.target.checked })}
-                      className="rounded"
-                    />
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={consent.analytics}
+                      onClick={() => setConsent({ ...consent, analytics: !consent.analytics })}
+                      className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${consent.analytics ? "bg-green-500" : "bg-neutral-300 dark:bg-neutral-600"}`}
+                    >
+                      <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform ${consent.analytics ? "translate-x-4" : "translate-x-0.5"}`} />
+                    </button>
                     <div>
                       <p className="text-sm font-medium text-neutral-900 dark:text-white">{t("cookie.analytics")}</p>
                       <p className="text-xs text-neutral-500">{t("cookie.analyticsDesc")}</p>
                     </div>
                   </label>
                   <label className="flex items-center gap-3 rounded-lg border border-neutral-100 dark:border-neutral-800 p-3 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800">
-                    <input
-                      type="checkbox"
-                      checked={consent.marketing}
-                      onChange={(e) => setConsent({ ...consent, marketing: e.target.checked })}
-                      className="rounded"
-                    />
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={consent.marketing}
+                      onClick={() => setConsent({ ...consent, marketing: !consent.marketing })}
+                      className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${consent.marketing ? "bg-green-500" : "bg-neutral-300 dark:bg-neutral-600"}`}
+                    >
+                      <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform ${consent.marketing ? "translate-x-4" : "translate-x-0.5"}`} />
+                    </button>
                     <div>
                       <p className="text-sm font-medium text-neutral-900 dark:text-white">{t("cookie.marketing")}</p>
                       <p className="text-xs text-neutral-500">{t("cookie.marketingDesc")}</p>

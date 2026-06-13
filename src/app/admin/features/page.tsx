@@ -12,6 +12,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { ModernSelect } from "@/components/ui/modern-select";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -342,17 +343,11 @@ export default function AdminFeaturesPage() {
                               <div className="absolute right-4 mt-16 p-3 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg shadow-lg z-10 w-60">
                                 <p className="text-xs font-medium mb-2">Grant Trial Access</p>
                                 <div className="space-y-2">
-                                  <select
-                                    value={trialDays}
-                                    onChange={(e) => setTrialDays(Number(e.target.value))}
-                                    className="w-full text-xs px-2 py-1.5 border rounded dark:bg-neutral-700 dark:border-neutral-600"
-                                  >
-                                    <option value={7}>7 days</option>
-                                    <option value={14}>14 days</option>
-                                    <option value={30}>30 days</option>
-                                    <option value={60}>60 days</option>
-                                    <option value={90}>90 days</option>
-                                  </select>
+                                  <ModernSelect
+              options={[{ value: "7", label: "7 days" }, { value: "14", label: "14 days" }, { value: "30", label: "30 days" }, { value: "60", label: "60 days" }, { value: "90", label: "90 days" }]}
+              value={String(trialDays)}
+              onChange={(v) => setTrialDays(Number(v))}
+            />
                                   <input
                                     type="text"
                                     placeholder="Note (optional)"

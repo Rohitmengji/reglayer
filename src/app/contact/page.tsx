@@ -14,11 +14,13 @@ import { Footer } from "@/components/layout/footer";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/components/i18n-provider";
+import { ModernSelect } from "@/components/ui/modern-select";
 
 export default function ContactPage() {
   const { t } = useI18n();
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [subject, setSubject] = useState("general");
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -132,17 +134,17 @@ export default function ContactPage() {
                   <label htmlFor="subject" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
                     {t("contact.subject")}
                   </label>
-                  <select
-                    id="subject"
-                    name="subject"
-                    className="w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-neutral-900 dark:focus:ring-white"
-                  >
-                    <option value="general">{t("contact.subjectGeneral")}</option>
-                    <option value="support">{t("contact.subjectSupport")}</option>
-                    <option value="enterprise">{t("contact.subjectEnterprise")}</option>
-                    <option value="partnership">{t("contact.subjectPartnership")}</option>
-                    <option value="bug">{t("contact.subjectBug")}</option>
-                  </select>
+                  <ModernSelect
+                    options={[
+                      { value: "general", label: t("contact.subjectGeneral") },
+                      { value: "support", label: t("contact.subjectSupport") },
+                      { value: "enterprise", label: t("contact.subjectEnterprise") },
+                      { value: "partnership", label: t("contact.subjectPartnership") },
+                      { value: "bug", label: t("contact.subjectBug") },
+                    ]}
+                    value={subject}
+                    onChange={setSubject}
+                  />
                 </div>
                 <div>
                   <label htmlFor="message" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">

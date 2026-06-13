@@ -31,10 +31,12 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useI18n } from "@/components/i18n-provider";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useUrlState } from "@/hooks/use-url-state";
 import { useSortable } from "@/hooks/use-sortable";
 import { SortControl, type SortOption } from "@/components/ui/sort-control";
+import { ModernSelect } from "@/components/ui/modern-select";
 
 interface ScanRecord {
   id: string;
@@ -169,13 +171,15 @@ export default function ScansPage() {
     URL.revokeObjectURL(url);
   }
 
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+
   async function handleDelete(id: string) {
-    if (!confirm("Are you sure you want to delete this scan?")) return;
     const res = await fetch(`/api/scans/${id}`, { method: "DELETE" });
     if (res.ok) {
       setScans((prev) => prev.filter((s) => s.id !== id));
       setSelectedScans((prev) => prev.filter((s) => s !== id));
     }
+    setDeleteTarget(null);
   }
 
   function toggleSelect(id: string) {
@@ -276,32 +280,29 @@ export default function ScansPage() {
             </div>
 
             {/* Severity Filter */}
-            <div className="relative">
-              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-500 dark:text-neutral-400" />
-              <select
-                value={severityFilter}
-                onChange={(e) => setSeverityFilter(e.target.value)}
-                className="appearance-none rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 pl-9 pr-8 py-2 text-sm text-neutral-900 dark:text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
-              >
-                <option value="all">All Severities</option>
-                <option value="critical">Has Critical</option>
-                <option value="serious">Has Serious</option>
-                <option value="failing">Score &lt; 70</option>
-                <option value="clean">Clean (0 violations)</option>
-              </select>
-            </div>
+            <ModernSelect
+              options={[
+                { value: "all", label: "All Severities" },
+                { value: "critical", label: "Has Critical" },
+                { value: "serious", label: "Has Serious" },
+                { value: "failing", label: "Score < 70" },
+                { value: "clean", label: "Clean (0 violations)" },
+              ]}
+              value={severityFilter}
+              onChange={setSeverityFilter}
+            />
 
             {/* Date Filter */}
-            <select
+            <ModernSelect
+              options={[
+                { value: "all", label: "All Time" },
+                { value: "today", label: "Last 24h" },
+                { value: "week", label: "Last 7 days" },
+                { value: "month", label: "Last 30 days" },
+              ]}
               value={dateFilter}
-              onChange={(e) => setDateFilter(e.target.value)}
-              className="appearance-none rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm text-neutral-900 dark:text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
-            >
-              <option value="all">All Time</option>
-              <option value="today">Last 24h</option>
-              <option value="week">Last 7 days</option>
-              <option value="month">Last 30 days</option>
-            </select>
+              onChange={setDateFilter}
+            />
 
             {/* Sort */}
             <SortControl
@@ -455,7 +456,7 @@ export default function ScansPage() {
                     <CopyLinkButton scanId={scan.id} />
                     {isAdmin && (
                       <button
-                        onClick={() => handleDelete(scan.id)}
+                        onClick={() => setDeleteTarget(scan.id)}
                         className="rounded-md p-1.5 text-neutral-500 dark:text-neutral-300 hover:bg-red-50 dark:hover:bg-red-950 hover:text-red-600 dark:hover:text-red-400 transition-colors"
                         title="Delete Scan (Admin only)"
                       >
@@ -469,6 +470,15 @@ export default function ScansPage() {
           </div>
         )}
       </div>
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="Delete scan"
+        description="Are you sure you want to delete this scan? This action cannot be undone."
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={() => deleteTarget && handleDelete(deleteTarget)}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </AppShell>
   );
 }

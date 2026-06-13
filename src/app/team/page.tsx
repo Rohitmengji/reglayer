@@ -16,6 +16,8 @@ import { Badge } from "@/components/ui/badge";
 import { Users, UserPlus, Shield, Crown, Trash2, ChevronDown, KeyRound, X } from "lucide-react";
 import { handleUpgradeResponse } from "@/lib/upgrade-prompt";
 import { useI18n } from "@/components/i18n-provider";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ModernSelect } from "@/components/ui/modern-select";
 
 interface TeamMember {
   id: string;
@@ -127,8 +129,9 @@ export default function TeamPage() {
     }
   }
 
+  const [removeTarget, setRemoveTarget] = useState<{ id: string; email: string } | null>(null);
+
   async function handleRemove(memberId: string, email: string) {
-    if (!confirm(`Remove ${email} from the team?`)) return;
     const toastId = toast.loading("Removing member...");
     const res = await fetch(`/api/team?id=${memberId}`, { method: "DELETE" });
     if (res.ok) {
@@ -137,6 +140,7 @@ export default function TeamPage() {
     } else {
       toast.error("Failed to remove member", { id: toastId });
     }
+    setRemoveTarget(null);
   }
 
   async function handleResetPassword(userId: string) {
@@ -238,15 +242,11 @@ export default function TeamPage() {
                   onChange={(e) => setInviteEmail(e.target.value)}
                   className="flex-1 rounded-lg border border-neutral-200 dark:border-neutral-700 px-3 py-2 text-sm dark:bg-neutral-800 dark:text-neutral-100"
                 />
-                <select
-                  value={inviteRole}
-                  onChange={(e) => setInviteRole(e.target.value)}
-                  className="rounded-lg border border-neutral-200 dark:border-neutral-700 px-3 py-2 text-sm dark:bg-neutral-800 dark:text-neutral-100"
-                >
-                  <option value="VIEWER">Viewer</option>
-                  <option value="MEMBER">Member</option>
-                  <option value="ADMIN">Admin</option>
-                </select>
+                <ModernSelect
+              options={[{ value: "VIEWER", label: "Viewer" }, { value: "MEMBER", label: "Member" }, { value: "ADMIN", label: "Admin" }]}
+              value={inviteRole}
+              onChange={setInviteRole}
+            />
                 <button
                   type="submit"
                   disabled={inviting}
@@ -304,27 +304,26 @@ export default function TeamPage() {
                         {isAdmin && member.role !== "OWNER" && !member.isMasterAdmin ? (
                           <>
                             <div className="relative">
-                              <select
+                              <ModernSelect
+                                options={[
+                                  { value: "VIEWER", label: "Viewer" },
+                                  { value: "MEMBER", label: "Member" },
+                                  { value: "ADMIN", label: "Admin" },
+                                ]}
                                 value={member.role}
-                                onChange={(e) => handleRoleChange(member.id, e.target.value)}
-                                className={`appearance-none rounded-full px-2.5 py-1 text-xs font-semibold border-none cursor-pointer pr-6 ${roleColors[member.role]}`}
-                              >
-                                <option value="VIEWER">Viewer</option>
-                                <option value="MEMBER">Member</option>
-                                <option value="ADMIN">Admin</option>
-                              </select>
-                              <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 h-3 w-3 pointer-events-none" />
+                                onChange={(v) => handleRoleChange(member.id, v)}
+                              />
                             </div>
                             {isMasterAdmin ? (
-                              <select
+                              <ModernSelect
+                                options={[
+                                  { value: "FREE", label: "Free" },
+                                  { value: "PRO", label: "Pro" },
+                                  { value: "ENTERPRISE", label: "Enterprise" },
+                                ]}
                                 value={member.plan}
-                                onChange={(e) => handleChangePlan(member.userId, e.target.value)}
-                                className="rounded-full px-2.5 py-1 text-xs font-semibold border border-neutral-200 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 cursor-pointer"
-                              >
-                                <option value="FREE">Free</option>
-                                <option value="PRO">Pro</option>
-                                <option value="ENTERPRISE">Enterprise</option>
-                              </select>
+                                onChange={(v) => handleChangePlan(member.userId, v)}
+                              />
                             ) : (
                               <span className="rounded-full px-2.5 py-1 text-xs font-semibold border border-neutral-200 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100">
                                 {member.plan}
@@ -373,7 +372,7 @@ export default function TeamPage() {
                               </button>
                             )}
                             <button
-                              onClick={() => handleRemove(member.id, member.email)}
+                              onClick={() => setRemoveTarget({ id: member.id, email: member.email })}
                               className="rounded-md p-1.5 text-neutral-500 dark:text-neutral-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
                               title="Remove member"
                             >
@@ -412,6 +411,15 @@ export default function TeamPage() {
           </CardContent>
         </Card>
       </div>
+      <ConfirmDialog
+        open={!!removeTarget}
+        title="Remove team member"
+        description={`Remove ${removeTarget?.email} from the team? They will lose access to this workspace.`}
+        confirmLabel="Remove"
+        variant="danger"
+        onConfirm={() => removeTarget && handleRemove(removeTarget.id, removeTarget.email)}
+        onCancel={() => setRemoveTarget(null)}
+      />
     </AppShell>
   );
 }

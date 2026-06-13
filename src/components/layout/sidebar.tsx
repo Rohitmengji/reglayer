@@ -67,7 +67,19 @@ export function Sidebar({ onNavigate }: SidebarProps) {
   const { resolvedTheme, setTheme, mounted } = useTheme();
   const { locale, setLocale, t } = useI18n();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [langOpen, setLangOpen] = useState(false);
+  const langRef = useRef<HTMLDivElement>(null);
   const { hasFeature } = useFeatures();
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (langRef.current && !langRef.current.contains(e.target as Node)) {
+        setLangOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
   const [wsOpen, setWsOpen] = useState(false);
   const [workspaces, setWorkspaces] = useState<{ id: string; name: string; slug: string; plan: string; role: string; memberCount: number }[]>([]);
   const [activeWs, setActiveWs] = useState<string>("");
@@ -286,19 +298,38 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                       {resolvedTheme === "dark" ? "Light" : "Dark"}
                     </button>
                   )}
-                  <div className="flex items-center gap-1">
-                    <Languages className="h-3.5 w-3.5 text-neutral-500" />
-                    <select
-                      value={locale}
-                      onChange={(e) => setLocale(e.target.value as typeof locale)}
-                      className="bg-transparent text-[11px] font-medium text-neutral-600 dark:text-neutral-400 border-none outline-none cursor-pointer"
+                  <div className="relative" ref={langRef}>
+                    <button
+                      onClick={() => setLangOpen(!langOpen)}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-2 py-1 text-[11px] font-medium text-neutral-600 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-all"
+                      aria-label="Select language"
+                      aria-expanded={langOpen}
                     >
-                      {SUPPORTED_LOCALES.map((l) => (
-                        <option key={l.code} value={l.code}>
-                          {l.flag} {l.name}
-                        </option>
-                      ))}
-                    </select>
+                      <span className="text-sm leading-none">{SUPPORTED_LOCALES.find((l) => l.code === locale)?.flag}</span>
+                      <span>{SUPPORTED_LOCALES.find((l) => l.code === locale)?.name}</span>
+                      <ChevronDown className={`h-3 w-3 text-neutral-400 transition-transform duration-200 ${langOpen ? "rotate-180" : ""}`} />
+                    </button>
+                    {langOpen && (
+                      <div className="absolute left-0 bottom-full mb-2 w-40 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-lg shadow-neutral-200/50 dark:shadow-neutral-900/50 py-1.5 z-50">
+                        {SUPPORTED_LOCALES.map((l) => (
+                          <button
+                            key={l.code}
+                            onClick={() => { setLocale(l.code as typeof locale); setLangOpen(false); }}
+                            className={`flex w-full items-center gap-2.5 px-3 py-2 text-xs transition-colors ${
+                              locale === l.code
+                                ? "bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white font-medium"
+                                : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-white"
+                            }`}
+                          >
+                            <span className="text-sm leading-none">{l.flag}</span>
+                            <span>{l.name}</span>
+                            {locale === l.code && (
+                              <Check className="ml-auto h-3.5 w-3.5 text-green-600" />
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
 

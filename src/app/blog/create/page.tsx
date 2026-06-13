@@ -8,6 +8,7 @@ import {
   Wand2, AlertTriangle,
 } from "lucide-react";
 import Link from "next/link";
+import { ModernSelect } from "@/components/ui/modern-select";
 import { useI18n } from "@/components/i18n-provider";
 
 const CATEGORIES = ["WCAG", "EAA", "Legal", "Technical", "Section 508", "Business", "Design"];
@@ -221,24 +222,16 @@ export default function CreateArticlePage() {
                   className="w-full rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-3 py-2 text-sm text-neutral-900 dark:text-white placeholder-neutral-400 outline-none focus:ring-1 focus:ring-violet-500"
                 />
                 <div className="flex items-center gap-2">
-                  <select
-                    value={aiCategory}
-                    onChange={(e) => setAiCategory(e.target.value)}
-                    className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-2 py-1.5 text-xs text-neutral-700 dark:text-neutral-300 outline-none"
-                  >
-                    {CATEGORIES.map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
-                  <select
-                    value={aiTone}
-                    onChange={(e) => setAiTone(e.target.value)}
-                    className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-2 py-1.5 text-xs text-neutral-700 dark:text-neutral-300 outline-none"
-                  >
-                    <option value="practitioner">Practitioner tone</option>
-                    <option value="executive">Executive summary</option>
-                    <option value="tutorial">Tutorial/how-to</option>
-                  </select>
+                  <ModernSelect
+              options={CATEGORIES.map((c) => ({ value: c, label: c }))}
+              value={aiCategory}
+              onChange={setAiCategory}
+            />
+                  <ModernSelect
+              options={[{ value: "practitioner", label: "Practitioner tone" }, { value: "executive", label: "Executive summary" }, { value: "tutorial", label: "Tutorial/how-to" }]}
+              value={aiTone}
+              onChange={setAiTone}
+            />
                   <button
                     onClick={generateWithAI}
                     disabled={generating || !aiTopic.trim()}
@@ -285,15 +278,11 @@ export default function CreateArticlePage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1.5">Category</label>
-                <select
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  className="w-full rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-3 py-2 text-sm text-neutral-700 dark:text-neutral-300 outline-none focus:ring-1 focus:ring-accent"
-                >
-                  {CATEGORIES.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
+                <ModernSelect
+              options={CATEGORIES.map((c) => ({ value: c, label: c }))}
+              value={category}
+              onChange={setCategory}
+            />
               </div>
               <div>
                 <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1.5">Excerpt</label>

@@ -9,6 +9,7 @@
  */
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -39,7 +40,7 @@ export default function RemediationPage() {
         setResult(await res.json());
       } else {
         const err = await res.json();
-        alert(err.error || "Remediation failed");
+        toast.error(err.error || "Remediation failed");
       }
     } finally {
       setLoading(false);

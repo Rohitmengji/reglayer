@@ -8,7 +8,8 @@
  * Reusable across any list driven by the useSortable hook.
  */
 
-import { ArrowUp, ArrowDown } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { ArrowUp, ArrowDown, ChevronDown, Check } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import type { SortDir } from "@/hooks/use-sortable";
 
@@ -34,23 +35,52 @@ export function SortControl({
   onToggleDir,
   label = "Sort by",
 }: SortControlProps) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const activeOption = options.find((o) => o.key === sortKey);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   return (
     <div className="flex items-center gap-1.5">
-      <label className="sr-only" htmlFor="sort-control-select">
-        {label}
-      </label>
-      <select
-        id="sort-control-select"
-        value={sortKey}
-        onChange={(e) => onChangeKey(e.target.value)}
-        className="appearance-none rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm text-neutral-900 dark:text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
-      >
-        {options.map((opt) => (
-          <option key={opt.key} value={opt.key}>
-            {label}: {opt.label}
-          </option>
-        ))}
-      </select>
+      <div className="relative" ref={ref}>
+        <button
+          type="button"
+          onClick={() => setOpen(!open)}
+          className="inline-flex items-center gap-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm text-neutral-900 dark:text-white hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-all"
+          aria-expanded={open}
+          aria-label={label}
+        >
+          <span className="text-neutral-500 dark:text-neutral-400">{label}:</span>
+          <span className="font-medium">{activeOption?.label}</span>
+          <ChevronDown className={`h-3.5 w-3.5 text-neutral-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+        </button>
+        {open && (
+          <div className="absolute left-0 top-full mt-1.5 min-w-40 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-lg shadow-neutral-200/50 dark:shadow-neutral-900/50 py-1.5 z-50">
+            {options.map((opt) => (
+              <button
+                key={opt.key}
+                type="button"
+                onClick={() => { onChangeKey(opt.key); setOpen(false); }}
+                className={`flex w-full items-center gap-2.5 px-3 py-2 text-sm transition-colors ${
+                  sortKey === opt.key
+                    ? "bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white font-medium"
+                    : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-white"
+                }`}
+              >
+                <span>{opt.label}</span>
+                {sortKey === opt.key && <Check className="ml-auto h-3.5 w-3.5 text-green-600" />}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
       <button
         type="button"
         onClick={onToggleDir}

@@ -9,6 +9,7 @@
  */
 
 import { useState } from "react";
+import { ModernSelect } from "@/components/ui/modern-select";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -103,18 +104,11 @@ export default function RevenueImpactPage() {
               </div>
               <div>
                 <label className="text-sm font-medium block mb-1">Region</label>
-                <select
-                  value={region}
-                  onChange={(e) => setRegion(e.target.value)}
-                  className="w-full rounded-md border px-3 py-2 text-sm bg-background"
-                >
-                  <option value="US">United States</option>
-                  <option value="UK">United Kingdom</option>
-                  <option value="EU">European Union</option>
-                  <option value="AU">Australia</option>
-                  <option value="CA">Canada</option>
-                  <option value="GLOBAL">Global</option>
-                </select>
+                <ModernSelect
+              options={[{ value: "US", label: "United States" }, { value: "UK", label: "United Kingdom" }, { value: "EU", label: "European Union" }, { value: "AU", label: "Australia" }, { value: "CA", label: "Canada" }, { value: "GLOBAL", label: "Global" }]}
+              value={region}
+              onChange={setRegion}
+            />
               </div>
             </div>
             <Button onClick={calculate} disabled={loading} className="mt-4">

@@ -8,6 +8,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { ModernSelect } from "@/components/ui/modern-select";
 import { useI18n } from "@/components/i18n-provider";
 import {
   Calendar,
@@ -133,27 +134,19 @@ export default function RegulationsPage() {
       <div className="mb-6 flex flex-wrap gap-3">
         <div className="relative">
           <Globe className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500 dark:text-gray-400" />
-          <select
-            value={geo}
-            onChange={(e) => setGeo(e.target.value)}
-            className="appearance-none rounded-lg border border-gray-200 bg-white py-2 pl-9 pr-8 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-          >
-            {GEO_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
+          <ModernSelect
+              options={GEO_OPTIONS}
+              value={geo}
+              onChange={setGeo}
+            />
           <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500 dark:text-gray-400" />
         </div>
         <div className="relative">
-          <select
-            value={industry}
-            onChange={(e) => setIndustry(e.target.value)}
-            className="appearance-none rounded-lg border border-gray-200 bg-white py-2 pl-3 pr-8 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-          >
-            {INDUSTRY_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
+          <ModernSelect
+              options={INDUSTRY_OPTIONS}
+              value={industry}
+              onChange={setIndustry}
+            />
           <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500 dark:text-gray-400" />
         </div>
       </div>

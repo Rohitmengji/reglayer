@@ -17,6 +17,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useI18n } from "@/components/i18n-provider";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -128,8 +129,9 @@ export default function MonitoringPage() {
     } catch {}
   }
 
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+
   async function handleDelete(id: string) {
-    if (!confirm("Delete this monitoring schedule?")) return;
     try {
       const res = await fetch("/api/schedules", {
         method: "POST",
@@ -377,7 +379,7 @@ export default function MonitoringPage() {
                         )}
                       </button>
                       <button
-                        onClick={() => handleDelete(schedule.id)}
+                        onClick={() => setDeleteTarget(schedule.id)}
                         className="p-2 rounded-md text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                         title="Delete"
                       >
@@ -406,6 +408,15 @@ export default function MonitoringPage() {
           </Card>
         )}
       </div>
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="Delete schedule"
+        description="Delete this monitoring schedule? It will stop running automated scans."
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={() => deleteTarget && handleDelete(deleteTarget)}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </AppShell>
   );
 }

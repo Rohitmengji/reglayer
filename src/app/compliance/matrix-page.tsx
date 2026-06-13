@@ -13,6 +13,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { ModernSelect } from "@/components/ui/modern-select";
 import { CheckCircle2, XCircle, Minus, Loader2, Grid3X3, ChevronDown } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 
@@ -156,20 +157,15 @@ function ComplianceContent() {
 
           {/* Scan Selector */}
           {scans.length > 1 && (
-            <div className="relative w-full sm:w-auto sm:max-w-65">
-              <select
-                value={activeScanId || ""}
-                onChange={(e) => router.push(`/compliance?scan=${e.target.value}`)}
-                className="w-full appearance-none rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 pl-3 pr-8 py-2 text-sm text-neutral-900 dark:text-white cursor-pointer hover:border-neutral-300 dark:hover:border-neutral-600 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 truncate"
-              >
-                {scans.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {new URL(s.url).hostname} — {new Date(s.createdAt).toLocaleDateString()} ({s.score ?? "?"}%)
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-500 dark:text-neutral-400 pointer-events-none" />
-            </div>
+            <ModernSelect
+              options={scans.map((s) => ({
+                value: s.id,
+                label: `${new URL(s.url).hostname} — ${new Date(s.createdAt).toLocaleDateString()} (${s.score ?? "?"}%)`,
+              }))}
+              value={activeScanId || ""}
+              onChange={(v) => router.push(`/compliance?scan=${v}`)}
+              className="w-full sm:w-auto sm:max-w-65"
+            />
           )}
         </div>
 
