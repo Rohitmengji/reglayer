@@ -9,6 +9,8 @@
  */
 
 import { useState } from "react";
+import { toast } from "sonner";
+import { ModernSelect } from "@/components/ui/modern-select";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -99,7 +101,7 @@ export default function JourneyPage() {
         setResult(await res.json());
       } else {
         const err = await res.json();
-        alert(err.error || "Journey failed");
+        toast.error(err.error || "Journey failed");
       }
     } finally {
       setLoading(false);
@@ -122,19 +124,11 @@ export default function JourneyPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="text-sm font-medium block mb-1">Journey Preset</label>
-                <select
-                  value={selectedPreset}
-                  onChange={(e) => setSelectedPreset(e.target.value)}
-                  onFocus={loadPresets}
-                  className="w-full rounded-md border px-3 py-2 text-sm bg-background"
-                >
-                  <option value="ecommerce-checkout">E-Commerce Checkout</option>
-                  <option value="login-flow">Authentication Flow</option>
-                  <option value="form-wizard">Multi-Step Form</option>
-                  {presets.filter(p => !["ecommerce-checkout","login-flow","form-wizard"].includes(p.id)).map(p => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
-                  ))}
-                </select>
+                <ModernSelect
+              options={[{ value: "ecommerce-checkout", label: "E-Commerce Checkout" }, { value: "login-flow", label: "Authentication Flow" }, { value: "form-wizard", label: "Multi-Step Form" }, ...presets.map((p) => ({ value: p.id, label: p.name }))]}
+              value={selectedPreset}
+              onChange={setSelectedPreset}
+            />
               </div>
               <div className="md:col-span-2">
                 <label className="text-sm font-medium block mb-1">Base URL</label>

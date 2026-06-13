@@ -285,7 +285,7 @@ export function EnhancedViolationCard({ violation, onStatusChange }: EnhancedVio
 
               {dropdownOpen && (
                 <div
-                  className="absolute left-0 top-full mt-1 z-50 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-lg py-1 min-w-40"
+                  className="absolute left-0 bottom-full mb-1 z-50 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-lg shadow-neutral-200/50 dark:shadow-neutral-900/50 py-1.5 min-w-44"
                   role="listbox"
                   aria-label="Status options"
                 >

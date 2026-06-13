@@ -1299,24 +1299,87 @@ export const en = {
   "siteTrends.noHistory": "No scan history yet.",
   "siteTrends.allTime": "All Time",
 
-  // Landing page
+  // Landing page — navigation
+  "landing.navFeatures": "Features",
+  "landing.navCompliance": "Compliance",
+  "landing.navTestimonials": "Testimonials",
+  "landing.navPricing": "Pricing",
+  "landing.getStarted": "Get Started",
+
+  // Landing page — hero
+  "landing.heroBadge": "WCAG 2.2 + ADA + EAA + Section 508 — One platform, every standard.",
   "landing.heroTitle": "Web Accessibility compliance, fully automated.",
+  "landing.heroDesc": "RegLayer scans your websites against WCAG 2.2 AA, Section 508, ADA, EAA, and EN 301 549 — generates audit-ready compliance reports, and monitors regressions. One platform for worldwide accessibility standards.",
   "landing.startScanning": "Start Scanning Free",
   "landing.viewPricing": "View Pricing",
   "landing.noCreditCard": "No credit card required",
   "landing.wcagCompliant": "WCAG 2.2 compliant",
   "landing.globalStandards": "Global standards coverage",
+
+  // Landing page — social proof
   "landing.trustedBy": "Trusted by compliance teams worldwide",
+  "landing.sitesScanned": "Sites Scanned",
+  "landing.countries": "Countries",
+  "landing.uptime": "Uptime",
+  "landing.scanTime": "Scan Time",
+
+  // Landing page — features
   "landing.everythingYouNeed": "Everything you need for accessibility compliance",
+  "landing.featuresSubtitle": "Built for developers and compliance officers who need to meet global accessibility standards — WCAG, ADA, EAA, Section 508, and more.",
   "landing.deepScanning": "Deep WCAG 2.2 Scanning",
+  "landing.deepScanningDesc": "axe-core powered analysis against WCAG 2.2 AA with headless Chromium. Strict as a manual tester. Results in under 30 seconds.",
   "landing.fullSiteCrawling": "Full-Site Crawling",
+  "landing.fullSiteCrawlingDesc": "Automatically discover and scan every page on your site. Find issues before your users do.",
   "landing.multiStandard": "Multi-Standard Scoring",
+  "landing.multiStandardDesc": "Compliance scores mapped to WCAG 2.2, ADA, Section 508, EAA, and EN 301 549 with trend analytics.",
   "landing.auditReports": "Audit-Ready Reports",
+  "landing.auditReportsDesc": "Generate PDF and HTML compliance reports for auditors, legal teams, and regulatory bodies.",
   "landing.aiFixes": "AI Fix Suggestions",
+  "landing.aiFixesDesc": "GPT-powered explanations with code-level remediation steps for every violation.",
   "landing.continuousMonitoring": "Continuous Monitoring",
+  "landing.continuousMonitoringDesc": "Scheduled scans with alerts for regressions. Catch issues in CI/CD before deployment.",
+
+  // Landing page — compliance standards
   "landing.builtForStandards": "Built for worldwide accessibility standards",
+  "landing.standardsDesc": "Whether you need ADA compliance in the US, EAA in Europe, AODA in Canada, or WCAG globally — RegLayer maps your violations directly to the regulatory requirements that matter to you.",
+  "landing.standardWcag": "WCAG 2.2 Level AA — Latest W3C success criteria",
+  "landing.standardAda": "ADA Title III — Americans with Disabilities Act",
+  "landing.standard508": "Section 508 — US Federal accessibility standard",
+  "landing.standardEaa": "EAA / EN 301 549 — European Accessibility Act",
+  "landing.standardAoda": "AODA — Accessibility for Ontarians with Disabilities",
+  "landing.standardVpat": "VPAT / ACR — Voluntary Product Accessibility Template",
+  "landing.standardLangs": "7 languages — DE, FR, ES, IT, NL, PT, EN",
   "landing.checkCompliance": "Check Your Compliance",
+  "landing.supported": "Supported",
+  "landing.mapped": "Mapped",
+
+  // Landing page — testimonials
   "landing.whatTeamsSay": "What compliance teams say",
+  "landing.testimonial1Quote": "RegLayer helped us achieve full WCAG 2.1 compliance across 200+ pages in under two weeks. The AI fix suggestions saved our dev team dozens of hours.",
+  "landing.testimonial1Author": "Anna M.",
+  "landing.testimonial1Role": "Head of Digital, Fintech (Berlin)",
+  "landing.testimonial2Quote": "The EN 301 549 mapping is exactly what we needed for EAA compliance. Our legal team finally has the audit trail they've been asking for.",
+  "landing.testimonial2Author": "Marc V.",
+  "landing.testimonial2Role": "Compliance Officer (Amsterdam)",
+  "landing.testimonial3Quote": "We switched from manual audits to RegLayer and cut our compliance costs by 70%. The scheduled monitoring catches regressions instantly.",
+  "landing.testimonial3Author": "Sophie L.",
+  "landing.testimonial3Role": "CTO, E-commerce (Paris)",
+
+  // Landing page — trust badges
+  "landing.soc2": "SOC 2 Type II",
+  "landing.soc2Sub": "Enterprise security",
+  "landing.gdpr": "GDPR Compliant",
+  "landing.gdprSub": "EU data processing",
+  "landing.euHosted": "EU Hosted",
+  "landing.euHostedSub": "Frankfurt data center",
+  "landing.ssoRbac": "SSO & RBAC",
+  "landing.ssoRbacSub": "Enterprise access control",
+
+  // Landing page — final CTA
+  "landing.ctaTitle": "Don't wait for the EAA deadline",
+  "landing.ctaDesc": "Start scanning your website today. Get a full compliance report in minutes, not weeks. Free tier includes 10 scans per month — no credit card required.",
+  "landing.getStartedFree": "Get Started Free",
+  "landing.comparePlans": "Compare Plans",
 
   // Report pages
   "report.title": "Report",

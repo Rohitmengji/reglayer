@@ -9,6 +9,8 @@
  */
 
 import { useState } from "react";
+import { toast } from "sonner";
+import { ModernSelect } from "@/components/ui/modern-select";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -78,7 +80,7 @@ export default function VPATPage() {
         }
       }
       if (!id) {
-        alert("No scans available. Run a scan first.");
+        toast.error("No scans available. Run a scan first.");
         setLoading(false);
         return;
       }
@@ -168,33 +170,19 @@ export default function VPATPage() {
               </div>
               <div>
                 <label className="text-sm font-medium block mb-1">Standard</label>
-                <select
-                  value={standard}
-                  onChange={(e) => setStandard(e.target.value)}
-                  className="w-full rounded-md border px-3 py-2 text-sm bg-background"
-                >
-                  <option value="WCAG21-AA">WCAG 2.1 Level AA</option>
-                  <option value="WCAG21-A">WCAG 2.1 Level A</option>
-                  <option value="WCAG21-AAA">WCAG 2.1 Level AAA</option>
-                  <option value="Section508">Section 508</option>
-                  <option value="EN301549">EN 301 549</option>
-                </select>
+                <ModernSelect
+              options={[{ value: "WCAG21-AA", label: "WCAG 2.1 Level AA" }, { value: "WCAG21-A", label: "WCAG 2.1 Level A" }, { value: "WCAG21-AAA", label: "WCAG 2.1 Level AAA" }, { value: "Section508", label: "Section 508" }, { value: "EN301549", label: "EN 301 549" }]}
+              value={standard}
+              onChange={setStandard}
+            />
               </div>
               <div>
                 <label className="text-sm font-medium block mb-1">Scan (optional)</label>
-                <select
-                  value={scanId}
-                  onChange={(e) => setScanId(e.target.value)}
-                  onFocus={loadScans}
-                  className="w-full rounded-md border px-3 py-2 text-sm bg-background"
-                >
-                  <option value="">Use latest scan</option>
-                  {scans.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.url} (Score: {s.score})
-                    </option>
-                  ))}
-                </select>
+                <ModernSelect
+              options={[{ value: "", label: "Use latest scan" }, ...scans.map((s) => ({ value: s.id, label: `${s.url} (Score: ${s.score})` }))]}
+              value={scanId}
+              onChange={setScanId}
+            />
               </div>
             </div>
             <div className="flex gap-3 mt-4">

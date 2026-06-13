@@ -10,6 +10,8 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
+import { toast } from "sonner";
+import { ModernSelect } from "@/components/ui/modern-select";
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -332,7 +334,7 @@ function AccountTab() {
       a.click();
       URL.revokeObjectURL(url);
     } catch {
-      alert("Failed to export data. Please try again.");
+      toast.error("Failed to export data. Please try again.");
     } finally {
       setExporting(false);
     }
@@ -350,10 +352,10 @@ function AccountTab() {
         signOut({ callbackUrl: "/" });
       } else {
         const data = await res.json();
-        alert(data.error || "Failed to delete account");
+        toast.error(data.error || "Failed to delete account");
       }
     } catch {
-      alert("Network error. Please try again.");
+      toast.error("Network error. Please try again.");
     } finally {
       setDeleting(false);
     }
@@ -945,16 +947,11 @@ function AlertsTab() {
           <form onSubmit={handleCreate} className="space-y-3">
             <Input type="url" placeholder="URL to monitor" value={url} onChange={(e) => setUrl(e.target.value)} required />
             <div className="grid grid-cols-2 gap-3">
-              <select
-                value={condition}
-                onChange={(e) => setCondition(e.target.value)}
-                className="rounded-lg border border-neutral-200 dark:border-neutral-700 px-3 py-2 text-sm bg-white dark:bg-neutral-900"
-              >
-                <option value="score_below">Score drops below</option>
-                <option value="score_drop">Score drops by</option>
-                <option value="new_critical">Critical violations exceed</option>
-                <option value="new_violations">Total violations exceed</option>
-              </select>
+              <ModernSelect
+              options={[{ value: "score_below", label: "Score drops below" }, { value: "score_drop", label: "Score drops by" }, { value: "new_critical", label: "Critical violations exceed" }, { value: "new_violations", label: "Total violations exceed" }]}
+              value={condition}
+              onChange={setCondition}
+            />
               <Input type="number" placeholder="Threshold" value={threshold} onChange={(e) => setThreshold(e.target.value)} required />
             </div>
             <Input type="url" placeholder="Webhook URL (optional)" value={webhookUrl} onChange={(e) => setWebhookUrl(e.target.value)} />

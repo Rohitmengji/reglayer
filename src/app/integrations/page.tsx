@@ -13,6 +13,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Plug, CheckCircle2, AlertCircle } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface IntegrationDef {
   id: string;
@@ -217,13 +218,15 @@ export default function IntegrationsPage() {
     }
   }
 
+  const [disconnectTarget, setDisconnectTarget] = useState<string | null>(null);
+
   async function handleDisconnect(provider: string) {
     const connection = getConnection(provider);
     if (!connection) return;
-    if (!confirm(`Disconnect ${provider}? You'll stop receiving notifications through this integration.`)) return;
 
     await fetch(`/api/integrations?id=${connection.id}`, { method: "DELETE" });
     await fetchIntegrations();
+    setDisconnectTarget(null);
   }
 
   const categories = [...new Set(integrationDefs.map((d) => d.category))];
@@ -324,7 +327,7 @@ export default function IntegrationsPage() {
                               <div className="mt-4 flex items-center gap-2">
                                 {isActive ? (
                                   <button
-                                    onClick={() => handleDisconnect(def.id)}
+                                    onClick={() => setDisconnectTarget(def.id)}
                                     className="rounded-lg px-3 py-1.5 text-xs font-medium bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-950/50 transition-colors"
                                   >
                                     Disconnect
@@ -364,6 +367,15 @@ export default function IntegrationsPage() {
           </CardContent>
         </Card>
       </div>
+      <ConfirmDialog
+        open={!!disconnectTarget}
+        title="Disconnect integration"
+        description={`Disconnect ${disconnectTarget}? You'll stop receiving notifications through this integration.`}
+        confirmLabel="Disconnect"
+        variant="danger"
+        onConfirm={() => disconnectTarget && handleDisconnect(disconnectTarget)}
+        onCancel={() => setDisconnectTarget(null)}
+      />
     </AppShell>
   );
 }

@@ -10,6 +10,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useI18n } from "@/components/i18n-provider";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useSession } from "next-auth/react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -212,15 +213,17 @@ export default function AgencyDashboard() {
     }
   };
 
+  const [confirmAction, setConfirmAction] = useState<{ type: "removeClient" | "revokeKey"; id: string } | null>(null);
+
   const removeClient = async (clientId: string) => {
     if (!agency) return;
-    if (!confirm("Remove this client? Their workspace data will remain.")) return;
     try {
       await fetch(`/api/agency/${agency.id}/clients/${clientId}`, { method: "DELETE" });
       await loadAgency();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Remove failed");
     }
+    setConfirmAction(null);
   };
 
   const generateApiKey = async () => {
@@ -246,13 +249,13 @@ export default function AgencyDashboard() {
 
   const revokeApiKey = async (keyId: string) => {
     if (!agency) return;
-    if (!confirm("Revoke this API key? This cannot be undone.")) return;
     try {
       await fetch(`/api/agency/${agency.id}/api-keys/${keyId}`, { method: "DELETE" });
       await loadAgency();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Revoke failed");
     }
+    setConfirmAction(null);
   };
 
   if (loading) {
@@ -538,7 +541,7 @@ export default function AgencyDashboard() {
                         </td>
                         <td className="py-2 px-2 text-neutral-500">{new Date(client.addedAt).toLocaleDateString()}</td>
                         <td className="py-2 px-2 text-right">
-                          <Button size="sm" variant="ghost" onClick={() => removeClient(client.id)}>
+                          <Button size="sm" variant="ghost" onClick={() => setConfirmAction({ type: "removeClient", id: client.id })}>
                             <Trash2 className="h-3.5 w-3.5 text-red-500" />
                           </Button>
                         </td>
@@ -606,7 +609,7 @@ export default function AgencyDashboard() {
                       <span className="text-xs text-neutral-500 dark:text-neutral-400">
                         {key.lastUsedAt ? `Used ${new Date(key.lastUsedAt).toLocaleDateString()}` : "Never used"}
                       </span>
-                      <Button size="sm" variant="ghost" onClick={() => revokeApiKey(key.id)}>
+                      <Button size="sm" variant="ghost" onClick={() => setConfirmAction({ type: "revokeKey", id: key.id })}>
                         <Trash2 className="h-3.5 w-3.5 text-red-500" />
                       </Button>
                     </div>
@@ -639,6 +642,18 @@ export default function AgencyDashboard() {
           </CardContent>
         </Card>
       </div>
+      <ConfirmDialog
+        open={!!confirmAction}
+        title={confirmAction?.type === "removeClient" ? "Remove client" : "Revoke API key"}
+        description={confirmAction?.type === "removeClient" ? "Remove this client? Their workspace data will remain." : "Revoke this API key? This cannot be undone."}
+        confirmLabel={confirmAction?.type === "removeClient" ? "Remove" : "Revoke"}
+        variant="danger"
+        onConfirm={() => {
+          if (confirmAction?.type === "removeClient") removeClient(confirmAction.id);
+          else if (confirmAction?.type === "revokeKey") revokeApiKey(confirmAction.id);
+        }}
+        onCancel={() => setConfirmAction(null)}
+      />
     </AppShell>
   );
 }

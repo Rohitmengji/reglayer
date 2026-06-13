@@ -34,6 +34,8 @@ import {
   Search,
 } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ModernSelect } from "@/components/ui/modern-select";
 
 interface WorkspaceMemberInfo {
   id: string;
@@ -90,6 +92,7 @@ export default function AdminPage() {
   const [expandedWorkspace, setExpandedWorkspace] = useState<string | null>(null);
   const [changingPlan, setChangingPlan] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [wsSelections, setWsSelections] = useState<Record<string, string>>({});
   const [showCreateWorkspace, setShowCreateWorkspace] = useState(false);
   const [newWsName, setNewWsName] = useState("");
   const [newWsOwnerEmail, setNewWsOwnerEmail] = useState("");
@@ -279,8 +282,9 @@ export default function AdminPage() {
     setActionLoading(false);
   }
 
+  const [deleteUserTarget, setDeleteUserTarget] = useState<{ id: string; email: string } | null>(null);
+
   async function handleDeleteUser(userId: string, email: string) {
-    if (!confirm(`Permanently delete user "${email}"? This cannot be undone.`)) return;
     setActionLoading(true);
     const toastId = toast.loading("Deleting user...");
     const res = await fetch("/api/admin", {
@@ -422,22 +426,17 @@ export default function AdminPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <select
-                          className="text-xs rounded border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-2 py-1 text-neutral-700 dark:text-neutral-200"
-                          defaultValue={data?.workspaces[0]?.id || ""}
-                          id={`ws-select-${req.id}`}
-                        >
-                          {data?.workspaces.map((ws) => (
-                            <option key={ws.id} value={ws.id}>{ws.name}</option>
-                          ))}
-                        </select>
+                        <ModernSelect
+                          options={(data?.workspaces || []).map((ws) => ({ value: ws.id, label: ws.name }))}
+                          value={wsSelections[req.id] || data?.workspaces[0]?.id || ""}
+                          onChange={(v) => setWsSelections((prev) => ({ ...prev, [req.id]: v }))}
+                        />
                         <Button
                           size="sm"
                           className="text-xs bg-green-600 hover:bg-green-700 text-white"
                           disabled={actionLoading}
                           onClick={() => {
-                            const select = document.getElementById(`ws-select-${req.id}`) as HTMLSelectElement;
-                            handleAccessRequest(req.id, "approve", select?.value);
+                            handleAccessRequest(req.id, "approve", wsSelections[req.id] || data?.workspaces[0]?.id);
                           }}
                         >
                           <Check className="h-3 w-3 mr-1" /> {t("admin.approve")}
@@ -662,7 +661,7 @@ export default function AdminPage() {
                             size="sm"
                             variant="ghost"
                             className="text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-950/30"
-                            onClick={() => handleDeleteUser(user.id, user.email)}
+                            onClick={() => setDeleteUserTarget({ id: user.id, email: user.email })}
                             disabled={actionLoading}
                             title="Delete User"
                           >
@@ -728,15 +727,11 @@ export default function AdminPage() {
                       required
                       className="rounded-lg border border-neutral-200 dark:border-neutral-700 px-3 py-2 text-sm dark:bg-neutral-800 dark:text-neutral-100"
                     />
-                    <select
-                      value={newWsPlan}
-                      onChange={(e) => setNewWsPlan(e.target.value)}
-                      className="rounded-lg border border-neutral-200 dark:border-neutral-700 px-3 py-2 text-sm dark:bg-neutral-800 dark:text-neutral-100"
-                    >
-                      <option value="FREE">Free</option>
-                      <option value="PRO">Pro</option>
-                      <option value="ENTERPRISE">Enterprise</option>
-                    </select>
+                    <ModernSelect
+              options={[{ value: "FREE", label: "Free" }, { value: "PRO", label: "Pro" }, { value: "ENTERPRISE", label: "Enterprise" }]}
+              value={newWsPlan}
+              onChange={setNewWsPlan}
+            />
                   </div>
                   <div className="flex gap-2">
                     <Button type="submit" size="sm" disabled={actionLoading} className="text-xs">
@@ -830,16 +825,11 @@ export default function AdminPage() {
                             onChange={(e) => setAddUserEmail(e.target.value)}
                             className="flex-1 rounded border border-neutral-200 dark:border-neutral-700 px-2 py-1.5 text-xs dark:bg-neutral-800 dark:text-neutral-100"
                           />
-                          <select
-                            value={addUserRole}
-                            onChange={(e) => setAddUserRole(e.target.value)}
-                            className="rounded border border-neutral-200 dark:border-neutral-700 px-2 py-1.5 text-xs dark:bg-neutral-800 dark:text-neutral-100"
-                          >
-                            <option value="OWNER">Owner</option>
-                            <option value="ADMIN">Admin</option>
-                            <option value="MEMBER">Member</option>
-                            <option value="VIEWER">Viewer</option>
-                          </select>
+                          <ModernSelect
+              options={[{ value: "OWNER", label: "Owner" }, { value: "ADMIN", label: "Admin" }, { value: "MEMBER", label: "Member" }, { value: "VIEWER", label: "Viewer" }]}
+              value={addUserRole}
+              onChange={setAddUserRole}
+            />
                           <Button
                             size="sm"
                             className="text-xs"
@@ -863,17 +853,16 @@ export default function AdminPage() {
                               )}
                             </div>
                             <div className="flex items-center gap-1">
-                              <select
-                                className="text-xs rounded border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-2 py-1 text-neutral-700 dark:text-neutral-200"
+                              <ModernSelect
+                                options={[
+                                  { value: "OWNER", label: "Owner" },
+                                  { value: "ADMIN", label: "Admin" },
+                                  { value: "MEMBER", label: "Member" },
+                                  { value: "VIEWER", label: "Viewer" },
+                                ]}
                                 value={member.role}
-                                onChange={(e) => handleChangeRole(ws.id, member.user.id, e.target.value)}
-                                disabled={actionLoading}
-                              >
-                                <option value="OWNER">Owner</option>
-                                <option value="ADMIN">Admin</option>
-                                <option value="MEMBER">Member</option>
-                                <option value="VIEWER">Viewer</option>
-                              </select>
+                                onChange={(v) => handleChangeRole(ws.id, member.user.id, v)}
+                              />
                               <Button
                                 size="sm"
                                 variant="ghost"
@@ -895,6 +884,15 @@ export default function AdminPage() {
           </div>
         </div>
       </div>
+      <ConfirmDialog
+        open={!!deleteUserTarget}
+        title="Delete user"
+        description={`Permanently delete user "${deleteUserTarget?.email}"? This cannot be undone.`}
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={() => deleteUserTarget && handleDeleteUser(deleteUserTarget.id, deleteUserTarget.email)}
+        onCancel={() => setDeleteUserTarget(null)}
+      />
     </AppShell>
   );
 }
