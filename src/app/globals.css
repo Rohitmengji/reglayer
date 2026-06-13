@@ -407,3 +407,41 @@ code, kbd, pre, samp, .font-mono {
 .dark .brand-glow:hover {
   box-shadow: 0 0 30px rgb(129 140 248 / 0.3);
 }
+
+/* ---------------------------------------------------------------------------
+ * Accessibility viewing preferences (user-controlled — see ViewingPreferences)
+ * Applied as data-attributes on <html> by src/lib/a11y/preferences.ts
+ * ------------------------------------------------------------------------- */
+
+/* Larger text — rem-based Tailwind sizes scale from the root font size. */
+:root[data-a11y-text="large"] {
+  font-size: 18px;
+}
+
+/* Reduced motion — neutralize animations, transitions, and smooth scroll. */
+:root[data-a11y-motion="reduced"] *,
+:root[data-a11y-motion="reduced"] *::before,
+:root[data-a11y-motion="reduced"] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* High contrast — darken muted text, strengthen focus rings and borders. */
+:root[data-a11y-contrast="high"] .text-neutral-400,
+:root[data-a11y-contrast="high"] .text-neutral-500 {
+  color: #18181b !important;
+}
+:root.dark[data-a11y-contrast="high"] .text-neutral-400,
+:root.dark[data-a11y-contrast="high"] .text-neutral-500 {
+  color: #f4f4f5 !important;
+}
+:root[data-a11y-contrast="high"] :focus-visible {
+  outline: 3px solid currentColor !important;
+  outline-offset: 2px !important;
+}
+:root[data-a11y-contrast="high"] a,
+:root[data-a11y-contrast="high"] button {
+  text-underline-offset: 2px;
+}

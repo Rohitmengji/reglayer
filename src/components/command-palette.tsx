@@ -31,10 +31,12 @@ import {
   Search, LayoutDashboard, Scan, Globe, Grid3X3, Settings,
   BarChart3, Zap, Plug, AlertTriangle, TrendingUp, Building2,
   PieChart, Shield, FileText, Users, Bell, Key, Moon, Sun,
-  ArrowRight, Sparkles, Clock, Star,
+  ArrowRight, Sparkles, Clock, Star, Keyboard, History,
 } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
 import { useI18n } from "@/components/i18n-provider";
+import { readRecent } from "@/lib/recent/recently-viewed";
+import type { SearchResult } from "@/app/api/search/route";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -44,9 +46,15 @@ interface CommandItem {
   description?: string;
   icon: React.ComponentType<{ className?: string }>;
   action: () => void;
-  group: "navigation" | "actions" | "recent" | "settings";
+  group: "navigation" | "actions" | "recent" | "settings" | "search";
   keywords?: string[];
 }
+
+const SEARCH_TYPE_ICON: Record<SearchResult["type"], React.ComponentType<{ className?: string }>> = {
+  scan: Scan,
+  site: Globe,
+  violation: AlertTriangle,
+};
 
 // ─── Fuzzy Match ──────────────────────────────────────────────────────────────
 
@@ -121,8 +129,59 @@ export function CommandPalette() {
     [router]
   );
 
+  // ─── Recently viewed (5d) ─────────────────────────────────────────────────
+  const [recentCommands, setRecentCommands] = useState<CommandItem[]>([]);
+  useEffect(() => {
+    if (!open) return;
+    const items = readRecent().map<CommandItem>((r) => ({
+      id: `recent-${r.href}`,
+      label: r.label,
+      description: r.type,
+      icon: History,
+      action: () => navigate(r.href),
+      group: "recent",
+    }));
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- load recent items each time the palette opens
+    setRecentCommands(items);
+  }, [open, navigate]);
+
+  // ─── Global content search (5a) ───────────────────────────────────────────
+  const [searchResults, setSearchResults] = useState<CommandItem[]>([]);
+  useEffect(() => {
+    if (!query.trim() || query.trim().length < 2) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- clear stale results when the query is emptied/too short
+      setSearchResults([]);
+      return;
+    }
+    const controller = new AbortController();
+    const handle = setTimeout(() => {
+      fetch(`/api/search?q=${encodeURIComponent(query)}`, { signal: controller.signal })
+        .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`${r.status}`))))
+        .then((data: { results?: SearchResult[] }) => {
+          setSearchResults(
+            (data.results ?? []).map<CommandItem>((res, i) => ({
+              id: `search-${i}-${res.href}`,
+              label: res.label,
+              description: res.sublabel,
+              icon: SEARCH_TYPE_ICON[res.type],
+              action: () => navigate(res.href),
+              group: "search",
+            }))
+          );
+        })
+        .catch(() => {});
+    }, 200);
+    return () => {
+      clearTimeout(handle);
+      controller.abort();
+    };
+  }, [query, navigate]);
+
   const commands: CommandItem[] = useMemo(
     () => [
+      // Recently viewed (populated when the palette opens)
+      ...recentCommands,
+
       // Navigation
       { id: "nav-dashboard", label: "Dashboard", description: "Overview & metrics", icon: LayoutDashboard, action: () => navigate("/dashboard"), group: "navigation", keywords: ["home", "overview"] },
       { id: "nav-scans", label: "Scans", description: "All scan results", icon: Scan, action: () => navigate("/scans"), group: "navigation", keywords: ["audit", "test", "check"] },
@@ -149,15 +208,16 @@ export function CommandPalette() {
       // Settings
       { id: "settings-theme-toggle", label: resolvedTheme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode", description: "Toggle appearance", icon: resolvedTheme === "dark" ? Sun : Moon, action: () => { setTheme(resolvedTheme === "dark" ? "light" : "dark"); setOpen(false); }, group: "settings", keywords: ["theme", "dark", "light", "mode"] },
       { id: "settings-api-keys", label: "API Keys", description: "Manage API access", icon: Key, action: () => navigate("/settings?tab=api"), group: "settings", keywords: ["api", "key", "token"] },
+      { id: "settings-shortcuts", label: "Keyboard Shortcuts", description: "View all shortcuts", icon: Keyboard, action: () => { setOpen(false); window.dispatchEvent(new Event("reglayer:open-shortcuts")); }, group: "settings", keywords: ["keyboard", "shortcuts", "keys", "help"] },
     ],
-    [navigate, resolvedTheme, setTheme]
+    [navigate, resolvedTheme, setTheme, recentCommands]
   );
 
   // ─── Filter & sort ──────────────────────────────────────────────────────────
 
   const filtered = useMemo(() => {
     if (!query.trim()) return commands;
-    return commands
+    const scored = commands
       .map((cmd) => {
         const labelScore = fuzzyScore(query, cmd.label);
         const descScore = cmd.description ? fuzzyScore(query, cmd.description) * 0.7 : 0;
@@ -167,7 +227,9 @@ export function CommandPalette() {
       })
       .filter((cmd) => cmd.score > 0)
       .sort((a, b) => b.score - a.score);
-  }, [commands, query]);
+    // Server-side content matches (scans/sites/violations) lead the list.
+    return [...searchResults, ...scored];
+  }, [commands, query, searchResults]);
 
   // Reset active index when results change
   useEffect(() => {
@@ -208,9 +270,10 @@ export function CommandPalette() {
   }, [filtered]);
 
   const groupLabels: Record<string, string> = {
+    search: "Results",
     navigation: "Go to",
     actions: "Actions",
-    recent: "Recent",
+    recent: "Recently viewed",
     settings: "Settings",
   };
 

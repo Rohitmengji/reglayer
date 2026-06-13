@@ -1531,4 +1531,39 @@ export const en = {
   // App Shell
   "appShell.loading": "Loading...",
   "appShell.skipToContent": "Skip to main content",
+
+  // Keyboard Shortcuts
+  "shortcuts.title": "Keyboard shortcuts",
+  "shortcuts.subtitle": "Speed up your workflow",
+  "shortcuts.group.general": "General",
+  "shortcuts.group.navigation": "Navigation",
+  "shortcuts.group.actions": "Actions",
+  "shortcuts.commandPalette": "Open command palette",
+  "shortcuts.showShortcuts": "Show this help",
+  "shortcuts.close": "Close dialogs",
+  "shortcuts.goDashboard": "Go to Dashboard",
+  "shortcuts.goScans": "Go to Scans",
+  "shortcuts.goViolations": "Go to Violations",
+  "shortcuts.goTrends": "Go to Trends",
+  "shortcuts.newScan": "New scan",
+
+  // Notifications (in-app bell) — "notifications.title" already defined above
+  "notifications.empty": "You're all caught up",
+  "notifications.emptyHint": "New scans and activity will show up here",
+  "notifications.viewAll": "View all",
+
+  // Accessibility viewing preferences
+  "a11y.title": "Accessibility",
+  "a11y.close": "Close",
+  "a11y.highContrast": "High contrast",
+  "a11y.reducedMotion": "Reduce motion",
+  "a11y.largerText": "Larger text",
+
+  // Since last visit (dashboard)
+  "sinceLastVisit.title": "Since your last visit",
+  "sinceLastVisit.dismiss": "Dismiss",
+  "sinceLastVisit.viewAll": "View activity",
+
+  // Command palette — recent
+  "palette.recentViewed": "Recently viewed",
 } as const;
