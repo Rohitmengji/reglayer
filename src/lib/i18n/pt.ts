@@ -1024,4 +1024,39 @@ export const pt = {
   "pageError.tryAgain": "Tentar novamente",
   "pageLoading.message": "A carregar...",
   "appShell.skipToContent": "Ir para o conteúdo principal",
+
+  // Keyboard Shortcuts
+  "shortcuts.title": "Atalhos de teclado",
+  "shortcuts.subtitle": "Acelere o seu fluxo de trabalho",
+  "shortcuts.group.general": "Geral",
+  "shortcuts.group.navigation": "Navegação",
+  "shortcuts.group.actions": "Ações",
+  "shortcuts.commandPalette": "Abrir paleta de comandos",
+  "shortcuts.showShortcuts": "Mostrar esta ajuda",
+  "shortcuts.close": "Fechar diálogos",
+  "shortcuts.goDashboard": "Ir para o painel",
+  "shortcuts.goScans": "Ir para digitalizações",
+  "shortcuts.goViolations": "Ir para violações",
+  "shortcuts.goTrends": "Ir para tendências",
+  "shortcuts.newScan": "Nova digitalização",
+
+  // Notifications (in-app bell)
+  "notifications.empty": "Está tudo em dia",
+  "notifications.emptyHint": "Novas digitalizações e atividades aparecerão aqui",
+  "notifications.viewAll": "Ver tudo",
+
+  // Accessibility viewing preferences
+  "a11y.title": "Acessibilidade",
+  "a11y.close": "Fechar",
+  "a11y.highContrast": "Alto contraste",
+  "a11y.reducedMotion": "Reduzir movimento",
+  "a11y.largerText": "Texto maior",
+
+  // Since last visit (dashboard)
+  "sinceLastVisit.title": "Desde a sua última visita",
+  "sinceLastVisit.dismiss": "Dispensar",
+  "sinceLastVisit.viewAll": "Ver atividade",
+
+  // Command palette — recent
+  "palette.recentViewed": "Vistos recentemente",
 } as const;

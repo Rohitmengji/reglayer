@@ -1388,4 +1388,39 @@ export const de = {
   "pageLoading.message": "Wird geladen...",
   "appShell.loading": "Wird geladen...",
   "appShell.skipToContent": "Zum Hauptinhalt springen",
+
+  // Keyboard Shortcuts
+  "shortcuts.title": "Tastaturkürzel",
+  "shortcuts.subtitle": "Beschleunigen Sie Ihren Workflow",
+  "shortcuts.group.general": "Allgemein",
+  "shortcuts.group.navigation": "Navigation",
+  "shortcuts.group.actions": "Aktionen",
+  "shortcuts.commandPalette": "Befehlspalette öffnen",
+  "shortcuts.showShortcuts": "Diese Hilfe anzeigen",
+  "shortcuts.close": "Dialoge schließen",
+  "shortcuts.goDashboard": "Zur Übersicht",
+  "shortcuts.goScans": "Zu Scans",
+  "shortcuts.goViolations": "Zu Verstößen",
+  "shortcuts.goTrends": "Zu Trends",
+  "shortcuts.newScan": "Neuer Scan",
+
+  // Notifications (in-app bell)
+  "notifications.empty": "Alles erledigt",
+  "notifications.emptyHint": "Neue Scans und Aktivitäten erscheinen hier",
+  "notifications.viewAll": "Alle anzeigen",
+
+  // Accessibility viewing preferences
+  "a11y.title": "Barrierefreiheit",
+  "a11y.close": "Schließen",
+  "a11y.highContrast": "Hoher Kontrast",
+  "a11y.reducedMotion": "Bewegung reduzieren",
+  "a11y.largerText": "Größerer Text",
+
+  // Since last visit (dashboard)
+  "sinceLastVisit.title": "Seit Ihrem letzten Besuch",
+  "sinceLastVisit.dismiss": "Ausblenden",
+  "sinceLastVisit.viewAll": "Aktivität anzeigen",
+
+  // Command palette — recent
+  "palette.recentViewed": "Kürzlich angesehen",
 } as const;

@@ -1035,4 +1035,39 @@ export const es = {
   "pageLoading.message": "Cargando...",
   "appShell.loading": "Cargando...",
   "appShell.skipToContent": "Ir al contenido principal",
+
+  // Keyboard Shortcuts
+  "shortcuts.title": "Atajos de teclado",
+  "shortcuts.subtitle": "Acelera tu flujo de trabajo",
+  "shortcuts.group.general": "General",
+  "shortcuts.group.navigation": "Navegación",
+  "shortcuts.group.actions": "Acciones",
+  "shortcuts.commandPalette": "Abrir paleta de comandos",
+  "shortcuts.showShortcuts": "Mostrar esta ayuda",
+  "shortcuts.close": "Cerrar diálogos",
+  "shortcuts.goDashboard": "Ir al panel",
+  "shortcuts.goScans": "Ir a escaneos",
+  "shortcuts.goViolations": "Ir a infracciones",
+  "shortcuts.goTrends": "Ir a tendencias",
+  "shortcuts.newScan": "Nuevo escaneo",
+
+  // Notifications (in-app bell)
+  "notifications.empty": "Estás al día",
+  "notifications.emptyHint": "Los nuevos escaneos y actividades aparecerán aquí",
+  "notifications.viewAll": "Ver todo",
+
+  // Accessibility viewing preferences
+  "a11y.title": "Accesibilidad",
+  "a11y.close": "Cerrar",
+  "a11y.highContrast": "Alto contraste",
+  "a11y.reducedMotion": "Reducir movimiento",
+  "a11y.largerText": "Texto más grande",
+
+  // Since last visit (dashboard)
+  "sinceLastVisit.title": "Desde tu última visita",
+  "sinceLastVisit.dismiss": "Descartar",
+  "sinceLastVisit.viewAll": "Ver actividad",
+
+  // Command palette — recent
+  "palette.recentViewed": "Vistos recientemente",
 } as const;

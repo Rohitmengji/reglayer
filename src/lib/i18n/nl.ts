@@ -1024,4 +1024,39 @@ export const nl = {
   "pageError.tryAgain": "Opnieuw proberen",
   "pageLoading.message": "Laden...",
   "appShell.skipToContent": "Ga naar hoofdinhoud",
+
+  // Keyboard Shortcuts
+  "shortcuts.title": "Sneltoetsen",
+  "shortcuts.subtitle": "Versnel je workflow",
+  "shortcuts.group.general": "Algemeen",
+  "shortcuts.group.navigation": "Navigatie",
+  "shortcuts.group.actions": "Acties",
+  "shortcuts.commandPalette": "Commandopalet openen",
+  "shortcuts.showShortcuts": "Deze hulp tonen",
+  "shortcuts.close": "Dialogen sluiten",
+  "shortcuts.goDashboard": "Naar dashboard",
+  "shortcuts.goScans": "Naar scans",
+  "shortcuts.goViolations": "Naar overtredingen",
+  "shortcuts.goTrends": "Naar trends",
+  "shortcuts.newScan": "Nieuwe scan",
+
+  // Notifications (in-app bell)
+  "notifications.empty": "Je bent bij",
+  "notifications.emptyHint": "Nieuwe scans en activiteit verschijnen hier",
+  "notifications.viewAll": "Alles bekijken",
+
+  // Accessibility viewing preferences
+  "a11y.title": "Toegankelijkheid",
+  "a11y.close": "Sluiten",
+  "a11y.highContrast": "Hoog contrast",
+  "a11y.reducedMotion": "Beweging verminderen",
+  "a11y.largerText": "Grotere tekst",
+
+  // Since last visit (dashboard)
+  "sinceLastVisit.title": "Sinds je laatste bezoek",
+  "sinceLastVisit.dismiss": "Verbergen",
+  "sinceLastVisit.viewAll": "Activiteit bekijken",
+
+  // Command palette — recent
+  "palette.recentViewed": "Recent bekeken",
 } as const;
