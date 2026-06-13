@@ -91,8 +91,8 @@ export function CookieConsent() {
   if (!visible) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 p-4" role="region" aria-label="Cookie consent">
-      <div className="mx-auto max-w-2xl rounded-xl border border-neutral-200 bg-white shadow-2xl dark:border-neutral-700 dark:bg-neutral-900">
+    <div className="fixed bottom-0 left-0 right-0 z-50 p-2 sm:p-4" role="region" aria-label="Cookie consent">
+      <div className="mx-auto max-w-full sm:max-w-2xl rounded-xl border border-neutral-200 bg-white shadow-2xl dark:border-neutral-700 dark:bg-neutral-900">
         <div className="p-5">
           <div className="flex items-start gap-3">
             <Shield className="h-5 w-5 text-blue-600 mt-0.5 shrink-0" />

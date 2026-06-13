@@ -291,7 +291,7 @@ export function ScanAuthSection({ onAuthChange, scanUrl }: ScanAuthSectionProps)
           {/* Method Selector */}
           <div className="space-y-2">
             <label className="text-xs text-neutral-500">{t("scanAuth.authMethod")}</label>
-            <div className="grid grid-cols-5 gap-1">
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-1">
               {(["none", "cookies", "form", "basic", "headers"] as const).map((m) => (
                 <button
                   key={m}
@@ -345,7 +345,7 @@ export function ScanAuthSection({ onAuthChange, scanUrl }: ScanAuthSectionProps)
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <div>
                     <label className="text-xs">Username Selector</label>
                     <Input

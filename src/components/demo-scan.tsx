@@ -98,7 +98,7 @@ export function DemoScan() {
           </div>
 
           {/* Violation summary */}
-          <div className="grid grid-cols-4 gap-3 mb-6">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
             {[
               { label: "Critical", count: result.critical, color: "text-red-500" },
               { label: "Serious", count: result.serious, color: "text-orange-500" },

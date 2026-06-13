@@ -59,7 +59,7 @@ export function LandingContent() {
             </div>
             <span className="text-lg font-bold tracking-tight text-neutral-900 dark:text-white">RegLayer</span>
           </div>
-          <nav className="hidden md:flex items-center gap-6">
+          <nav className="hidden lg:flex items-center gap-6">
             <a href="#features" className="text-sm text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors">{t("landing.navFeatures")}</a>
             <a href="#compliance" className="text-sm text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors">{t("landing.navCompliance")}</a>
             <a href="#testimonials" className="text-sm text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors">{t("landing.navTestimonials")}</a>
@@ -113,7 +113,7 @@ export function LandingContent() {
 
       <main>
         {/* Hero Section */}
-        <section className="mx-auto max-w-5xl px-6 pt-12 pb-16 sm:pt-20 sm:pb-24 text-center">
+        <section className="mx-auto max-w-5xl px-4 sm:px-6 pt-10 sm:pt-20 pb-12 sm:pb-24 text-center">
           <div className="inline-flex items-center gap-2 rounded-full border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 px-3 py-1 text-xs font-medium text-neutral-600 dark:text-neutral-300 mb-8">
             <Zap className="h-3 w-3" />
             {t("landing.heroBadge")}
@@ -277,7 +277,7 @@ export function LandingContent() {
         {/* Security & Trust */}
         <section className="border-y border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900 py-16">
           <div className="mx-auto max-w-6xl px-6">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 sm:gap-8 text-center">
               {[
                 { icon: Lock, labelKey: "landing.soc2" as const, subKey: "landing.soc2Sub" as const },
                 { icon: Shield, labelKey: "landing.gdpr" as const, subKey: "landing.gdprSub" as const },

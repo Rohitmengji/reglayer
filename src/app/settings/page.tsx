@@ -633,7 +633,7 @@ function GeneralTab() {
           <CardTitle className="text-sm">{t("settings.platformInfo")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
             <div>
               <p className="text-neutral-500 dark:text-neutral-400">{t("settings.version")}</p>
               <p className="font-medium">0.2.0</p>
@@ -946,7 +946,7 @@ function AlertsTab() {
         <CardContent>
           <form onSubmit={handleCreate} className="space-y-3">
             <Input type="url" placeholder="URL to monitor" value={url} onChange={(e) => setUrl(e.target.value)} required />
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <ModernSelect
               options={[{ value: "score_below", label: "Score drops below" }, { value: "score_drop", label: "Score drops by" }, { value: "new_critical", label: "Critical violations exceed" }, { value: "new_violations", label: "Total violations exceed" }]}
               value={condition}

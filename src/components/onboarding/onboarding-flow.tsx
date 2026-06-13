@@ -80,7 +80,7 @@ export function OnboardingFlow({ userName, onComplete, onStartScan }: Onboarding
           {t("onboarding.welcomeDesc")}
         </p>
       </div>
-      <div className="grid grid-cols-3 gap-3 max-w-sm mx-auto">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3 max-w-sm mx-auto">
         <div className="rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/30 p-3 text-center">
           <Target className="h-5 w-5 text-blue-500 mx-auto mb-1" />
           <p className="text-[10px] font-medium text-blue-700 dark:text-blue-300">{t("onboarding.scan")}</p>

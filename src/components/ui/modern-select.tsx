@@ -59,7 +59,7 @@ export function ModernSelect({
         />
       </button>
       {open && (
-        <div className="absolute left-0 top-full mt-1.5 w-full min-w-40 max-h-60 overflow-y-auto rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-lg shadow-neutral-200/50 dark:shadow-neutral-900/50 py-1.5 z-50">
+        <div className="absolute left-0 top-full mt-1.5 w-full min-w-0 sm:min-w-40 max-h-60 overflow-y-auto rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-lg shadow-neutral-200/50 dark:shadow-neutral-900/50 py-1.5 z-50">
           {options.map((opt) => (
             <button
               key={opt.value}

@@ -178,7 +178,7 @@ export function ArticleEditor({ article, onUpdate, onEditingChange }: ArticleEdi
     return (
       <button
         onClick={startEditing}
-        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full bg-accent px-4 py-2.5 text-sm font-medium text-white shadow-lg hover:bg-accent/90 transition-all hover:scale-105"
+        className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 flex items-center gap-2 rounded-full bg-accent px-4 py-2.5 text-sm font-medium text-white shadow-lg hover:bg-accent/90 transition-all hover:scale-105"
         title="Edit article (Admin)"
       >
         <Pencil className="h-4 w-4" />
@@ -192,7 +192,7 @@ export function ArticleEditor({ article, onUpdate, onEditingChange }: ArticleEdi
     <>
       {/* Top toolbar */}
       <div className="fixed top-0 left-0 right-0 z-9999 bg-white dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-700 shadow-sm">
-        <div className="mx-auto max-w-4xl flex items-center justify-between px-6 py-3">
+        <div className="mx-auto max-w-4xl flex items-center justify-between px-4 sm:px-6 py-2 sm:py-3">
           <div className="flex items-center gap-3">
             <span className="flex items-center gap-1.5 text-xs font-semibold text-accent">
               <Pencil className="h-3 w-3" /> Edit Mode
