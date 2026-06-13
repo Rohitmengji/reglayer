@@ -108,7 +108,7 @@ export function RoleOnboarding({ userName, onComplete }: RoleOnboardingProps) {
   const selectedPersona = personas.find((p) => p.id === selected);
 
   return (
-    <div className="fixed inset-0 z-9999 flex items-center justify-center bg-white dark:bg-neutral-950 overflow-hidden">
+    <div className="fixed inset-0 z-9999 flex items-center justify-center bg-white dark:bg-neutral-950 overflow-y-auto">
       <div className="w-full max-w-2xl px-6 py-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
         {step === "role" ? (
           <>

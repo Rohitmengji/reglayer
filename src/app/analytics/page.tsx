@@ -160,7 +160,7 @@ export default function AnalyticsPage() {
         </div>
 
         {/* Overview Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           <MetricCard
             label="Average Score"
             value={data.overview.averageScore.toString()}
@@ -210,7 +210,7 @@ export default function AnalyticsPage() {
         )}
 
         {/* Forecast */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           <Card className="border-blue-100 dark:border-blue-800 bg-blue-50/30 dark:bg-blue-950/30">
             <CardContent className="p-6">
               <div className="flex items-center gap-2 mb-3">

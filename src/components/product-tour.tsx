@@ -89,7 +89,7 @@ export function ProductTour() {
 
       // Tooltip placement
       const tooltipH = 140;
-      const tooltipW = 280;
+      const tooltipW = Math.min(280, window.innerWidth - 24);
       const spaceBelow = window.innerHeight - r.bottom;
       const placement = spaceBelow > tooltipH + 16 ? "below" : "above";
 
@@ -131,7 +131,7 @@ export function ProductTour() {
 
       {/* Tooltip — fixed position */}
       <div
-        className="fixed z-9999 w-70"
+        className="fixed z-9999 w-70 max-w-[calc(100vw-24px)]"
         style={{ top: tooltip.top, left: tooltip.left }}
         key={step}
         role="region"

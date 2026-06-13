@@ -172,7 +172,7 @@ export default function CertificatePage() {
           <div className="absolute bottom-5 left-5 w-10 h-10 border-b border-l border-neutral-200/60 dark:border-neutral-700/40 rounded-bl" />
           <div className="absolute bottom-5 right-5 w-10 h-10 border-b border-r border-neutral-200/60 dark:border-neutral-700/40 rounded-br" />
           
-          <div className="relative px-8 py-7 sm:px-12 sm:py-8 text-center">
+          <div className="relative px-4 py-5 sm:px-8 sm:py-7 md:px-12 md:py-8 text-center">
             {/* Header */}
             <div className="flex items-center justify-center gap-2 mb-1">
               <Shield className="h-4 w-4 text-neutral-900 dark:text-white" />

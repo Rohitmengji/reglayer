@@ -29,7 +29,7 @@ export default function FeaturesPage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950">
-      <div className="mx-auto max-w-5xl px-6 py-12">
+      <div className="mx-auto max-w-5xl px-4 sm:px-6 py-8 sm:py-12">
         <div className="flex items-center gap-2 mb-12">
           <Link href="/" className="flex items-center gap-2 text-neutral-900 dark:text-white">
             <Shield className="h-5 w-5" />
@@ -46,7 +46,7 @@ export default function FeaturesPage() {
           </p>
         </div>
 
-        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:gap-6 lg:gap-8 sm:grid-cols-2 lg:grid-cols-3">
           {features.map((feature) => (
             <div
               key={feature.title}
