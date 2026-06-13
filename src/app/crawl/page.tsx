@@ -23,6 +23,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useI18n } from "@/components/i18n-provider";
+import { ScanAuthSection } from "@/components/scanner/scan-auth-section";
+import type { AuthConfig } from "@/lib/validations/auth";
 
 interface CrawlPageResult {
   url: string;
@@ -55,6 +57,7 @@ export default function CrawlPage() {
   const [crawling, setCrawling] = useState(false);
   const [result, setResult] = useState<CrawlResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [authConfig, setAuthConfig] = useState<AuthConfig | undefined>(undefined);
   const { t } = useI18n();
 
   async function handleCrawl(e: React.FormEvent) {
@@ -72,6 +75,7 @@ export default function CrawlPage() {
           maxPages: Number(maxPages),
           maxDepth: Number(maxDepth),
           concurrency: 2,
+          ...(authConfig && authConfig.method !== "none" && { auth: authConfig }),
         }),
       });
 
@@ -142,6 +146,10 @@ export default function CrawlPage() {
                   />
                 </div>
               </div>
+
+              {/* Authentication Section */}
+              <ScanAuthSection onAuthChange={setAuthConfig} scanUrl={url} />
+
               <Button type="submit" disabled={crawling} className="w-full">
                 {crawling ? (
                   <>
