@@ -13,6 +13,7 @@ import { crawlSite } from "@/lib/scanner/crawler/siteCrawler";
 import { getPlanContext } from "@/lib/credits/plan-context";
 import { validateScanUrl } from "@/lib/validations/ssrf";
 import { applyRateLimit } from "@/lib/rate-limit-middleware";
+import { authConfigSchema } from "@/lib/validations/auth";
 
 const crawlSchema = z.object({
   url: z.string().url(),
@@ -21,6 +22,7 @@ const crawlSchema = z.object({
   concurrency: z.number().min(1).max(3).default(2),
   includePatterns: z.array(z.string()).optional(),
   excludePatterns: z.array(z.string()).optional(),
+  auth: authConfigSchema.optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -47,7 +49,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { url, maxDepth, concurrency, includePatterns, excludePatterns } = parsed.data;
+  const { url, maxDepth, concurrency, includePatterns, excludePatterns, auth } = parsed.data;
   let { maxPages } = parsed.data;
 
   // SSRF protection
@@ -73,6 +75,7 @@ export async function POST(request: NextRequest) {
       concurrency,
       includePatterns,
       excludePatterns,
+      auth: auth && auth.method !== "none" ? auth : undefined,
     });
 
     return NextResponse.json(result);

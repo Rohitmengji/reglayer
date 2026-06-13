@@ -18,7 +18,9 @@
 import { performScan } from "@/services/scanService";
 import { prisma } from "@/lib/database/prisma";
 import { launchBrowser } from "@/lib/scanner/browser/launch";
+import { applyAuthToContext } from "@/lib/scanner/auth";
 import type { Page } from "playwright-core";
+import type { AuthConfig } from "@/lib/validations/auth";
 
 export interface CrawlConfig {
   startUrl: string;
@@ -28,6 +30,8 @@ export interface CrawlConfig {
   includePatterns?: string[];
   excludePatterns?: string[];
   respectRobotsTxt?: boolean;
+  /** Authentication config for crawling behind-login pages */
+  auth?: AuthConfig;
 }
 
 export interface CrawlResult {
@@ -119,7 +123,13 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
   let browser = null;
   try {
     browser = await launchBrowser();
-    const page = await browser.newPage();
+    const context = await browser.newContext({ ignoreHTTPSErrors: true });
+    const page = await context.newPage();
+
+    // Apply authentication before crawling (so we can discover pages behind login)
+    if (config.auth && config.auth.method !== "none") {
+      await applyAuthToContext(context, page, config.auth);
+    }
 
     while (queue.length > 0 && visited.size < config.maxPages) {
       const current = queue.shift()!;
@@ -169,7 +179,7 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
     activeScans++;
     const depth = queue.find((q) => q.url === url)?.depth ?? 0;
 
-    const scanPromise = performScan({ url })
+    const scanPromise = performScan({ url, options: config.auth ? { auth: config.auth } : undefined })
       .then((result) => {
         results.push({
           url,
