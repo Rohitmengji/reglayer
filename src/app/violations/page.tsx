@@ -17,6 +17,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useI18n } from "@/components/i18n-provider";
 import { useSearchParams } from "next/navigation";
+import { useUrlState } from "@/hooks/use-url-state";
 import { AppShell } from "@/components/layout/app-shell";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageLoading } from "@/components/ui/page-loading";
@@ -67,7 +68,7 @@ export default function ViolationsPage() {
   const [data, setData] = useState<ViolationsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<string>("ALL");
+  const [activeTab, setActiveTab] = useUrlState<string>("status", "ALL");
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkUpdating, setBulkUpdating] = useState(false);
@@ -155,7 +156,7 @@ export default function ViolationsPage() {
     setActiveTab(tab);
     setCurrentPage(1);
     setSelectedIds(new Set());
-  }, []);
+  }, [setActiveTab]);
 
   const handleCheckbox = useCallback((violationId: string, checked: boolean) => {
     setSelectedIds((prev) => {

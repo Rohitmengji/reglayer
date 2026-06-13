@@ -32,6 +32,9 @@ import {
 import Link from "next/link";
 import { useI18n } from "@/components/i18n-provider";
 import { EmptyState } from "@/components/ui/empty-state";
+import { useUrlState } from "@/hooks/use-url-state";
+import { useSortable } from "@/hooks/use-sortable";
+import { SortControl, type SortOption } from "@/components/ui/sort-control";
 
 interface ScanRecord {
   id: string;
@@ -49,14 +52,30 @@ interface ScanRecord {
   status: string;
 }
 
+// Stable accessor map for useSortable (defined outside the component so the
+// sort only recomputes when the data/key/direction change).
+const SCAN_ACCESSORS = {
+  createdAt: (s: ScanRecord) => s.createdAt,
+  score: (s: ScanRecord) => s.score,
+  totalViolations: (s: ScanRecord) => s.totalViolations,
+  url: (s: ScanRecord) => s.pageTitle || s.url,
+} as const;
+
+const SCAN_SORT_OPTIONS: SortOption[] = [
+  { key: "createdAt", label: "Date" },
+  { key: "score", label: "Score" },
+  { key: "totalViolations", label: "Violations" },
+  { key: "url", label: "Name" },
+];
+
 export default function ScansPage() {
   const [scans, setScans] = useState<ScanRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedScans, setSelectedScans] = useState<string[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [severityFilter, setSeverityFilter] = useState<string>("all");
-  const [dateFilter, setDateFilter] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useUrlState<string>("q", "");
+  const [severityFilter, setSeverityFilter] = useUrlState<string>("severity", "all");
+  const [dateFilter, setDateFilter] = useUrlState<string>("date", "all");
   const { data: session } = useSession();
   const { t } = useI18n();
   const isAdmin = session?.user?.role === "admin";
@@ -119,6 +138,13 @@ export default function ScansPage() {
     return result;
   }, [scans, searchQuery, severityFilter, dateFilter]);
 
+  // Sorted view of the filtered scans (default: newest first — matches the API order).
+  const { sorted: sortedScans, sortKey, sortDir, toggleSort } = useSortable(
+    filteredScans,
+    { key: "createdAt", dir: "desc" },
+    SCAN_ACCESSORS
+  );
+
   // CSV export
   function handleExportCSV() {
     const headers = ["URL", "Page Title", "Score", "Critical", "Serious", "Moderate", "Minor", "Total Violations", "Date"];
@@ -162,10 +188,10 @@ export default function ScansPage() {
     );
   }
 
-  function getTrend(index: number): "up" | "down" | "flat" {
-    if (index >= filteredScans.length - 1) return "flat";
-    const current = filteredScans[index].score ?? 0;
-    const previous = filteredScans[index + 1].score ?? 0;
+  function getTrend(list: ScanRecord[], index: number): "up" | "down" | "flat" {
+    if (index >= list.length - 1) return "flat";
+    const current = list[index].score ?? 0;
+    const previous = list[index + 1].score ?? 0;
     if (current > previous) return "up";
     if (current < previous) return "down";
     return "flat";
@@ -222,9 +248,9 @@ export default function ScansPage() {
               label={t("scans.latestScore")}
               value={scans[0]?.score?.toString() ?? "—"}
               icon={
-                getTrend(0) === "up" ? (
+                getTrend(filteredScans, 0) === "up" ? (
                   <TrendingUp className="h-4 w-4 text-green-500" />
-                ) : getTrend(0) === "down" ? (
+                ) : getTrend(filteredScans, 0) === "down" ? (
                   <TrendingDown className="h-4 w-4 text-red-500" />
                 ) : (
                   <Minus className="h-4 w-4 text-neutral-500 dark:text-neutral-400" />
@@ -277,6 +303,15 @@ export default function ScansPage() {
               <option value="month">Last 30 days</option>
             </select>
 
+            {/* Sort */}
+            <SortControl
+              options={SCAN_SORT_OPTIONS}
+              sortKey={sortKey}
+              sortDir={sortDir}
+              onChangeKey={toggleSort}
+              onToggleDir={() => toggleSort(sortKey)}
+            />
+
             {/* Export CSV */}
             <button
               onClick={handleExportCSV}
@@ -328,7 +363,7 @@ export default function ScansPage() {
             <p className="text-xs text-neutral-500 dark:text-neutral-400">
               {t("scans.selectHint")}
             </p>
-            {filteredScans.map((scan, index) => (
+            {sortedScans.map((scan, index) => (
               <div
                 key={scan.id}
                 className={`group rounded-xl border bg-white dark:bg-neutral-900 p-4 sm:p-5 transition-all hover:shadow-md ${
@@ -369,8 +404,8 @@ export default function ScansPage() {
                     >
                       {scan.score !== null ? Math.round(scan.score) : "—"}
                     </span>
-                    {getTrend(index) === "up" && <TrendingUp className="h-4 w-4 text-green-500" />}
-                    {getTrend(index) === "down" && <TrendingDown className="h-4 w-4 text-red-500" />}
+                    {getTrend(sortedScans, index) === "up" && <TrendingUp className="h-4 w-4 text-green-500" />}
+                    {getTrend(sortedScans, index) === "down" && <TrendingDown className="h-4 w-4 text-red-500" />}
                   </div>
 
                   {/* Info */}

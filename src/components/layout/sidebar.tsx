@@ -39,6 +39,7 @@ import { SUPPORTED_LOCALES } from "@/lib/i18n/translations";
 import { useState, useEffect, useRef } from "react";
 import { useFeatures, invalidateFeatureCache } from "@/hooks/use-features";
 import { SIDEBAR_FEATURE_MAP } from "@/lib/features/feature-catalog";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 
 const mainNav = [
   { name: "Dashboard", key: "nav.dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -246,6 +247,9 @@ export function Sidebar({ onNavigate }: SidebarProps) {
 
       {/* Bottom Area */}
       <div className="border-t border-neutral-200/60 dark:border-neutral-800 p-3 space-y-1">
+        {/* Notifications */}
+        {session?.user && <NotificationBell />}
+
         {/* User */}
         {session?.user && (
           <div className="relative">

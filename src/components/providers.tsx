@@ -30,6 +30,10 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { I18nProvider } from "@/components/i18n-provider";
 import { BrandProvider, type BrandContextType } from "@/components/layout/BrandProvider";
 import { CommandPalette } from "@/components/command-palette";
+import { ShortcutsModal } from "@/components/shortcuts/shortcuts-modal";
+import { GlobalShortcuts } from "@/components/shortcuts/global-shortcuts";
+import { ViewingPreferences } from "@/components/a11y/viewing-preferences";
+import { RecentTracker } from "@/components/recent/recent-tracker";
 import { ConfettiCanvas } from "@/components/confetti";
 
 const DEFAULT_BRAND: BrandContextType = {
@@ -64,6 +68,10 @@ export function Providers({ children, brand }: { children: React.ReactNode; bran
           <I18nProvider>
             <BrandProvider brand={brand ?? DEFAULT_BRAND}>
               <CommandPalette />
+              <ShortcutsModal />
+              <GlobalShortcuts />
+              <ViewingPreferences />
+              <RecentTracker />
               <ConfettiCanvas />
               {children}
             </BrandProvider>

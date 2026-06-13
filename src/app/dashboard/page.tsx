@@ -33,6 +33,7 @@ import { ScanForm } from "@/components/scanner/scan-form";
 import { ScoreCard } from "@/components/dashboard/score-card";
 import { ViolationCard } from "@/components/scanner/violation-card";
 import { OnboardingFlow } from "@/components/onboarding/onboarding-flow";
+import { SinceLastVisit } from "@/components/dashboard/since-last-visit";
 import { RoleOnboarding } from "@/components/onboarding/role-onboarding";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -178,6 +179,9 @@ export default function DashboardPage() {
             {t("dashboard.subtitle")}
           </p>
         </div>
+
+        {/* What changed since the user was last here (read-only, dismissible) */}
+        <SinceLastVisit />
 
         {/* Onboarding Flow — shown for new users */}
         {showOnboarding && (
