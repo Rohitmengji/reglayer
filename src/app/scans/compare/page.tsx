@@ -186,7 +186,7 @@ function CompareContent() {
         </div>
 
         {/* Summary Bar */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="rounded-xl border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950 p-4 text-center">
             <CheckCircle2 className="h-5 w-5 text-green-600 mx-auto mb-1" />
             <p className="text-2xl font-bold text-green-700">{summary.totalFixed}</p>

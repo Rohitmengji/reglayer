@@ -125,7 +125,7 @@ export default function BlogPage() {
     <div className="space-y-8">
       {/* Hero */}
       <section className="border-b border-neutral-100 dark:border-neutral-800/50">
-        <div className="mx-auto max-w-5xl px-6 pb-8">
+        <div className="mx-auto max-w-5xl px-4 sm:px-6 pb-8">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <BookOpen className="h-5 w-5 text-accent" />
@@ -163,7 +163,7 @@ export default function BlogPage() {
       </section>
 
       {/* Featured Articles */}
-      <section className="mx-auto max-w-5xl px-6">
+      <section className="mx-auto max-w-5xl px-4 sm:px-6">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-4">
           {t("blog.featured")}
         </h2>
@@ -204,7 +204,7 @@ export default function BlogPage() {
       </section>
 
       {/* All Articles */}
-      <section className="mx-auto max-w-5xl px-6 pt-2 border-t border-neutral-100 dark:border-neutral-800/50">
+      <section className="mx-auto max-w-5xl px-4 sm:px-6 pt-2 border-t border-neutral-100 dark:border-neutral-800/50">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-4">
           {t("blog.allArticles")}
         </h2>
@@ -238,7 +238,7 @@ export default function BlogPage() {
       </section>
 
       {/* Newsletter CTA */}
-      <section className="mx-auto max-w-5xl px-6">
+      <section className="mx-auto max-w-5xl px-4 sm:px-6">
         <div className="rounded-xl bg-neutral-50 dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 p-8 text-center">
           <h2 className="text-base font-bold text-neutral-900 dark:text-white mb-2">
           {t("blog.newsletterHeading")}

@@ -29,7 +29,7 @@ export default async function ArticlePage({ params }: PageProps) {
       <ArticleEditorWrapper slug={slug} article={article}>
         {/* Navigation */}
         <header className="border-b border-neutral-100 dark:border-neutral-800/50">
-        <div className="mx-auto max-w-4xl px-6 py-3 flex items-center justify-between">
+        <div className="mx-auto max-w-4xl px-4 sm:px-6 py-3 flex items-center justify-between">
           <Link href="/blog" className="flex items-center gap-2 text-sm text-neutral-500 dark:text-neutral-400 hover:text-accent transition-colors">
             <ArrowLeft className="h-4 w-4" />
             Back to Blog
@@ -39,7 +39,7 @@ export default async function ArticlePage({ params }: PageProps) {
       </header>
 
       {/* Article */}
-      <article className="mx-auto max-w-4xl px-6 pb-8">
+      <article className="mx-auto max-w-4xl px-4 sm:px-6 pb-8">
         {/* Meta */}
         <div className="flex items-center gap-3 mb-4">
           <span className={`inline-block rounded-md px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider ${article.categoryColor}`}>
@@ -83,7 +83,7 @@ export default async function ArticlePage({ params }: PageProps) {
                 </p>
               ))}
               {section.stats && (
-                <div className="mt-4 grid grid-cols-3 gap-3">
+                <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {section.stats.map((stat, i) => (
                     <div key={i} className={`rounded-lg ${stat.bg} border ${stat.border} p-3 text-center`}>
                       <div className={`text-xl font-bold ${stat.color}`}>{stat.value}</div>

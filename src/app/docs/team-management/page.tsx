@@ -16,7 +16,7 @@ export default function TeamManagementPage() {
   const { t } = useI18n();
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950">
-      <div className="mx-auto max-w-3xl px-6 py-12">
+      <div className="mx-auto max-w-3xl px-4 sm:px-6 py-12">
         <div className="flex items-center gap-2 mb-8">
           <Link href="/" className="flex items-center gap-2 text-neutral-900 dark:text-white">
             <Shield className="h-5 w-5" />
@@ -42,7 +42,7 @@ export default function TeamManagementPage() {
             <p className="text-sm text-neutral-600 dark:text-neutral-300 mb-4 leading-relaxed">
               Each workspace member has a role that determines what they can do:
             </p>
-            <div className="rounded-lg border border-neutral-200 dark:border-neutral-800 overflow-hidden">
+            <div className="rounded-lg border border-neutral-200 dark:border-neutral-800 overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-neutral-50 dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-800">
                   <tr>
@@ -118,7 +118,7 @@ export default function TeamManagementPage() {
 
           <section>
             <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-3">Plan Limits</h2>
-            <div className="rounded-lg border border-neutral-200 dark:border-neutral-800 overflow-hidden">
+            <div className="rounded-lg border border-neutral-200 dark:border-neutral-800 overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-neutral-50 dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-800">
                   <tr>

@@ -171,7 +171,7 @@ export function LandingContent() {
 
         {/* Features Grid */}
         <section id="features" className="py-16 sm:py-24">
-          <div className="mx-auto max-w-6xl px-6">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6">
             <div className="text-center mb-10 sm:mb-16" data-tour="features">
               <h2 className="text-2xl sm:text-3xl font-bold text-neutral-900 dark:text-white">
                 {t("landing.everythingYouNeed")}
@@ -193,7 +193,7 @@ export function LandingContent() {
 
         {/* Compliance Standards */}
         <section id="compliance" className="bg-neutral-50 dark:bg-neutral-900 border-y border-neutral-100 dark:border-neutral-800 py-16 sm:py-24">
-          <div className="mx-auto max-w-6xl px-6">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6">
             <div className="grid lg:grid-cols-2 gap-10 sm:gap-16 items-center">
               <div>
                 <h2 className="text-2xl sm:text-3xl font-bold text-neutral-900 dark:text-white">
@@ -247,7 +247,7 @@ export function LandingContent() {
 
         {/* Testimonials */}
         <section id="testimonials" className="py-16 sm:py-24">
-          <div className="mx-auto max-w-6xl px-6">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6">
             <h2 className="text-center text-2xl sm:text-3xl font-bold text-neutral-900 dark:text-white mb-10 sm:mb-12">
               {t("landing.whatTeamsSay")}
             </h2>
@@ -276,7 +276,7 @@ export function LandingContent() {
 
         {/* Security & Trust */}
         <section className="border-y border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900 py-16">
-          <div className="mx-auto max-w-6xl px-6">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 sm:gap-8 text-center">
               {[
                 { icon: Lock, labelKey: "landing.soc2" as const, subKey: "landing.soc2Sub" as const },
@@ -296,7 +296,7 @@ export function LandingContent() {
 
         {/* Final CTA */}
         <section className="py-16 sm:py-24">
-          <div className="mx-auto max-w-3xl px-6 text-center">
+          <div className="mx-auto max-w-3xl px-4 sm:px-6 text-center">
             <h2 className="text-2xl sm:text-3xl font-bold text-neutral-900 dark:text-white">
               {t("landing.ctaTitle")}
             </h2>

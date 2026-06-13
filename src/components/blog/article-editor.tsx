@@ -235,7 +235,7 @@ export function ArticleEditor({ article, onUpdate, onEditingChange }: ArticleEdi
 
         {/* Error */}
         {error && (
-          <div className="mx-auto max-w-4xl px-6 pb-2">
+          <div className="mx-auto max-w-4xl px-4 sm:px-6 pb-2">
             <div className="flex items-center gap-2 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800/30 px-3 py-2 text-xs text-red-700 dark:text-red-400">
               <AlertTriangle className="h-3 w-3" /> {error}
             </div>
@@ -244,7 +244,7 @@ export function ArticleEditor({ article, onUpdate, onEditingChange }: ArticleEdi
 
         {/* AI instruction panel */}
         {aiMode && (
-          <div className="mx-auto max-w-4xl px-6 pb-3">
+          <div className="mx-auto max-w-4xl px-4 sm:px-6 pb-3">
             <div className="flex items-center gap-2 rounded-lg border border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-900/10 p-3">
               <Sparkles className="h-4 w-4 text-violet-500 shrink-0" />
               <input
@@ -270,7 +270,7 @@ export function ArticleEditor({ article, onUpdate, onEditingChange }: ArticleEdi
 
         {/* AI suggestion review bar */}
         {aiSuggestion && (
-          <div className="mx-auto max-w-4xl px-6 pb-3">
+          <div className="mx-auto max-w-4xl px-4 sm:px-6 pb-3">
             <div className="flex items-center justify-between rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/10 px-3 py-2">
               <span className="text-xs text-emerald-700 dark:text-emerald-400">AI suggested changes ready for review</span>
               <div className="flex items-center gap-2">
@@ -286,7 +286,7 @@ export function ArticleEditor({ article, onUpdate, onEditingChange }: ArticleEdi
         )}
 
         {/* Change note */}
-        <div className="mx-auto max-w-4xl px-6 pb-2">
+        <div className="mx-auto max-w-4xl px-4 sm:px-6 pb-2">
           <input
             type="text"
             value={changeNote}
@@ -301,7 +301,7 @@ export function ArticleEditor({ article, onUpdate, onEditingChange }: ArticleEdi
       <div className="h-36" />
 
       {/* Inline editable content */}
-      <div className="mx-auto max-w-4xl px-6">
+      <div className="mx-auto max-w-4xl px-4 sm:px-6">
         {/* Title */}
         <input
           type="text"

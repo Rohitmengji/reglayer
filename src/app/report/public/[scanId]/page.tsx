@@ -91,7 +91,7 @@ export default async function PublicReportPage({ params }: PageProps) {
     <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950">
       {/* Header */}
       <header className="border-b border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
-        <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-4">
+        <div className="mx-auto flex max-w-4xl items-center justify-between px-4 sm:px-6 py-4">
           <Link href="/" className="flex items-center gap-2">
             <Shield className="h-5 w-5 text-indigo-500" />
             <span className="text-sm font-bold text-neutral-900 dark:text-white">RegLayer</span>
@@ -106,7 +106,7 @@ export default async function PublicReportPage({ params }: PageProps) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-4xl px-6 py-12">
+      <main className="mx-auto max-w-4xl px-4 sm:px-6 py-12">
         {/* Score Hero */}
         <div className="text-center mb-12">
           <div className={`inline-flex items-center justify-center w-32 h-32 rounded-full ${scoreBg} ring-4 ${scoreRing} mb-6`}>

@@ -90,15 +90,15 @@ export default function GuardPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+    <div className="w-full mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8 overflow-hidden">
       {/* Header */}
-      <div className="mb-8 flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <div className="mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3 min-w-0">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-100 dark:bg-orange-900/30">
             <ShieldAlert className="h-5 w-5 text-orange-600 dark:text-orange-400" />
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
               {t("guard.title")}
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -138,7 +138,7 @@ export default function GuardPage() {
 
       {/* Policy List */}
       {policies.length === 0 && !showCreate ? (
-        <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-12 text-center dark:border-gray-600 dark:bg-gray-800/50">
+        <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-6 sm:p-12 text-center dark:border-gray-600 dark:bg-gray-800/50">
           <ShieldAlert className="mx-auto mb-3 h-12 w-12 text-gray-500 dark:text-gray-400" />
           <h3 className="text-lg font-medium text-gray-900 dark:text-white">
             No guard policies yet
