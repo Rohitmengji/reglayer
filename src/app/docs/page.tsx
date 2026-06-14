@@ -108,7 +108,7 @@ export default function DocsPage() {
   const { t } = useI18n();
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950">
-      <div className="mx-auto max-w-5xl px-6 py-12">
+      <div className="mx-auto max-w-5xl px-4 sm:px-6 py-12">
         <div className="flex items-center gap-2 mb-12">
           <Link href="/" className="flex items-center gap-2 text-neutral-900 dark:text-white">
             <Shield className="h-5 w-5" />

@@ -59,7 +59,7 @@ export function LandingContent() {
             </div>
             <span className="text-lg font-bold tracking-tight text-neutral-900 dark:text-white">RegLayer</span>
           </div>
-          <nav className="hidden md:flex items-center gap-6">
+          <nav className="hidden lg:flex items-center gap-6">
             <a href="#features" className="text-sm text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors">{t("landing.navFeatures")}</a>
             <a href="#compliance" className="text-sm text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors">{t("landing.navCompliance")}</a>
             <a href="#testimonials" className="text-sm text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors">{t("landing.navTestimonials")}</a>
@@ -113,7 +113,7 @@ export function LandingContent() {
 
       <main>
         {/* Hero Section */}
-        <section className="mx-auto max-w-5xl px-6 pt-12 pb-16 sm:pt-20 sm:pb-24 text-center">
+        <section className="mx-auto max-w-5xl px-4 sm:px-6 pt-10 sm:pt-20 pb-12 sm:pb-24 text-center">
           <div className="inline-flex items-center gap-2 rounded-full border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 px-3 py-1 text-xs font-medium text-neutral-600 dark:text-neutral-300 mb-8">
             <Zap className="h-3 w-3" />
             {t("landing.heroBadge")}
@@ -171,7 +171,7 @@ export function LandingContent() {
 
         {/* Features Grid */}
         <section id="features" className="py-16 sm:py-24">
-          <div className="mx-auto max-w-6xl px-6">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6">
             <div className="text-center mb-10 sm:mb-16" data-tour="features">
               <h2 className="text-2xl sm:text-3xl font-bold text-neutral-900 dark:text-white">
                 {t("landing.everythingYouNeed")}
@@ -193,7 +193,7 @@ export function LandingContent() {
 
         {/* Compliance Standards */}
         <section id="compliance" className="bg-neutral-50 dark:bg-neutral-900 border-y border-neutral-100 dark:border-neutral-800 py-16 sm:py-24">
-          <div className="mx-auto max-w-6xl px-6">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6">
             <div className="grid lg:grid-cols-2 gap-10 sm:gap-16 items-center">
               <div>
                 <h2 className="text-2xl sm:text-3xl font-bold text-neutral-900 dark:text-white">
@@ -247,7 +247,7 @@ export function LandingContent() {
 
         {/* Testimonials */}
         <section id="testimonials" className="py-16 sm:py-24">
-          <div className="mx-auto max-w-6xl px-6">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6">
             <h2 className="text-center text-2xl sm:text-3xl font-bold text-neutral-900 dark:text-white mb-10 sm:mb-12">
               {t("landing.whatTeamsSay")}
             </h2>
@@ -276,8 +276,8 @@ export function LandingContent() {
 
         {/* Security & Trust */}
         <section className="border-y border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900 py-16">
-          <div className="mx-auto max-w-6xl px-6">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 sm:gap-8 text-center">
               {[
                 { icon: Lock, labelKey: "landing.soc2" as const, subKey: "landing.soc2Sub" as const },
                 { icon: Shield, labelKey: "landing.gdpr" as const, subKey: "landing.gdprSub" as const },
@@ -296,7 +296,7 @@ export function LandingContent() {
 
         {/* Final CTA */}
         <section className="py-16 sm:py-24">
-          <div className="mx-auto max-w-3xl px-6 text-center">
+          <div className="mx-auto max-w-3xl px-4 sm:px-6 text-center">
             <h2 className="text-2xl sm:text-3xl font-bold text-neutral-900 dark:text-white">
               {t("landing.ctaTitle")}
             </h2>

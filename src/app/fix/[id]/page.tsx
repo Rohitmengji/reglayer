@@ -218,7 +218,7 @@ export default function FixFlowPage() {
         {currentCard && (
           <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-2xl shadow-sm overflow-hidden">
             {/* Card Header — Impact Badge + Category */}
-            <div className="px-6 py-4 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between">
+            <div className="px-4 sm:px-6 py-4 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <ImpactDot impact={currentCard.impact} />
                 <span className="font-medium text-neutral-900 dark:text-white text-sm">
@@ -234,7 +234,7 @@ export default function FixFlowPage() {
             </div>
 
             {/* Problem Statement */}
-            <div className="px-6 py-5 border-b border-neutral-100 dark:border-neutral-800">
+            <div className="px-4 sm:px-6 py-5 border-b border-neutral-100 dark:border-neutral-800">
               <h2 className="text-lg font-semibold text-neutral-900 dark:text-white mb-2">
                 {currentCard.problem}
               </h2>
@@ -245,7 +245,7 @@ export default function FixFlowPage() {
             </div>
 
             {/* Code: Before → After */}
-            <div className="px-6 py-5 border-b border-neutral-100 dark:border-neutral-800">
+            <div className="px-4 sm:px-6 py-5 border-b border-neutral-100 dark:border-neutral-800">
               {/* Broken Code */}
               <div className="mb-4">
                 <div className="flex items-center gap-2 mb-2">
@@ -297,7 +297,7 @@ export default function FixFlowPage() {
             </div>
 
             {/* Point Preview */}
-            <div className="px-6 py-4 bg-neutral-50 dark:bg-neutral-800/50 flex items-center justify-between">
+            <div className="px-4 sm:px-6 py-4 bg-neutral-50 dark:bg-neutral-800/50 flex items-center justify-between">
               <div className="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400">
                 <Zap className="w-4 h-4 text-yellow-500" />
                 Fixing this earns ~<span className="font-bold text-neutral-900 dark:text-white">{currentCard.pointGain}</span> AIS points
@@ -308,7 +308,7 @@ export default function FixFlowPage() {
             </div>
 
             {/* Actions */}
-            <div className="px-6 py-4 flex items-center justify-between border-t border-neutral-100 dark:border-neutral-800">
+            <div className="px-4 sm:px-6 py-4 flex items-center justify-between border-t border-neutral-100 dark:border-neutral-800">
               <button
                 onClick={handleSkip}
                 className="text-sm text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 transition-colors"
@@ -325,7 +325,7 @@ export default function FixFlowPage() {
         )}
 
         {/* Quick Stats */}
-        <div className="mt-6 grid grid-cols-3 gap-3">
+        <div className="mt-6 grid grid-cols-3 gap-2 sm:gap-3">
           <StatCard
             label="Remaining"
             value={totalCards - completedCount}

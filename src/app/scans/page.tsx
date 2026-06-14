@@ -28,6 +28,8 @@ import {
   Search,
   Download,
   Filter,
+  AlertTriangle,
+  FileSearch,
 } from "lucide-react";
 import Link from "next/link";
 import { useI18n } from "@/components/i18n-provider";
@@ -219,15 +221,24 @@ export default function ScansPage() {
               {t("scans.subtitle")}
             </p>
           </div>
-          {selectedScans.length === 2 && (
+          <div className="flex items-center gap-2">
+            {selectedScans.length === 2 && (
+              <Link
+                href={`/scans/compare?base=${selectedScans[0]}&head=${selectedScans[1]}`}
+                className="inline-flex items-center gap-2 rounded-lg bg-neutral-900 dark:bg-white px-4 py-2 text-sm font-medium text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors"
+              >
+                <GitCompare className="h-4 w-4" />
+                {t("scans.compareSelected")}
+              </Link>
+            )}
             <Link
-              href={`/scans/compare?base=${selectedScans[0]}&head=${selectedScans[1]}`}
-              className="inline-flex items-center gap-2 rounded-lg bg-neutral-900 dark:bg-white px-4 py-2 text-sm font-medium text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors"
+              href="/crawl"
+              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 px-4 py-2 text-sm font-medium text-white transition-colors"
             >
-              <GitCompare className="h-4 w-4" />
-              {t("scans.compareSelected")}
+              <FileSearch className="h-4 w-4" />
+              Run Site Audit
             </Link>
-          )}
+          </div>
         </div>
 
         {/* Summary Stats */}
@@ -246,7 +257,7 @@ export default function ScansPage() {
             <SummaryCard
               label={t("scans.totalViolations")}
               value={totalViolationsAll.toString()}
-              icon={<Clock className="h-4 w-4 text-orange-500" />}
+              icon={<AlertTriangle className="h-4 w-4 text-orange-500" />}
             />
             <SummaryCard
               label={t("scans.latestScore")}
@@ -319,7 +330,7 @@ export default function ScansPage() {
               className="inline-flex items-center gap-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
             >
               <Download className="h-4 w-4" />
-              Export CSV
+              Export{filteredScans.length !== scans.length ? ` ${filteredScans.length}` : ""} CSV
             </button>
           </div>
         )}
@@ -341,7 +352,7 @@ export default function ScansPage() {
             title="No scans yet"
             description="Run your first accessibility scan to see results here. Each scan analyzes your website for WCAG compliance issues."
             actionLabel="Run First Scan"
-            actionHref="/dashboard"
+            actionHref="/crawl"
             secondaryLabel="Learn More"
             secondaryHref="/learn"
             tips={[
@@ -361,9 +372,41 @@ export default function ScansPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            <p className="text-xs text-neutral-500 dark:text-neutral-400">
-              {t("scans.selectHint")}
-            </p>
+            {/* Compare hint — always visible, contextual */}
+            <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-all ${
+              selectedScans.length === 0
+                ? "border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50"
+                : selectedScans.length === 1
+                ? "border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/50"
+                : "border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/50"
+            }`}>
+              <GitCompare className={`h-4 w-4 shrink-0 ${
+                selectedScans.length === 2 ? "text-green-600" : selectedScans.length === 1 ? "text-blue-500" : "text-neutral-400"
+              }`} />
+              <p className="text-xs text-neutral-600 dark:text-neutral-300 flex-1">
+                {selectedScans.length === 0 && "Select 2 scans to compare scores, violations & progress over time"}
+                {selectedScans.length === 1 && "1 selected — pick one more to compare"}
+                {selectedScans.length === 2 && (
+                  <span className="font-medium text-green-700 dark:text-green-300">Ready to compare!</span>
+                )}
+              </p>
+              {selectedScans.length === 2 && (
+                <Link
+                  href={`/scans/compare?base=${selectedScans[0]}&head=${selectedScans[1]}`}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-green-600 hover:bg-green-700 text-white text-xs font-medium transition-colors"
+                >
+                  <GitCompare className="h-3 w-3" /> Compare Now
+                </Link>
+              )}
+              {selectedScans.length > 0 && selectedScans.length < 2 && (
+                <button
+                  onClick={() => setSelectedScans([])}
+                  className="text-xs text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
             {sortedScans.map((scan, index) => (
               <div
                 key={scan.id}
@@ -440,12 +483,12 @@ export default function ScansPage() {
                       })}
                     </p>
                     {scan.duration && (
-                      <p className="text-xs text-neutral-300">{scan.duration}ms</p>
+                      <p className="text-xs text-neutral-300">{scan.duration >= 1000 ? `${(scan.duration / 1000).toFixed(1)}s` : `${scan.duration}ms`}</p>
                     )}
                   </div>
 
                   {/* Actions */}
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                     <Link
                       href={`/report/${scan.id}`}
                       className="rounded-md p-1.5 text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-600 dark:hover:text-white dark:text-neutral-300"

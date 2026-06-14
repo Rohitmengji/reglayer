@@ -93,11 +93,11 @@ export function ConfirmDialog({
             </div>
           </div>
         </div>
-        <div className="flex items-center justify-end gap-3 border-t border-neutral-100 dark:border-neutral-800 px-6 py-4">
+        <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-2 sm:gap-3 border-t border-neutral-100 dark:border-neutral-800 px-4 sm:px-6 py-3 sm:py-4">
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-4 py-2 text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors"
+            className="w-full sm:w-auto rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-4 py-2 text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors"
           >
             {cancelLabel}
           </button>
@@ -105,7 +105,7 @@ export function ConfirmDialog({
             ref={confirmRef}
             type="button"
             onClick={onConfirm}
-            className={`rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors ${
+            className={`w-full sm:w-auto rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors ${
               isDanger
                 ? "bg-red-600 hover:bg-red-700"
                 : "bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200"

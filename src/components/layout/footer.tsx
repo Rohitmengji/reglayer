@@ -27,8 +27,8 @@ export function Footer() {
   const { t } = useI18n();
   return (
     <footer className="border-t border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900 py-8 sm:py-12">
-      <div className="mx-auto max-w-6xl px-6">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6 sm:gap-8">
           <div>
             <div className="flex items-center gap-2 mb-4">
               <Image
@@ -69,7 +69,7 @@ export function Footer() {
           </div>
         </div>
       </div>
-      <div className="mx-auto max-w-6xl px-6">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <div className="border-t border-neutral-200 dark:border-neutral-700 mt-8 pt-6 flex justify-center">
           <p className="text-xs text-neutral-500 dark:text-neutral-500">© {new Date().getFullYear()} RegLayer. All rights reserved.</p>
         </div>

@@ -21,12 +21,14 @@ import { crawlPages } from "@/lib/scanner/browser/crawler";
 import { executeScanPipeline } from "@/lib/scanner/pipelines/scanPipeline";
 import { logger } from "@/lib/telemetry/logger";
 import { rateLimit, RATE_LIMITS, rateLimitHeaders } from "@/lib/rate-limit";
-import type { ScanResult } from "@/lib/types";
+import { authConfigSchema } from "@/lib/validations/auth";
+import type { ScanResult, ScanOptions } from "@/lib/types";
 
 const crawlScanSchema = z.object({
   url: z.string().url(),
-  maxPages: z.number().min(1).max(20).default(5),
+  maxPages: z.number().min(1).max(500).default(10),
   excludePatterns: z.array(z.string()).optional(),
+  auth: authConfigSchema.optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -58,9 +60,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { url, maxPages, excludePatterns } = parseResult.data;
+    const { url, maxPages, excludePatterns, auth } = parseResult.data;
 
-    apiLogger.info("Multi-page scan initiated", { url, maxPages });
+    apiLogger.info("Multi-page scan initiated", { url, maxPages, authMethod: auth?.method });
 
     // Step 1: Crawl
     const crawlResult = await crawlPages(url, {
@@ -76,10 +78,11 @@ export async function POST(request: NextRequest) {
     // Step 2: Scan each page
     const scanResults: ScanResult[] = [];
     const scanErrors: Array<{ url: string; error: string }> = [];
+    const scanOptions: ScanOptions | undefined = auth && auth.method !== "none" ? { auth } : undefined;
 
     for (const pageUrl of crawlResult.pages) {
       try {
-        const result = await executeScanPipeline(pageUrl);
+        const result = await executeScanPipeline(pageUrl, scanOptions);
         scanResults.push(result);
       } catch (err) {
         scanErrors.push({

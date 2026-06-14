@@ -16,7 +16,7 @@ export default function MonitoringPage() {
   const { t } = useI18n();
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950">
-      <div className="mx-auto max-w-3xl px-6 py-12">
+      <div className="mx-auto max-w-3xl px-4 sm:px-6 py-12">
         <div className="flex items-center gap-2 mb-8">
           <Link href="/" className="flex items-center gap-2 text-neutral-900 dark:text-white">
             <Shield className="h-5 w-5" />
@@ -69,7 +69,7 @@ export default function MonitoringPage() {
               Receive real-time notifications via webhooks when scan events occur. Configure webhooks from <strong>Settings → Webhooks</strong>.
             </p>
             <p className="text-sm text-neutral-600 dark:text-neutral-300 mb-3">Available events:</p>
-            <div className="rounded-lg bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 overflow-hidden">
+            <div className="rounded-lg bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="border-b border-neutral-200 dark:border-neutral-800">
                   <tr>

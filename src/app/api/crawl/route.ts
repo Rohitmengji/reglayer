@@ -1,26 +1,33 @@
 /**
- * RegLayer — Crawl API
+ * RegLayer — Crawl API (v3 — Background Job Architecture)
  *
- * WHY: Users need to scan entire sites, not just individual pages.
- * WHAT: GET (list crawls), POST (start a new site crawl with base URL and max pages).
- * HOW: Creates crawl job, discovers pages via link following, queues individual scans per page.
+ * POST: Start a new site audit → returns job ID immediately
+ *       Background: engine runs async, streams progress via SSE
+ *
+ * No more synchronous scanning — supports 500+ page audits.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { z } from "zod";
 import { crawlSite } from "@/lib/scanner/crawler/siteCrawler";
+import { jobManager } from "@/lib/scanner/crawler/job-manager";
 import { getPlanContext } from "@/lib/credits/plan-context";
 import { validateScanUrl } from "@/lib/validations/ssrf";
 import { applyRateLimit } from "@/lib/rate-limit-middleware";
+import { authConfigSchema } from "@/lib/validations/auth";
+import { logger } from "@/lib/telemetry/logger";
 
 const crawlSchema = z.object({
   url: z.string().url(),
-  maxPages: z.number().min(1).max(50).default(10),
-  maxDepth: z.number().min(1).max(5).default(3),
-  concurrency: z.number().min(1).max(3).default(2),
+  maxPages: z.number().min(1).max(500).default(10),
+  maxDepth: z.number().min(1).max(10).default(3),
+  concurrency: z.number().min(1).max(10).default(3),
+  requestDelay: z.number().min(0).max(5000).default(200),
   includePatterns: z.array(z.string()).optional(),
   excludePatterns: z.array(z.string()).optional(),
+  auth: authConfigSchema.optional(),
+  knownRoutes: z.array(z.string()).optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -47,7 +54,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { url, maxDepth, concurrency, includePatterns, excludePatterns } = parsed.data;
+  const { url, maxDepth, concurrency, requestDelay, includePatterns, excludePatterns, auth, knownRoutes } = parsed.data;
   let { maxPages } = parsed.data;
 
   // SSRF protection
@@ -65,21 +72,50 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  try {
-    const result = await crawlSite({
-      startUrl: url,
+  // Check capacity
+  if (!jobManager.canStartNewJob()) {
+    return NextResponse.json(
+      { error: "Server busy — max concurrent audits reached. Try again shortly." },
+      { status: 429 }
+    );
+  }
+
+  // Create job
+  const crawlConfig = {
+    startUrl: url,
+    maxPages,
+    maxDepth,
+    concurrency,
+    requestDelay,
+    includePatterns,
+    excludePatterns,
+    auth: auth && auth.method !== "none" ? auth : undefined,
+    knownRoutes,
+  };
+
+  const job = jobManager.createJob(crawlConfig);
+
+  // Start crawl in background (fire-and-forget)
+  crawlSite({ ...crawlConfig, jobId: job.id }).catch((error) => {
+    logger.error("Background crawl failed", { jobId: job.id, error: error instanceof Error ? error.message : "Unknown" });
+    jobManager.emitEvent(job.id, {
+      type: "error",
+      error: error instanceof Error ? error.message : "Crawl failed unexpectedly",
+      timestamp: Date.now(),
+    });
+  });
+
+  // Return job ID immediately
+  return NextResponse.json({
+    jobId: job.id,
+    status: "queued",
+    config: {
+      url,
       maxPages,
       maxDepth,
       concurrency,
-      includePatterns,
-      excludePatterns,
-    });
-
-    return NextResponse.json(result);
-  } catch (error) {
-    return NextResponse.json(
-      { error: "Crawl failed", message: error instanceof Error ? error.message : "Unknown" },
-      { status: 500 }
-    );
-  }
+      requestDelay,
+      auth: auth?.method || "none",
+    },
+  });
 }
