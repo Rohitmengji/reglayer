@@ -372,9 +372,41 @@ export default function ScansPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            <p className="text-xs text-neutral-500 dark:text-neutral-400">
-              {t("scans.selectHint")}
-            </p>
+            {/* Compare hint — always visible, contextual */}
+            <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-all ${
+              selectedScans.length === 0
+                ? "border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50"
+                : selectedScans.length === 1
+                ? "border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/50"
+                : "border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/50"
+            }`}>
+              <GitCompare className={`h-4 w-4 shrink-0 ${
+                selectedScans.length === 2 ? "text-green-600" : selectedScans.length === 1 ? "text-blue-500" : "text-neutral-400"
+              }`} />
+              <p className="text-xs text-neutral-600 dark:text-neutral-300 flex-1">
+                {selectedScans.length === 0 && "Select 2 scans to compare scores, violations & progress over time"}
+                {selectedScans.length === 1 && "1 selected — pick one more to compare"}
+                {selectedScans.length === 2 && (
+                  <span className="font-medium text-green-700 dark:text-green-300">Ready to compare!</span>
+                )}
+              </p>
+              {selectedScans.length === 2 && (
+                <Link
+                  href={`/scans/compare?base=${selectedScans[0]}&head=${selectedScans[1]}`}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-green-600 hover:bg-green-700 text-white text-xs font-medium transition-colors"
+                >
+                  <GitCompare className="h-3 w-3" /> Compare Now
+                </Link>
+              )}
+              {selectedScans.length > 0 && selectedScans.length < 2 && (
+                <button
+                  onClick={() => setSelectedScans([])}
+                  className="text-xs text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
             {sortedScans.map((scan, index) => (
               <div
                 key={scan.id}
