@@ -28,6 +28,8 @@ import {
   Search,
   Download,
   Filter,
+  AlertTriangle,
+  FileSearch,
 } from "lucide-react";
 import Link from "next/link";
 import { useI18n } from "@/components/i18n-provider";
@@ -219,15 +221,24 @@ export default function ScansPage() {
               {t("scans.subtitle")}
             </p>
           </div>
-          {selectedScans.length === 2 && (
+          <div className="flex items-center gap-2">
+            {selectedScans.length === 2 && (
+              <Link
+                href={`/scans/compare?base=${selectedScans[0]}&head=${selectedScans[1]}`}
+                className="inline-flex items-center gap-2 rounded-lg bg-neutral-900 dark:bg-white px-4 py-2 text-sm font-medium text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors"
+              >
+                <GitCompare className="h-4 w-4" />
+                {t("scans.compareSelected")}
+              </Link>
+            )}
             <Link
-              href={`/scans/compare?base=${selectedScans[0]}&head=${selectedScans[1]}`}
-              className="inline-flex items-center gap-2 rounded-lg bg-neutral-900 dark:bg-white px-4 py-2 text-sm font-medium text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors"
+              href="/crawl"
+              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 px-4 py-2 text-sm font-medium text-white transition-colors"
             >
-              <GitCompare className="h-4 w-4" />
-              {t("scans.compareSelected")}
+              <FileSearch className="h-4 w-4" />
+              Run Site Audit
             </Link>
-          )}
+          </div>
         </div>
 
         {/* Summary Stats */}
@@ -246,7 +257,7 @@ export default function ScansPage() {
             <SummaryCard
               label={t("scans.totalViolations")}
               value={totalViolationsAll.toString()}
-              icon={<Clock className="h-4 w-4 text-orange-500" />}
+              icon={<AlertTriangle className="h-4 w-4 text-orange-500" />}
             />
             <SummaryCard
               label={t("scans.latestScore")}
@@ -319,7 +330,7 @@ export default function ScansPage() {
               className="inline-flex items-center gap-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
             >
               <Download className="h-4 w-4" />
-              Export CSV
+              Export{filteredScans.length !== scans.length ? ` ${filteredScans.length}` : ""} CSV
             </button>
           </div>
         )}
@@ -341,7 +352,7 @@ export default function ScansPage() {
             title="No scans yet"
             description="Run your first accessibility scan to see results here. Each scan analyzes your website for WCAG compliance issues."
             actionLabel="Run First Scan"
-            actionHref="/dashboard"
+            actionHref="/crawl"
             secondaryLabel="Learn More"
             secondaryHref="/learn"
             tips={[
@@ -440,12 +451,12 @@ export default function ScansPage() {
                       })}
                     </p>
                     {scan.duration && (
-                      <p className="text-xs text-neutral-300">{scan.duration}ms</p>
+                      <p className="text-xs text-neutral-300">{scan.duration >= 1000 ? `${(scan.duration / 1000).toFixed(1)}s` : `${scan.duration}ms`}</p>
                     )}
                   </div>
 
                   {/* Actions */}
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                     <Link
                       href={`/report/${scan.id}`}
                       className="rounded-md p-1.5 text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-600 dark:hover:text-white dark:text-neutral-300"
