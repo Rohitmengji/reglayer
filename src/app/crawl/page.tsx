@@ -41,6 +41,11 @@ import {
   ArrowRight,
   ArrowLeft,
   Info,
+  Eye,
+  ShieldCheck,
+  X,
+  History,
+  Crosshair,
 } from "lucide-react";
 import Link from "next/link";
 import { useI18n } from "@/components/i18n-provider";
@@ -198,8 +203,16 @@ export default function CrawlPage() {
   const [result, setResult] = useState<AuditResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [authConfig, setAuthConfig] = useState<AuthConfig | undefined>(undefined);
+  const [excludedRoutes, setExcludedRoutes] = useState<Set<string>>(new Set());
   const eventSourceRef = useRef<EventSource | null>(null);
   const { t } = useI18n();
+
+  // Auto-detect current origin for URL pre-fill
+  useEffect(() => {
+    if (!url && typeof window !== "undefined") {
+      setUrl(window.location.origin);
+    }
+  }, []);
 
   useEffect(() => {
     return () => { eventSourceRef.current?.close(); };
@@ -207,10 +220,36 @@ export default function CrawlPage() {
 
   function selectMode(m: ScanMode) {
     setMode(m);
+    setExcludedRoutes(new Set());
     if (m === "public") setMaxPages(String(PUBLIC_ROUTES.length));
     else if (m === "admin") setMaxPages(String(ADMIN_ROUTES.length));
     else setMaxPages(String(PUBLIC_ROUTES.length + ADMIN_ROUTES.length));
     setStep("config");
+  }
+
+  function toggleRoute(route: string) {
+    setExcludedRoutes((prev) => {
+      const next = new Set(prev);
+      if (next.has(route)) next.delete(route);
+      else next.add(route);
+      return next;
+    });
+  }
+
+  function getActiveRoutes(): string[] {
+    const all = mode === "public" ? PUBLIC_ROUTES : mode === "admin" ? ADMIN_ROUTES : [...PUBLIC_ROUTES, ...ADMIN_ROUTES];
+    return all.filter((r) => !excludedRoutes.has(r));
+  }
+
+  function getTimeEstimate(): string {
+    const pages = getActiveRoutes().length;
+    const c = Number(concurrency) || 3;
+    const secPerPage = 4; // ~4 seconds per page (load + scan + axe)
+    const totalSec = Math.ceil((pages / c) * secPerPage) + 10; // +10s for auth/discovery
+    if (totalSec < 60) return `~${totalSec}s`;
+    const min = Math.floor(totalSec / 60);
+    const sec = totalSec % 60;
+    return sec > 0 ? `~${min}m ${sec}s` : `~${min}m`;
   }
 
   const connectSSE = useCallback((id: string) => {
@@ -300,10 +339,7 @@ export default function CrawlPage() {
     setJobId(null);
     setStep("running");
 
-    let knownRoutes: string[] | undefined;
-    if (mode === "public") knownRoutes = PUBLIC_ROUTES;
-    else if (mode === "admin") knownRoutes = ADMIN_ROUTES;
-    else knownRoutes = [...PUBLIC_ROUTES, ...ADMIN_ROUTES];
+    const knownRoutes = getActiveRoutes();
 
     try {
       const res = await fetch("/api/crawl", {
@@ -346,8 +382,9 @@ export default function CrawlPage() {
     setLivePages([]);
     setJobId(null);
     setRunning(false);
-    setUrl("");
+    setUrl(typeof window !== "undefined" ? window.location.origin : "");
     setAuthConfig(undefined);
+    setExcludedRoutes(new Set());
     eventSourceRef.current?.close();
   }
 
@@ -402,37 +439,49 @@ export default function CrawlPage() {
 
         {/* ══════════════ STEP 1: MODE SELECTION ══════════════ */}
         {step === "mode" && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <ModeCard
-              icon={<Unlock className="h-6 w-6" />}
-              title="Public Pages"
-              description="Scan visitor-facing pages — homepage, pricing, docs, login, etc."
-              pageCount={PUBLIC_ROUTES.length}
-              color="blue"
-              features={["No login required", "SEO-visible pages", "Sitemap discovery"]}
-              onClick={() => selectMode("public")}
-            />
-            <ModeCard
-              icon={<Lock className="h-6 w-6" />}
-              title="Admin Pages"
-              description="Scan behind-login pages — dashboard, settings, reports, etc."
-              pageCount={ADMIN_ROUTES.length}
-              color="violet"
-              features={["Requires authentication", "All sidebar routes", "Dashboard & tools"]}
-              requiresAuth
-              onClick={() => selectMode("admin")}
-            />
-            <ModeCard
-              icon={<Globe className="h-6 w-6" />}
-              title="Full Site"
-              description="Scan everything — public and admin pages combined."
-              pageCount={PUBLIC_ROUTES.length + ADMIN_ROUTES.length}
-              color="emerald"
-              features={["Complete coverage", "Public + admin pages", "Template issue detection"]}
-              requiresAuth
-              recommended
-              onClick={() => selectMode("full")}
-            />
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <ModeCard
+                icon={<Eye className="h-6 w-6" />}
+                title="Public Pages"
+                description="Scan visitor-facing pages — homepage, pricing, docs, login, etc."
+                pageCount={PUBLIC_ROUTES.length}
+                color="blue"
+                features={["No login required", "SEO-visible pages", "Sitemap discovery"]}
+                onClick={() => selectMode("public")}
+              />
+              <ModeCard
+                icon={<ShieldCheck className="h-6 w-6" />}
+                title="Admin Pages"
+                description="Scan behind-login pages — dashboard, settings, reports, etc."
+                pageCount={ADMIN_ROUTES.length}
+                color="violet"
+                features={["Requires authentication", "All sidebar routes", "Dashboard & tools"]}
+                requiresAuth
+                onClick={() => selectMode("admin")}
+              />
+              <ModeCard
+                icon={<Layers className="h-6 w-6" />}
+                title="Full Site"
+                description="Scan everything — public and admin pages combined."
+                pageCount={PUBLIC_ROUTES.length + ADMIN_ROUTES.length}
+                color="emerald"
+                features={["Complete coverage", "Public + admin pages", "Template issue detection"]}
+                requiresAuth
+                recommended
+                onClick={() => selectMode("full")}
+              />
+            </div>
+            {/* Quick actions + history */}
+            <div className="flex items-center gap-3 text-xs text-neutral-500">
+              <Link href="/scans" className="flex items-center gap-1.5 hover:text-blue-600 transition-colors">
+                <History className="h-3.5 w-3.5" /> View past audits
+              </Link>
+              <span className="text-neutral-300 dark:text-neutral-600">·</span>
+              <span className="flex items-center gap-1.5">
+                <Crosshair className="h-3.5 w-3.5" /> Target: <code className="text-neutral-700 dark:text-neutral-300">{url || "auto-detected"}</code>
+              </span>
+            </div>
           </div>
         )}
 
@@ -443,8 +492,9 @@ export default function CrawlPage() {
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <Info className="h-4 w-4 text-blue-500" /> Pages to scan
+                  <span className="text-xs text-neutral-400 font-normal ml-1">Click to exclude</span>
                   <Badge variant="outline" className="ml-auto">
-                    {mode === "public" ? PUBLIC_ROUTES.length : mode === "admin" ? ADMIN_ROUTES.length : PUBLIC_ROUTES.length + ADMIN_ROUTES.length} routes
+                    {getActiveRoutes().length} of {mode === "public" ? PUBLIC_ROUTES.length : mode === "admin" ? ADMIN_ROUTES.length : PUBLIC_ROUTES.length + ADMIN_ROUTES.length} routes
                   </Badge>
                 </CardTitle>
               </CardHeader>
@@ -452,18 +502,27 @@ export default function CrawlPage() {
                 <div className="flex flex-wrap gap-1.5">
                   {(mode === "public" ? PUBLIC_ROUTES : mode === "admin" ? ADMIN_ROUTES : [...PUBLIC_ROUTES, ...ADMIN_ROUTES]).map((route) => {
                     const isAdmin = ADMIN_ROUTES.includes(route);
+                    const isExcluded = excludedRoutes.has(route);
                     return (
-                      <span key={route} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono ${
-                        isAdmin
-                          ? "bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-800"
-                          : "bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
+                      <button key={route} onClick={() => toggleRoute(route)} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono transition-all cursor-pointer ${
+                        isExcluded
+                          ? "bg-neutral-100 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-500 border border-neutral-200 dark:border-neutral-700 line-through opacity-60"
+                          : isAdmin
+                          ? "bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-800 hover:bg-violet-100 dark:hover:bg-violet-900/50"
+                          : "bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/50"
                       }`}>
-                        {isAdmin && <Lock className="h-2.5 w-2.5" />}
+                        {isExcluded && <X className="h-2.5 w-2.5" />}
+                        {!isExcluded && isAdmin && <Lock className="h-2.5 w-2.5" />}
                         {ADMIN_ROUTE_META[route] || route}
-                      </span>
+                      </button>
                     );
                   })}
                 </div>
+                {excludedRoutes.size > 0 && (
+                  <button onClick={() => setExcludedRoutes(new Set())} className="mt-2 text-[11px] text-blue-600 hover:underline">
+                    Reset all ({excludedRoutes.size} excluded)
+                  </button>
+                )}
               </CardContent>
             </Card>
 
@@ -498,15 +557,22 @@ export default function CrawlPage() {
                   </div>
                 )}
 
-                <div className="flex gap-3 pt-2">
+                {/* Time estimate + start */}
+                <div className="flex items-center gap-3 pt-2">
                   <Button variant="outline" onClick={() => setStep("mode")} className="px-6">
                     <ArrowLeft className="h-4 w-4 mr-2" /> Back
                   </Button>
-                  <Button onClick={handleAudit} disabled={!url} className="flex-1 h-11 text-sm font-medium">
+                  <Button onClick={handleAudit} disabled={!url || getActiveRoutes().length === 0} className="flex-1 h-11 text-sm font-medium">
                     <Zap className="h-4 w-4 mr-2" />
                     Start {mode === "public" ? "Public" : mode === "admin" ? "Admin" : "Full Site"} Audit
                     <ArrowRight className="h-4 w-4 ml-2" />
                   </Button>
+                </div>
+                <div className="flex items-center justify-between text-xs text-neutral-400 px-1">
+                  <span className="flex items-center gap-1.5">
+                    <Timer className="h-3.5 w-3.5" /> Estimated time: <strong className="text-neutral-600 dark:text-neutral-300">{getTimeEstimate()}</strong>
+                  </span>
+                  <span>{getActiveRoutes().length} pages · {concurrency} parallel</span>
                 </div>
               </CardContent>
             </Card>
