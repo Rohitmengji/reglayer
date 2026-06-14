@@ -45,7 +45,7 @@ export async function explainViolation(
   try {
     const response = await withRetry(
       () => getOpenAIClient().chat.completions.create({
-        model: "chatgpt-5.4-mini",
+        model: "gpt-4o-mini",
         messages: [
         {
           role: "system",

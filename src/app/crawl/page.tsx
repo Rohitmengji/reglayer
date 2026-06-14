@@ -29,7 +29,6 @@ import {
   XCircle,
   Layers,
   Activity,
-  FileSearch,
   Zap,
   StopCircle,
   Radio,
@@ -444,22 +443,17 @@ export default function CrawlPage() {
 
   return (
     <AppShell>
-      <div className="space-y-6 max-w-5xl mx-auto">
+      <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center">
-              <FileSearch className="h-5 w-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Site Audit</h1>
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                {step === "mode" && "Choose what to scan"}
-                {step === "config" && `Configure ${mode === "public" ? "public" : mode === "admin" ? "admin" : "full site"} audit`}
-                {step === "running" && "Audit in progress..."}
-                {step === "done" && "Audit complete"}
-              </p>
-            </div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Site Audit</h1>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">
+              {step === "mode" && "Choose what to scan"}
+              {step === "config" && `Configure ${mode === "public" ? "public" : mode === "admin" ? "admin" : "full site"} audit`}
+              {step === "running" && "Audit in progress..."}
+              {step === "done" && "Audit complete"}
+            </p>
           </div>
           {(step === "done" || step === "config") && (
             <Button variant="outline" size="sm" onClick={handleReset} className="text-xs">
