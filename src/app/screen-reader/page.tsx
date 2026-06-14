@@ -9,7 +9,6 @@
  */
 
 import { useState, useRef, useCallback, useEffect } from "react";
-import { ModernSelect } from "@/components/ui/modern-select";
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -426,11 +425,17 @@ export default function ScreenReaderPage() {
 
                     {/* Speed */}
                     <div className="flex items-center gap-2">
-                      <ModernSelect
-              options={[{ value: "0.5", label: "0.5x" }, { value: "0.75", label: "0.75x" }, { value: "1", label: "1x" }, { value: "1.5", label: "1.5x" }, { value: "2", label: "2x" }]}
-              value={String(speed)}
-              onChange={(v) => setSpeed(Number(v))}
-            />
+                      <select
+                        value={speed}
+                        onChange={(e) => setSpeed(Number(e.target.value))}
+                        className="text-xs rounded border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-2 py-1"
+                      >
+                        <option value={0.5}>0.5x</option>
+                        <option value={0.75}>0.75x</option>
+                        <option value={1}>1x</option>
+                        <option value={1.5}>1.5x</option>
+                        <option value={2}>2x</option>
+                      </select>
                     </div>
 
                     {/* Mute */}

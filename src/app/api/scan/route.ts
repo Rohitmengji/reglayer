@@ -29,6 +29,7 @@ import { logger } from "@/lib/telemetry/logger";
 import { getPlanContext, getMonthlyScansCount } from "@/lib/credits/plan-context";
 import { rateLimit, RATE_LIMITS, rateLimitHeaders } from "@/lib/rate-limit";
 import { AuthenticationError } from "@/lib/scanner/auth";
+import { cacheSetNX, cacheDel } from "@/lib/cache/redis";
 
 // Allow up to 90 seconds for scan execution (browser launch + navigation + axe analysis)
 export const maxDuration = 90;
@@ -52,6 +53,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  let dedupKey = "";
   try {
     const body = await request.json();
 
@@ -80,6 +82,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: ssrfError }, { status: 400 });
     }
 
+    // Dedup — prevent same user scanning same URL within 30s window
+    dedupKey = `scan:dedup:${session.user.email}:${url}`;
+    const isNew = await cacheSetNX(dedupKey, 1, 30);
+    if (!isNew) {
+      return NextResponse.json(
+        { error: "This URL is already being scanned. Please wait for the current scan to finish." },
+        { status: 409 }
+      );
+    }
+
     // Enforce scan limit (resolved via role + plan hierarchy)
     const planCtx = await getPlanContext();
     if (planCtx) {
@@ -98,8 +110,14 @@ export async function POST(request: NextRequest) {
     // Delegate to service layer
     const result = await performScan({ url, options, userEmail: session?.user?.email || undefined });
 
+    // Clear dedup lock after successful scan
+    await cacheDel(dedupKey);
+
     return NextResponse.json(result, { status: 200 });
   } catch (error) {
+    // Clear dedup lock on failure so user can retry
+    if (typeof dedupKey === "string") await cacheDel(dedupKey);
+
     // Structured auth error — return without exposing internals
     if (error instanceof AuthenticationError) {
       return NextResponse.json(error.toResponse(), { status: 401 });
