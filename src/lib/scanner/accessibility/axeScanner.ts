@@ -59,12 +59,17 @@ import path from "path";
  * - Direct injection of the axe-core bundle avoids this entirely.
  * - We read the minified source and evaluate it in page context.
  */
+let cachedAxeSource: string | null = null;
 function getAxeSource(): string {
+  // axe.min.js (~500KB) never changes at runtime — read + decode it once.
+  // Previously re-read on every scan and every crawled page (N× per audit).
+  if (cachedAxeSource !== null) return cachedAxeSource;
   const axePath = path.resolve(
     process.cwd(),
     "node_modules/axe-core/axe.min.js"
   );
-  return fs.readFileSync(axePath, "utf-8");
+  cachedAxeSource = fs.readFileSync(axePath, "utf-8");
+  return cachedAxeSource;
 }
 
 /**

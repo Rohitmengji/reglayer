@@ -22,7 +22,7 @@
  * ---------------------------------------------------------
  */
 
-import { createContext, useContext, useCallback, useSyncExternalStore } from "react";
+import { createContext, useContext, useCallback, useEffect, useSyncExternalStore } from "react";
 import { type Locale, type TranslationKey, getTranslation, detectLocale, DEFAULT_LOCALE } from "@/lib/i18n/translations";
 
 interface I18nContextValue {
@@ -55,6 +55,13 @@ function getServerSnapshot(): Locale {
 
 export function I18nProvider({ children }: { children: React.ReactNode }) {
   const locale = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+
+  // Keep <html lang> in sync with the active locale (WCAG 3.1.1, Language of Page).
+  // The server renders lang="en"; correct it once the client-detected/selected
+  // locale resolves so screen readers use the right pronunciation rules.
+  useEffect(() => {
+    document.documentElement.lang = locale;
+  }, [locale]);
 
   const setLocale = useCallback((newLocale: Locale) => {
     currentLocale = newLocale;

@@ -78,6 +78,7 @@ async function sendSlackNotification(
   const res = await fetch(webhookUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    signal: AbortSignal.timeout(10_000),
     body: JSON.stringify(message),
   });
 
@@ -195,6 +196,7 @@ async function sendTeamsNotification(
   const res = await fetch(webhookUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    signal: AbortSignal.timeout(10_000),
     body: JSON.stringify(card),
   });
 
@@ -231,6 +233,7 @@ async function createJiraIssue(
       Authorization: `Bearer ${integration.accessToken}`,
       "Content-Type": "application/json",
     },
+    signal: AbortSignal.timeout(10_000),
     body: JSON.stringify({
       fields: {
         project: { key: config.projectKey },
@@ -290,6 +293,7 @@ async function createGithubIssue(
       "Content-Type": "application/json",
       Accept: "application/vnd.github+json",
     },
+    signal: AbortSignal.timeout(10_000),
     body: JSON.stringify({
       title: `[a11y] ${critical} critical violations on ${url}`,
       body: `## Accessibility Scan Results\n\n- **URL:** ${url}\n- **Score:** ${payload.score}%\n- **Critical violations:** ${critical}\n- **Total violations:** ${payload.violations}\n\n[View full report](${payload.reportUrl})\n\n---\n*Created automatically by RegLayer*`,
