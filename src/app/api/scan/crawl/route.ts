@@ -26,7 +26,7 @@ import type { ScanResult, ScanOptions } from "@/lib/types";
 
 const crawlScanSchema = z.object({
   url: z.string().url(),
-  maxPages: z.number().min(1).max(20).default(5),
+  maxPages: z.number().min(1).max(500).default(10),
   excludePatterns: z.array(z.string()).optional(),
   auth: authConfigSchema.optional(),
 });
