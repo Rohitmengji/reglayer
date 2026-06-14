@@ -100,7 +100,7 @@ export default function PricingPage() {
     <div className="min-h-screen bg-white dark:bg-neutral-950">
       {/* Header */}
       <header className="border-b border-neutral-100 dark:border-neutral-800">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 sm:px-6 py-4">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <Link href="/" className="flex items-center gap-2">
             <Shield className="h-6 w-6 text-neutral-900 dark:text-white" />
             <span className="text-lg font-bold tracking-tight text-neutral-900 dark:text-white">RegLayer</span>
@@ -116,7 +116,7 @@ export default function PricingPage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 sm:px-6 py-12 sm:py-16">
+      <main className="mx-auto max-w-6xl px-6 py-16">
         {/* Hero */}
         <div className="text-center mb-12">
           <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-800 px-3 py-1 text-xs font-medium text-blue-700 dark:text-blue-300 mb-4">
@@ -159,7 +159,7 @@ export default function PricingPage() {
         </div>
 
         {/* Pricing Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
           {plans.map((plan) => {
             const price = billing === "annual" ? plan.price.annual : plan.price.monthly;
             return (

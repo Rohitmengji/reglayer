@@ -28,6 +28,7 @@ import GoogleProvider from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/database/prisma";
 import { rateLimit } from "@/lib/rate-limit";
+import { cacheGet, cacheSet } from "@/lib/cache/redis";
 
 /**
  * Login attempts per IP+email per 5 minutes. Deliberately generous — it only
@@ -188,16 +189,23 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.role = user.role;
       }
-      // Refresh isMasterAdmin from DB (non-blocking)
+      // Cache isMasterAdmin in Redis (60s TTL) to avoid DB hit on every request
       if (token.email) {
-        try {
-          const dbUser = await prisma.user.findUnique({
-            where: { email: token.email },
-            select: { isMasterAdmin: true },
-          });
-          token.isMasterAdmin = dbUser?.isMasterAdmin ?? false;
-        } catch {
-          token.isMasterAdmin = token.isMasterAdmin ?? false;
+        const cacheKey = `auth:admin:${token.email}`;
+        const cached = await cacheGet<boolean>(cacheKey);
+        if (cached !== null) {
+          token.isMasterAdmin = cached;
+        } else {
+          try {
+            const dbUser = await prisma.user.findUnique({
+              where: { email: token.email },
+              select: { isMasterAdmin: true },
+            });
+            token.isMasterAdmin = dbUser?.isMasterAdmin ?? false;
+            await cacheSet(cacheKey, token.isMasterAdmin, 60);
+          } catch {
+            token.isMasterAdmin = token.isMasterAdmin ?? false;
+          }
         }
       }
       return token;
