@@ -214,6 +214,59 @@ export default function CrawlPage() {
     }
   }, []);
 
+  // Warn before leaving during active scan
+  useEffect(() => {
+    if (!running) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "An audit is currently in progress. Leaving will disconnect you from live results.";
+      return e.returnValue;
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [running]);
+
+  // Persist jobId to sessionStorage for reconnection
+  useEffect(() => {
+    if (jobId && running) {
+      sessionStorage.setItem("reglayer_active_crawl", JSON.stringify({ jobId, url, mode }));
+    }
+    if (!running && jobId) {
+      sessionStorage.removeItem("reglayer_active_crawl");
+    }
+  }, [jobId, running, url, mode]);
+
+  // Reconnect to active job on mount
+  useEffect(() => {
+    const saved = sessionStorage.getItem("reglayer_active_crawl");
+    if (!saved) return;
+    try {
+      const { jobId: savedJobId, url: savedUrl, mode: savedMode } = JSON.parse(saved);
+      // Verify job is still running
+      fetch(`/api/crawl/${savedJobId}`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.status === "running" || data.status === "scanning") {
+            setJobId(savedJobId);
+            setUrl(savedUrl);
+            setMode(savedMode);
+            setRunning(true);
+            setStep("running");
+            connectSSE(savedJobId);
+          } else if (data.status === "complete" && data.result) {
+            setResult(data.result);
+            setUrl(savedUrl);
+            setMode(savedMode);
+            setStep("done");
+            sessionStorage.removeItem("reglayer_active_crawl");
+          } else {
+            sessionStorage.removeItem("reglayer_active_crawl");
+          }
+        })
+        .catch(() => sessionStorage.removeItem("reglayer_active_crawl"));
+    } catch { sessionStorage.removeItem("reglayer_active_crawl"); }
+  }, []);
+
   useEffect(() => {
     return () => { eventSourceRef.current?.close(); };
   }, []);
@@ -244,8 +297,9 @@ export default function CrawlPage() {
   function getTimeEstimate(): string {
     const pages = getActiveRoutes().length;
     const c = Number(concurrency) || 3;
-    const secPerPage = 4; // ~4 seconds per page (load + scan + axe)
-    const totalSec = Math.ceil((pages / c) * secPerPage) + 10; // +10s for auth/discovery
+    const secPerPage = 8; // realistic: Playwright load + render + axe-core on SPA
+    const overhead = (mode === "admin" || mode === "full") ? 15 : 5; // auth + discovery
+    const totalSec = Math.ceil((pages / c) * secPerPage) + overhead;
     if (totalSec < 60) return `~${totalSec}s`;
     const min = Math.floor(totalSec / 60);
     const sec = totalSec % 60;
@@ -444,29 +498,29 @@ export default function CrawlPage() {
               <ModeCard
                 icon={<Eye className="h-6 w-6" />}
                 title="Public Pages"
-                description="Scan visitor-facing pages — homepage, pricing, docs, login, etc."
+                description="Audit the pages your visitors and search engines see — catch issues before they become lawsuits."
                 pageCount={PUBLIC_ROUTES.length}
                 color="blue"
-                features={["No login required", "SEO-visible pages", "Sitemap discovery"]}
+                features={["No login required", "SEO & first-impression pages", "ADA litigation surface"]}
                 onClick={() => selectMode("public")}
               />
               <ModeCard
                 icon={<ShieldCheck className="h-6 w-6" />}
                 title="Admin Pages"
-                description="Scan behind-login pages — dashboard, settings, reports, etc."
+                description="Test your internal app — dashboards, tools, and settings where your team spends all day."
                 pageCount={ADMIN_ROUTES.length}
                 color="violet"
-                features={["Requires authentication", "All sidebar routes", "Dashboard & tools"]}
+                features={["Requires authentication", "All sidebar routes", "Employee experience"]}
                 requiresAuth
                 onClick={() => selectMode("admin")}
               />
               <ModeCard
                 icon={<Layers className="h-6 w-6" />}
                 title="Full Site"
-                description="Scan everything — public and admin pages combined."
+                description="Complete coverage — find template issues that affect every page at once."
                 pageCount={PUBLIC_ROUTES.length + ADMIN_ROUTES.length}
                 color="emerald"
-                features={["Complete coverage", "Public + admin pages", "Template issue detection"]}
+                features={["Public + admin combined", "Template pattern detection", "Best for compliance"]}
                 requiresAuth
                 recommended
                 onClick={() => selectMode("full")}
@@ -498,28 +552,68 @@ export default function CrawlPage() {
                   </Badge>
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-1.5">
-                  {(mode === "public" ? PUBLIC_ROUTES : mode === "admin" ? ADMIN_ROUTES : [...PUBLIC_ROUTES, ...ADMIN_ROUTES]).map((route) => {
-                    const isAdmin = ADMIN_ROUTES.includes(route);
-                    const isExcluded = excludedRoutes.has(route);
-                    return (
-                      <button key={route} onClick={() => toggleRoute(route)} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono transition-all cursor-pointer ${
-                        isExcluded
-                          ? "bg-neutral-100 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-500 border border-neutral-200 dark:border-neutral-700 line-through opacity-60"
-                          : isAdmin
-                          ? "bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-800 hover:bg-violet-100 dark:hover:bg-violet-900/50"
-                          : "bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/50"
-                      }`}>
-                        {isExcluded && <X className="h-2.5 w-2.5" />}
-                        {!isExcluded && isAdmin && <Lock className="h-2.5 w-2.5" />}
-                        {ADMIN_ROUTE_META[route] || route}
-                      </button>
-                    );
-                  })}
-                </div>
+              <CardContent className="space-y-3">
+                {/* Public routes section */}
+                {(mode === "public" || mode === "full") && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400">Public Pages</span>
+                      <div className="flex-1 h-px bg-blue-100 dark:bg-blue-900" />
+                      {mode === "full" && (
+                        <button onClick={() => { PUBLIC_ROUTES.forEach(r => { setExcludedRoutes(prev => { const next = new Set(prev); if (!next.has(r)) next.add(r); return next; }); }); }} className="text-[10px] text-neutral-400 hover:text-red-500">
+                          Exclude all
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {PUBLIC_ROUTES.map((route) => {
+                        const isExcluded = excludedRoutes.has(route);
+                        return (
+                          <button key={route} onClick={() => toggleRoute(route)} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono transition-all cursor-pointer ${
+                            isExcluded
+                              ? "bg-neutral-100 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-500 border border-neutral-200 dark:border-neutral-700 line-through opacity-60"
+                              : "bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/50"
+                          }`}>
+                            {isExcluded && <X className="h-2.5 w-2.5" />}
+                            {route}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                {/* Admin routes section */}
+                {(mode === "admin" || mode === "full") && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-violet-600 dark:text-violet-400">Admin Pages</span>
+                      <div className="flex-1 h-px bg-violet-100 dark:bg-violet-900" />
+                      {mode === "full" && (
+                        <button onClick={() => { ADMIN_ROUTES.forEach(r => { setExcludedRoutes(prev => { const next = new Set(prev); if (!next.has(r)) next.add(r); return next; }); }); }} className="text-[10px] text-neutral-400 hover:text-red-500">
+                          Exclude all
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {ADMIN_ROUTES.map((route) => {
+                        const isExcluded = excludedRoutes.has(route);
+                        return (
+                          <button key={route} onClick={() => toggleRoute(route)} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono transition-all cursor-pointer ${
+                            isExcluded
+                              ? "bg-neutral-100 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-500 border border-neutral-200 dark:border-neutral-700 line-through opacity-60"
+                              : "bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-800 hover:bg-violet-100 dark:hover:bg-violet-900/50"
+                          }`}>
+                            {isExcluded && <X className="h-2.5 w-2.5" />}
+                            {!isExcluded && <Lock className="h-2.5 w-2.5" />}
+                            {ADMIN_ROUTE_META[route] || route}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
                 {excludedRoutes.size > 0 && (
-                  <button onClick={() => setExcludedRoutes(new Set())} className="mt-2 text-[11px] text-blue-600 hover:underline">
+                  <button onClick={() => setExcludedRoutes(new Set())} className="text-[11px] text-blue-600 hover:underline">
                     Reset all ({excludedRoutes.size} excluded)
                   </button>
                 )}
@@ -537,12 +631,27 @@ export default function CrawlPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="text-sm font-medium text-neutral-700 dark:text-neutral-200">Max Pages</label>
-                    <Input type="number" min="1" max="500" value={maxPages} onChange={(e) => setMaxPages(e.target.value)} className="mt-1" />
+                    <Input type="number" min="1" max="500" value={Math.min(Number(maxPages), getActiveRoutes().length || 500).toString()} onChange={(e) => setMaxPages(e.target.value)} className="mt-1" />
+                    <p className="text-xs text-neutral-400 mt-1">{getActiveRoutes().length} routes selected</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-neutral-700 dark:text-neutral-200">Parallel Scans</label>
-                    <Input type="number" min="1" max="10" value={concurrency} onChange={(e) => setConcurrency(e.target.value)} className="mt-1" />
-                    <p className="text-xs text-neutral-400 mt-1">Higher = faster but more server load</p>
+                    <label className="text-sm font-medium text-neutral-700 dark:text-neutral-200">Speed</label>
+                    <div className="flex gap-2 mt-1">
+                      {[
+                        { label: "Gentle", value: "1", desc: "1 at a time" },
+                        { label: "Normal", value: "3", desc: "3 parallel" },
+                        { label: "Fast", value: "6", desc: "6 parallel" },
+                      ].map((preset) => (
+                        <button key={preset.value} onClick={() => setConcurrency(preset.value)} className={`flex-1 px-3 py-2 rounded-lg border text-xs font-medium transition-all ${
+                          concurrency === preset.value
+                            ? "bg-blue-50 dark:bg-blue-950 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 ring-1 ring-blue-200 dark:ring-blue-800"
+                            : "bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400 hover:border-neutral-300"
+                        }`}>
+                          {preset.label}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-xs text-neutral-400 mt-1">Faster = more server load</p>
                   </div>
                 </div>
 
