@@ -610,7 +610,11 @@ model ComplianceProof {
   score         Float?
   standard      String        // e.g. "WCAG 2.1 AA", "EN 301 549", "Section 508"
   evidence      Json          // snapshot of scan data, violation counts, etc.
-  hash          String        // SHA-256 hash for tamper detection
+  hash          String        // SHA-256 over canonical(evidence + prevHash + chainIndex + issuedAt)
+  prevHash      String?       // hash of the previous proof in this workspace's chain (null = genesis)
+  chainIndex    Int           @default(0) // 0-based position in the workspace's hash chain
+  anchoredAt    DateTime?     // when the hash was externally anchored (e.g. OpenTimestamps)
+  anchorProof   String?       // opaque external anchor receipt, if any
   issuedAt      DateTime      @default(now())
   expiresAt     DateTime?     // optional: proof validity period
   revokedAt     DateTime?     // set if score drops below threshold
@@ -619,6 +623,7 @@ model ComplianceProof {
   site          Site          @relation(fields: [siteId], references: [id], onDelete: Cascade)
   workspace     Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
+  @@unique([workspaceId, chainIndex])
   @@index([workspaceId, issuedAt])
   @@index([siteId, issuedAt])
   @@index([hash])

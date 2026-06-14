@@ -100,6 +100,9 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/contact") ||
     pathname.startsWith("/request-access") ||
     pathname.startsWith("/report/") ||
+    pathname.startsWith("/verify") ||
+    // Independent proof verification ONLY — issue/revoke under /api/vault stay authed.
+    (pathname.startsWith("/api/vault/") && pathname.endsWith("/verify")) ||
     pathname.startsWith("/api/auth/") ||
     pathname.startsWith("/api/health") ||
     pathname.startsWith("/api/openapi") ||
