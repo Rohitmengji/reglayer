@@ -84,8 +84,11 @@ export async function getPlanContext(): Promise<PlanContext | null> {
  * Count scans this month for a user's workspace.
  */
 export async function getMonthlyScansCount(userId: string): Promise<number> {
+  // FIX C5: use an explicit UTC month boundary. A server-local boundary
+  // miscounts near month-end when the server runs in a non-UTC timezone
+  // (Scan.createdAt is stored in UTC), letting users over/under their quota.
   const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const startOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
 
   const membership = await prisma.workspaceMember.findFirst({
     where: { userId },

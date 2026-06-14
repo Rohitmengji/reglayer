@@ -45,6 +45,55 @@ export interface ScanServiceResult {
 }
 
 /**
+ * FIX data-3: Derive WCAG criterion + conformance level from axe WCAG tags.
+ *
+ * axe emits tags such as:
+ *   - "wcag111"     → success criterion 1.1.1
+ *   - "wcag1410"    → success criterion 1.4.10
+ *   - "wcag2a" / "wcag2aa" / "wcag21aa" / "wcag2aaa" → conformance level
+ *
+ * Criterion tags are "wcag" + digits, where the digits decode as
+ * principle(1) + guideline(1) + criterion(1+) — e.g. "1410" → "1.4.10".
+ * Level tags end in a/aa/aaa (after an optional version like "2", "21", "22").
+ *
+ * Returns the first criterion found (schema stores a single String?) and the
+ * highest level seen. Conservative: returns nulls when nothing can be derived.
+ */
+function deriveWcag(tags: string[]): { wcagCriteria: string | null; wcagLevel: string | null } {
+  let wcagCriteria: string | null = null;
+  let wcagLevel: string | null = null;
+  const levelRank: Record<string, number> = { A: 1, AA: 2, AAA: 3 };
+
+  for (const raw of tags) {
+    const tag = raw.toLowerCase();
+    if (!tag.startsWith("wcag")) continue;
+
+    // Conformance level tag, e.g. "wcag2a", "wcag2aa", "wcag21aa", "wcag2aaa".
+    const levelMatch = /^wcag\d*(a|aa|aaa)$/.exec(tag);
+    if (levelMatch) {
+      const level = levelMatch[1].toUpperCase();
+      if (wcagLevel === null || levelRank[level] > levelRank[wcagLevel]) {
+        wcagLevel = level;
+      }
+      continue;
+    }
+
+    // Success-criterion tag, e.g. "wcag111" → "1.1.1", "wcag1410" → "1.4.10".
+    const critMatch = /^wcag(\d{3,})$/.exec(tag);
+    if (critMatch && wcagCriteria === null) {
+      const digits = critMatch[1];
+      // principle (1 digit) + guideline (1 digit) + criterion (remaining digits)
+      const principle = digits.slice(0, 1);
+      const guideline = digits.slice(1, 2);
+      const criterion = String(parseInt(digits.slice(2), 10));
+      wcagCriteria = `${principle}.${guideline}.${criterion}`;
+    }
+  }
+
+  return { wcagCriteria, wcagLevel };
+}
+
+/**
  * Execute a full scan with compliance evaluation.
  */
 export async function performScan(
@@ -81,6 +130,15 @@ export async function performScan(
       overallCompliance: complianceReport.overallCompliance,
     });
 
+    // Resolve the scan's workspace once for tenant-scoped notifications
+    let workspaceId: string | null = null;
+    if (request.userEmail) {
+      const user = await prisma.user.findUnique({ where: { email: request.userEmail } });
+      if (user) {
+        workspaceId = await getOrCreateWorkspace(user.id, user.email);
+      }
+    }
+
     // Persist to database — blocking, scan data is the product
     try {
       await persistScan(scanResult, complianceReport, request.userEmail);
@@ -92,14 +150,14 @@ export async function performScan(
       // Continue — return result even if DB write fails
     }
 
-    // Evaluate alert rules (fire-and-forget)
-    evaluateAlerts(scanResult).catch((err) => {
+    // Evaluate alert rules (fire-and-forget, workspace-scoped)
+    evaluateAlerts(scanResult, workspaceId).catch((err) => {
       scanLogger.warn("Failed to evaluate alerts", {
         error: err instanceof Error ? err.message : "Unknown",
       });
     });
 
-    // Dispatch webhook events (fire-and-forget)
+    // Dispatch webhook events (fire-and-forget, workspace-scoped)
     dispatchWebhookEvent("scan.completed", {
       scanId: scanResult.id,
       url: scanResult.url,
@@ -107,7 +165,7 @@ export async function performScan(
       violations: scanResult.summary.totalViolations,
       critical: scanResult.summary.critical,
       duration: scanResult.metadata.scanDuration,
-    }).catch(() => {/* non-blocking */});
+    }, workspaceId).catch(() => {/* non-blocking */});
 
     // Send email notifications + integration dispatches (fire-and-forget)
     notifyScanComplete(scanResult, request.userEmail).catch((err) => {
@@ -124,27 +182,89 @@ export async function performScan(
     scanLogger.error("Scan failed", {
       error: error instanceof Error ? error.message : "Unknown error",
     });
+
+    // FIX R-9: persist a minimal FAILED scan record so failures show up in
+    // history (previously failures were never written → history could only ever
+    // show successes). Best-effort: wrapped in its own try/catch so a persist
+    // failure never masks the original scan error we re-throw below.
+    try {
+      const startedAt = new Date();
+      let userId: string | undefined;
+      let workspaceId: string | undefined;
+      if (request.userEmail) {
+        const user = await prisma.user.findUnique({ where: { email: request.userEmail } });
+        if (user) {
+          userId = user.id;
+          workspaceId = await getOrCreateWorkspace(user.id, user.email);
+        }
+      }
+
+      await prisma.scan.create({
+        data: {
+          url: request.url,
+          status: "FAILED",
+          score: 0,
+          totalViolations: 0,
+          critical: 0,
+          serious: 0,
+          moderate: 0,
+          minor: 0,
+          errorMessage: error instanceof Error ? error.message : "Unknown error",
+          startedAt,
+          completedAt: new Date(),
+          userId,
+          workspaceId,
+        },
+      });
+    } catch (persistErr) {
+      scanLogger.error("Failed to persist FAILED scan record", {
+        error: persistErr instanceof Error ? persistErr.message : "Unknown",
+      });
+      // Swallow — do not mask the original scan error.
+    }
+
     throw error;
   }
 }
 
 /**
- * Persist scan results to the database.
+ * Optional pre-resolved scoping for a scan. When supplied (e.g. by the site
+ * crawler, which already knows the workspace/site/user), these are used
+ * directly instead of re-resolving from userEmail per page. `siteId`
+ * additionally links the scan row to a Site.
  */
-async function persistScan(
+export interface PersistScanScope {
+  workspaceId?: string;
+  userId?: string;
+  siteId?: string;
+  /** Extra metadata merged into the Scan row (e.g. crawl linkage) */
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * Persist scan results to the database.
+ *
+ * Exported so callers that run scans outside `performScan` (e.g. the site
+ * crawler's per-page audits) can turn each scan into a real Scan row with a
+ * server-generated id, keeping crawl audits durable and counted against quota.
+ */
+export async function persistScan(
   scan: ScanResult,
   compliance: ComplianceReport,
-  userEmail?: string
+  userEmail?: string,
+  scope?: PersistScanScope
 ): Promise<void> {
-  // Resolve user and workspace for proper scoping
-  let userId: string | undefined;
-  let workspaceId: string | undefined;
+  // Resolve user and workspace for proper scoping.
+  // Prefer pre-resolved scope (avoids an extra user lookup per crawled page).
+  let userId: string | undefined = scope?.userId;
+  let workspaceId: string | undefined = scope?.workspaceId;
+  const siteId: string | undefined = scope?.siteId;
 
-  if (userEmail) {
+  if ((userId === undefined || workspaceId === undefined) && userEmail) {
     const user = await prisma.user.findUnique({ where: { email: userEmail } });
     if (user) {
-      userId = user.id;
-      workspaceId = await getOrCreateWorkspace(user.id, user.email);
+      userId = userId ?? user.id;
+      workspaceId = workspaceId ?? (await getOrCreateWorkspace(user.id, user.email));
     }
   }
 
@@ -167,24 +287,33 @@ async function persistScan(
       completedAt: new Date(),
       userId,
       workspaceId,
+      siteId: siteId || null,
       metadata: {
         browserEngine: scan.metadata.browserEngine,
         axeCoreVersion: scan.metadata.axeCoreVersion,
+        ...(scope?.metadata ?? {}),
       },
       violations: {
-        create: scan.violations.map((v) => ({
-          ruleId: v.id,
-          impact: v.impact as "critical" | "serious" | "moderate" | "minor",
-          description: v.description,
-          help: v.help,
-          helpUrl: v.helpUrl || null,
-          tags: v.wcagTags,
-          affectedElements: v.nodes.map((n) => ({
-            html: n.html,
-            target: n.target,
-            failureSummary: n.failureSummary,
-          })),
-        })),
+        create: scan.violations.map((v) => {
+          // FIX data-3: populate the previously-dead wcagCriteria/wcagLevel
+          // columns by parsing each violation's WCAG tags.
+          const { wcagCriteria, wcagLevel } = deriveWcag(v.wcagTags);
+          return {
+            ruleId: v.id,
+            impact: v.impact as "critical" | "serious" | "moderate" | "minor",
+            description: v.description,
+            help: v.help,
+            helpUrl: v.helpUrl || null,
+            tags: v.wcagTags,
+            wcagCriteria,
+            wcagLevel,
+            affectedElements: v.nodes.map((n) => ({
+              html: n.html,
+              target: n.target,
+              failureSummary: n.failureSummary,
+            })),
+          };
+        }),
       },
     },
   });

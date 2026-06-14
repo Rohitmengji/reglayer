@@ -16,15 +16,49 @@ import { z } from "zod/v4";
  * instead of failing silently at runtime.
  */
 const envSchema = z.object({
-  // Database
+  // ── Required ──────────────────────────────────────────────
+  // Missing any of these is fatal — the app cannot function without them.
   DATABASE_URL: z.url("DATABASE_URL must be a valid PostgreSQL URL"),
-
-  // Authentication
   NEXTAUTH_SECRET: z.string().min(16, "NEXTAUTH_SECRET must be at least 16 characters"),
   NEXTAUTH_URL: z.url("NEXTAUTH_URL must be a valid URL"),
 
-  // OpenAI (optional — graceful degradation)
+  // ── Optional (graceful degradation) ───────────────────────
+  // These back optional services. Their absence must NOT crash boot — the app
+  // disables the corresponding feature instead. Hence every one is .optional().
+
+  // OpenAI (AI fix suggestions / remediation)
   OPENAI_API_KEY: z.string().optional(),
+
+  // SMTP (transactional email) — names match the code's process.env usage
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.string().optional(),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  EMAIL_FROM: z.string().optional(),
+
+  // Stripe (billing)
+  STRIPE_SECRET_KEY: z.string().optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  STRIPE_PRICE_PRO_MONTHLY: z.string().optional(),
+  STRIPE_PRICE_PRO_ANNUAL: z.string().optional(),
+  STRIPE_PRICE_ENTERPRISE_MONTHLY: z.string().optional(),
+  STRIPE_PRICE_ENTERPRISE_ANNUAL: z.string().optional(),
+
+  // Encryption (integration secrets at rest)
+  ENCRYPTION_KEY: z.string().optional(),
+
+  // Cron (scheduled scans trigger auth)
+  CRON_SECRET: z.string().optional(),
+
+  // Upstash Redis (cache layer)
+  UPSTASH_REDIS_REST_URL: z.string().optional(),
+  UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
+
+  // Observability
+  SENTRY_DSN: z.string().optional(),
+
+  // Public app URL (links in emails / reports)
+  NEXT_PUBLIC_APP_URL: z.string().optional(),
 
   // Seed accounts (optional — only for dev)
   SEED_MASTER_EMAIL: z.email().optional(),

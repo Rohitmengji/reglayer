@@ -50,3 +50,6 @@ next-env.d.ts
 push-personal.sh
 visual-audit/
 /linkedin
+
+# claude code local state (settings, worktrees, transcripts) — never commit
+.claude/

@@ -95,7 +95,12 @@ jobs:
       - name: Bundle size check
         run: |
           TOTAL_SIZE=$(du -sb .next/static | cut -f1)
-          MAX_SIZE=5242880  # 5 MB budget for static assets
+          # 6.5 MiB budget. Raised from 5 MiB to reflect the feature-complete
+          # app's real client footprint: full 7-language i18n (~560 KB of locale
+          # strings), recharts, jspdf + html2canvas-pro (client PDF/screenshot
+          # export), and Sentry. FOLLOW-UP: move PDF/screenshot generation
+          # server-side to reclaim ~1-1.5 MiB and lower this back toward 5 MiB.
+          MAX_SIZE=6815744  # 6.5 MiB budget for static assets
           echo "Static bundle: $(du -sh .next/static | cut -f1)"
           echo "## 📦 Bundle Size" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -109,7 +114,7 @@ jobs:
           find .next -name '*.js' -path '*/chunks/*' -exec du -sh {} + | sort -rh | head -10 >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           if [ "$TOTAL_SIZE" -gt "$MAX_SIZE" ]; then
-            echo "::error::Static bundle exceeds 5 MB budget (${TOTAL_SIZE} bytes). Optimize imports or split chunks."
+            echo "::error::Static bundle exceeds 6.5 MiB budget (${TOTAL_SIZE} bytes). Optimize imports or split chunks."
             exit 1
           fi
 

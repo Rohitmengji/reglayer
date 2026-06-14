@@ -10,6 +10,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
 import { applyRateLimit } from "@/lib/rate-limit-middleware";
+import { assertScanAccess } from "@/lib/auth/access";
 
 /**
  * POST /api/statement/generate
@@ -57,14 +58,29 @@ export async function POST(request: NextRequest) {
   // Fetch latest scan data if scanId provided
   let scanData = null;
   if (scanId) {
+    // Ownership check — the caller must own the scan they're generating from.
+    const access = await assertScanAccess(scanId, session);
+    if (!access.ok) {
+      return NextResponse.json({ error: access.error }, { status: access.status });
+    }
     scanData = await prisma.scan.findUnique({
       where: { id: scanId },
       include: { violations: true },
     });
   } else {
-    // Get the most recent completed scan for this URL
+    // Get the most recent completed scan for this URL — scoped to the caller's
+    // own workspaces so we never surface another tenant's scan.
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { memberships: { select: { workspaceId: true } } },
+    });
+    const workspaceIds = user?.memberships.map((m) => m.workspaceId) ?? [];
     scanData = await prisma.scan.findFirst({
-      where: { url: websiteUrl, status: "COMPLETED" },
+      where: {
+        url: websiteUrl,
+        status: "COMPLETED",
+        workspaceId: { in: workspaceIds },
+      },
       orderBy: { createdAt: "desc" },
       include: { violations: true },
     });

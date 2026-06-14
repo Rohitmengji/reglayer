@@ -126,8 +126,12 @@ export async function evaluateGuard(
     const fixedViolations: Array<{ ruleId: string; impact: string; count: number }> = [];
 
     if (policy.baselineScanId) {
-      const baselineScan = await prisma.scan.findUnique({
-        where: { id: policy.baselineScanId },
+      // S-6: only trust a baseline scan that actually belongs to this policy's
+      // site AND workspace. findFirst with those constraints means a baselineScanId
+      // pointing at another tenant's scan resolves to null and is ignored, rather
+      // than leaking that scan's data into this policy's regression diff.
+      const baselineScan = await prisma.scan.findFirst({
+        where: { id: policy.baselineScanId, siteId, workspaceId },
         include: { violations: { select: { ruleId: true, impact: true } } },
       });
 

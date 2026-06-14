@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Webhook,
   Plus,
@@ -76,6 +77,7 @@ export default function WebhooksPage() {
   // Testing
   const [testing, setTesting] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<{ id: string; status: string; statusCode: number } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const { t } = useI18n();
 
   useEffect(() => {
@@ -115,6 +117,7 @@ export default function WebhooksPage() {
   async function handleDelete(id: string) {
     await fetch(`/api/webhooks?id=${id}`, { method: "DELETE" });
     setWebhooks((prev) => prev.filter((w) => w.id !== id));
+    setDeleteTarget(null);
   }
 
   async function handleTest(id: string) {
@@ -310,7 +313,7 @@ export default function WebhooksPage() {
                       )}
                     </Button>
                     {/* Delete */}
-                    <Button variant="ghost" size="sm" onClick={() => handleDelete(hook.id)}>
+                    <Button variant="ghost" size="sm" onClick={() => setDeleteTarget(hook.id)} aria-label={`Delete webhook ${hook.name}`}>
                       <Trash2 className="h-3.5 w-3.5 text-red-400" />
                     </Button>
                   </div>
@@ -425,6 +428,15 @@ const valid = crypto.timingSafeEqual(
           </CardContent>
         </Card>
       </div>
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="Delete webhook"
+        description="Are you sure you want to delete this webhook endpoint? It will stop receiving events immediately. This action cannot be undone."
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={() => deleteTarget && handleDelete(deleteTarget)}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </AppShell>
   );
 }

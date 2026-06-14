@@ -17,6 +17,9 @@ import { validateScanUrl } from "@/lib/validations/ssrf";
 import { applyRateLimit } from "@/lib/rate-limit-middleware";
 import { authConfigSchema } from "@/lib/validations/auth";
 import { logger } from "@/lib/telemetry/logger";
+import { prisma } from "@/lib/database/prisma";
+import { getOrCreateWorkspace } from "@/lib/database/workspace";
+import { Prisma } from "@/generated/prisma/client";
 
 const crawlSchema = z.object({
   url: z.string().url(),
@@ -80,6 +83,16 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Resolve durable scoping: the user running the crawl + their workspace.
+  // planCtx is non-null here (route is authenticated), but stay defensive.
+  const userId = planCtx?.userId ?? null;
+  const userEmail = session.user.email;
+  let workspaceId: string | null = null;
+  if (planCtx?.userId) {
+    const resolved = await getOrCreateWorkspace(planCtx.userId, userEmail);
+    workspaceId = resolved || null;
+  }
+
   // Create job
   const crawlConfig = {
     startUrl: url,
@@ -91,19 +104,94 @@ export async function POST(request: NextRequest) {
     excludePatterns,
     auth: auth && auth.method !== "none" ? auth : undefined,
     knownRoutes,
+    // Durable per-page Scan persistence (R-5)
+    userEmail,
+    workspaceId: workspaceId ?? undefined,
+    userId: userId ?? undefined,
   };
 
   const job = jobManager.createJob(crawlConfig);
 
-  // Start crawl in background (fire-and-forget)
-  crawlSite({ ...crawlConfig, jobId: job.id }).catch((error) => {
-    logger.error("Background crawl failed", { jobId: job.id, error: error instanceof Error ? error.message : "Unknown" });
-    jobManager.emitEvent(job.id, {
-      type: "error",
-      error: error instanceof Error ? error.message : "Crawl failed unexpectedly",
-      timestamp: Date.now(),
+  // Durable job state (R-5): survives Vercel cold starts / cross-instance reads.
+  // Best-effort — if this write fails the in-memory job still runs.
+  try {
+    await prisma.crawlJobRecord.create({
+      data: {
+        id: job.id,
+        workspaceId,
+        userId,
+        rootUrl: url,
+        status: "processing",
+        pagesTotal: maxPages,
+      },
     });
-  });
+  } catch (error) {
+    logger.warn("Failed to persist CrawlJobRecord", {
+      jobId: job.id,
+      error: error instanceof Error ? error.message : "Unknown",
+    });
+  }
+
+  // Start crawl in background (fire-and-forget). Persist the final outcome to
+  // the durable record when the detached promise settles (best-effort).
+  crawlSite({ ...crawlConfig, jobId: job.id })
+    .then(async (result) => {
+      // crawlSite resolves (doesn't throw) for cancelled / internally-failed
+      // crawls too — mirror the in-memory job's terminal status so the durable
+      // record doesn't mislabel them as "complete".
+      const inMemory = jobManager.getJob(job.id);
+      const status =
+        inMemory?.status === "cancelled"
+          ? "cancelled"
+          : inMemory?.status === "failed"
+            ? "failed"
+            : "complete";
+      const pagesTotal = result.pagesDiscovered || maxPages;
+      const progress =
+        status === "complete"
+          ? 100
+          : pagesTotal > 0
+            ? Math.round((result.pagesScanned / pagesTotal) * 100)
+            : 0;
+      try {
+        await prisma.crawlJobRecord.update({
+          where: { id: job.id },
+          data: {
+            status,
+            progress,
+            pagesScanned: result.pagesScanned,
+            pagesTotal,
+            result: result as unknown as Prisma.InputJsonValue,
+            error: inMemory?.error ?? null,
+          },
+        });
+      } catch (err) {
+        logger.warn("Failed to finalize CrawlJobRecord (settled)", {
+          jobId: job.id,
+          error: err instanceof Error ? err.message : "Unknown",
+        });
+      }
+    })
+    .catch(async (error) => {
+      const message = error instanceof Error ? error.message : "Crawl failed unexpectedly";
+      logger.error("Background crawl failed", { jobId: job.id, error: message });
+      jobManager.emitEvent(job.id, {
+        type: "error",
+        error: message,
+        timestamp: Date.now(),
+      });
+      try {
+        await prisma.crawlJobRecord.update({
+          where: { id: job.id },
+          data: { status: "failed", error: message },
+        });
+      } catch (err) {
+        logger.warn("Failed to finalize CrawlJobRecord (failed)", {
+          jobId: job.id,
+          error: err instanceof Error ? err.message : "Unknown",
+        });
+      }
+    });
 
   // Return job ID immediately
   return NextResponse.json({

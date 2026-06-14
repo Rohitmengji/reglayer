@@ -25,16 +25,50 @@ export function ConfirmDialog({
   onCancel,
 }: ConfirmDialogProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
   const confirmRef = useRef<HTMLButtonElement>(null);
+  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
 
+  // On open: remember the element that had focus, move focus into the dialog.
+  // On close: restore focus to that element.
   useEffect(() => {
-    if (open) confirmRef.current?.focus();
+    if (!open) return;
+    previouslyFocusedRef.current = document.activeElement as HTMLElement | null;
+    confirmRef.current?.focus();
+    return () => {
+      previouslyFocusedRef.current?.focus?.();
+    };
   }, [open]);
 
   useEffect(() => {
     if (!open) return;
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onCancel();
+      if (e.key === "Escape") {
+        onCancel();
+        return;
+      }
+      if (e.key !== "Tab") return;
+      // Focus trap: keep Tab / Shift+Tab cycling within the dialog.
+      const dialog = dialogRef.current;
+      if (!dialog) return;
+      const focusable = dialog.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])',
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement;
+      if (e.shiftKey) {
+        if (active === first || !dialog.contains(active)) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else {
+        if (active === last || !dialog.contains(active)) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
     };
     document.addEventListener("keydown", handleKey);
     return () => document.removeEventListener("keydown", handleKey);
@@ -61,7 +95,7 @@ export function ConfirmDialog({
       aria-labelledby="confirm-title"
       aria-describedby="confirm-desc"
     >
-      <div className="w-full max-w-md mx-4 rounded-2xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-2xl animate-in zoom-in-95 duration-150">
+      <div ref={dialogRef} className="w-full max-w-md mx-4 rounded-2xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-2xl animate-in zoom-in-95 duration-150">
         <div className="p-6">
           <div className="flex items-start gap-4">
             <div

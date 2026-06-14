@@ -7,6 +7,28 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
+import { z } from "zod";
+
+/**
+ * Explicit allowlist of fields a PATCH may change. Anything not listed here
+ * (siteId, workspaceId, baselineScanId, baselineScore, baselineLockedAt, id,
+ * timestamps) is silently dropped — never accepted from the request body — so
+ * a caller can't reassign a policy to another site/tenant or forge a baseline
+ * via mass-assignment.
+ */
+const updatePolicySchema = z
+  .object({
+    name: z.string().min(1).max(200),
+    enabled: z.boolean(),
+    minScore: z.number().min(0).max(100),
+    maxCritical: z.number().int().min(0),
+    maxSerious: z.number().int().min(0),
+    maxScoreDrop: z.number().min(0).max(100),
+    maxNewViolations: z.number().int().min(0),
+    autoPromoteBaseline: z.boolean(),
+  })
+  .partial()
+  .strict();
 
 export async function PATCH(
   request: NextRequest,
@@ -19,7 +41,18 @@ export async function PATCH(
     }
 
     const { policyId } = await params;
-    const body = await request.json();
+    const parsed = updatePolicySchema.safeParse(await request.json());
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Invalid request", details: parsed.error.flatten().fieldErrors },
+        { status: 400 }
+      );
+    }
+    const data = parsed.data;
+
+    if (Object.keys(data).length === 0) {
+      return NextResponse.json({ error: "No updatable fields provided" }, { status: 400 });
+    }
 
     const policy = await prisma.guardPolicy.findUnique({
       where: { id: policyId },
@@ -42,7 +75,7 @@ export async function PATCH(
 
     const updated = await prisma.guardPolicy.update({
       where: { id: policyId },
-      data: body,
+      data,
     });
 
     return NextResponse.json({ policy: updated });

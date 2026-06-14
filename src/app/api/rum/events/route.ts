@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
+import { Prisma } from "@/generated/prisma/client";
 import { aggregateEvents, RumEvent, detectDevice, detectAssistiveTech } from "@/lib/rum/collector";
 import { z } from "zod";
 import { applyRateLimit } from "@/lib/rate-limit-middleware";
@@ -51,13 +52,15 @@ const batchSchema = z.object({
   userAgent: z.string().max(500).optional(),
 });
 
-// In-memory event store (in production this would be Redis/ClickHouse)
-const eventStore = new Map<string, RumEvent[]>();
-
 /**
  * POST /api/rum/events
  * Receives batched accessibility barrier events from client snippet.
  * Authenticated via site API key (public, embeddable).
+ *
+ * Events are persisted to the database (RumEventRecord) so they survive
+ * Vercel cold starts and are visible across lambda instances. The
+ * workspaceId resolved here matches the one the GET handler reads by,
+ * so dashboards see the events that were ingested.
  */
 export async function POST(request: NextRequest) {
   const blocked = await applyRateLimit(request, "rum");
@@ -80,38 +83,43 @@ export async function POST(request: NextRequest) {
 
   const { siteKey, events, userAgent } = parsed.data;
 
-  // Validate API key exists
+  // Validate API key exists and resolve the owning workspace.
+  // For RUM we use a lightweight check - key just needs to exist.
+  // In production, use a dedicated RUM site key model.
   const apiKeyRecord = await prisma.apiKey.findFirst({
     where: { keyHash: siteKey },
   });
 
-  // For RUM we use a lightweight check - key just needs to exist
-  // In production, use a dedicated RUM site key model
-  const siteId = apiKeyRecord?.userId || siteKey;
+  const workspaceId = apiKeyRecord?.workspaceId ?? null;
 
   // Enrich events with device/AT detection
   const ua = userAgent || request.headers.get("user-agent") || "";
   const deviceType = detectDevice(ua);
   const assistiveTech = detectAssistiveTech(ua);
 
-  const enrichedEvents: RumEvent[] = events.map((e) => ({
-    ...e,
-    userAgent: ua,
-    details: {
-      ...e.details,
-      deviceType,
-      ...(assistiveTech ? { assistiveTech } : {}),
-    },
-  }));
-
-  // Store events
-  const existing = eventStore.get(siteId) || [];
-  // Keep last 10000 events per site (FIFO)
-  const combined = [...existing, ...enrichedEvents].slice(-10000);
-  eventStore.set(siteId, combined);
+  // Persist each event as a durable row. If there's no workspaceId the row
+  // is still inserted (workspaceId null) — it just won't surface in any dashboard.
+  const result = await prisma.rumEventRecord.createMany({
+    data: events.map((e) => ({
+      workspaceId,
+      siteKey,
+      type: e.type,
+      selector: e.selector,
+      page: e.page,
+      sessionId: e.sessionId,
+      viewport: e.viewport ?? Prisma.JsonNull,
+      details: {
+        ...e.details,
+        deviceType,
+        ...(assistiveTech ? { assistiveTech } : {}),
+      },
+      userAgent: ua,
+      occurredAt: new Date(e.timestamp),
+    })),
+  });
 
   return NextResponse.json(
-    { received: events.length, total: combined.length },
+    { received: events.length, total: result.count },
     { status: 200 }
   );
 }
@@ -138,22 +146,41 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "No workspace found" }, { status: 404 });
   }
 
+  const workspaceId = member.workspaceId;
+  // siteId used purely as the aggregation/snippet key for this workspace
   const siteId = member.userId;
-  const events = eventStore.get(siteId) || [];
 
-  // Filter by time period
-  const now = Date.now();
+  // Time period window
   const periodMs = {
     hour: 3600_000,
     day: 86400_000,
     week: 604800_000,
   }[period];
+  const since = new Date(Date.now() - periodMs);
 
-  const filtered = events.filter((e) => now - e.timestamp < periodMs);
-  const aggregation = aggregateEvents(filtered, siteId, period);
+  // Read durable events scoped to this workspace (matches POST's workspaceId)
+  const rows = await prisma.rumEventRecord.findMany({
+    where: { workspaceId, occurredAt: { gte: since } },
+    orderBy: { occurredAt: "desc" },
+    take: 10000,
+  });
 
-  // Also return recent events for the detail view
-  const recentEvents = filtered.slice(-50).reverse();
+  // Map DB rows back to the collector's RumEvent shape
+  const events: RumEvent[] = rows.map((row) => ({
+    type: row.type as RumEvent["type"],
+    selector: row.selector,
+    page: row.page,
+    timestamp: row.occurredAt.getTime(),
+    sessionId: row.sessionId,
+    viewport: (row.viewport as RumEvent["viewport"]) ?? undefined,
+    userAgent: row.userAgent ?? undefined,
+    details: (row.details as RumEvent["details"]) ?? undefined,
+  }));
+
+  const aggregation = aggregateEvents(events, siteId, period);
+
+  // Also return recent events for the detail view (rows are newest-first)
+  const recentEvents = events.slice(0, 50);
 
   return NextResponse.json({
     aggregation,

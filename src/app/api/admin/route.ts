@@ -12,29 +12,10 @@ import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
 import { applyRateLimit } from "@/lib/rate-limit-middleware";
 import { logger } from "@/lib/telemetry/logger";
+import { canManageUser, canAssignRole, type WorkspaceRole } from "@/lib/auth/rbac";
 import bcrypt from "bcryptjs";
 
 const log = logger.withContext({ service: "admin-api" });
-
-type WorkspaceRole = "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
-
-function canManageUser(actorRole: WorkspaceRole, targetRole: WorkspaceRole): boolean {
-  const hierarchy: WorkspaceRole[] = ["OWNER", "ADMIN", "MEMBER", "VIEWER"];
-  return hierarchy.indexOf(actorRole) < hierarchy.indexOf(targetRole);
-}
-
-const ASSIGNABLE_ROLES: Record<WorkspaceRole, WorkspaceRole[]> = {
-  OWNER: ["ADMIN", "MEMBER", "VIEWER"],
-  ADMIN: ["MEMBER", "VIEWER"],
-  MEMBER: [],
-  VIEWER: [],
-};
-
-function canAssignRole(isMaster: boolean, workspaceRole: WorkspaceRole | null, targetRole: WorkspaceRole): boolean {
-  if (isMaster) return true;
-  if (!workspaceRole) return false;
-  return ASSIGNABLE_ROLES[workspaceRole].includes(targetRole);
-}
 
 async function getAuthedMasterAdmin() {
   const session = await getServerSession(authOptions);
@@ -260,7 +241,8 @@ async function handleAdminAction(action: string | undefined, body: AdminActionBo
 
       const actorWorkspaceRole = (actorMembership?.role as WorkspaceRole) || null;
 
-      if (!canAssignRole(actor.isMasterAdmin, actorWorkspaceRole, role)) {
+      const actorSystemRole = actor.isMasterAdmin ? "MASTER_ADMIN" : "USER";
+      if (!canAssignRole(actorSystemRole, actorWorkspaceRole, role)) {
         return NextResponse.json({ error: `You cannot assign the ${role} role` }, { status: 403 });
       }
 

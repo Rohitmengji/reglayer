@@ -11,6 +11,7 @@ import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
 import { generateVPAT, vpatToMarkdown, vpatToHTML } from "@/lib/compliance/vpat-generator";
 import type { VPATViolation } from "@/lib/compliance/vpat-generator";
+import { assertScanAccess } from "@/lib/auth/access";
 import { z } from "zod";
 
 /**
@@ -70,6 +71,12 @@ export async function POST(request: NextRequest) {
   }
 
   const { scanId, format, ...vpatConfig } = parsed.data;
+
+  // Ownership check — the caller must own the scan being attested.
+  const access = await assertScanAccess(scanId, session);
+  if (!access.ok) {
+    return NextResponse.json({ error: access.error }, { status: access.status });
+  }
 
   // Fetch scan with violations
   const scan = await prisma.scan.findUnique({

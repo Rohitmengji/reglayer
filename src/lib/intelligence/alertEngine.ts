@@ -29,24 +29,28 @@ interface AlertTrigger {
 
 /**
  * Check all alert rules for a completed scan.
+ *
+ * Tenant-scoped: only monitors belonging to `workspaceId` are evaluated.
+ * When no workspace is provided, returns no triggers to prevent cross-tenant leaks.
  */
-export async function evaluateAlerts(scan: ScanResult): Promise<AlertTrigger[]> {
+export async function evaluateAlerts(
+  scan: ScanResult,
+  workspaceId: string | null
+): Promise<AlertTrigger[]> {
   const triggers: AlertTrigger[] = [];
 
-  // Get all alert configurations from audit logs
-  const alertConfigs = await prisma.auditLog.findMany({
-    where: { action: "monitor.created" },
-    select: { metadata: true, target: true },
+  if (!workspaceId) return triggers;
+
+  // Get alert configurations for this workspace + URL
+  const monitors = await prisma.monitor.findMany({
+    where: { workspaceId, url: scan.url, enabled: true },
   });
 
-  for (const config of alertConfigs) {
-    const meta = config.metadata as Record<string, unknown> | null;
-    if (!meta || meta.url !== scan.url) continue;
-
+  for (const monitor of monitors) {
     const rule: AlertRule = {
-      condition: meta.condition as AlertRule["condition"],
-      threshold: meta.threshold as number,
-      webhookUrl: meta.webhookUrl as string | undefined,
+      condition: monitor.condition as AlertRule["condition"],
+      threshold: monitor.threshold,
+      webhookUrl: monitor.webhookUrl ?? undefined,
     };
 
     const triggered = await checkCondition(rule, scan);
@@ -59,11 +63,12 @@ export async function evaluateAlerts(scan: ScanResult): Promise<AlertTrigger[]> 
         score: scan.summary.score,
       });
 
-      // Log the trigger
+      // Log the trigger (workspace-scoped)
       await prisma.auditLog.create({
         data: {
           action: "alert.triggered",
           target: scan.id,
+          workspaceId,
           metadata: {
             condition: rule.condition,
             threshold: rule.threshold,
@@ -132,9 +137,29 @@ async function checkCondition(rule: AlertRule, scan: ScanResult): Promise<string
 }
 
 async function dispatchWebhook(url: string, payload: Record<string, unknown>): Promise<void> {
+  // SSRF protection — block internal/private targets and require HTTPS
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return; // Invalid URL, skip
+  }
+  const hostname = parsed.hostname.toLowerCase();
+  if (
+    hostname === "localhost" ||
+    hostname === "metadata.google.internal" ||
+    /^(127\.|10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|169\.254\.)/.test(hostname)
+  ) {
+    return; // Skip internal URLs silently
+  }
+  if (parsed.protocol !== "https:") {
+    return; // Require HTTPS
+  }
+
   await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(10000),
   });
 }

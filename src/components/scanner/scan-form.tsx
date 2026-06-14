@@ -215,26 +215,40 @@ export function ScanForm({ onScanComplete }: ScanFormProps) {
 
         {/* Scanning progress */}
         {isScanning && (
-          <div className="space-y-2 pt-1">
-            <div className="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-300">
+          <div className="space-y-2 pt-1" aria-busy="true">
+            <div
+              className="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-300"
+              role="status"
+              aria-live="polite"
+            >
               <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-500" />
               <span>{SCAN_STAGES[currentStage].label}...</span>
             </div>
 
             {/* Animated progress bar */}
-            <div className="w-full h-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
+            <div
+              className="w-full h-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden"
+              role="progressbar"
+              aria-label="Scan progress"
+              aria-valuenow={Math.round(((currentStage + 1) / SCAN_STAGES.length) * 100)}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuetext={`${SCAN_STAGES[currentStage].label}, step ${currentStage + 1} of ${SCAN_STAGES.length}`}
+            >
               <div
                 className="h-full bg-linear-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-1000 ease-out"
                 style={{ width: `${((currentStage + 1) / SCAN_STAGES.length) * 100}%` }}
               />
             </div>
 
-            {isSlow && (
-              <div className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
-                <Clock className="h-3 w-3" />
-                <span>Taking longer than usual — complex sites can take up to 60s</span>
-              </div>
-            )}
+            <div aria-live="polite">
+              {isSlow && (
+                <div className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
+                  <Clock className="h-3 w-3" />
+                  <span>Taking longer than usual — complex sites can take up to 60s</span>
+                </div>
+              )}
+            </div>
           </div>
         )}
 

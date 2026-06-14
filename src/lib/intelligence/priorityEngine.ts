@@ -110,9 +110,25 @@ function getWcagCriteria(tags: string[]): string[] {
 }
 
 /**
- * Generate a prioritized fix report for a scan.
+ * Scope for recurrence calculations — limits cross-scan aggregates to a single
+ * tenant. Prefer `workspaceId`; fall back to `userId` for legacy scans whose
+ * workspace was never set. If neither is available, recurrence is skipped.
  */
-export async function generatePriorityReport(scanId: string): Promise<PriorityReport> {
+export interface PriorityReportScope {
+  workspaceId?: string | null;
+  userId?: string | null;
+}
+
+/**
+ * Generate a prioritized fix report for a scan.
+ *
+ * `scope` bounds recurrence aggregates to the caller's tenant so one tenant's
+ * violation frequencies never bleed into another's report.
+ */
+export async function generatePriorityReport(
+  scanId: string,
+  scope: PriorityReportScope = {}
+): Promise<PriorityReport> {
   const scan = await prisma.scan.findUnique({
     where: { id: scanId },
     include: { violations: true },
@@ -122,13 +138,29 @@ export async function generatePriorityReport(scanId: string): Promise<PriorityRe
     throw new Error(`Scan ${scanId} not found`);
   }
 
-  // Get recurrence data: how often each rule appears across all scans
-  const recurrenceData = await prisma.violation.groupBy({
-    by: ["ruleId"],
-    _count: { ruleId: true },
-  });
-  const recurrenceMap = new Map(recurrenceData.map((r) => [r.ruleId, r._count.ruleId]));
-  const totalScans = await prisma.scan.count();
+  // Scope recurrence to the tenant: workspace if set, else the owning user.
+  const scanScope = scope.workspaceId
+    ? { workspaceId: scope.workspaceId }
+    : scope.userId
+      ? { userId: scope.userId }
+      : null;
+
+  // Get recurrence data: how often each rule appears across the tenant's scans.
+  // Without a scope we skip recurrence entirely rather than leak global data.
+  let recurrenceMap = new Map<string, number>();
+  let totalScans = 0;
+  if (scanScope) {
+    const [recurrenceData, scanCount] = await Promise.all([
+      prisma.violation.groupBy({
+        by: ["ruleId"],
+        where: { scan: scanScope },
+        _count: { ruleId: true },
+      }),
+      prisma.scan.count({ where: scanScope }),
+    ]);
+    recurrenceMap = new Map(recurrenceData.map((r) => [r.ruleId, r._count.ruleId]));
+    totalScans = scanCount;
+  }
 
   const currentScore = scan.score ?? 0;
   const totalViolations = scan.violations.length;

@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
+import { authenticateApiKey } from "@/lib/auth/api-key";
 import { validateScanUrl } from "@/lib/validations/ssrf";
 import { remediate } from "@/lib/remediation/engine";
 import { z } from "zod";
@@ -160,14 +161,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Missing 'key' parameter" }, { status: 401 });
   }
 
-  const { createHash } = await import("crypto");
-  const prefix = apiKey.substring(0, 8);
-  const keyHash = createHash("sha256").update(apiKey).digest("hex");
-  const keyRecord = await prisma.apiKey.findFirst({
-    where: { prefix, keyHash, expiresAt: { gt: new Date() } },
-  });
-
-  if (!keyRecord) {
+  // The key arrives as a bare query param (no "Bearer " prefix);
+  // authenticateApiKey strips that prefix if present and handles bare keys too.
+  const key = await authenticateApiKey(apiKey);
+  if (!key) {
     return NextResponse.json({ error: "Invalid API key" }, { status: 403 });
   }
 
