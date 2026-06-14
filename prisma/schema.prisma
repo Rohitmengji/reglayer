@@ -94,6 +94,7 @@ model Workspace {
   scans        Scan[]
   schedules    Schedule[]
   webhooks     Webhook[]
+  monitors     Monitor[]
   apiKeys      ApiKey[]
   agencyClient AgencyClient?
   featureOverrides WorkspaceFeature[]
@@ -302,6 +303,7 @@ model Schedule {
 
 model Webhook {
   id          String      @id @default(cuid())
+  name        String?
   url         String
   events      String[]    // ["scan.completed", "score.dropped"]
   secret      String?     // HMAC signing secret
@@ -312,6 +314,23 @@ model Webhook {
   workspace   Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@map("webhooks")
+}
+
+model Monitor {
+  id          String    @id @default(cuid())
+  name        String
+  url         String
+  condition   String    // score_below | score_drop | new_critical | new_violations
+  threshold   Int
+  notifyVia   String    @default("webhook")
+  webhookUrl  String?
+  enabled     Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  siteId      String?
+  @@index([workspaceId, url])
+  @@map("monitors")
 }
 
 model ApiKey {
@@ -753,4 +772,49 @@ enum ArticleStatus {
   DRAFT
   PUBLISHED
   ARCHIVED
+}
+
+// ─────────────────────────────────────────────
+// Crawl Durability (R-5) — survives Vercel cold starts
+// ─────────────────────────────────────────────
+
+model CrawlJobRecord {
+  id           String   @id
+  workspaceId  String?
+  userId       String?
+  rootUrl      String
+  status       String   @default("processing") // processing|complete|failed|cancelled
+  progress     Int      @default(0)
+  pagesScanned Int      @default(0)
+  pagesTotal   Int      @default(0)
+  result       Json?
+  error        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([workspaceId, createdAt])
+  @@map("crawl_jobs")
+}
+
+// ─────────────────────────────────────────────
+// RUM Persistence (R-6) — durable real-user events
+// ─────────────────────────────────────────────
+
+model RumEventRecord {
+  id          String   @id @default(cuid())
+  workspaceId String?
+  siteKey     String
+  type        String
+  selector    String
+  page        String
+  sessionId   String
+  viewport    Json?
+  details     Json?
+  userAgent   String?
+  occurredAt  DateTime
+  createdAt   DateTime @default(now())
+
+  @@index([workspaceId, occurredAt])
+  @@index([siteKey, occurredAt])
+  @@map("rum_events")
 }

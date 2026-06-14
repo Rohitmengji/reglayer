@@ -32,8 +32,12 @@ export async function GET(
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
-  // Verify scan exists before consuming credits
-  const scan = await prisma.scan.findUnique({ where: { id }, select: { id: true } });
+  // Verify scan exists before consuming credits. Capture tenant identifiers so
+  // recurrence aggregates stay scoped to this scan's workspace/owner.
+  const scan = await prisma.scan.findUnique({
+    where: { id },
+    select: { id: true, workspaceId: true, userId: true },
+  });
   if (!scan) {
     return NextResponse.json({ error: "Scan not found" }, { status: 404 });
   }
@@ -47,7 +51,10 @@ export async function GET(
   }
 
   try {
-    const report = await generatePriorityReport(id);
+    const report = await generatePriorityReport(id, {
+      workspaceId: scan.workspaceId,
+      userId: scan.userId,
+    });
     return NextResponse.json(report);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";

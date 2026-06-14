@@ -22,11 +22,19 @@ import { logger } from "@/lib/telemetry/logger";
 
 const log = logger.withContext({ module: "scheduleService" });
 
-// Plan limits: minimum interval between runs (in minutes)
+// Plan limits: minimum interval between runs (in minutes).
+//
+// IMPORTANT (C-4): Vercel Hobby allows only ONE daily cron, so the cron runner
+// can physically deliver at most a daily cadence. We must not advertise sub-daily
+// cadences the cron can't honor. ENTERPRISE is therefore set to daily (the smallest
+// the daily cron can deliver) rather than hourly.
+//
+// To honor sub-daily cadences (e.g. hourly), the system needs either a real queue
+// (e.g. Upstash QStash) or a paid Vercel plan with sub-daily cron schedules.
 const PLAN_MIN_INTERVAL: Record<string, number> = {
   FREE: 10080,       // Weekly (7 days)
   PRO: 1440,         // Daily
-  ENTERPRISE: 60,    // Hourly
+  ENTERPRISE: 1440,  // Daily (smallest cadence a single daily Vercel Hobby cron can deliver)
 };
 
 /**
@@ -120,25 +128,74 @@ export async function createScheduleInDB(params: {
 }
 
 /**
- * Get all due schedules (nextRunAt <= now AND enabled).
+ * Get due schedules (nextRunAt <= now AND enabled), oldest first.
+ *
  * Uses a SELECT ... FOR UPDATE SKIP LOCKED pattern conceptually —
- * we mark them as running via lastRunAt update to prevent double execution.
+ * concurrent double-execution is prevented by the atomic claim
+ * (see {@link claimSchedule}), which advances nextRunAt before the scan runs.
+ *
+ * @param take    Max rows to fetch this batch (default 10).
+ * @param exclude Schedule ids already handled this run — excluded so a drain
+ *                loop fetching successive batches doesn't re-fetch the same rows
+ *                (e.g. ones deferred for per-workspace fairness or already claimed).
  */
-export async function getDueSchedules() {
+export async function getDueSchedules(take = 10, exclude: string[] = []) {
   const now = new Date();
 
   return prisma.schedule.findMany({
     where: {
       enabled: true,
       nextRunAt: { lte: now },
+      ...(exclude.length > 0 ? { id: { notIn: exclude } } : {}),
     },
     include: {
       site: { select: { url: true, name: true } },
       workspace: { select: { id: true, plan: true, members: { select: { userId: true, role: true, user: { select: { email: true } } }, take: 1, where: { role: "OWNER" } } } },
     },
     orderBy: { nextRunAt: "asc" },
-    take: 10, // Process max 10 per cron invocation to stay within timeout
+    take,
   });
+}
+
+/**
+ * Atomically claim a due schedule before running it (C1/REL-02).
+ *
+ * `getDueSchedules` is an unlocked read, so two concurrent cron invocations can
+ * both see the same due schedule and double-run it. To close that read/run/update
+ * window we optimistically claim the row: a conditional updateMany that advances
+ * nextRunAt to its provisional next value ONLY if nextRunAt still equals the value
+ * we read. This mirrors the optimistic WHERE-guarded update used by consumeCredits.
+ *
+ * Returns true if THIS caller won the claim (count === 1) and should run the scan;
+ * false if another invocation already claimed it (count === 0).
+ *
+ * On success the schedule is already advanced to its next run, so a crash mid-scan
+ * won't cause an infinite retry. markScheduleExecuted/markScheduleFailed still run
+ * afterwards to record lastRunAt and recompute nextRunAt from the completion time.
+ *
+ * @param scheduleId      The schedule to claim.
+ * @param expectedNextRun The nextRunAt value observed when the row was read.
+ * @param cron            The cron expression, used to compute the provisional next run.
+ */
+export async function claimSchedule(
+  scheduleId: string,
+  expectedNextRun: Date | null,
+  cron: string,
+): Promise<boolean> {
+  // Provisional next run, computed from the value we read so it's deterministic
+  // across concurrent invocations that read the same row.
+  const provisionalNext = calculateNextRun(cron, expectedNextRun ?? new Date());
+
+  const result = await prisma.schedule.updateMany({
+    where: {
+      id: scheduleId,
+      enabled: true,
+      nextRunAt: expectedNextRun,
+    },
+    data: { nextRunAt: provisionalNext },
+  });
+
+  return result.count === 1;
 }
 
 /**

@@ -47,6 +47,12 @@ export async function GET() {
     include: { site: { select: { url: true, name: true } } },
   });
 
+  // Alert rules (workspace-scoped Monitor records)
+  const rules = await prisma.monitor.findMany({
+    where: { workspaceId: member.workspaceId },
+    orderBy: { createdAt: "desc" },
+  });
+
   // Also get recent alert triggers from audit log (workspace-scoped)
   const recentAlerts = await prisma.auditLog.findMany({
     where: { action: "alert.triggered", workspaceId: member.workspaceId },
@@ -54,7 +60,7 @@ export async function GET() {
     take: 20,
   });
 
-  return NextResponse.json({ monitors: schedules, recentAlerts });
+  return NextResponse.json({ monitors: schedules, rules, recentAlerts });
 }
 
 /**\n * POST /api/monitors — Create a monitoring rule\n */
@@ -62,6 +68,15 @@ export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Scope to user's workspace
+  const member = await prisma.workspaceMember.findFirst({
+    where: { user: { email: session.user.email } },
+  });
+
+  if (!member) {
+    return NextResponse.json({ error: "No workspace found" }, { status: 403 });
   }
 
   let body: unknown;
@@ -81,31 +96,37 @@ export async function POST(request: NextRequest) {
 
   const { name, url, condition, threshold, notifyVia, webhookUrl, enabled } = parsed.data;
 
-  // Create or find site
-  let site = await prisma.site.findFirst({ where: { url } });
+  // Create or find site (scoped to this workspace)
+  let site = await prisma.site.findFirst({ where: { url, workspaceId: member.workspaceId } });
   if (!site) {
     site = await prisma.site.create({
-      data: { url, name: new URL(url).hostname, workspaceId: "" },
+      data: { url, name: new URL(url).hostname, workspaceId: member.workspaceId },
     });
   }
 
-  // Create schedule (monitoring rule)
+  // Create schedule (drives the recurring scans)
   const schedule = await prisma.schedule.create({
     data: {
       name,
       cron: "0 */6 * * *", // every 6 hours by default
       enabled,
-      workspaceId: site.workspaceId,
+      workspaceId: member.workspaceId,
       siteId: site.id,
     },
   });
 
-  // Store alert config in audit log as metadata (lightweight approach)
-  await prisma.auditLog.create({
+  // Persist the alert rule as a workspace-scoped Monitor record
+  await prisma.monitor.create({
     data: {
-      action: "monitor.created",
-      target: schedule.id,
-      metadata: { condition, threshold, notifyVia, webhookUrl, url },
+      name,
+      url,
+      condition,
+      threshold,
+      notifyVia,
+      webhookUrl,
+      enabled,
+      workspaceId: member.workspaceId,
+      siteId: site.id,
     },
   });
 

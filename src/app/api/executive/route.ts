@@ -22,10 +22,21 @@ export async function GET() {
       ? { workspaceId }
       : { userId };
 
-    // Get all completed scans
-    const allScans = await prisma.scan.findMany({
-      where: { status: "COMPLETED", ...scopeFilter },
+    // 12-week window for the trend chart + bounded site rankings.
+    const now = new Date();
+    const trendWindowStart = new Date(now);
+    trendWindowStart.setDate(trendWindowStart.getDate() - 12 * 7);
+
+    // Bounded recent set (mirrors trends/dashboard take:500 pattern) used for
+    // weekly trend + site rankings — NOT for portfolio-wide totals.
+    const recentScans = await prisma.scan.findMany({
+      where: {
+        status: "COMPLETED",
+        ...scopeFilter,
+        createdAt: { gte: trendWindowStart },
+      },
       orderBy: { createdAt: "desc" },
+      take: 500,
       select: {
         id: true,
         url: true,
@@ -35,9 +46,23 @@ export async function GET() {
       },
     });
 
+    // Portfolio-wide totals come from an aggregate, not in-memory reduction,
+    // so the biggest tenants don't load every scan into memory.
+    const portfolioAgg = await prisma.scan.aggregate({
+      where: { status: "COMPLETED", ...scopeFilter },
+      _avg: { score: true },
+      _sum: { totalViolations: true },
+      _count: true,
+    });
+    const portfolioAvgScore = portfolioAgg._avg.score !== null
+      ? Math.round(portfolioAgg._avg.score)
+      : 0;
+    const portfolioTotalScans = portfolioAgg._count;
+    const portfolioTotalViolations = portfolioAgg._sum.totalViolations ?? 0;
+
     // Group by site (hostname)
-    const siteMap = new Map<string, typeof allScans>();
-    for (const scan of allScans) {
+    const siteMap = new Map<string, typeof recentScans>();
+    for (const scan of recentScans) {
       let hostname: string;
       try {
         hostname = new URL(scan.url).hostname;
@@ -73,12 +98,6 @@ export async function GET() {
     // Sort by score ascending (worst first for attention)
     siteRankings.sort((a, b) => a.latestScore - b.latestScore);
 
-    // Portfolio metrics
-    const allScores = allScans.map((s) => s.score).filter((s): s is number => s !== null);
-    const portfolioAvgScore = allScores.length
-      ? Math.round(allScores.reduce((a, b) => a + b, 0) / allScores.length)
-      : 0;
-
     // Compliance distribution
     const complianceBuckets = { critical: 0, needsWork: 0, passing: 0, excellent: 0 };
     for (const site of siteRankings) {
@@ -89,7 +108,6 @@ export async function GET() {
     }
 
     // Trend over time (weekly averages for last 12 weeks)
-    const now = new Date();
     const weeklyTrend: { week: string; avgScore: number; scanCount: number }[] = [];
     for (let w = 11; w >= 0; w--) {
       const weekStart = new Date(now);
@@ -97,7 +115,7 @@ export async function GET() {
       const weekEnd = new Date(now);
       weekEnd.setDate(weekEnd.getDate() - w * 7);
 
-      const weekScans = allScans.filter((s) => {
+      const weekScans = recentScans.filter((s) => {
         const d = new Date(s.createdAt);
         return d >= weekStart && d < weekEnd;
       });
@@ -134,9 +152,9 @@ export async function GET() {
     return NextResponse.json({
       portfolio: {
         totalSites: siteRankings.length,
-        totalScans: allScans.length,
+        totalScans: portfolioTotalScans,
         avgScore: portfolioAvgScore,
-        totalViolations: allScans.reduce((sum, s) => sum + (s.totalViolations ?? 0), 0),
+        totalViolations: portfolioTotalViolations,
         complianceBuckets,
       },
       siteRankings: siteRankings.slice(0, 20),

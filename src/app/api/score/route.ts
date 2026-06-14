@@ -11,21 +11,36 @@
  * HOW: Fetches scan + violations from DB, collects optional historical scores,
  *      delegates to ais-engine.ts for pure computation.
  *
- * Public: No auth required (same as report page) — enables shareable score URLs.
+ * Auth: Requires an authenticated session that owns the scan (cross-tenant
+ *       reads of another workspace's scan were possible while this was public).
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
+import { assertScanAccess } from "@/lib/auth/access";
 import { calculateAIS } from "@/lib/intelligence/ais-engine";
 import type { AccessibilityViolation, ScanSummary } from "@/lib/types";
 
 export async function GET(request: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+  }
+
   const { searchParams } = new URL(request.url);
   const scanId = searchParams.get("scanId");
   const includeHistory = searchParams.get("history") === "true";
 
   if (!scanId) {
     return NextResponse.json({ error: "scanId query parameter is required" }, { status: 400 });
+  }
+
+  // Ownership check — the caller must own the scan being scored.
+  const access = await assertScanAccess(scanId, session);
+  if (!access.ok) {
+    return NextResponse.json({ error: access.error }, { status: access.status });
   }
 
   // Fetch scan with violations
@@ -64,12 +79,20 @@ export async function GET(request: NextRequest) {
     score: scan.score ?? 0,
   };
 
+  // Tenant scope for history/aggregation — never aggregate across the bare URL
+  // (which would mix in other tenants' scans of the same site). Scope to the
+  // owning workspace, or to the owning user for legacy workspace-less scans.
+  const tenantScope = scan.workspaceId
+    ? { workspaceId: scan.workspaceId }
+    : { userId: scan.userId };
+
   // Optional: fetch historical scores for velocity dimension
   let historicalScores: Array<{ score: number; date: string }> | undefined;
 
   if (includeHistory && scan.url) {
     const historicalScans = await prisma.scan.findMany({
       where: {
+        ...tenantScope,
         url: scan.url,
         status: "COMPLETED",
         createdAt: { lt: scan.createdAt },
@@ -89,9 +112,10 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // Count pages scanned for this URL (structural depth context)
+  // Count pages scanned for this URL (structural depth context), scoped to the
+  // owning tenant so the count never leaks other workspaces' scan activity.
   const pagesScanned = await prisma.scan.count({
-    where: { url: scan.url, status: "COMPLETED" },
+    where: { ...tenantScope, url: scan.url, status: "COMPLETED" },
   });
 
   // Calculate AIS

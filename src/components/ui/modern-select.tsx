@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useId } from "react";
 import { ChevronDown, Check } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
@@ -27,8 +27,19 @@ export function ModernSelect({
   className,
 }: ModernSelectProps) {
   const [open, setOpen] = useState(false);
+  const [focusedIndex, setFocusedIndex] = useState(-1);
   const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const typeaheadRef = useRef<{ query: string; timer: ReturnType<typeof setTimeout> | null }>({
+    query: "",
+    timer: null,
+  });
+  const baseId = useId();
+  const listboxId = `${baseId}-listbox`;
+  const optionId = (i: number) => `${baseId}-option-${i}`;
   const activeOption = options.find((o) => o.value === value);
+  const selectedIndex = options.findIndex((o) => o.value === value);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -38,6 +49,88 @@ export function ModernSelect({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // When opening, focus the currently-selected option (or first).
+  useEffect(() => {
+    if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: seed the focused option when the listbox opens
+      setFocusedIndex(selectedIndex >= 0 ? selectedIndex : 0);
+    }
+  }, [open, selectedIndex]);
+
+  // Keep the focused option scrolled into view.
+  useEffect(() => {
+    if (!open || focusedIndex < 0) return;
+    const el = listRef.current?.querySelector(`#${CSS.escape(`${baseId}-option-${focusedIndex}`)}`);
+    el?.scrollIntoView({ block: "nearest" });
+  }, [open, focusedIndex, baseId]);
+
+  function closeAndRestore() {
+    setOpen(false);
+    triggerRef.current?.focus();
+  }
+
+  function selectIndex(i: number) {
+    const opt = options[i];
+    if (!opt) return;
+    onChange(opt.value);
+    closeAndRestore();
+  }
+
+  function handleTypeahead(char: string) {
+    const ta = typeaheadRef.current;
+    if (ta.timer) clearTimeout(ta.timer);
+    ta.query += char.toLowerCase();
+    const match = options.findIndex((o) => o.label.toLowerCase().startsWith(ta.query));
+    if (match >= 0) setFocusedIndex(match);
+    ta.timer = setTimeout(() => {
+      ta.query = "";
+    }, 500);
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (!open) {
+      if (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        setOpen(true);
+      }
+      return;
+    }
+    switch (e.key) {
+      case "ArrowDown":
+        e.preventDefault();
+        setFocusedIndex((i) => Math.min(i + 1, options.length - 1));
+        break;
+      case "ArrowUp":
+        e.preventDefault();
+        setFocusedIndex((i) => Math.max(i - 1, 0));
+        break;
+      case "Home":
+        e.preventDefault();
+        setFocusedIndex(0);
+        break;
+      case "End":
+        e.preventDefault();
+        setFocusedIndex(options.length - 1);
+        break;
+      case "Enter":
+      case " ":
+        e.preventDefault();
+        if (focusedIndex >= 0) selectIndex(focusedIndex);
+        break;
+      case "Escape":
+        e.preventDefault();
+        closeAndRestore();
+        break;
+      case "Tab":
+        setOpen(false);
+        break;
+      default:
+        if (e.key.length === 1 && !e.metaKey && !e.ctrlKey && !e.altKey) {
+          handleTypeahead(e.key);
+        }
+    }
+  }
+
   return (
     <div className={cn("relative", className)} ref={ref}>
       {label && (
@@ -46,10 +139,16 @@ export function ModernSelect({
         </label>
       )}
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen(!open)}
+        onKeyDown={handleKeyDown}
         className="inline-flex w-full items-center justify-between gap-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm text-neutral-900 dark:text-white hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-all"
+        role="combobox"
+        aria-haspopup="listbox"
         aria-expanded={open}
+        aria-controls={listboxId}
+        aria-activedescendant={open && focusedIndex >= 0 ? optionId(focusedIndex) : undefined}
       >
         <span className={activeOption ? "" : "text-neutral-400"}>
           {activeOption?.label ?? placeholder}
@@ -59,27 +158,37 @@ export function ModernSelect({
         />
       </button>
       {open && (
-        <div className="absolute left-0 top-full mt-1.5 w-full min-w-0 sm:min-w-40 max-h-60 overflow-y-auto rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-lg shadow-neutral-200/50 dark:shadow-neutral-900/50 py-1.5 z-50">
-          {options.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => {
-                onChange(opt.value);
-                setOpen(false);
-              }}
-              className={`flex w-full items-center gap-2.5 px-3 py-2 text-sm transition-colors ${
-                value === opt.value
-                  ? "bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white font-medium"
-                  : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-white"
-              }`}
-            >
-              <span className="flex-1 text-left">{opt.label}</span>
-              {value === opt.value && (
-                <Check className="h-3.5 w-3.5 text-green-600 shrink-0" />
-              )}
-            </button>
-          ))}
+        <div
+          ref={listRef}
+          id={listboxId}
+          role="listbox"
+          aria-label={label ?? placeholder}
+          className="absolute left-0 top-full mt-1.5 w-full min-w-0 sm:min-w-40 max-h-60 overflow-y-auto rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-lg shadow-neutral-200/50 dark:shadow-neutral-900/50 py-1.5 z-50"
+        >
+          {options.map((opt, i) => {
+            const isSelected = value === opt.value;
+            const isFocused = i === focusedIndex;
+            return (
+              <div
+                key={opt.value}
+                id={optionId(i)}
+                role="option"
+                aria-selected={isSelected}
+                onClick={() => selectIndex(i)}
+                onMouseEnter={() => setFocusedIndex(i)}
+                className={`flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-sm transition-colors ${
+                  isSelected
+                    ? "bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white font-medium"
+                    : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
+                } ${isFocused ? "bg-neutral-50 dark:bg-neutral-800/70" : ""}`}
+              >
+                <span className="flex-1 text-left">{opt.label}</span>
+                {isSelected && (
+                  <Check className="h-3.5 w-3.5 text-green-600 shrink-0" />
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

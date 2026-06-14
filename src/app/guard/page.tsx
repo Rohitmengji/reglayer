@@ -9,6 +9,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useI18n } from "@/components/i18n-provider";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   ShieldCheck,
   ShieldAlert,
@@ -42,6 +43,7 @@ export default function GuardPage() {
   const [policies, setPolicies] = useState<GuardPolicyView[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   const loadPolicies = useCallback(async () => {
     try {
@@ -79,6 +81,7 @@ export default function GuardPage() {
   const deletePolicy = async (policyId: string) => {
     await fetch(`/api/guard/${policyId}`, { method: "DELETE" });
     setPolicies((prev) => prev.filter((p) => p.id !== policyId));
+    setDeleteTarget(null);
   };
 
   if (loading) {
@@ -214,9 +217,10 @@ export default function GuardPage() {
                     <Settings2 className="h-4 w-4" />
                   </button>
                   <button
-                    onClick={() => deletePolicy(policy.id)}
+                    onClick={() => setDeleteTarget(policy.id)}
                     className="rounded-md border border-gray-200 p-1.5 text-red-500 hover:bg-red-50 dark:border-gray-600 dark:hover:bg-red-900/20"
                     title="Delete"
+                    aria-label={`Delete policy ${policy.name}`}
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -253,6 +257,16 @@ export default function GuardPage() {
     echo "✅ Regression Guard passed"`}
         </pre>
       </div>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="Delete guard policy"
+        description="Are you sure you want to delete this guard policy? CI gates relying on it will stop blocking deployments. This action cannot be undone."
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={() => deleteTarget && deletePolicy(deleteTarget)}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

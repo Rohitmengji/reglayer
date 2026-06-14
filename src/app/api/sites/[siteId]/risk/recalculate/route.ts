@@ -9,6 +9,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
 import { calculateLitigationRisk, INDUSTRY_MULTIPLIERS, GEO_MULTIPLIERS } from "@/lib/risk/legalRiskEngine";
+import { assertSiteAccess } from "@/lib/auth/access";
 import { z } from "zod";
 
 const recalculateSchema = z.object({
@@ -27,6 +28,12 @@ export async function POST(
     }
 
     const { siteId } = await params;
+
+    // Ownership check — the caller must own the site before recalculating risk.
+    const access = await assertSiteAccess(siteId, session);
+    if (!access.ok) {
+      return NextResponse.json({ error: access.error }, { status: access.status });
+    }
 
     const body = await request.json();
     const parsed = recalculateSchema.safeParse(body);

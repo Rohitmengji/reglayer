@@ -7,7 +7,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/database/prisma";
-import { createHash } from "crypto";
+import { authenticateApiKey } from "@/lib/auth/api-key";
 import { validateScanUrl } from "@/lib/validations/ssrf";
 import { z } from "zod";
 
@@ -40,29 +40,21 @@ const gateSchema = z.object({
 export async function POST(request: NextRequest) {
   // API key authentication
   const authHeader = request.headers.get("authorization");
-  const apiKey = authHeader?.replace("Bearer ", "");
-
-  if (!apiKey) {
+  if (!authHeader?.replace("Bearer ", "")) {
     return NextResponse.json(
       { error: "Authorization required. Use: Authorization: Bearer <api-key>" },
       { status: 401 }
     );
   }
 
-  // Validate API key — hash and compare against stored key hash
-  const prefix = apiKey.substring(0, 8);
-  const keyHash = createHash("sha256").update(apiKey).digest("hex");
-  const keyRecord = await prisma.apiKey.findFirst({
-    where: { prefix, keyHash, expiresAt: { gt: new Date() } },
-  });
-
-  if (!keyRecord) {
+  const key = await authenticateApiKey(authHeader);
+  if (!key) {
     return NextResponse.json({ error: "Invalid API key" }, { status: 403 });
   }
 
   // Update last used timestamp
   await prisma.apiKey.update({
-    where: { id: keyRecord.id },
+    where: { id: key.id },
     data: { lastUsedAt: new Date() },
   }).catch(() => {/* non-critical */});
 
@@ -89,11 +81,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: ssrfError, passed: false }, { status: 400 });
   }
 
+  // Scope this scan to the key's workspace/owner so the scan (and the billing it
+  // accrues) is attributed to the correct tenant rather than persisted orphaned.
+  let ownerEmail: string | undefined;
+  if (key.userId) {
+    const owner = await prisma.user.findUnique({
+      where: { id: key.userId },
+      select: { email: true },
+    });
+    ownerEmail = owner?.email;
+  }
+
   // Trigger scan via internal service
   const { performScan } = await import("@/services/scanService");
-  
+
   try {
-    const result = await performScan({ url });
+    const result = await performScan({ url, userEmail: ownerEmail });
 
     const score = result.scan.summary.score;
     const critical = result.scan.summary.critical;

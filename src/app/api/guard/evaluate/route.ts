@@ -5,44 +5,46 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { createHash } from "crypto";
-import { prisma } from "@/lib/database/prisma";
+import { authenticateApiKey } from "@/lib/auth/api-key";
 import { evaluateGuard } from "@/lib/guard/guardEngine";
 
 export async function POST(request: NextRequest) {
   try {
     // API key authentication (for CI/CD use)
     const authHeader = request.headers.get("authorization");
-    const apiKey = authHeader?.replace("Bearer ", "");
-
-    if (!apiKey) {
+    if (!authHeader?.replace("Bearer ", "")) {
       return NextResponse.json(
         { error: "Authorization required. Use: Authorization: Bearer <api-key>" },
         { status: 401 }
       );
     }
 
-    const prefix = apiKey.substring(0, 8);
-    const keyHash = createHash("sha256").update(apiKey).digest("hex");
-    const keyRecord = await prisma.apiKey.findFirst({
-      where: { prefix, keyHash, expiresAt: { gt: new Date() } },
-    });
-
-    if (!keyRecord) {
+    const key = await authenticateApiKey(authHeader);
+    if (!key) {
       return NextResponse.json({ error: "Invalid API key" }, { status: 403 });
     }
 
     const body = await request.json();
-    const { scanId, siteId, workspaceId } = body;
+    const { scanId, siteId } = body;
 
-    if (!scanId || !siteId || !workspaceId) {
+    if (!scanId || !siteId) {
       return NextResponse.json(
-        { error: "Required: scanId, siteId, workspaceId" },
+        { error: "Required: scanId, siteId" },
         { status: 400 }
       );
     }
 
-    const verdicts = await evaluateGuard(scanId, siteId, workspaceId);
+    // S-6: ignore any caller-supplied workspaceId and always scope to the key's
+    // workspace. If the body names a different workspace, reject it outright so a
+    // valid key can never be pointed at another tenant's data.
+    if (body.workspaceId && body.workspaceId !== key.workspaceId) {
+      return NextResponse.json(
+        { error: "workspaceId does not match the authenticated API key" },
+        { status: 403 }
+      );
+    }
+
+    const verdicts = await evaluateGuard(scanId, siteId, key.workspaceId);
 
     const allPassed = verdicts.length === 0 || verdicts.every((v) => v.passed);
 

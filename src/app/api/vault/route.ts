@@ -8,6 +8,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
 import { issueProof, listProofs } from "@/lib/vault/proofEngine";
+import { assertScanAccess, assertSiteAccess } from "@/lib/auth/access";
 import type { ProofType } from "@/generated/prisma/client";
 
 export async function GET(request: NextRequest) {
@@ -69,6 +70,31 @@ export async function POST(request: NextRequest) {
     });
     if (!member) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
+    }
+
+    // Verify the caller owns the scan being attested, and that the scan is bound
+    // to the workspace the proof claims to attest (no cross-tenant proof forgery).
+    const scanAccess = await assertScanAccess(scanId, session);
+    if (!scanAccess.ok) {
+      return NextResponse.json({ error: scanAccess.error }, { status: scanAccess.status });
+    }
+    if (scanAccess.workspaceId !== workspaceId) {
+      return NextResponse.json(
+        { error: "Scan does not belong to the specified workspace" },
+        { status: 403 }
+      );
+    }
+
+    // Verify the caller owns the site, and that it belongs to the same workspace.
+    const siteAccess = await assertSiteAccess(siteId, session);
+    if (!siteAccess.ok) {
+      return NextResponse.json({ error: siteAccess.error }, { status: siteAccess.status });
+    }
+    if (siteAccess.workspaceId !== workspaceId) {
+      return NextResponse.json(
+        { error: "Site does not belong to the specified workspace" },
+        { status: 403 }
+      );
     }
 
     const result = await issueProof({

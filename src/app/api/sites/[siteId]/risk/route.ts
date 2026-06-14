@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
+import { assertSiteAccess } from "@/lib/auth/access";
 
 export async function GET(
   _request: NextRequest,
@@ -20,6 +21,12 @@ export async function GET(
     }
 
     const { siteId } = await params;
+
+    // Ownership check — the caller must own the site.
+    const access = await assertSiteAccess(siteId, session);
+    if (!access.ok) {
+      return NextResponse.json({ error: access.error }, { status: access.status });
+    }
 
     const riskScore = await prisma.litigationRiskScore.findFirst({
       where: { siteId },

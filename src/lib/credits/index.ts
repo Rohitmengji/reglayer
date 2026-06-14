@@ -40,10 +40,14 @@ export async function checkCredits(userId: string): Promise<{
   const plan = user.plan as PlanType;
   const limit = PLAN_LIMITS[plan].aiCredits;
 
-  // Check if credit reset is due (monthly)
+  // Check if credit reset is due (monthly).
+  // FIX C6: use UTC calendar-month boundaries so the reset trigger matches the
+  // displayed next-reset date (getNextCreditReset) and the UTC scan-quota window.
   const now = new Date();
   const resetAt = new Date(user.creditResetAt);
-  const monthsSinceReset = (now.getFullYear() - resetAt.getFullYear()) * 12 + (now.getMonth() - resetAt.getMonth());
+  const monthsSinceReset =
+    (now.getUTCFullYear() - resetAt.getUTCFullYear()) * 12 +
+    (now.getUTCMonth() - resetAt.getUTCMonth());
 
   let creditsUsed = user.aiCreditsUsed;
 
@@ -126,6 +130,52 @@ export async function consumeCredits(userId: string, action: AiAction): Promise<
     creditsRemaining: totalLimit - newUsed,
     cost,
   };
+}
+
+/**
+ * Refund previously-consumed AI credits for an action.
+ *
+ * WHY (FIX C7): Credits are consumed BEFORE the expensive/failure-prone work
+ * runs (e.g. an OpenAI call, or a scan). If that work fails or is skipped, the
+ * credit must not be permanently consumed. Callers that consume credits up
+ * front should call this on their failure path so the user is made whole.
+ *
+ * Uses an atomic, floored decrement so a refund can never push usage below 0
+ * (e.g. if a monthly reset happened between consume and refund). Master admins
+ * never had credits consumed, so refunds are a no-op for them.
+ */
+export async function refundCredits(userId: string, action: AiAction): Promise<void> {
+  const cost = AI_CREDIT_COSTS[action];
+  if (cost <= 0) return;
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { isMasterAdmin: true },
+  });
+  // Master admins never had credits deducted — nothing to refund.
+  if (!user || user.isMasterAdmin) return;
+
+  // Floored decrement: GREATEST(0, used - cost) prevents negative balances.
+  await prisma.$executeRaw`
+    UPDATE users
+    SET "aiCreditsUsed" = GREATEST(0, "aiCreditsUsed" - ${cost}), "updatedAt" = NOW()
+    WHERE id = ${userId}
+  `;
+}
+
+/**
+ * The canonical calendar-month reset boundary used for AI credits.
+ *
+ * FIX C6: The displayed "next reset" date must derive from the SAME rule that
+ * actually triggers the reset. Credits reset at the start of a new calendar
+ * month (see checkCredits' month-delta logic). Compute that boundary in UTC so
+ * it agrees with the UTC-based monthly scan-quota window (FIX C5) and never
+ * drifts by a day in non-UTC server timezones.
+ *
+ * @returns The first instant of next month, in UTC.
+ */
+export function getNextCreditReset(now: Date = new Date()): Date {
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
 }
 
 /**

@@ -5,8 +5,10 @@
  *
  * Vercel Cron endpoint that executes due scan schedules.
  *
- * Invoked every 5 minutes by Vercel Cron. Protected by
- * CRON_SECRET header (Vercel injects this automatically for
+ * Invoked once daily by Vercel Cron (Hobby plan allows a single daily cron;
+ * see vercel.json "0 6 * * *"). Because runs are infrequent, each invocation
+ * DRAINS the due backlog within its time budget instead of stopping after one
+ * batch. Protected by CRON_SECRET header (Vercel injects this automatically for
  * cron jobs, and we validate it for manual triggers).
  *
  * Pipeline per schedule:
@@ -17,20 +19,21 @@
  * 5. Log to audit trail
  *
  * Safety:
- * - Processes max 10 schedules per invocation (Vercel 60s limit)
+ * - Drains the due backlog within a 50s budget (Vercel 60s limit), in batches
+ * - Per-workspace fairness so one tenant can't starve others in a single run
  * - Each schedule failure is isolated (doesn't block others)
- * - Idempotent: double-invocation is safe due to nextRunAt guard
- * - Rate-limited by plan (Free=weekly, Pro=daily, Enterprise=hourly)
+ * - Atomic claim per schedule (C1/REL-02) so concurrent invocations don't double-run
+ * - Rate-limited by plan (Free=weekly, Pro=daily, Enterprise=daily)
  * ---------------------------------------------------------
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { performScan } from "@/services/scanService";
 import { detectRegressions } from "@/lib/intelligence/regressionDetector";
-import { getDueSchedules, markScheduleExecuted, markScheduleFailed } from "@/lib/scheduling/scheduleService";
+import { getDueSchedules, claimSchedule, markScheduleExecuted, markScheduleFailed } from "@/lib/scheduling/scheduleService";
 import { sendRegressionAlert } from "@/lib/email/service";
 import { dispatchToIntegrations } from "@/lib/integrations/dispatcher";
-import { dispatchWebhookEvent } from "@/lib/integrations/webhookDispatcher";
+import { dispatchWebhookEvent, redeliverFailedWebhooks } from "@/lib/integrations/webhookDispatcher";
 import { prisma } from "@/lib/database/prisma";
 import { logger } from "@/lib/telemetry/logger";
 
@@ -39,9 +42,18 @@ const log = logger.withContext({ module: "cron:run-schedules" });
 export const maxDuration = 60; // Vercel max for cron functions
 export const dynamic = "force-dynamic";
 
+// Time budget per invocation. Vercel caps cron functions at 60s; leave headroom
+// for the response + the webhook redelivery sweep.
+const TIME_BUDGET_MS = 50_000;
+// How many schedules to fetch per batch while draining the backlog.
+const BATCH_SIZE = 10;
+// Per-workspace fairness cap: max schedules we run for a single workspace per
+// invocation, so one tenant's large backlog can't starve other tenants.
+const MAX_PER_WORKSPACE = 3;
+
 /**
  * GET /api/cron/run-schedules
- * Triggered by Vercel Cron every 5 minutes.
+ * Triggered once daily by Vercel Cron (see vercel.json "0 6 * * *").
  */
 export async function GET(request: NextRequest) {
   // Verify cron secret (Vercel sends this automatically for cron jobs)
@@ -56,38 +68,74 @@ export async function GET(request: NextRequest) {
   const startTime = Date.now();
   const results: ExecutionResult[] = [];
 
+  // Track schedules already handled this run (claimed/run/skipped/deferred) so
+  // successive batch fetches exclude them and the loop makes forward progress.
+  const handledIds = new Set<string>();
+  // Per-workspace counter enforcing fairness across the whole invocation.
+  const perWorkspaceCount = new Map<string, number>();
+  // Count of schedules skipped this run because their workspace hit the fairness
+  // cap. They stay due (their nextRunAt isn't advanced) and are picked up by a
+  // later invocation; meanwhile they're added to handledIds so this run's drain
+  // loop doesn't re-fetch and re-evaluate them.
+  let deferredForFairness = 0;
+  let budgetHit = false;
+
   try {
-    const dueSchedules = await getDueSchedules();
+    // C-4: DRAIN the backlog. Vercel Hobby permits only one daily cron, so a
+    // single run must process as many due schedules as the time budget allows
+    // instead of stopping after the first batch of 10. We loop, fetching the
+    // oldest-due schedules and processing them until either nothing is due or
+    // the time budget is reached.
+    while (Date.now() - startTime <= TIME_BUDGET_MS) {
+      const batch = await getDueSchedules(BATCH_SIZE, [...handledIds]);
+      if (batch.length === 0) break; // backlog drained
 
-    if (dueSchedules.length === 0) {
-      return NextResponse.json({
-        message: "No schedules due",
-        executedAt: new Date().toISOString(),
-        next: "Checking again in 5 minutes",
-      });
-    }
+      for (const schedule of batch) {
+        // Stop cleanly if we're out of budget mid-batch.
+        if (Date.now() - startTime > TIME_BUDGET_MS) {
+          budgetHit = true;
+          break;
+        }
 
-    log.info(`Processing ${dueSchedules.length} due schedule(s)`);
+        handledIds.add(schedule.id);
 
-    // Process each schedule sequentially to avoid overloading the scanner
-    for (const schedule of dueSchedules) {
-      const url = schedule.site.url;
-      const workspaceId = schedule.workspaceId;
-      const ownerEmail = schedule.workspace.members[0]?.user?.email;
+        const workspaceId = schedule.workspaceId;
 
-      const result = await executeScheduledScan({
-        scheduleId: schedule.id,
-        scheduleName: schedule.name,
-        url,
-        cron: schedule.cron,
-        workspaceId,
-        ownerEmail,
-      });
+        // Per-workspace fairness: cap how many of one tenant's schedules run per
+        // invocation so a tenant with a huge backlog can't starve the others.
+        const ranForWorkspace = perWorkspaceCount.get(workspaceId) ?? 0;
+        if (ranForWorkspace >= MAX_PER_WORKSPACE) {
+          deferredForFairness++;
+          continue;
+        }
 
-      results.push(result);
+        // C1/REL-02: atomically claim the schedule before running it. The claim
+        // advances nextRunAt past the value we read; only the invocation whose
+        // conditional update affected a row (count === 1) proceeds. A losing
+        // invocation (another already claimed it) skips silently — no double-run.
+        const claimed = await claimSchedule(schedule.id, schedule.nextRunAt, schedule.cron);
+        if (!claimed) {
+          log.info("Schedule already claimed by another run, skipping", { scheduleId: schedule.id });
+          continue;
+        }
 
-      // Safety: if we've used more than 50s, stop and let next invocation handle the rest
-      if (Date.now() - startTime > 50_000) {
+        const url = schedule.site.url;
+        const ownerEmail = schedule.workspace.members[0]?.user?.email;
+
+        const result = await executeScheduledScan({
+          scheduleId: schedule.id,
+          scheduleName: schedule.name,
+          url,
+          cron: schedule.cron,
+          workspaceId,
+          ownerEmail,
+        });
+
+        results.push(result);
+        perWorkspaceCount.set(workspaceId, ranForWorkspace + 1);
+      }
+
+      if (budgetHit) {
         log.warn("Approaching timeout, deferring remaining schedules");
         break;
       }
@@ -96,13 +144,36 @@ export async function GET(request: NextRequest) {
     const succeeded = results.filter((r) => r.status === "success").length;
     const failed = results.filter((r) => r.status === "failed").length;
 
-    log.info("Cron execution complete", { succeeded, failed, durationMs: Date.now() - startTime });
+    // R-4: best-effort webhook redelivery sweep within remaining budget. Replays
+    // recent terminal webhook failures (the DLQ) and marks them handled. Fully
+    // isolated so a sweep error never fails the cron run.
+    let redelivery: { attempted: number; redelivered: number; stillFailing: number } | undefined;
+    if (Date.now() - startTime < TIME_BUDGET_MS) {
+      try {
+        redelivery = await redeliverFailedWebhooks();
+      } catch (sweepErr) {
+        log.warn("Webhook redelivery sweep failed", {
+          error: sweepErr instanceof Error ? sweepErr.message : "Unknown",
+        });
+      }
+    }
+
+    log.info("Cron execution complete", {
+      succeeded,
+      failed,
+      deferredForFairness,
+      budgetHit,
+      durationMs: Date.now() - startTime,
+    });
 
     return NextResponse.json({
       executedAt: new Date().toISOString(),
       processed: results.length,
       succeeded,
       failed,
+      deferredForFairness,
+      budgetHit,
+      redelivery,
       results: results.map((r) => ({
         scheduleId: r.scheduleId,
         url: r.url,
@@ -197,7 +268,7 @@ async function executeScheduledScan(params: {
       regression: regression.isRegression
         ? { scoreDelta: regression.scoreDelta, newViolations: regression.newViolations.length }
         : null,
-    }).catch(() => {/* non-blocking */});
+    }, workspaceId).catch(() => {/* non-blocking */});
 
     // 6. Mark schedule as executed + calculate next run
     await markScheduleExecuted(scheduleId, cron);
@@ -298,5 +369,5 @@ async function handleRegression(
     newViolations: regression.newViolations,
     fixedViolations: regression.fixedViolations,
     reportUrl,
-  }).catch(() => {});
+  }, workspaceId).catch(() => {});
 }

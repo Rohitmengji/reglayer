@@ -28,7 +28,8 @@
 import { launchBrowser } from "@/lib/scanner/browser/launch";
 import { applyAuthToContext, AuthenticationError } from "@/lib/scanner/auth";
 import { executeScanPipeline } from "@/lib/scanner/pipelines/scanPipeline";
-import { prisma } from "@/lib/database/prisma";
+import { evaluateCompliance } from "@/lib/compliance/policyEvaluator";
+import { persistScan } from "@/services/scanService";
 import { logger } from "@/lib/telemetry/logger";
 import { jobManager, type JobEvent } from "./job-manager";
 import type { Browser, BrowserContext, Page } from "playwright-core";
@@ -57,6 +58,14 @@ export interface CrawlConfig {
   jobId?: string;
   /** Known routes to inject directly (bypasses BFS — e.g. admin sidebar routes) */
   knownRoutes?: string[];
+  /** Owning user's email — used to persist each crawled page as a real Scan row */
+  userEmail?: string;
+  /** Pre-resolved workspace for the crawl (scopes persisted Scan rows + quota) */
+  workspaceId?: string;
+  /** Pre-resolved user id for the crawl */
+  userId?: string;
+  /** Optional Site to link persisted Scan rows to */
+  siteId?: string;
 }
 
 export interface CrawlResult {
@@ -676,6 +685,27 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
         scanTimes.push(scanDuration);
         pagesCompleted++;
 
+        // Persist each successful page as a real Scan row (R-5).
+        // This makes the flagship audit durable and counts each page against
+        // the scan quota. Best-effort: a DB failure must not fail the crawl.
+        if (config.userEmail || config.workspaceId) {
+          try {
+            const compliance = evaluateCompliance(scanResult.id, scanResult.violations);
+            await persistScan(scanResult, compliance, config.userEmail, {
+              workspaceId: config.workspaceId,
+              userId: config.userId,
+              siteId: config.siteId,
+              metadata: { crawlId, startUrl: config.startUrl, auditVersion: "3.0" },
+            });
+          } catch (persistErr) {
+            crawlLogger.warn("Failed to persist crawled page scan", {
+              url,
+              scanId: scanResult.id,
+              error: persistErr instanceof Error ? persistErr.message : "Unknown",
+            });
+          }
+        }
+
         results.push({
           url,
           scanId: scanResult.id,
@@ -853,15 +883,10 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
     duration: timing.total,
   });
 
-  // Persist metadata
-  if (validResults.length > 0) {
-    try {
-      await prisma.scan.updateMany({
-        where: { id: { in: validResults.map((r) => r.scanId) } },
-        data: { metadata: { crawlId, startUrl: config.startUrl, auditVersion: "3.0" } },
-      });
-    } catch { /* non-critical */ }
-  }
+  // NOTE(R-5): Per-page Scan rows (incl. crawl linkage metadata) are now
+  // persisted inline as each page completes (see scanPage). The previous
+  // prisma.scan.updateMany() here always matched 0 rows — those scan ids were
+  // never inserted — so it has been removed.
 
   const finalResult: CrawlResult = {
     id: crawlId,

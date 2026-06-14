@@ -9,6 +9,11 @@
 
 import "server-only";
 
+// Validate environment at startup. prisma.ts is imported by virtually every
+// server route, so importing this here runs validateEnv() once at boot and fails
+// fast (only) on missing REQUIRED vars — optional services degrade gracefully.
+import "@/lib/env";
+
 import { PrismaClient } from "@/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 

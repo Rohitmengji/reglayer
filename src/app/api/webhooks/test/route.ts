@@ -32,15 +32,45 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Missing webhookId" }, { status: 400 });
   }
 
-  // Find webhook config
-  const hook = await prisma.auditLog.findUnique({ where: { id: webhookId } });
-  if (!hook || hook.action !== "webhook.registered") {
+  // Scope to caller's workspace — only test webhooks they own
+  const member = await prisma.workspaceMember.findFirst({
+    where: { user: { email: session.user.email } },
+  });
+  if (!member) {
     return NextResponse.json({ error: "Webhook not found" }, { status: 404 });
   }
 
-  const meta = hook.metadata as Record<string, unknown>;
-  const url = meta.url as string;
-  const secretHash = meta.secret as string;
+  // Find webhook config (workspace-scoped)
+  const hook = await prisma.webhook.findFirst({
+    where: { id: webhookId, workspaceId: member.workspaceId },
+  });
+  if (!hook) {
+    return NextResponse.json({ error: "Webhook not found" }, { status: 404 });
+  }
+
+  const url = hook.url;
+  const secretHash = hook.secret ?? "";
+
+  // SSRF protection — block internal/private targets and require HTTPS
+  try {
+    const parsed = new URL(url);
+    const hostname = parsed.hostname.toLowerCase();
+    if (
+      hostname === "localhost" ||
+      hostname === "metadata.google.internal" ||
+      /^(127\.|10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|169\.254\.)/.test(hostname)
+    ) {
+      return NextResponse.json(
+        { error: "Webhook URLs cannot target internal/private addresses" },
+        { status: 400 }
+      );
+    }
+    if (parsed.protocol !== "https:") {
+      return NextResponse.json({ error: "Webhook URLs must use HTTPS" }, { status: 400 });
+    }
+  } catch {
+    return NextResponse.json({ error: "Invalid webhook URL" }, { status: 400 });
+  }
 
   const testPayload = {
     event: "test",
@@ -89,13 +119,15 @@ export async function POST(request: NextRequest) {
 
   const duration = Date.now() - start;
 
-  // Log delivery
+  // Log delivery (workspace-scoped so GET can filter by tenant)
   await prisma.auditLog.create({
     data: {
       action: "webhook.delivered",
       target: webhookId,
+      workspaceId: member.workspaceId,
       metadata: {
         webhookId,
+        workspaceId: member.workspaceId,
         event: "test",
         status,
         statusCode,

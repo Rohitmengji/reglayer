@@ -241,6 +241,42 @@ export async function runAccessibilityScan(
     }
 
     /**
+     * FIX C8: Assert the page actually loaded before scanning.
+     *
+     * The navigation catch above tolerates "Timeout" errors (persistent
+     * connections like WebSockets keep networkidle from settling). But a real
+     * timeout can also mean the page never rendered — scanning a blank document
+     * produces zero violations and an inflated, meaningless 100 score.
+     *
+     * Guard against that: require the document to be at least "interactive" AND
+     * have meaningful content (visible text or rendered elements in <body>). If
+     * the page is effectively blank, throw so the caller records a FAILED scan
+     * (see FIX R-9) instead of persisting a falsely-perfect result.
+     */
+    const MIN_BODY_TEXT_LENGTH = 1;
+    const pageState = await page.evaluate(() => {
+      const body = document.body;
+      return {
+        readyState: document.readyState,
+        textLength: body ? (body.innerText ?? "").trim().length : 0,
+        elementCount: body ? body.querySelectorAll("*").length : 0,
+      };
+    }) as { readyState: string; textLength: number; elementCount: number };
+
+    const documentReady =
+      pageState.readyState === "interactive" || pageState.readyState === "complete";
+    const hasContent =
+      pageState.textLength >= MIN_BODY_TEXT_LENGTH || pageState.elementCount > 0;
+
+    if (!documentReady || !hasContent) {
+      throw new Error(
+        `Page did not load for accessibility scan (readyState="${pageState.readyState}", ` +
+          `bodyTextLength=${pageState.textLength}, bodyElements=${pageState.elementCount}). ` +
+          `The target may have timed out, blocked automated access, or served a blank page.`
+      );
+    }
+
+    /**
      * Execute accessibility scan using axe-core.
      *
      * Injects axe-core source directly into page context,

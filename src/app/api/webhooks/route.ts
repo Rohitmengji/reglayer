@@ -30,6 +30,19 @@ const webhookSchema = z.object({
 });
 
 /**
+ * Resolve the workspace for the authenticated caller.
+ * Webhooks are tenant-scoped, so every operation runs against the
+ * caller's workspace membership. Returns null when the user has no
+ * membership (treated as "no access" by callers).
+ */
+async function resolveWorkspaceId(email: string): Promise<string | null> {
+  const member = await prisma.workspaceMember.findFirst({
+    where: { user: { email } },
+  });
+  return member?.workspaceId ?? null;
+}
+
+/**
  * GET /api/webhooks — List all webhook endpoints
  */
 export async function GET() {
@@ -38,27 +51,29 @@ export async function GET() {
     return NextResponse.json({ error: "Authentication required" }, { status: 401 });
   }
 
-  const hooks = await prisma.auditLog.findMany({
-    where: { action: "webhook.registered" },
+  const workspaceId = await resolveWorkspaceId(session.user.email);
+  if (!workspaceId) {
+    return NextResponse.json({ webhooks: [], deliveries: [] });
+  }
+
+  const hooks = await prisma.webhook.findMany({
+    where: { workspaceId },
     orderBy: { createdAt: "desc" },
   });
 
-  const webhooks = hooks.map((h) => {
-    const meta = h.metadata as Record<string, unknown>;
-    return {
-      id: h.id,
-      name: meta.name,
-      url: meta.url,
-      events: meta.events,
-      enabled: meta.enabled !== false,
-      hasSecret: !!meta.secret,
-      createdAt: h.createdAt,
-    };
-  });
+  const webhooks = hooks.map((h) => ({
+    id: h.id,
+    name: h.name,
+    url: h.url,
+    events: h.events,
+    enabled: h.enabled,
+    hasSecret: !!h.secret,
+    createdAt: h.createdAt,
+  }));
 
-  // Recent deliveries
+  // Recent deliveries (logged to audit trail, scoped to this workspace)
   const deliveries = await prisma.auditLog.findMany({
-    where: { action: "webhook.delivered" },
+    where: { action: "webhook.delivered", workspaceId },
     orderBy: { createdAt: "desc" },
     take: 50,
   });
@@ -90,6 +105,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const workspaceId = await resolveWorkspaceId(session.user.email);
+  if (!workspaceId) {
+    return NextResponse.json({ error: "No workspace found" }, { status: 403 });
+  }
+
   const user = await prisma.user.findUnique({
     where: { email: session.user.email },
     select: { plan: true, isMasterAdmin: true },
@@ -104,10 +124,10 @@ export async function POST(request: NextRequest) {
         { status: 403 }
       );
     }
-    // Check count limit
+    // Check count limit (scoped to this workspace)
     if (webhookLimit !== -1) {
-      const existingCount = await prisma.auditLog.count({
-        where: { action: "webhook.registered" },
+      const existingCount = await prisma.webhook.count({
+        where: { workspaceId },
       });
       if (existingCount >= webhookLimit) {
         return NextResponse.json(
@@ -162,23 +182,20 @@ export async function POST(request: NextRequest) {
   // Generate signing secret if not provided
   const signingSecret = secret || crypto.randomBytes(32).toString("hex");
 
-  const log = await prisma.auditLog.create({
+  const webhook = await prisma.webhook.create({
     data: {
-      action: "webhook.registered",
-      target: url,
-      metadata: {
-        name,
-        url,
-        events,
-        enabled,
-        secret: crypto.createHash("sha256").update(signingSecret).digest("hex"),
-      },
+      name,
+      url,
+      events,
+      enabled,
+      secret: crypto.createHash("sha256").update(signingSecret).digest("hex"),
+      workspaceId,
     },
   });
 
   return NextResponse.json(
     {
-      id: log.id,
+      id: webhook.id,
       name,
       url,
       events,
@@ -198,18 +215,23 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const workspaceId = await resolveWorkspaceId(session.user.email);
+  if (!workspaceId) {
+    return NextResponse.json({ error: "Webhook not found" }, { status: 404 });
+  }
+
   const id = request.nextUrl.searchParams.get("id");
   if (!id) {
     return NextResponse.json({ error: "Missing id" }, { status: 400 });
   }
 
-  // Verify the audit log entry is actually a webhook registration
-  const entry = await prisma.auditLog.findUnique({ where: { id } });
-  if (!entry || entry.action !== "webhook.registered") {
+  // Enforce ownership — only delete webhooks belonging to the caller's workspace
+  const entry = await prisma.webhook.findFirst({ where: { id, workspaceId } });
+  if (!entry) {
     return NextResponse.json({ error: "Webhook not found" }, { status: 404 });
   }
 
-  await prisma.auditLog.delete({ where: { id } });
+  await prisma.webhook.delete({ where: { id } });
 
   return NextResponse.json({ deleted: true });
 }

@@ -3,11 +3,15 @@
 /**
  * RegLayer — Enterprise Site Audit Page v4
  *
+ * Discovery-based auditor: scans ANY site the user enters. The crawler
+ * discovers the target's real pages via sitemap.xml + on-page link BFS — it is
+ * NOT seeded with RegLayer's own routes.
+ *
  * UX Flow:
- * Step 1 — Choose scan mode: Public Pages / Admin Pages / Full Site
- * Step 2 — Configure (URL, auth if needed, pages shown based on mode)
+ * Step 1 — Choose scan mode: Public Site / Authenticated App / Deep Crawl
+ * Step 2 — Configure (URL, page limit, crawl depth, speed, auth if needed)
  * Step 3 — Live progress dashboard with real-time SSE
- * Step 4 — Results organized by page type with clear scores
+ * Step 4 — Results: discovered pages with clear scores
  */
 
 import { useState, useCallback, useRef, useEffect } from "react";
@@ -36,13 +40,11 @@ import {
   ChevronDown,
   ChevronUp,
   Lock,
-  Unlock,
   ArrowRight,
   ArrowLeft,
   Info,
   Eye,
   ShieldCheck,
-  X,
   History,
   Crosshair,
 } from "lucide-react";
@@ -55,54 +57,17 @@ import type { AuthConfig } from "@/lib/validations/auth";
 // CONSTANTS
 // ══════════════════════════════════════════════════════════════
 
-type ScanMode = "public" | "admin" | "full";
+// Mode semantics are discovery-based, not tied to RegLayer's own routes:
+//   public        — audit publicly-reachable pages, no login
+//   authenticated — log in, then audit pages behind the login
+//   deep          — deeper discovery (higher maxDepth), auth optional
+type ScanMode = "public" | "authenticated" | "deep";
 
-const PUBLIC_ROUTES = [
-  "/", "/features", "/pricing", "/standards", "/contact",
-  "/blog", "/auth/login", "/auth/register", "/privacy",
-  "/terms", "/cookie-policy", "/api-reference", "/docs",
-  "/request-access",
-];
-
-const ADMIN_ROUTES = [
-  "/dashboard", "/scans", "/violations", "/trends",
-  "/compliance", "/analysis", "/automation", "/manage",
-  "/executive", "/agency", "/settings", "/crawl",
-  "/insights", "/priorities", "/notifications",
-  "/audit-log", "/integrations", "/monitoring",
-  "/screen-reader", "/vault", "/risk",
-  "/dashboard/revenue", "/dashboard/remediation",
-  "/dashboard/design-system", "/dashboard/rum",
-  "/dashboard/journey",
-];
-
-const ADMIN_ROUTE_META: Record<string, string> = {
-  "/dashboard": "Dashboard",
-  "/scans": "Scans",
-  "/violations": "Violations",
-  "/trends": "Trends",
-  "/compliance": "Compliance",
-  "/analysis": "Analysis",
-  "/automation": "Automation",
-  "/manage": "Manage",
-  "/executive": "Executive",
-  "/agency": "Agency",
-  "/settings": "Settings",
-  "/crawl": "Crawl",
-  "/insights": "Insights",
-  "/priorities": "Priorities",
-  "/notifications": "Notifications",
-  "/audit-log": "Audit Log",
-  "/integrations": "Integrations",
-  "/monitoring": "Monitoring",
-  "/screen-reader": "Screen Reader",
-  "/vault": "Vault",
-  "/risk": "Risk Score",
-  "/dashboard/revenue": "Revenue Impact",
-  "/dashboard/remediation": "Remediation",
-  "/dashboard/design-system": "Design System",
-  "/dashboard/rum": "Real User Monitoring",
-  "/dashboard/journey": "Journey Map",
+// Per-mode crawl depth defaults (maps to the engine's maxDepth).
+const MODE_DEPTH: Record<ScanMode, number> = {
+  public: 3,
+  authenticated: 3,
+  deep: 5,
 };
 
 // ── Types ──
@@ -194,6 +159,7 @@ export default function CrawlPage() {
   const [mode, setMode] = useState<ScanMode | null>(null);
   const [url, setUrl] = useState("");
   const [maxPages, setMaxPages] = useState("50");
+  const [maxDepth, setMaxDepth] = useState("3");
   const [concurrency, setConcurrency] = useState("3");
   const [running, setRunning] = useState(false);
   const [jobId, setJobId] = useState<string | null>(null);
@@ -202,16 +168,8 @@ export default function CrawlPage() {
   const [result, setResult] = useState<AuditResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [authConfig, setAuthConfig] = useState<AuthConfig | undefined>(undefined);
-  const [excludedRoutes, setExcludedRoutes] = useState<Set<string>>(new Set());
   const eventSourceRef = useRef<EventSource | null>(null);
   const { t } = useI18n();
-
-  // Auto-detect current origin for URL pre-fill
-  useEffect(() => {
-    if (!url && typeof window !== "undefined") {
-      setUrl(window.location.origin);
-    }
-  }, []);
 
   // Warn before leaving during active scan
   useEffect(() => {
@@ -235,76 +193,8 @@ export default function CrawlPage() {
     }
   }, [jobId, running, url, mode]);
 
-  // Reconnect to active job on mount
-  useEffect(() => {
-    const saved = sessionStorage.getItem("reglayer_active_crawl");
-    if (!saved) return;
-    try {
-      const { jobId: savedJobId, url: savedUrl, mode: savedMode } = JSON.parse(saved);
-      // Verify job is still running
-      fetch(`/api/crawl/${savedJobId}`)
-        .then((r) => r.json())
-        .then((data) => {
-          if (data.status === "running" || data.status === "scanning") {
-            setJobId(savedJobId);
-            setUrl(savedUrl);
-            setMode(savedMode);
-            setRunning(true);
-            setStep("running");
-            connectSSE(savedJobId);
-          } else if (data.status === "complete" && data.result) {
-            setResult(data.result);
-            setUrl(savedUrl);
-            setMode(savedMode);
-            setStep("done");
-            sessionStorage.removeItem("reglayer_active_crawl");
-          } else {
-            sessionStorage.removeItem("reglayer_active_crawl");
-          }
-        })
-        .catch(() => sessionStorage.removeItem("reglayer_active_crawl"));
-    } catch { sessionStorage.removeItem("reglayer_active_crawl"); }
-  }, []);
-
-  useEffect(() => {
-    return () => { eventSourceRef.current?.close(); };
-  }, []);
-
-  function selectMode(m: ScanMode) {
-    setMode(m);
-    setExcludedRoutes(new Set());
-    if (m === "public") setMaxPages(String(PUBLIC_ROUTES.length));
-    else if (m === "admin") setMaxPages(String(ADMIN_ROUTES.length));
-    else setMaxPages(String(PUBLIC_ROUTES.length + ADMIN_ROUTES.length));
-    setStep("config");
-  }
-
-  function toggleRoute(route: string) {
-    setExcludedRoutes((prev) => {
-      const next = new Set(prev);
-      if (next.has(route)) next.delete(route);
-      else next.add(route);
-      return next;
-    });
-  }
-
-  function getActiveRoutes(): string[] {
-    const all = mode === "public" ? PUBLIC_ROUTES : mode === "admin" ? ADMIN_ROUTES : [...PUBLIC_ROUTES, ...ADMIN_ROUTES];
-    return all.filter((r) => !excludedRoutes.has(r));
-  }
-
-  function getTimeEstimate(): string {
-    const pages = getActiveRoutes().length;
-    const c = Number(concurrency) || 3;
-    const secPerPage = 8; // realistic: Playwright load + render + axe-core on SPA
-    const overhead = (mode === "admin" || mode === "full") ? 15 : 5; // auth + discovery
-    const totalSec = Math.ceil((pages / c) * secPerPage) + overhead;
-    if (totalSec < 60) return `~${totalSec}s`;
-    const min = Math.floor(totalSec / 60);
-    const sec = totalSec % 60;
-    return sec > 0 ? `~${min}m ${sec}s` : `~${min}m`;
-  }
-
+  // Defined before the restore-on-mount effect below so that effect can call it
+  // without a use-before-declaration violation (react-hooks/immutability).
   const connectSSE = useCallback((id: string) => {
     const es = new EventSource(`/api/crawl/${id}/stream`);
     eventSourceRef.current = es;
@@ -383,6 +273,64 @@ export default function CrawlPage() {
     };
   }, []);
 
+  // Reconnect to active job on mount
+  useEffect(() => {
+    const saved = sessionStorage.getItem("reglayer_active_crawl");
+    if (!saved) return;
+    try {
+      const { jobId: savedJobId, url: savedUrl, mode: savedMode } = JSON.parse(saved);
+      // Verify job is still running
+      fetch(`/api/crawl/${savedJobId}`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.status === "running" || data.status === "scanning") {
+            setJobId(savedJobId);
+            setUrl(savedUrl);
+            setMode(savedMode);
+            setRunning(true);
+            setStep("running");
+            connectSSE(savedJobId);
+          } else if (data.status === "complete" && data.result) {
+            setResult(data.result);
+            setUrl(savedUrl);
+            setMode(savedMode);
+            setStep("done");
+            sessionStorage.removeItem("reglayer_active_crawl");
+          } else {
+            sessionStorage.removeItem("reglayer_active_crawl");
+          }
+        })
+        .catch(() => sessionStorage.removeItem("reglayer_active_crawl"));
+    } catch { sessionStorage.removeItem("reglayer_active_crawl"); }
+    // connectSSE is a stable useCallback (empty deps) so this still runs once on mount.
+  }, [connectSSE]);
+
+  useEffect(() => {
+    return () => { eventSourceRef.current?.close(); };
+  }, []);
+
+  function selectMode(m: ScanMode) {
+    setMode(m);
+    // Discovery-based: sensible page-limit default + per-mode crawl depth.
+    setMaxPages("50");
+    setMaxDepth(String(MODE_DEPTH[m]));
+    setStep("config");
+  }
+
+  function getTimeEstimate(): string {
+    // Estimate from the user's page budget (worst case the crawler fills it),
+    // not a fixed route list — discovery decides the real page count.
+    const pages = Number(maxPages) || 1;
+    const c = Number(concurrency) || 3;
+    const secPerPage = 8; // realistic: Playwright load + render + axe-core on SPA
+    const overhead = (mode === "authenticated" || mode === "deep") ? 15 : 5; // auth + discovery
+    const totalSec = Math.ceil((pages / c) * secPerPage) + overhead;
+    if (totalSec < 60) return `~${totalSec}s`;
+    const min = Math.floor(totalSec / 60);
+    const sec = totalSec % 60;
+    return sec > 0 ? `~${min}m ${sec}s` : `~${min}m`;
+  }
+
   async function handleAudit() {
     setRunning(true);
     setError(null);
@@ -392,18 +340,23 @@ export default function CrawlPage() {
     setJobId(null);
     setStep("running");
 
-    const knownRoutes = getActiveRoutes();
+    // Normalize the target URL: accept bare domains (e.g. "example.com") by
+    // defaulting to https://. The crawler scans only this URL's own origin.
+    const rawUrl = url.trim();
+    const targetUrl = /^https?:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`;
+    if (targetUrl !== url) setUrl(targetUrl);
 
     try {
+      // No knownRoutes: the engine does real discovery for the target site
+      // (sitemap.xml + on-page link BFS) instead of seeding RegLayer's routes.
       const res = await fetch("/api/crawl", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          url,
+          url: targetUrl,
           maxPages: Number(maxPages),
-          maxDepth: mode === "public" ? 3 : 5,
+          maxDepth: Number(maxDepth) || MODE_DEPTH[mode ?? "public"],
           concurrency: Number(concurrency),
-          knownRoutes,
           ...(authConfig && authConfig.method !== "none" && { auth: authConfig }),
         }),
       });
@@ -435,9 +388,10 @@ export default function CrawlPage() {
     setLivePages([]);
     setJobId(null);
     setRunning(false);
-    setUrl(typeof window !== "undefined" ? window.location.origin : "");
+    setUrl("");
+    setMaxPages("50");
+    setMaxDepth("3");
     setAuthConfig(undefined);
-    setExcludedRoutes(new Set());
     eventSourceRef.current?.close();
   }
 
@@ -450,7 +404,7 @@ export default function CrawlPage() {
             <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Site Audit</h1>
             <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">
               {step === "mode" && "Choose what to scan"}
-              {step === "config" && `Configure ${mode === "public" ? "public" : mode === "admin" ? "admin" : "full site"} audit`}
+              {step === "config" && `Configure ${mode === "public" ? "public site" : mode === "authenticated" ? "authenticated app" : "deep crawl"} audit`}
               {step === "running" && "Audit in progress..."}
               {step === "done" && "Audit complete"}
             </p>
@@ -491,33 +445,32 @@ export default function CrawlPage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <ModeCard
                 icon={<Eye className="h-6 w-6" />}
-                title="Public Pages"
-                description="Audit the pages your visitors and search engines see — catch issues before they become lawsuits."
-                pageCount={PUBLIC_ROUTES.length}
+                title="Public Site"
+                description="Discovers and audits the publicly-reachable pages of any site — no login required."
+                pageCountHint="Auto-discovered"
                 color="blue"
-                features={["No login required", "SEO & first-impression pages", "ADA litigation surface"]}
+                features={["No login required", "Sitemap + link discovery", "ADA litigation surface"]}
                 onClick={() => selectMode("public")}
               />
               <ModeCard
                 icon={<ShieldCheck className="h-6 w-6" />}
-                title="Admin Pages"
-                description="Test your internal app — dashboards, tools, and settings where your team spends all day."
-                pageCount={ADMIN_ROUTES.length}
+                title="Authenticated App"
+                description="Logs in first, then discovers and audits the pages that live behind the login."
+                pageCountHint="Auto-discovered"
                 color="violet"
-                features={["Requires authentication", "All sidebar routes", "Employee experience"]}
+                features={["Requires authentication", "Crawls behind login", "Internal app coverage"]}
                 requiresAuth
-                onClick={() => selectMode("admin")}
+                onClick={() => selectMode("authenticated")}
               />
               <ModeCard
                 icon={<Layers className="h-6 w-6" />}
-                title="Full Site"
-                description="Complete coverage — find template issues that affect every page at once."
-                pageCount={PUBLIC_ROUTES.length + ADMIN_ROUTES.length}
+                title="Deep Crawl"
+                description="Deeper discovery that follows links further into the site — find template issues everywhere."
+                pageCountHint="Auto-discovered"
                 color="emerald"
-                features={["Public + admin combined", "Template pattern detection", "Best for compliance"]}
-                requiresAuth
+                features={["Higher crawl depth", "Auth optional", "Template pattern detection"]}
                 recommended
-                onClick={() => selectMode("full")}
+                onClick={() => selectMode("deep")}
               />
             </div>
             {/* Quick actions + history */}
@@ -536,81 +489,17 @@ export default function CrawlPage() {
         {/* ══════════════ STEP 2: CONFIGURATION ══════════════ */}
         {step === "config" && mode && (
           <div className="space-y-4">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <Info className="h-4 w-4 text-blue-500" /> Pages to scan
-                  <span className="text-xs text-neutral-400 font-normal ml-1">Click to exclude</span>
-                  <Badge variant="outline" className="ml-auto">
-                    {getActiveRoutes().length} of {mode === "public" ? PUBLIC_ROUTES.length : mode === "admin" ? ADMIN_ROUTES.length : PUBLIC_ROUTES.length + ADMIN_ROUTES.length} routes
-                  </Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {/* Public routes section */}
-                {(mode === "public" || mode === "full") && (
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-[10px] font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400">Public Pages</span>
-                      <div className="flex-1 h-px bg-blue-100 dark:bg-blue-900" />
-                      {mode === "full" && (
-                        <button onClick={() => { PUBLIC_ROUTES.forEach(r => { setExcludedRoutes(prev => { const next = new Set(prev); if (!next.has(r)) next.add(r); return next; }); }); }} className="text-[10px] text-neutral-400 hover:text-red-500">
-                          Exclude all
-                        </button>
-                      )}
-                    </div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {PUBLIC_ROUTES.map((route) => {
-                        const isExcluded = excludedRoutes.has(route);
-                        return (
-                          <button key={route} onClick={() => toggleRoute(route)} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono transition-all cursor-pointer ${
-                            isExcluded
-                              ? "bg-neutral-100 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-500 border border-neutral-200 dark:border-neutral-700 line-through opacity-60"
-                              : "bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/50"
-                          }`}>
-                            {isExcluded && <X className="h-2.5 w-2.5" />}
-                            {route}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-                {/* Admin routes section */}
-                {(mode === "admin" || mode === "full") && (
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-[10px] font-semibold uppercase tracking-wider text-violet-600 dark:text-violet-400">Admin Pages</span>
-                      <div className="flex-1 h-px bg-violet-100 dark:bg-violet-900" />
-                      {mode === "full" && (
-                        <button onClick={() => { ADMIN_ROUTES.forEach(r => { setExcludedRoutes(prev => { const next = new Set(prev); if (!next.has(r)) next.add(r); return next; }); }); }} className="text-[10px] text-neutral-400 hover:text-red-500">
-                          Exclude all
-                        </button>
-                      )}
-                    </div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {ADMIN_ROUTES.map((route) => {
-                        const isExcluded = excludedRoutes.has(route);
-                        return (
-                          <button key={route} onClick={() => toggleRoute(route)} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono transition-all cursor-pointer ${
-                            isExcluded
-                              ? "bg-neutral-100 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-500 border border-neutral-200 dark:border-neutral-700 line-through opacity-60"
-                              : "bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-800 hover:bg-violet-100 dark:hover:bg-violet-900/50"
-                          }`}>
-                            {isExcluded && <X className="h-2.5 w-2.5" />}
-                            {!isExcluded && <Lock className="h-2.5 w-2.5" />}
-                            {ADMIN_ROUTE_META[route] || route}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-                {excludedRoutes.size > 0 && (
-                  <button onClick={() => setExcludedRoutes(new Set())} className="text-[11px] text-blue-600 hover:underline">
-                    Reset all ({excludedRoutes.size} excluded)
-                  </button>
-                )}
+            <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/30">
+              <CardContent className="p-4 flex items-start gap-3">
+                <Info className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-blue-800 dark:text-blue-200">Automatic page discovery</p>
+                  <p className="text-xs text-blue-700 dark:text-blue-300 mt-1 leading-relaxed">
+                    RegLayer will automatically discover pages starting from this URL — following its
+                    sitemap.xml and on-page links — up to your page limit.
+                    {mode === "deep" && " Deep Crawl follows links further into the site for broader coverage."}
+                  </p>
+                </div>
               </CardContent>
             </Card>
 
@@ -618,15 +507,20 @@ export default function CrawlPage() {
               <CardContent className="p-6 space-y-4">
                 <div>
                   <label className="text-sm font-medium text-neutral-700 dark:text-neutral-200">Target URL</label>
-                  <Input type="url" placeholder="https://your-app.com" value={url} onChange={(e) => setUrl(e.target.value)} required className="mt-1 font-mono text-sm" />
-                  <p className="text-xs text-neutral-400 mt-1">Base URL of your site. Routes will be appended to this.</p>
+                  <Input type="url" placeholder="https://www.yourcompany.com" value={url} onChange={(e) => setUrl(e.target.value)} required className="mt-1 font-mono text-sm" />
+                  <p className="text-xs text-neutral-400 mt-1">We&apos;ll crawl this site and discover its pages automatically.</p>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
                     <label className="text-sm font-medium text-neutral-700 dark:text-neutral-200">Max Pages</label>
-                    <Input type="number" min="1" max="500" value={Math.min(Number(maxPages), getActiveRoutes().length || 500).toString()} onChange={(e) => setMaxPages(e.target.value)} className="mt-1" />
-                    <p className="text-xs text-neutral-400 mt-1">{getActiveRoutes().length} routes selected</p>
+                    <Input type="number" min="1" max="500" value={maxPages} onChange={(e) => setMaxPages(e.target.value)} className="mt-1" />
+                    <p className="text-xs text-neutral-400 mt-1">Discovery stops at this limit (1–500)</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-neutral-700 dark:text-neutral-200">Crawl Depth</label>
+                    <Input type="number" min="1" max="10" value={maxDepth} onChange={(e) => setMaxDepth(e.target.value)} className="mt-1" />
+                    <p className="text-xs text-neutral-400 mt-1">How many links deep to follow (1–10)</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-neutral-700 dark:text-neutral-200">Speed</label>
@@ -649,13 +543,19 @@ export default function CrawlPage() {
                   </div>
                 </div>
 
-                {(mode === "admin" || mode === "full") && (
+                {(mode === "authenticated" || mode === "deep") && (
                   <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/30 p-4">
                     <div className="flex items-center gap-2 mb-3">
                       <Shield className="h-4 w-4 text-amber-600" />
-                      <p className="text-sm font-medium text-amber-800 dark:text-amber-200">Authentication Required</p>
+                      <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                        {mode === "authenticated" ? "Authentication Required" : "Authentication (Optional)"}
+                      </p>
                     </div>
-                    <p className="text-xs text-amber-700 dark:text-amber-300 mb-3">Admin pages require login. Configure authentication below or select a saved config.</p>
+                    <p className="text-xs text-amber-700 dark:text-amber-300 mb-3">
+                      {mode === "authenticated"
+                        ? "Log in so the crawler can discover and audit pages behind the login. Configure authentication below or select a saved config."
+                        : "Add login details to also discover pages behind authentication, or leave blank to crawl public pages only."}
+                    </p>
                     <ScanAuthSection onAuthChange={setAuthConfig} scanUrl={url} />
                   </div>
                 )}
@@ -665,9 +565,9 @@ export default function CrawlPage() {
                   <Button variant="outline" onClick={() => setStep("mode")} className="px-6">
                     <ArrowLeft className="h-4 w-4 mr-2" /> Back
                   </Button>
-                  <Button onClick={handleAudit} disabled={!url || getActiveRoutes().length === 0} className="flex-1 h-11 text-sm font-medium">
+                  <Button onClick={handleAudit} disabled={!url} className="flex-1 h-11 text-sm font-medium">
                     <Zap className="h-4 w-4 mr-2" />
-                    Start {mode === "public" ? "Public" : mode === "admin" ? "Admin" : "Full Site"} Audit
+                    Start {mode === "public" ? "Public Site" : mode === "authenticated" ? "Authenticated" : "Deep Crawl"} Audit
                     <ArrowRight className="h-4 w-4 ml-2" />
                   </Button>
                 </div>
@@ -675,7 +575,7 @@ export default function CrawlPage() {
                   <span className="flex items-center gap-1.5">
                     <Timer className="h-3.5 w-3.5" /> Estimated time: <strong className="text-neutral-600 dark:text-neutral-300">{getTimeEstimate()}</strong>
                   </span>
-                  <span>{getActiveRoutes().length} pages · {concurrency} parallel</span>
+                  <span>up to {Number(maxPages) || 0} pages · depth {Number(maxDepth) || 0} · {concurrency} parallel</span>
                 </div>
               </CardContent>
             </Card>
@@ -690,7 +590,7 @@ export default function CrawlPage() {
           <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/30">
             <CardContent className="p-8 flex flex-col items-center gap-4">
               <Loader2 className="h-8 w-8 text-blue-500 animate-spin" />
-              <div className="text-center">
+              <div className="text-center" role="status" aria-live="polite">
                 <p className="text-sm font-medium text-neutral-900 dark:text-white">Starting audit engine...</p>
                 <p className="text-xs text-neutral-500 mt-1">Launching browser and connecting to target</p>
               </div>
@@ -720,8 +620,8 @@ export default function CrawlPage() {
 // MODE CARD
 // ══════════════════════════════════════════════════════════════
 
-function ModeCard({ icon, title, description, pageCount, color, features, requiresAuth, recommended, onClick }: {
-  icon: React.ReactNode; title: string; description: string; pageCount: number;
+function ModeCard({ icon, title, description, pageCountHint, color, features, requiresAuth, recommended, onClick }: {
+  icon: React.ReactNode; title: string; description: string; pageCountHint: string;
   color: "blue" | "violet" | "emerald"; features: string[];
   requiresAuth?: boolean; recommended?: boolean; onClick: () => void;
 }) {
@@ -747,7 +647,7 @@ function ModeCard({ icon, title, description, pageCount, color, features, requir
         ))}
       </div>
       <div className="flex items-center justify-between pt-3 border-t border-neutral-200/60 dark:border-neutral-700/60">
-        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${c.badge}`}>{pageCount} pages</span>
+        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${c.badge}`}>{pageCountHint}</span>
         {requiresAuth && (
           <span className="text-[10px] text-amber-600 dark:text-amber-400 flex items-center gap-1">
             <Lock className="h-2.5 w-2.5" /> Auth needed
@@ -776,7 +676,7 @@ function LiveProgressDashboard({ progress, livePages, onCancel }: {
   const failedPages = livePages.filter(p => p.status === "error");
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" aria-busy="true">
       <Card className="border-blue-200 dark:border-blue-800 bg-gradient-to-r from-blue-50 to-violet-50 dark:from-blue-950/50 dark:to-violet-950/50 overflow-hidden">
         <CardContent className="p-5 space-y-4">
           <div className="flex items-center justify-between">
@@ -786,7 +686,7 @@ function LiveProgressDashboard({ progress, livePages, onCancel }: {
                 <span className="absolute -top-0.5 -right-0.5 h-2 w-2 bg-blue-500 rounded-full animate-ping" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-neutral-900 dark:text-white">{phaseLabel[progress.phase] || progress.phase}</p>
+                <p className="text-sm font-semibold text-neutral-900 dark:text-white" role="status" aria-live="polite">{phaseLabel[progress.phase] || progress.phase}</p>
                 {progress.currentUrl && progress.phase === "scanning" && (
                   <p className="text-xs text-neutral-500 font-mono truncate max-w-[400px]">{progress.currentUrl.replace(/^https?:\/\/[^/]+/, "")}</p>
                 )}
@@ -811,7 +711,15 @@ function LiveProgressDashboard({ progress, livePages, onCancel }: {
                 </span>
                 <span className="text-neutral-500 font-mono">{pct}%</span>
               </div>
-              <div className="h-2.5 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden">
+              <div
+                className="h-2.5 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden"
+                role="progressbar"
+                aria-label="Pages scanned"
+                aria-valuenow={pct}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuetext={`${progress.pagesScanned} of ${progress.pagesTotal} pages scanned`}
+              >
                 <div className="h-full bg-gradient-to-r from-blue-500 to-violet-500 rounded-full transition-all duration-500 ease-out" style={{ width: `${pct}%` }} />
               </div>
             </div>
@@ -819,8 +727,13 @@ function LiveProgressDashboard({ progress, livePages, onCancel }: {
 
           {progress.phase === "discovering" && (
             <div className="space-y-1">
-              <p className="text-xs text-neutral-600 dark:text-neutral-300">{progress.pagesDiscovered} pages queued</p>
-              <div className="h-2 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden">
+              <p className="text-xs text-neutral-600 dark:text-neutral-300" role="status" aria-live="polite">{progress.pagesDiscovered} pages queued</p>
+              <div
+                className="h-2 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden"
+                role="progressbar"
+                aria-label="Discovering pages"
+                aria-valuetext={`${progress.pagesDiscovered} pages discovered`}
+              >
                 <div className="h-full bg-gradient-to-r from-blue-400 to-blue-600 rounded-full animate-[indeterminate_2s_ease-in-out_infinite] w-1/3" />
               </div>
             </div>
@@ -881,7 +794,6 @@ function LiveProgressDashboard({ progress, livePages, onCancel }: {
               <div className="space-y-1 max-h-[400px] overflow-y-auto">
                 {[...livePages].reverse().map((p) => {
                   const path = p.url.replace(/^https?:\/\/[^/]+/, "") || "/";
-                  const isAdmin = ADMIN_ROUTES.some(r => path === r || path.startsWith(r + "/") || path.startsWith(r + "?"));
                   return (
                     <div key={p.url} className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm ${p.status === "scanning" ? "bg-blue-50 dark:bg-blue-950/30" : "bg-neutral-50 dark:bg-neutral-800/30"}`}>
                       {p.status === "scanning" && <Loader2 className="h-4 w-4 text-blue-500 animate-spin shrink-0" />}
@@ -894,8 +806,7 @@ function LiveProgressDashboard({ progress, livePages, onCancel }: {
                       )}
                       {p.status === "error" && <XCircle className="h-4 w-4 text-red-500 shrink-0" />}
                       <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                        {isAdmin && <Lock className="h-3 w-3 text-violet-400 shrink-0" />}
-                        <span className="font-mono text-xs text-neutral-600 dark:text-neutral-300 truncate">{ADMIN_ROUTE_META[path] || path}</span>
+                        <span className="font-mono text-xs text-neutral-600 dark:text-neutral-300 truncate">{path}</span>
                       </div>
                       {p.status === "complete" && <span className="text-[10px] text-neutral-400 shrink-0">{(p.duration / 1000).toFixed(1)}s</span>}
                       {p.status === "complete" && p.violations > 0 && <Badge variant="outline" className="text-[10px] shrink-0">{p.violations}</Badge>}
@@ -931,21 +842,11 @@ function LiveStat({ label, value, color }: { label: string; value: string; color
 // ══════════════════════════════════════════════════════════════
 
 function AuditResults({ result }: { result: AuditResult }) {
-  const publicPages = result.pages.filter((p) => {
-    const path = p.url.replace(/^https?:\/\/[^/]+/, "") || "/";
-    return PUBLIC_ROUTES.some(r => path === r || path === r + "/");
-  });
-  const adminPages = result.pages.filter((p) => {
-    const path = p.url.replace(/^https?:\/\/[^/]+/, "") || "/";
-    return !PUBLIC_ROUTES.some(r => path === r || path === r + "/");
-  });
-
-  const calcAvg = (pages: PageResult[]) => {
-    const valid = pages.filter(p => !p.error && p.score > 0);
-    return valid.length > 0 ? Math.round((valid.reduce((s, p) => s + p.score, 0) / valid.length) * 10) / 10 : 0;
-  };
-  const publicAvg = calcAvg(publicPages);
-  const adminAvg = calcAvg(adminPages);
+  // Discovery-based audit: pages aren't pre-classified into public/admin —
+  // present everything the crawler found as one collection.
+  const discoveredPages = result.pages;
+  const cleanCount = discoveredPages.filter((p) => !p.error && p.violations === 0 && p.scanId).length;
+  const errorCount = discoveredPages.filter((p) => p.error).length;
 
   return (
     <div className="space-y-6">
@@ -968,16 +869,16 @@ function AuditResults({ result }: { result: AuditResult }) {
               </div>
             </div>
             <div className="flex gap-4 sm:ml-auto">
-              {publicPages.length > 0 && (
-                <div className="text-center px-4 py-2 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
-                  <p className="text-2xl font-bold text-blue-700 dark:text-blue-400">{publicAvg}</p>
-                  <p className="text-[10px] text-blue-600 dark:text-blue-400 font-medium uppercase tracking-wide">Public ({publicPages.length})</p>
+              {cleanCount > 0 && (
+                <div className="text-center px-4 py-2 rounded-xl bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800">
+                  <p className="text-2xl font-bold text-green-700 dark:text-green-400">{cleanCount}</p>
+                  <p className="text-[10px] text-green-600 dark:text-green-400 font-medium uppercase tracking-wide">Clean</p>
                 </div>
               )}
-              {adminPages.length > 0 && (
-                <div className="text-center px-4 py-2 rounded-xl bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-800">
-                  <p className="text-2xl font-bold text-violet-700 dark:text-violet-400">{adminAvg}</p>
-                  <p className="text-[10px] text-violet-600 dark:text-violet-400 font-medium uppercase tracking-wide">Admin ({adminPages.length})</p>
+              {errorCount > 0 && (
+                <div className="text-center px-4 py-2 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+                  <p className="text-2xl font-bold text-amber-700 dark:text-amber-400">{errorCount}</p>
+                  <p className="text-[10px] text-amber-600 dark:text-amber-400 font-medium uppercase tracking-wide">Failed</p>
                 </div>
               )}
             </div>
@@ -1090,8 +991,7 @@ function AuditResults({ result }: { result: AuditResult }) {
       )}
 
       {/* Page Results — grouped */}
-      {publicPages.length > 0 && <PageGroup pages={publicPages} title="Public Pages" icon={<Unlock className="h-4 w-4 text-blue-500" />} color="blue" />}
-      {adminPages.length > 0 && <PageGroup pages={adminPages} title="Admin Pages" icon={<Lock className="h-4 w-4 text-violet-500" />} color="violet" />}
+      {discoveredPages.length > 0 && <PageGroup pages={discoveredPages} title="Discovered Pages" icon={<Globe className="h-4 w-4 text-blue-500" />} color="blue" />}
     </div>
   );
 }
@@ -1139,7 +1039,7 @@ function PageGroup({ pages, title, icon, color }: { pages: PageResult[]; title: 
                 }`}>{p.error ? "✗" : p.score > 0 ? Math.round(p.score) : "—"}</div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-neutral-900 dark:text-white truncate">
-                    {ADMIN_ROUTE_META[path] || p.pageTitle || path}
+                    {p.pageTitle || path}
                   </p>
                   <div className="flex items-center gap-2 mt-0.5">
                     <p className="text-xs text-neutral-500 truncate font-mono">{path}</p>

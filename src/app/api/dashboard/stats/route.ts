@@ -46,8 +46,14 @@ export async function GET() {
     ? { workspaceId: membership.workspaceId }
     : { userId: user.id };
 
-  const [totalScans, recentScans, violationStats] = await Promise.all([
-    prisma.scan.count({ where: { status: "COMPLETED", ...scopeFilter } }),
+  const [scanAgg, recentScans, violationStats] = await Promise.all([
+    // Headline numbers reflect the FULL scoped dataset, not just the last 10.
+    prisma.scan.aggregate({
+      where: { status: "COMPLETED", ...scopeFilter },
+      _avg: { score: true },
+      _sum: { totalViolations: true },
+      _count: true,
+    }),
     prisma.scan.findMany({
       where: { status: "COMPLETED", ...scopeFilter },
       orderBy: { createdAt: "desc" },
@@ -69,12 +75,13 @@ export async function GET() {
     }),
   ]);
 
-  // Calculate averages
-  const scores = recentScans.map((s) => s.score).filter((s): s is number => s !== null);
-  const avgScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
-  const totalViolations = recentScans.reduce((sum, s) => sum + s._count.violations, 0);
+  // Headline metrics from the full scoped dataset (aggregate, not last-10).
+  const totalScans = scanAgg._count;
+  const avgScore = scanAgg._avg.score !== null ? Math.round(scanAgg._avg.score) : 0;
+  const totalViolations = scanAgg._sum.totalViolations ?? 0;
 
-  // Score trend: compare last 5 vs previous 5
+  // Score trend is inherently a recent-window comparison: last 5 vs previous 5.
+  const scores = recentScans.map((s) => s.score).filter((s): s is number => s !== null);
   const recent5 = scores.slice(0, 5);
   const prev5 = scores.slice(5, 10);
   const recentAvg = recent5.length > 0 ? recent5.reduce((a, b) => a + b, 0) / recent5.length : 0;

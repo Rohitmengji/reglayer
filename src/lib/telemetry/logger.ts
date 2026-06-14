@@ -21,6 +21,8 @@
  * ---------------------------------------------------------
  */
 
+import * as Sentry from "@sentry/nextjs";
+
 type LogLevel = "debug" | "info" | "warn" | "error";
 
 interface LogEntry {
@@ -72,12 +74,33 @@ class Logger {
     switch (level) {
       case "error":
         console.error(output);
+        this.reportToSentry(message, entry.context);
         break;
       case "warn":
         console.warn(output);
         break;
       default:
         console.log(output);
+    }
+  }
+
+  /**
+   * Forward error-level logs to Sentry. Console output already happened, so
+   * this must never throw — any failure here is swallowed.
+   */
+  private reportToSentry(
+    message: string,
+    context?: Record<string, unknown>
+  ): void {
+    try {
+      const maybeError = context?.error;
+      if (maybeError instanceof Error) {
+        Sentry.captureException(maybeError, { extra: context });
+      } else {
+        Sentry.captureMessage(message, { level: "error", extra: context });
+      }
+    } catch {
+      // Swallow: telemetry must never break the calling code path.
     }
   }
 }

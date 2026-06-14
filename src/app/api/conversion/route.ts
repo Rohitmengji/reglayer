@@ -3,6 +3,12 @@ import { prisma } from "@/lib/database/prisma";
 import { rateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
 
+// FIX C10: validate + cap the `days` query param. parseInt(...) returns NaN for
+// non-numeric input ("?days=abc"), which makes `since` an Invalid Date and the
+// Prisma date filters throw → 500. An uncapped value also allows arbitrarily
+// large scans. Coerce to an int in [1, 365], defaulting to 30.
+const daysSchema = z.coerce.number().int().min(1).max(365).default(30);
+
 const eventSchema = z.object({
   event: z.enum([
     "demo_scan",
@@ -62,7 +68,15 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
-  const days = parseInt(searchParams.get("days") || "30");
+  // FIX C10: validate + cap `days`; return 400 on invalid instead of crashing.
+  const parsedDays = daysSchema.safeParse(searchParams.get("days") ?? undefined);
+  if (!parsedDays.success) {
+    return NextResponse.json(
+      { error: "Invalid days — must be an integer between 1 and 365" },
+      { status: 400 }
+    );
+  }
+  const days = parsedDays.data;
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
   try {
