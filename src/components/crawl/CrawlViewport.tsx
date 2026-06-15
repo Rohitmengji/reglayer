@@ -83,7 +83,7 @@ export function CrawlViewport({ phase, current, lastCaptured }: CrawlViewportPro
           )}
           <span className="font-mono text-xs text-neutral-600 dark:text-neutral-300 truncate">
             <span className="text-neutral-400">{host}</span>
-            <span className="text-neutral-700 dark:text-neutral-200">{pathOf(displayUrl).replace(/^\//, "/")}</span>
+            <span className="text-neutral-700 dark:text-neutral-200">{pathOf(displayUrl)}</span>
           </span>
           {isScanning && <Loader2 className="h-3.5 w-3.5 text-blue-500 animate-spin shrink-0 ml-auto" aria-hidden="true" />}
         </div>
