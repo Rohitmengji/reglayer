@@ -6,7 +6,7 @@
  *
  * No more synchronous scanning — supports 500+ page audits.
  */
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { z } from "zod";
@@ -138,10 +138,34 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  // Start crawl in background (fire-and-forget). Persist the final outcome to
-  // the durable record when the detached promise settles (best-effort).
-  crawlSite({ ...crawlConfig, jobId: job.id })
-    .then(async (result) => {
+  // Run the crawl via after(): the response is returned immediately, but Vercel
+  // keeps the function alive to finish this work (a bare fire-and-forget promise
+  // is frozen/killed once the response is sent). Throughout the crawl we persist
+  // progress to the durable CrawlJobRecord every few seconds, so a client
+  // polling from ANY lambda instance sees live progress even though the
+  // in-memory job manager is per-instance and SSE may land on a cold instance.
+  after(async () => {
+    const persistProgress = async () => {
+      try {
+        const j = jobManager.getJob(job.id);
+        if (!j || j.status === "complete" || j.status === "failed" || j.status === "cancelled") return;
+        const p = j.progress;
+        const total = p.pagesTotal || maxPages;
+        await prisma.crawlJobRecord.update({
+          where: { id: job.id },
+          data: {
+            status: "processing",
+            progress: total > 0 ? Math.min(99, Math.round((p.pagesScanned / total) * 100)) : 0,
+            pagesScanned: p.pagesScanned,
+            pagesTotal: total,
+          },
+        });
+      } catch { /* best-effort durable progress */ }
+    };
+    const ticker = setInterval(persistProgress, 2500);
+
+    try {
+      const result = await crawlSite({ ...crawlConfig, jobId: job.id });
       // crawlSite resolves (doesn't throw) for cancelled / internally-failed
       // crawls too — mirror the in-memory job's terminal status so the durable
       // record doesn't mislabel them as "complete".
@@ -177,15 +201,10 @@ export async function POST(request: NextRequest) {
           error: err instanceof Error ? err.message : "Unknown",
         });
       }
-    })
-    .catch(async (error) => {
+    } catch (error) {
       const message = error instanceof Error ? error.message : "Crawl failed unexpectedly";
       logger.error("Background crawl failed", { jobId: job.id, error: message });
-      jobManager.emitEvent(job.id, {
-        type: "error",
-        error: message,
-        timestamp: Date.now(),
-      });
+      jobManager.emitEvent(job.id, { type: "error", error: message, timestamp: Date.now() });
       try {
         await prisma.crawlJobRecord.update({
           where: { id: job.id },
@@ -197,7 +216,10 @@ export async function POST(request: NextRequest) {
           error: err instanceof Error ? err.message : "Unknown",
         });
       }
-    });
+    } finally {
+      clearInterval(ticker);
+    }
+  });
 
   // Return job ID immediately
   return NextResponse.json({

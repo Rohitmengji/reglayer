@@ -186,7 +186,18 @@ export default function CrawlPage() {
   const [error, setError] = useState<string | null>(null);
   const [authConfig, setAuthConfig] = useState<AuthConfig | undefined>(undefined);
   const eventSourceRef = useRef<EventSource | null>(null);
+  // Polling backstop: guarantees the UI reaches a correct terminal state and
+  // keeps progress moving even if SSE never connects, drops, or lands on a
+  // different serverless instance than the one running the crawl.
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { t } = useI18n();
+
+  const TERMINAL_STATUSES = ["complete", "failed", "cancelled"];
+  const stopTracking = useCallback(() => {
+    eventSourceRef.current?.close();
+    eventSourceRef.current = null;
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+  }, []);
 
   // Warn before leaving during active scan
   useEffect(() => {
@@ -212,7 +223,27 @@ export default function CrawlPage() {
 
   // Defined before the restore-on-mount effect below so that effect can call it
   // without a use-before-declaration violation (react-hooks/immutability).
+  // Centralised terminal handler — used by BOTH the SSE stream and the polling
+  // backstop, so the UI always lands in a single, correct end state exactly once.
+  const finishCrawl = useCallback((id: string, kind: "complete" | "failed" | "cancelled", payload?: { result?: AuditResult; error?: string }) => {
+    stopTracking();
+    setRunning(false);
+    if (kind === "failed") {
+      setError(payload?.error || "We couldn't finish the audit. Please try again.");
+    } else {
+      // complete OR cancelled: pull the authoritative final result from the API
+      // (the SSE payload may be screenshot-stripped or arrive before the record).
+      fetch(`/api/crawl/${id}`)
+        .then((r) => r.json())
+        .then((data) => { if (data?.result) setResult(data.result); else if (payload?.result) setResult(payload.result); })
+        .catch(() => { if (payload?.result) setResult(payload.result); });
+      if (kind === "cancelled") setProgress((prev) => (prev ? { ...prev, phase: "cancelled" } : prev));
+    }
+    setStep("done");
+  }, [stopTracking]);
+
   const connectSSE = useCallback((id: string) => {
+    stopTracking();
     const es = new EventSource(`/api/crawl/${id}/stream`);
     eventSourceRef.current = es;
 
@@ -251,47 +282,51 @@ export default function CrawlPage() {
             );
             break;
           case "complete":
-            setRunning(false);
-            fetch(`/api/crawl/${id}`)
-              .then((r) => r.json())
-              .then((data) => { setResult(data.result || event.result); })
-              .catch(() => setResult(event.result));
-            setStep("done");
-            es.close();
+            finishCrawl(id, "complete", { result: event.result });
             break;
           case "error":
-            setRunning(false);
-            setError(event.error);
-            setStep("done");
-            es.close();
+            finishCrawl(id, "failed", { error: event.error });
             break;
           case "cancelled":
-            setRunning(false);
-            setProgress((prev) => prev ? { ...prev, phase: "cancelled" } : null);
-            fetch(`/api/crawl/${id}`)
-              .then((r) => r.json())
-              .then((data) => { if (data.result) setResult(data.result); })
-              .catch(() => {});
-            setStep("done");
-            es.close();
+            finishCrawl(id, "cancelled");
             break;
         }
       } catch { /* ignore */ }
     };
 
-    es.onerror = () => {
-      es.close();
-      setTimeout(() => {
-        fetch(`/api/crawl/${id}`)
-          .then((r) => r.json())
-          .then((data) => {
-            if (data.status === "complete" && data.result) { setResult(data.result); setRunning(false); setStep("done"); }
-            else if (data.status === "failed") { setError(data.error || "Audit failed"); setRunning(false); setStep("done"); }
-          })
-          .catch(() => { setError("Connection lost"); setRunning(false); setStep("done"); });
-      }, 2000);
+    // SSE is the fast/rich path; on error we just let it close and rely on the
+    // polling backstop below — no fragile single-shot setTimeout recovery.
+    es.onerror = () => { eventSourceRef.current?.close(); };
+
+    // ── Polling backstop ──────────────────────────────────────────────────
+    // Independent of SSE: every few seconds, read durable job state. This
+    // guarantees a terminal landing (even if SSE never delivered the event or
+    // hit a cold instance) and keeps progress moving when SSE is quiet.
+    const poll = async () => {
+      try {
+        const res = await fetch(`/api/crawl/${id}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const status: string = data?.status ?? "";
+        if (TERMINAL_STATUSES.includes(status)) {
+          if (status === "failed") finishCrawl(id, "failed", { error: data.error });
+          else if (status === "cancelled") finishCrawl(id, "cancelled");
+          else finishCrawl(id, "complete", { result: data.result });
+          return;
+        }
+        if (data?.progress && typeof data.progress === "object") {
+          // Keep progress monotonic so we never regress the richer SSE updates.
+          setProgress((prev) => {
+            if (!prev) return data.progress;
+            return (data.progress.pagesScanned ?? 0) >= (prev.pagesScanned ?? 0)
+              ? { ...prev, ...data.progress }
+              : prev;
+          });
+        }
+      } catch { /* transient — keep polling */ }
     };
-  }, []);
+    pollRef.current = setInterval(poll, 3000);
+  }, [finishCrawl, stopTracking]);
 
   // Reconnect to active job on mount
   useEffect(() => {
@@ -303,15 +338,20 @@ export default function CrawlPage() {
       fetch(`/api/crawl/${savedJobId}`)
         .then((r) => r.json())
         .then((data) => {
-          if (data.status === "running" || data.status === "scanning") {
+          const status: string = data?.status ?? "";
+          const terminal = ["complete", "failed", "cancelled"].includes(status);
+          if (!terminal) {
+            // Any non-terminal phase (queued/connecting/discovering/scanning/
+            // analyzing) means the crawl is still in flight — reattach.
             setJobId(savedJobId);
             setUrl(savedUrl);
             setMode(savedMode);
             setTheater(createInitialTheaterState());
+            if (data?.progress && typeof data.progress === "object") setProgress(data.progress);
             setRunning(true);
             setStep("running");
             connectSSE(savedJobId);
-          } else if (data.status === "complete" && data.result) {
+          } else if (status === "complete" && data.result) {
             setResult(data.result);
             setUrl(savedUrl);
             setMode(savedMode);
@@ -327,8 +367,8 @@ export default function CrawlPage() {
   }, [connectSSE]);
 
   useEffect(() => {
-    return () => { eventSourceRef.current?.close(); };
-  }, []);
+    return () => { stopTracking(); };
+  }, [stopTracking]);
 
   function selectMode(m: ScanMode) {
     setMode(m);
@@ -418,7 +458,7 @@ export default function CrawlPage() {
     setMaxPages("50");
     setMaxDepth("3");
     setAuthConfig(undefined);
-    eventSourceRef.current?.close();
+    stopTracking();
   }
 
   return (
