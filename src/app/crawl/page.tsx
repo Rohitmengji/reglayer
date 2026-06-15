@@ -761,24 +761,24 @@ function LiveProgressDashboard({ progress, livePages, onCancel }: {
     <div className="space-y-4" aria-busy="true">
       <Card className="border-blue-200 dark:border-blue-800 bg-gradient-to-r from-blue-50 to-violet-50 dark:from-blue-950/50 dark:to-violet-950/50 overflow-hidden">
         <CardContent className="p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="relative">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <div className="relative shrink-0">
                 <Radio className="h-5 w-5 text-blue-500 animate-pulse" />
                 <span className="absolute -top-0.5 -right-0.5 h-2 w-2 bg-blue-500 rounded-full animate-ping" />
               </div>
-              <div>
-                <p className="text-sm font-semibold text-neutral-900 dark:text-white" role="status" aria-live="polite">{phaseLabel[progress.phase] || progress.phase}</p>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-neutral-900 dark:text-white truncate" role="status" aria-live="polite">{phaseLabel[progress.phase] || progress.phase}</p>
                 {progress.currentUrl && progress.phase === "scanning" && (
-                  <p className="text-xs text-neutral-500 font-mono truncate max-w-[400px]">{progress.currentUrl.replace(/^https?:\/\/[^/]+/, "")}</p>
+                  <p className="text-xs text-neutral-500 font-mono truncate">{progress.currentUrl.replace(/^https?:\/\/[^/]+/, "")}</p>
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
               {progress.eta !== undefined && progress.eta > 0 && (
-                <span className="flex items-center gap-1 text-xs text-neutral-500"><Timer className="h-3.5 w-3.5" /> ETA {formatDuration(progress.eta)}</span>
+                <span className="flex items-center gap-1 text-xs text-neutral-500 whitespace-nowrap"><Timer className="h-3.5 w-3.5" /> ETA {formatDuration(progress.eta)}</span>
               )}
-              <Button variant="outline" size="sm" onClick={onCancel} className="text-xs text-red-600 border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-950 h-7">
+              <Button variant="outline" size="sm" onClick={onCancel} className="text-xs text-red-600 border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-950 h-7 shrink-0">
                 <StopCircle className="h-3 w-3 mr-1" /> Cancel
               </Button>
             </div>
