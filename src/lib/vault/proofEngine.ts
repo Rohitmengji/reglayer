@@ -1,17 +1,29 @@
 /**
- * RegLayer — Compliance Proof Vault Engine
+ * RegLayer — Compliance Proof Vault Engine (Anchored Evidence Chain)
  *
  * WHY: Organizations need tamper-evident, timestamped compliance records for audits,
  *      legal defense, and regulatory reporting.
- * WHAT: Generates cryptographic proof artifacts from scan data with integrity hashes.
- * HOW: SHA-256 hash of evidence payload ensures proofs cannot be altered after issuance.
+ * WHAT: Generates cryptographic proof artifacts from scan data and links them into a
+ *       Merkle-style hash chain so that tampering with any single proof — or with the
+ *       order/linkage of the set — is detectable by ANY third party from the data alone.
+ * HOW: Each proof's hash covers (canonical evidence + prevHash + chainIndex + issuedAt).
+ *      Altering one proof's evidence breaks its own hash; altering order/links breaks the
+ *      prevHash of every subsequent proof. The hash logic lives in the pure, framework-free
+ *      `chain.ts` module so it can be independently verified outside RegLayer.
  */
 
 import "server-only";
 
-import { createHash } from "crypto";
 import { prisma } from "@/lib/database/prisma";
+import { Prisma } from "@/generated/prisma/client";
 import type { ProofType } from "@/generated/prisma/client";
+import {
+  computeProofHash,
+  verifyProofIntegrity,
+  verifyChain,
+  type ChainLink,
+  type ChainVerificationReport,
+} from "@/lib/vault/chain";
 
 export interface ProofEvidence {
   scanId: string;
@@ -39,22 +51,34 @@ export interface CreateProofInput {
   expiresAt?: Date;
 }
 
+/** Maximum attempts to win the @@unique([workspaceId, chainIndex]) race. */
+const MAX_CHAIN_RETRIES = 3;
+
 /**
- * Generate a SHA-256 integrity hash from evidence payload.
- * Used to verify the proof has not been tampered with.
+ * Best-effort external anchoring stub. If an anchoring service is configured via
+ * OPENTIMESTAMPS_URL, this is where a real submission would go. Today it is a graceful
+ * no-op that returns null so the chain is fully functional WITHOUT external anchoring.
  */
-function generateHash(evidence: ProofEvidence): string {
-  const canonical = JSON.stringify(evidence, Object.keys(evidence).sort());
-  return createHash("sha256").update(canonical).digest("hex");
+async function anchorProofHash(hash: string): Promise<string | null> {
+  const endpoint = process.env.OPENTIMESTAMPS_URL;
+  if (!endpoint) return null;
+  // Intentionally not implemented: a real integration would submit `hash` to the
+  // timestamping service and return its receipt. We keep this defensive so a
+  // misconfigured/unreachable anchor never blocks proof issuance.
+  void hash;
+  return null;
 }
 
 /**
- * Issue a new compliance proof from a completed scan.
+ * Issue a new compliance proof from a completed scan, appending it to the
+ * workspace's tamper-evident hash chain.
  */
 export async function issueProof(input: CreateProofInput): Promise<{
   id: string;
   hash: string;
   issuedAt: Date;
+  chainIndex: number;
+  prevHash: string | null;
 }> {
   const scan = await prisma.scan.findUnique({
     where: { id: input.scanId },
@@ -97,61 +121,176 @@ export async function issueProof(input: CreateProofInput): Promise<{
       .slice(0, 20),
   };
 
-  const hash = generateHash(evidence);
+  // Fix issuedAt BEFORE hashing so the value committed by the hash is the value stored.
+  const issuedAt = new Date();
+  const evidenceJson = JSON.parse(JSON.stringify(evidence)) as Prisma.InputJsonValue;
 
-  const proof = await prisma.complianceProof.create({
-    data: {
-      siteId: input.siteId,
-      scanId: input.scanId,
-      workspaceId: input.workspaceId,
-      type: input.type,
-      title: input.title,
-      description: input.description,
-      score: scan.score,
-      standard: input.standard,
-      evidence: JSON.parse(JSON.stringify(evidence)),
-      hash,
-      expiresAt: input.expiresAt,
-    },
-  });
+  // Retry loop to handle the @@unique([workspaceId, chainIndex]) race: two concurrent
+  // issues might compute the same chainIndex; the loser re-reads, recomputes, and retries.
+  let lastError: unknown;
+  for (let attempt = 0; attempt < MAX_CHAIN_RETRIES; attempt++) {
+    const latest = await prisma.complianceProof.findFirst({
+      where: { workspaceId: input.workspaceId },
+      orderBy: { chainIndex: "desc" },
+      select: { hash: true, chainIndex: true },
+    });
 
-  return { id: proof.id, hash: proof.hash, issuedAt: proof.issuedAt };
+    const prevHash = latest?.hash ?? null;
+    const chainIndex = latest ? latest.chainIndex + 1 : 0;
+    const hash = computeProofHash({
+      evidence,
+      prevHash,
+      chainIndex,
+      issuedAt: issuedAt.toISOString(),
+    });
+
+    // Best-effort external anchor (no-op unless configured).
+    const anchorProof = await anchorProofHash(hash);
+
+    try {
+      const proof = await prisma.complianceProof.create({
+        data: {
+          siteId: input.siteId,
+          scanId: input.scanId,
+          workspaceId: input.workspaceId,
+          type: input.type,
+          title: input.title,
+          description: input.description,
+          score: scan.score,
+          standard: input.standard,
+          evidence: evidenceJson,
+          hash,
+          prevHash,
+          chainIndex,
+          issuedAt,
+          anchoredAt: anchorProof ? new Date() : null,
+          anchorProof,
+          expiresAt: input.expiresAt,
+        },
+      });
+
+      return {
+        id: proof.id,
+        hash: proof.hash,
+        issuedAt: proof.issuedAt,
+        chainIndex: proof.chainIndex,
+        prevHash: proof.prevHash,
+      };
+    } catch (err) {
+      // P2002 = unique constraint violation → another proof grabbed this chainIndex.
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+        lastError = err;
+        continue;
+      }
+      throw err;
+    }
+  }
+
+  throw new Error(
+    `Failed to append proof to chain after ${MAX_CHAIN_RETRIES} attempts (concurrent issuance contention)`,
+    { cause: lastError }
+  );
+}
+
+export interface VerifyProofResult {
+  valid: boolean;
+  hashValid: boolean;
+  chainValid: boolean;
+  chainLength: number;
+  computedHash: string;
+  issuedAt: Date;
+  revokedAt: Date | null;
+  standard: string;
+  title: string;
+  hash: string;
+  chainIndex: number;
+  expiresAt: Date | null;
+  issues: ChainVerificationReport["issues"];
 }
 
 /**
- * Verify a proof's integrity by recomputing the hash.
+ * Verify a proof's integrity:
+ *  - recompute its own hash over (evidence + prevHash + chainIndex + issuedAt), and
+ *  - verify the workspace chain UP TO this proof to confirm linkage is intact.
+ *
+ * `valid` = own hash valid AND chain valid AND not revoked AND not expired.
  */
-export async function verifyProof(proofId: string): Promise<{
-  valid: boolean;
-  proof: {
-    id: string;
-    title: string;
-    hash: string;
-    issuedAt: Date;
-    revokedAt: Date | null;
-  };
-  computedHash: string;
-}> {
+export async function verifyProof(proofId: string): Promise<VerifyProofResult> {
   const proof = await prisma.complianceProof.findUnique({
     where: { id: proofId },
   });
 
   if (!proof) throw new Error("Proof not found");
 
-  const evidence = proof.evidence as unknown as ProofEvidence;
-  const computedHash = generateHash(evidence);
+  // Per-link integrity using the canonical chain hash.
+  const selfLink: ChainLink = {
+    id: proof.id,
+    evidence: proof.evidence,
+    prevHash: proof.prevHash,
+    chainIndex: proof.chainIndex,
+    issuedAt: proof.issuedAt.toISOString(),
+    hash: proof.hash,
+  };
+  const { hashValid, computedHash } = verifyProofIntegrity(selfLink);
+
+  // Load the workspace chain up to and including this proof, then verify linkage.
+  const chainRows = await prisma.complianceProof.findMany({
+    where: { workspaceId: proof.workspaceId, chainIndex: { lte: proof.chainIndex } },
+    orderBy: { chainIndex: "asc" },
+    select: { id: true, evidence: true, prevHash: true, chainIndex: true, issuedAt: true, hash: true },
+  });
+
+  const links: ChainLink[] = chainRows.map((r) => ({
+    id: r.id,
+    evidence: r.evidence,
+    prevHash: r.prevHash,
+    chainIndex: r.chainIndex,
+    issuedAt: r.issuedAt.toISOString(),
+    hash: r.hash,
+  }));
+
+  const chainReport = verifyChain(links);
+
+  const isExpired = proof.expiresAt ? proof.expiresAt.getTime() < Date.now() : false;
+  const valid = hashValid && chainReport.valid && !proof.revokedAt && !isExpired;
 
   return {
-    valid: computedHash === proof.hash && !proof.revokedAt,
-    proof: {
-      id: proof.id,
-      title: proof.title,
-      hash: proof.hash,
-      issuedAt: proof.issuedAt,
-      revokedAt: proof.revokedAt,
-    },
+    valid,
+    hashValid,
+    chainValid: chainReport.valid,
+    chainLength: chainReport.length,
     computedHash,
+    issuedAt: proof.issuedAt,
+    revokedAt: proof.revokedAt,
+    standard: proof.standard,
+    title: proof.title,
+    hash: proof.hash,
+    chainIndex: proof.chainIndex,
+    expiresAt: proof.expiresAt,
+    issues: chainReport.issues,
   };
+}
+
+/**
+ * Verify the ENTIRE tamper-evident chain for a workspace.
+ */
+export async function verifyWorkspaceChain(workspaceId: string): Promise<ChainVerificationReport> {
+  const rows = await prisma.complianceProof.findMany({
+    where: { workspaceId },
+    orderBy: { chainIndex: "asc" },
+    select: { id: true, evidence: true, prevHash: true, chainIndex: true, issuedAt: true, hash: true },
+  });
+
+  const links: ChainLink[] = rows.map((r) => ({
+    id: r.id,
+    evidence: r.evidence,
+    prevHash: r.prevHash,
+    chainIndex: r.chainIndex,
+    issuedAt: r.issuedAt.toISOString(),
+    hash: r.hash,
+  }));
+
+  return verifyChain(links);
 }
 
 /**
@@ -230,6 +369,8 @@ export async function getProof(proofId: string): Promise<{
   standard: string;
   evidence: ProofEvidence;
   hash: string;
+  prevHash: string | null;
+  chainIndex: number;
   issuedAt: Date;
   expiresAt: Date | null;
   revokedAt: Date | null;
@@ -252,6 +393,8 @@ export async function getProof(proofId: string): Promise<{
     standard: proof.standard,
     evidence: proof.evidence as unknown as ProofEvidence,
     hash: proof.hash,
+    prevHash: proof.prevHash,
+    chainIndex: proof.chainIndex,
     issuedAt: proof.issuedAt,
     expiresAt: proof.expiresAt,
     revokedAt: proof.revokedAt,
