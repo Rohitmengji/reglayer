@@ -5,7 +5,7 @@
 ![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)
 ![Prisma](https://img.shields.io/badge/Prisma-7-2D3748?logo=prisma)
-![Tests](https://img.shields.io/badge/Tests-198_passing-brightgreen)
+![Tests](https://img.shields.io/badge/Tests-301_passing-brightgreen)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
 ## Why RegLayer
@@ -38,6 +38,8 @@ RegLayer is the first platform that combines automated scanning with **lawsuit r
 | **Industry/Geography Multipliers** | Risk adjusted for your sector (e-commerce 1.8×) and state (NY 1.9×) |
 | **Compliance Forecasting** | Predict future compliance trajectory |
 | **Vendor Risk Scanner** | Third-party accessibility risk assessment |
+| **Vendor Accessibility Liability Graph (VALG)** | Cross-tenant, reach-weighted liability score per third-party widget (Intercom, OneTrust, Stripe, YouTube, …) with regression-over-time detection |
+| **Fix Genome** | Cross-tenant learning of which fix actually works (re-scan-verified), confidence-rated by sample size — "for this barrier, this fix works X% of the time, median Y days" |
 | **AI Explanations** | GPT-4o-mini powered plain-language violation context |
 
 ### Compliance & Regulatory
@@ -50,6 +52,13 @@ RegLayer is the first platform that combines automated scanning with **lawsuit r
 | **VPAT/ACR Generator** | Auto-generated conformance reports |
 | **Regulation Deadline Engine** | Countdown timers for applicable deadlines |
 | **Compliance Proof Vault** | Cryptographically timestamped audit trail |
+
+### Legal Defense & Evidence
+| Feature | Description |
+|---------|-------------|
+| **Anchored Evidence Chain** | Merkle-style per-workspace SHA-256 hash chain (each proof commits to evidence + prevHash + chainIndex + issuedAt) — tampering one proof breaks its hash; reordering/back-dating breaks every later `prevHash`. Independently verifiable via a public, login-free `/verify/[proofId]` page |
+| **Litigation Defense File** | One-click, chronological, hash-verified "ongoing good-faith remediation effort" dossier — scan time series (incl. failed attempts), per-violation status transitions, re-scan fix verifications, and the re-verified proof ledger, plus good-faith metrics (monitoring span, % verified-fixed, mean/median time-to-remediate, score trend, chain integrity) |
+| **Demand-Letter Triage & Exposure-Delta** | Paste an ADA demand letter → each alleged claim is mapped onto your scan/violation/proof history with a per-claim verdict (never_detected / not_present_on_date / remediated / present_open / rule_unrecognized / no_scan_history) plus a gross-vs-net-vs-rebutted dollar exposure delta |
 
 ### Remediation & Automation
 | Feature | Description |
@@ -82,6 +91,7 @@ RegLayer is the first platform that combines automated scanning with **lawsuit r
 | Feature | Description |
 |---------|-------------|
 | **RBAC** | Owner → Admin → Member → Viewer per workspace |
+| **Resource-Access Asserts** | One shared `assertScanAccess` / `assertSiteAccess` ownership helper (master-admin bypass → workspace membership → legacy userId) used across vault/vpat/statement/risk/score/simulate + defense-file/demand-letter/vendor-risk — closes proof-forgery (C-3) and cross-tenant IDOR (S-3) |
 | **API Key Auth** | SHA-256 hashed keys with timing-safe comparison |
 | **Audit Log** | Full action trail with actor, timestamp, IP |
 | **i18n** | 7 EU languages (EN, DE, FR, ES, IT, NL, PT) |
@@ -176,7 +186,7 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ```
 src/
-├── app/                         # Next.js App Router (70 pages, 107 API routes)
+├── app/                         # Next.js App Router (72 pages, 116 API routes)
 │   ├── api/                     # REST API endpoints
 │   │   ├── scan/                # Scanning endpoints
 │   │   ├── violations/          # Violation management
@@ -188,6 +198,8 @@ src/
 │   ├── dashboard/               # Main dashboard + sub-pages
 │   ├── risk/                    # Lawsuit risk score page
 │   ├── vault/                   # Compliance proof vault
+│   ├── verify/                  # Public, login-free Anchored Evidence Chain verification
+│   ├── demand-letter/           # Demand-letter triage & exposure-delta
 │   ├── regulations/             # Regulation deadline intelligence
 │   ├── agency/                  # White-label agency admin
 │   ├── testing/                 # Human testing network
@@ -206,13 +218,17 @@ src/
 │   │   ├── browser/             # Playwright/Chromium management
 │   │   └── pipelines/           # Scan orchestration
 │   ├── risk/                    # Litigation risk scoring engine
-│   ├── vault/                   # Compliance proof with hash chains
+│   ├── vault/                   # Compliance proof + Anchored Evidence Chain (chain.ts, proofEngine.ts)
+│   ├── defense/                 # Litigation Defense File (pure assembly core + loader)
+│   ├── triage/                  # Demand-letter triage & exposure-delta engine
+│   ├── genome/                  # Fix Genome (cross-tenant fix-outcome learning)
+│   ├── vendorgraph/             # Vendor Accessibility Liability Graph (VALG)
 │   ├── regulations/             # Regulation deadline engine
 │   ├── compliance/              # Policy evaluator, VPAT generator
 │   ├── guard/                   # CI/CD regression guard engine
 │   ├── testing/                 # Human testing network logic
 │   ├── intelligence/            # AIS engine, alerts, regression detection
-│   ├── auth/                    # NextAuth config, RBAC
+│   ├── auth/                    # NextAuth config, RBAC, shared resource-access asserts (access.ts)
 │   ├── email/                   # Nodemailer service, branded templates
 │   ├── ai/                      # OpenAI explainers, structured output
 │   ├── integrations/            # GitHub, Slack, webhook dispatchers
@@ -223,32 +239,35 @@ src/
 ├── services/                    # Service layer (scanService)
 ├── stores/                      # Zustand state (scanStore)
 ├── hooks/                       # React hooks (features, trends, violations)
-└── __tests__/                   # Unit tests (15 test files, 198 passing)
+└── __tests__/                   # Unit tests (18 test files, 301 passing)
 ```
 
 ---
 
 ## Database Schema
 
-29 models organized into domains:
+34 models organized into domains:
 
 | Domain | Models |
 |--------|--------|
 | **Identity** | User, PasswordReset, CreditGrant |
 | **Multi-tenancy** | Workspace, WorkspaceMember, WorkspaceFeature |
-| **Scanning** | Site, Scan, Violation, Schedule |
+| **Scanning** | Site, Scan, Violation, Schedule, Monitor, CrawlJobRecord |
 | **Integrations** | Webhook, ApiKey, Integration, AuthConfig, NotificationPreference |
 | **Agency** | Agency, AgencyClient, AgencyApiKey |
 | **Risk & Compliance** | LitigationRiskScore, LitigationWeight, ComplianceProof, GuardPolicy |
+| **Data-Network Intelligence** | FixOutcomeRecord (fix_outcomes), VendorObservation (vendor_observations), RumEventRecord (rum_events) |
 | **Marketplace** | Tester, AuditRequest |
 | **Content** | Article, ArticleVersion |
 | **Analytics** | AuditLog, ConversionEvent, AccessRequest |
+
+`ComplianceProof` carries the Anchored Evidence Chain fields (`prevHash`, `chainIndex`, `anchoredAt`, `anchorProof`) with a `@@unique([workspaceId, chainIndex])` constraint. 10 enums.
 
 ---
 
 ## API Overview
 
-107 API routes organized by domain:
+116 API routes organized by domain:
 
 | Domain | Key Endpoints | Auth |
 |--------|--------------|------|
@@ -256,6 +275,9 @@ src/
 | **Violations** | `GET /api/violations`, `PATCH /api/violations/status` | Session |
 | **Risk** | `GET /api/risk`, `POST /api/risk/recalculate` | Session |
 | **Vault** | `GET /api/vault/events`, `POST /api/vault/export` | Session |
+| **Legal Defense** | `GET\|POST /api/sites/[siteId]/defense-file` (`?format=html\|json`), `POST /api/sites/[siteId]/demand-letter` | Session |
+| **Evidence Verification** | `GET /api/vault/[proofId]/verify` | None |
+| **Data-Network** | `GET /api/genome/recommend`, `GET /api/vendor-graph` | Session |
 | **Agency** | `POST /api/agency`, `PATCH /api/agency/[id]` | Owner |
 | **Notifications** | `GET /api/notifications/inbox`, `PATCH /api/notifications/read` | Session |
 | **CI/CD** | `POST /api/gate/review` | API Key |
@@ -275,8 +297,8 @@ npm run test:e2e        # E2E tests (Playwright)
 npm run visual-audit    # Visual regression screenshots
 ```
 
-- 15 test suites, 198 tests passing
-- Coverage: rate-limit, RBAC, scan API, queue, scheduler, compliance, auth
+- 18 test suites, 301 tests passing
+- Coverage: rate-limit, RBAC, scan API, queue, scheduler, compliance, auth, Anchored Evidence Chain, Litigation Defense File, demand-letter triage, Fix Genome, VALG, i18n locale parity
 
 ---
 

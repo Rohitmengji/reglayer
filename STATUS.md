@@ -1,5 +1,7 @@
 # RegLayer — Project Status
 
+> **Status (2026-06-15):** Five strategic-moat features shipped — Anchored Evidence Chain (PR #165), Litigation Defense File (PR #166), Demand-Letter Triage & Exposure-Delta Engine (PR #168), Fix Genome (PR #169), and the Vendor Accessibility Liability Graph / VALG (PR #170). The live Neon database is fully in sync as of 2026-06-15 (all migrations — including `fix_outcomes` and `vendor_observations` — applied). Current metrics: **301 tests passing across 18 vitest suites**, **34 Prisma models / 10 enums**, **116 API route files**, **72 UI pages**.
+
 ## Completed Features (Production-Ready)
 
 ### Core Scanning
@@ -39,6 +41,15 @@
 - **Priority Engine** — Smart ordering of fixes by impact/effort
 - **Alert Engine** — Score threshold and new-critical detection rules
 
+### Legal & Evidence Moat
+- **Anchored Evidence Chain** (PR #165) — Compliance proofs are linked into a Merkle-style, per-workspace SHA-256 hash chain. Each proof's hash covers `evidence + prevHash + chainIndex + issuedAt`, so tampering with one proof breaks its own hash and reordering/back-dating breaks the `prevHash` of every later proof. `issueProof` appends with a P2002 retry against `@@unique([workspaceId, chainIndex])`; `verifyChain` detects hash-mismatch / broken-link / index-gap / duplicate-index. The pure core (`src/lib/vault/chain.ts`) is framework-free and independently runnable by an external auditor. **Public, login-free verification** at `/verify/[proofId]` + `GET /api/vault/[proofId]/verify`. Turns the previously forgeable in-row self-checksum into tamper-evident, independently verifiable evidence.
+- **Litigation Defense File** (PR #166) — One click assembles a chronological, hash-verified "ongoing good-faith remediation effort" dossier from data already recorded: full scan time series (including FAILED attempts), per-violation status transitions (from the audit log), re-scan fix verifications, and the Anchored Evidence Chain proof ledger (each proof independently re-verified). Good-faith metrics: monitoring span, % verified-fixed, mean/median time-to-remediate, accessibility-score trend, chain integrity. Honest framing baked in — revoked/expired proofs are reported as lifecycle state (NOT tampering), an empty chain is "empty" (NOT "verified"), and no third-party timestamp anchoring is claimed. `GET`/`POST /api/sites/[siteId]/defense-file` (`?format=html|json`), IDOR-safe on both verbs; launched from the Risk Breakdown card. No migration.
+- **Demand-Letter Triage & Exposure-Delta Engine** (PR #168) — Paste an ADA demand letter (parsed via gpt-4o-mini, zod-validated, graceful null) or a manual claims array, and each alleged claim is mapped onto the site's scan/violation/proof history with a per-claim verdict (`never_detected` / `not_present_on_date` / `remediated` / `present_open` / `rule_unrecognized` / `no_scan_history`) plus a dollar exposure-delta (gross alleged vs. net genuinely-open vs. rebutted). The dollar model (LITIGATION_WEIGHTS / INDUSTRY_MULTIPLIERS / GEO_MULTIPLIERS) is INJECTED so the core stays pure. `POST /api/sites/[siteId]/demand-letter` (`html|json`), page at `/demand-letter`. Stateless — no migration.
+
+### Data-Network Moat
+- **Fix Genome** (PR #169) — Records every fix outcome (success AND failure, keyed by `ruleId` + a normalized structural fingerprint) the moment a re-scan verifies it, then aggregates CROSS-TENANT into "for this barrier, this fix works X% of the time, median Y days," confidence-rated by sample size. Best-effort recorder wired into `verifyViolationFix`; query via `GET /api/genome/recommend?ruleId=&scope=global|workspace&by=rule|fingerprint`. New model `FixOutcomeRecord` (`fix_outcomes`) — migration applied.
+- **Vendor Accessibility Liability Graph / VALG** (PR #170) — Scores every third-party widget (Intercom, OneTrust, Stripe, YouTube, …) by the real a11y liability it injects across ALL embedding sites, reach-weighted (a mediocre-risk widget embedded everywhere outranks a high-risk one seen once), with regression-over-time detection. Best-effort recorder wired into the vendor-risk scan path (which also gained `assertScanAccess`, closing a cross-tenant IDOR); query via `GET /api/vendor-graph?vendor=&scope=global|workspace&splitDays=`. New model `VendorObservation` (`vendor_observations`) — migration applied.
+
 ### Team & Workspace
 - **Multi-tenant Workspaces** — Auto-created per user, membership roles (Owner/Admin/Member/Viewer)
 - **Team Management** — Invite by email, role assignment, member removal
@@ -60,6 +71,7 @@
 
 ### Security
 - **IDOR Protection** — All data endpoints verify workspace ownership
+- **Security-by-Construction** — One shared ownership helper (`src/lib/auth/access.ts`): `assertScanAccess(scanId, session)` / `assertSiteAccess(siteId, session)` return a discriminated `AccessResult` (`{ok:true,userId,isMasterAdmin,workspaceId}` | `{ok:false,status:401|403|404,error}`) — master-admin bypass, else workspace membership (or legacy userId). Used across vault/vpat/statement/risk/score/simulate plus the new defense-file / demand-letter / vendor-risk routes. Closed the proof-forgery (C-3) and IDOR (S-3) findings.
 - **Input Validation** — Zod schemas on all mutation endpoints
 - **Rate Limiting** — Applied on scan, crawl, AI, and heavy endpoints
 - **SSRF Protection** — URL validation on all fetch operations
@@ -79,7 +91,7 @@
 ```
 src/
 ├── app/                    # Next.js 16 App Router pages & API routes
-│   ├── api/               # 30+ REST API endpoints
+│   ├── api/               # 116 REST API route files
 │   │   ├── scan/          # Core scanning (single, async, crawl)
 │   │   ├── gate/          # CI pipeline gatekeeper
 │   │   ├── remediate/     # Auto-remediation (proxy, script, beacon)
@@ -106,12 +118,26 @@ src/
 │   ├── analytics/         # Revenue impact calculator
 │   ├── integrations/      # Slack, GitHub review, webhook dispatchers
 │   ├── intelligence/      # AI, alert, priority engines
+│   ├── vault/             # Anchored Evidence Chain (pure chain.ts + proofEngine)
+│   ├── defense/           # Litigation Defense File (pure assembly + loader)
+│   ├── triage/            # Demand-letter triage & exposure-delta (pure + AI parse + loader)
+│   ├── genome/            # Fix Genome (pure aggregation + best-effort recorder)
+│   ├── vendorgraph/       # Vendor Accessibility Liability Graph (pure + best-effort recorder)
 │   ├── database/          # Prisma client & helpers
 │   ├── email/             # Nodemailer SMTP service
-│   └── auth/              # NextAuth config
+│   └── auth/              # NextAuth config + access.ts ownership assertions
 ├── services/              # Business logic (scan orchestration)
 └── stores/                # Zustand client-side state
 ```
+
+### Feature Pattern (Anchored Evidence Chain, Defense File, Triage, Fix Genome, VALG)
+
+Each new moat feature is built as three layers:
+1. **Pure core** — no Prisma, no Next, no `"server-only"`; exhaustively unit-testable exactly like `vault/chain.ts`. Holds all legally/statistically load-bearing logic.
+2. **Thin `"server-only"` data loader** — fetches plain data and hands it to the pure core.
+3. **Thin route handler** — auth (`assertScanAccess`/`assertSiteAccess`) + format negotiation (`?format=html|json`).
+
+All generated HTML is `escapeHtml`-escaped. Best-effort recorders (`recordFixOutcome` / `recordVendorObservations`) never throw, so a pending migration can't break the primary scan/verify flow. Every user-facing string exists in all 7 i18n locale files (a parity test enforces this in CI).
 
 ---
 
@@ -125,7 +151,9 @@ src/
 | Payment/Billing | Not implemented | Users can't upgrade plans (Stripe needed) |
 | Multi-workspace switching | Not implemented | Users currently see only first workspace |
 | Rate limiting on serverless | In-memory Map resets per cold start | Needs Redis/Upstash for production |
-| RUM/Design System storage | In-memory per-instance | Needs persistent store (Redis/ClickHouse) |
+| RUM storage | Persisted to Postgres (`rum_events` / RumEventRecord) | Now durable across instances |
+| Design System storage | In-memory per-instance | Needs persistent store (Redis/ClickHouse) |
+| External timestamp anchoring | Not implemented (graceful no-op stub) | `OPENTIMESTAMPS_URL` hook present; chain integrity is self-contained SHA-256 only, no third-party anchor claimed |
 
 ---
 

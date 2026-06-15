@@ -122,12 +122,16 @@ RegLayer is an enterprise accessibility compliance operating system. It combines
 - **Executive narrative:** Plain-English explanation for non-technical stakeholders
 - **Legal disclaimer:** Non-dismissable notice on all risk displays
 
-### 16. Compliance Proof Vault
-- **Cryptographic timestamping:** SHA-256 hash chains for tamper-evident records
-- **Event types:** Scan completed, violation detected, status changed, report generated, vault exported
-- **Chain verification:** Recalculate all hashes to detect tampering
-- **PDF export:** Court-admissible compliance evidence with chain of custody
-- **Automated recording:** Events captured after every scan and violation status change
+### 16. Compliance Proof Vault — Anchored Evidence Chain
+- **Merkle-style hash chain:** Each proof's SHA-256 hash covers its canonical evidence **plus** the previous proof's hash, its `chainIndex`, and its `issuedAt` — so tampering with one proof breaks that proof's own hash, and reordering or back-dating breaks the `prevHash` of every later proof
+- **Independently verifiable:** Pure, framework-free core (`src/lib/vault/chain.ts`) — `canonicalize` (recursive key-sorted JSON), `computeProofHash`, `verifyProofIntegrity`, `verifyChain` — runnable by any third party from the proof data alone, with no trust in RegLayer
+- **Detected integrity problems:** hash-mismatch, broken-link, index-gap, duplicate-index (`ChainVerificationReport` reports `valid`, `length`, `brokenAt`, `issues[]`)
+- **Append engine (`proofEngine.ts`):** `issueProof` appends to a per-workspace chain with `prevHash` + `chainIndex` and a P2002 retry loop for concurrent-issuance contention; `verifyProof` (own hash + chain up to the proof), `verifyWorkspaceChain` (whole chain)
+- **Schema:** `ComplianceProof` gained `prevHash`, `chainIndex`, `anchoredAt`, `anchorProof` + `@@unique([workspaceId, chainIndex])`
+- **Public, login-free verification:** Page `src/app/verify/[proofId]/page.tsx` + `GET /api/vault/[proofId]/verify` return only non-sensitive integrity fields (never the full evidence payload) so auditors, regulators, or customers can confirm tamper-evidence without an account
+- **External anchoring stub:** Best-effort `anchorProofHash` (no-op unless `OPENTIMESTAMPS_URL` is configured) — no third-party timestamp anchoring is claimed today
+- **Turns a forgeable self-checksum into court-grade evidence:** a checksum stored in the same row as its evidence is trivially recomputable; the chain makes the whole proof set tamper-evident
+- **Automated recording:** Proofs issued after qualifying scans; revocation supported (`revokeProof`)
 
 ### 17. CI/CD Regression Guard
 - **Guard policies:** Per-site threshold configuration
@@ -179,6 +183,44 @@ RegLayer is an enterprise accessibility compliance operating system. It combines
 - **Article states:** DRAFT → PUBLISHED → ARCHIVED
 - **SEO:** Meta tags, structured data, sitemap integration
 
+### 24. Litigation Defense File
+- **One-click good-faith dossier:** Assembles a chronological, hash-verified record of an *ongoing remediation effort* from data RegLayer already records — no new data captured, no migration
+- **Five chronological sources:** Completed scans **and** failed scan attempts (failures still evidence effort), per-violation status transitions (from the AuditLog), re-scan fix verifications, and the Anchored Evidence Chain proof ledger (each proof independently re-verified via the chain's own `verifyProofIntegrity`)
+- **Good-faith metrics:** Monitoring span, % verified-fixed, mean/median time-to-remediate, accessibility-score trend, and chain integrity
+- **Honest framing (no over-claiming in a legal document):** revoked/expired proofs are reported as lifecycle states, **not** tampering; an empty chain is "empty", never "verified"; no third-party timestamp anchoring is claimed; status history is framed as a "record of activity", not an exhaustive audit trail
+- **Pure core + thin loader + thin route:** `src/lib/defense/defenseFile.ts` (`assembleDefenseFile`, `buildTimeline`, `computeGoodFaithMetrics`, `verifyProofsLocally`, `renderDefenseFileHTML`, `escapeHtml`), `loadDefenseFileData.ts` (server loader), `GET`/`POST /api/sites/[siteId]/defense-file?format=html|json` (IDOR-safe via `assertSiteAccess` on **both** verbs)
+- **Output:** Fully `escapeHtml`-escaped, self-contained, print-ready HTML; one-click button on `RiskBreakdownCard`
+
+### 25. Demand-Letter Triage & Exposure-Delta Engine
+- **Adversarial claim rebuttal:** Paste an ADA demand letter (or supply a manual claims array) and each alleged claim is mapped onto the site's recorded scan/violation/proof history
+- **Per-claim verdicts:** `never_detected`, `not_present_on_date`, `remediated`, `present_open`, `rule_unrecognized`, `no_scan_history` — each with an evidence-grounded finding line
+- **Dollar exposure-delta:** Gross alleged exposure vs. net genuinely-open exposure vs. exposure the recorded evidence rebuts — with claims corroborated by tamper-evident proofs flagged
+- **Injected dollar model keeps the core pure:** `src/lib/triage/demandLetter.ts` (`assessClaims`, `renderTriageHTML`) never imports the server-only `legalRiskEngine`; the route builds the `ExposureModel` from `LITIGATION_WEIGHTS` / `INDUSTRY_MULTIPLIERS` / `GEO_MULTIPLIERS`
+- **AI letter parsing:** `parseDemandLetter.ts` (gpt-4o-mini, zod-validated, graceful null when no key); `loadTriageData.ts` server loader; `POST /api/sites/[siteId]/demand-letter` (`assertSiteAccess`, html|json); page `src/app/demand-letter/page.tsx`
+- **Stateless:** No migration, no mutation — read-only over existing history
+
+### 26. Fix Genome
+- **Learns which fix actually worked:** Records every re-scan-verified remediation outcome — success **and** failure — keyed by `ruleId` + a normalized structural fingerprint, wired into `verifyViolationFix` (`src/lib/violations/status.ts`)
+- **Cross-tenant network effect:** Aggregates anonymized outcome counts across all tenants → "for this barrier, this fix works X% of the time, median Y days to take effect"
+- **Confidence-rated:** Confidence (`high` ≥10 / `medium` ≥4 / `low` ≥1 / `insufficient`) is grounded in sample size, so a 100%-of-1 result is never dressed up as certainty
+- **Pure core:** `src/lib/genome/fixGenome.ts` (`normalizeSelector`, `computeFingerprint`, `aggregateOutcomes`, `recommendForRule`); best-effort recorder `recordOutcome.ts` never throws
+- **API:** `GET /api/genome/recommend?ruleId=&scope=global|workspace&by=rule|fingerprint` — `global` returns only anonymized success rates, never tenant data; returns an empty genome (not a 500) if the migration is pending
+- **Schema:** New model `FixOutcomeRecord` (`fix_outcomes`) — migration applied
+
+### 27. Vendor Accessibility Liability Graph (VALG)
+- **Scores every third-party widget:** Intercom, OneTrust, Stripe, YouTube, etc. — by the real a11y liability it injects across **all** embedding sites
+- **Reach-weighted liability score:** `computeLiabilityScore` scales per-instance risk by cross-site reach (`reachMultiplier = 1 + log10(sitesAffected)·0.5`, capped at 100) — a mediocre-risk widget embedded everywhere outranks a high-risk one seen once
+- **Regression-over-time detection:** `detectVendorTrend` splits observations into prior vs. recent periods and flags `regressed` / `improved` / `stable` against a 10-point threshold
+- **Pure core:** `src/lib/vendorgraph/vendorGraph.ts` (`aggregateVendorObservations`, `computeLiabilityScore`, `detectVendorTrend`); best-effort recorder `recordObservations.ts` wired into `/api/vendor-risk` (which **also** gained `assertScanAccess`, closing a cross-tenant IDOR)
+- **API:** `GET /api/vendor-graph?vendor=&scope=global|workspace&splitDays=` — no `vendor` returns the cross-tenant ranking; with `vendor` adds a regression trend
+- **Schema:** New model `VendorObservation` (`vendor_observations`) — migration applied
+
+### 28. Security-by-Construction
+- **One shared ownership helper:** `src/lib/auth/access.ts` — `assertScanAccess(scanId, session)` / `assertSiteAccess(siteId, session)` return a discriminated `AccessResult` (`{ok:true,userId,isMasterAdmin,workspaceId}` | `{ok:false,status:401|403|404,error}`)
+- **Consistent policy:** Master-admin bypass, else workspace-membership (or legacy `userId` ownership for workspace-less scans)
+- **Used across:** vault, vpat, statement, risk, score, simulate, and the new defense-file / demand-letter / vendor-risk routes
+- **Closed findings:** Proof-forgery (C-3) and IDOR (S-3)
+
 ---
 
 ## Technical Metrics
@@ -186,13 +228,13 @@ RegLayer is an enterprise accessibility compliance operating system. It combines
 | Metric | Value |
 |--------|-------|
 | Total source files | ~200+ |
-| API endpoints | 107 |
-| UI pages | 70 |
+| API endpoints | 116 |
+| UI pages | 72 |
 | Components | 50+ |
 | Dependencies | 55+ |
-| Test files | 15 |
-| Tests passing | 198 |
-| Prisma models | 29 |
+| Test files | 18 |
+| Tests passing | 301 |
+| Prisma models | 34 |
 | Prisma enums | 10 |
 | i18n languages | 7 |
 | Scan duration (avg) | 6-18s |
@@ -217,6 +259,11 @@ RegLayer is an enterprise accessibility compliance operating system. It combines
 | /api/remediate/script | GET | Public | — | Embeddable fix script |
 | /api/revenue-impact | POST/GET | Session | Free+ | Revenue loss calculator |
 | /api/compliance/vpat | POST/GET | Session | Pro+ | VPAT/ACR generation |
+| /api/vault/[proofId]/verify | GET/POST | Public | — | Independent proof integrity verification (non-sensitive fields only) |
+| /api/sites/[siteId]/defense-file | GET/POST | Session | Pro+ | Litigation Defense File (?format=html\|json, IDOR-safe on both verbs) |
+| /api/sites/[siteId]/demand-letter | POST | Session | Pro+ | Demand-letter triage & exposure-delta (letterText or claims[], html\|json) |
+| /api/genome/recommend | GET | Session | Free+ | Fix Genome recommendation (?ruleId=&scope=global\|workspace&by=rule\|fingerprint) |
+| /api/vendor-graph | GET | Session | Free+ | Vendor Accessibility Liability Graph (?vendor=&scope=global\|workspace&splitDays=) |
 | /api/journey | GET/POST | Session | Pro+ | Journey flow scanner |
 | /api/rum/snippet | GET | Public | — | RUM JavaScript snippet |
 | /api/rum/events | POST/GET | API Key/Session | Free+ | RUM event collection |
