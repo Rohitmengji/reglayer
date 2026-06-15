@@ -354,6 +354,19 @@ code, kbd, pre, samp, .font-mono {
   50% { transform: translateY(-4px); }
 }
 
+/* Live crawl visualization: scanline sweep + site-map node entrance */
+@keyframes scanline {
+  0% { top: 0%; opacity: 0; }
+  12% { opacity: 1; }
+  88% { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+@keyframes nodePop {
+  from { opacity: 0; transform: scale(0.2); }
+  to { opacity: 1; transform: scale(1); }
+}
+
 /* ─── Utility classes ──────────────────────────────────────────────────────── */
 
 .animate-fade-in { animation: fadeIn var(--duration-normal) var(--ease-smooth) both; }
@@ -363,6 +376,8 @@ code, kbd, pre, samp, .font-mono {
 .animate-shimmer { animation: shimmer 2s linear infinite; background-size: 200% 100%; }
 .animate-float { animation: float 3s ease-in-out infinite; }
 .animate-pulse-soft { animation: pulse-soft 2s ease-in-out infinite; }
+.animate-scanline { animation: scanline 2.2s ease-in-out infinite; }
+.animate-node-pop { animation: nodePop 0.4s var(--ease-bouncy) both; }
 
 /* Stagger children animations */
 .stagger-children > * { animation: slideUp var(--duration-normal) var(--ease-snappy) both; }

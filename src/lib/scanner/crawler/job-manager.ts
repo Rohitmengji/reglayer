@@ -71,9 +71,9 @@ export type JobEvent =
   | { type: "phase"; phase: JobPhase; timestamp: number }
   | { type: "progress"; progress: JobProgress; timestamp: number }
   | { type: "page-start"; url: string; index: number; total: number; timestamp: number }
-  | { type: "page-complete"; url: string; score: number; violations: number; duration: number; index: number; total: number; timestamp: number }
+  | { type: "page-complete"; url: string; scanId: string; score: number; violations: number; duration: number; index: number; total: number; timestamp: number }
   | { type: "page-error"; url: string; error: string; index: number; total: number; timestamp: number }
-  | { type: "discovery"; url: string; source: "sitemap" | "bfs"; total: number; timestamp: number }
+  | { type: "discovery"; url: string; source: "sitemap" | "bfs"; total: number; from?: string; depth?: number; timestamp: number }
   | { type: "auth-status"; authenticated: boolean; method: string; timestamp: number }
   | { type: "complete"; result: CrawlResult; timestamp: number }
   | { type: "error"; error: string; timestamp: number }

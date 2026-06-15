@@ -52,6 +52,8 @@ import Link from "next/link";
 import { useI18n } from "@/components/i18n-provider";
 import { ScanAuthSection } from "@/components/scanner/scan-auth-section";
 import type { AuthConfig } from "@/lib/validations/auth";
+import { CrawlTheater } from "@/components/crawl/CrawlTheater";
+import { createInitialTheaterState, reduceTheaterEvent, type TheaterState } from "@/lib/crawl-viz/crawlTheater";
 
 // ══════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -165,6 +167,8 @@ export default function CrawlPage() {
   const [jobId, setJobId] = useState<string | null>(null);
   const [progress, setProgress] = useState<LiveProgress | null>(null);
   const [livePages, setLivePages] = useState<LivePageEvent[]>([]);
+  // View-model for the live crawl visualization; SSE events are folded in below.
+  const [theater, setTheater] = useState<TheaterState>(createInitialTheaterState());
   const [result, setResult] = useState<AuditResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [authConfig, setAuthConfig] = useState<AuthConfig | undefined>(undefined);
@@ -202,6 +206,9 @@ export default function CrawlPage() {
     es.onmessage = (e) => {
       try {
         const event = JSON.parse(e.data);
+        // Fold every event into the live-visualization view-model (it ignores
+        // event types it doesn't care about).
+        setTheater((prev) => reduceTheaterEvent(prev, event));
         switch (event.type) {
           case "progress":
             setProgress(event.progress);
@@ -287,6 +294,7 @@ export default function CrawlPage() {
             setJobId(savedJobId);
             setUrl(savedUrl);
             setMode(savedMode);
+            setTheater(createInitialTheaterState());
             setRunning(true);
             setStep("running");
             connectSSE(savedJobId);
@@ -337,6 +345,7 @@ export default function CrawlPage() {
     setResult(null);
     setProgress(null);
     setLivePages([]);
+    setTheater(createInitialTheaterState());
     setJobId(null);
     setStep("running");
 
@@ -386,6 +395,7 @@ export default function CrawlPage() {
     setError(null);
     setProgress(null);
     setLivePages([]);
+    setTheater(createInitialTheaterState());
     setJobId(null);
     setRunning(false);
     setUrl("");
@@ -583,6 +593,11 @@ export default function CrawlPage() {
         )}
 
         {/* ══════════════ STEP 3: RUNNING ══════════════ */}
+        {step === "running" && (
+          <div className="mb-4">
+            <CrawlTheater theater={theater} />
+          </div>
+        )}
         {step === "running" && progress && (
           <LiveProgressDashboard progress={progress} livePages={livePages} onCancel={handleCancel} />
         )}

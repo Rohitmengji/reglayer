@@ -74,8 +74,11 @@ export async function executeScanPipeline(
     );
 
     // Stage 4: Screenshot capture (if requested)
-    let screenshot: string | undefined;
-    if (options?.includeScreenshot) {
+    // Prefer the screenshot the axe scanner already captured from its loaded
+    // page (no extra navigation). Only fall back to the re-navigating
+    // captureScreenshot() if the inline capture was unavailable.
+    let screenshot: string | undefined = rawResults.screenshot;
+    if (!screenshot && options?.includeScreenshot) {
       onProgress?.("screenshot", 80);
       try {
         const screenshotResult = await Sentry.startSpan(
