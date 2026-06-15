@@ -151,8 +151,16 @@ async function launchOnce(): Promise<Browser> {
     const chromium = (await import("@sparticuz/chromium")).default;
     const puppeteer = (await import("puppeteer-core")).default;
 
+    // --disable-dev-shm-usage is essential on Lambda/Vercel: /dev/shm is only
+    // ~64 MB there, so without it Chromium exhausts shared memory and dies on
+    // startup with "Protocol error (Target.createTarget): Target closed".
+    // @sparticuz/chromium's default args omit it, so add it explicitly.
+    const args = chromium.args.includes("--disable-dev-shm-usage")
+      ? chromium.args
+      : [...chromium.args, "--disable-dev-shm-usage"];
+
     const browser = await puppeteer.launch({
-      args: chromium.args,
+      args,
       defaultViewport: VIEWPORT,
       executablePath: await chromium.executablePath(),
       headless: true,
