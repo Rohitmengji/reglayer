@@ -211,31 +211,35 @@ export async function runAccessibilityScan(
      * connections like WebSockets), catch and proceed — the page is likely
      * already rendered enough for axe analysis.
      */
-    const timeout = options?.timeout ?? SCAN_DEFAULTS.timeout;
+    // Navigate with "domcontentloaded" rather than networkidle. networkidle
+    // waits for the network to fall quiet, which on real sites with persistent
+    // connections (analytics sockets, chat widgets, ad beacons) routinely burns
+    // the full timeout and makes every page feel slow. domcontentloaded returns
+    // as soon as the DOM is parsed — sufficient for axe — and the bounded
+    // hydration wait below gives SPA frameworks time to render.
+    const timeout = Math.min(options?.timeout ?? SCAN_DEFAULTS.timeout, 20_000);
     try {
-      if (isServerless()) {
-        await page.goto(url, { waitUntil: "networkidle0" as unknown as "load", timeout });
-      } else {
-        await page.goto(url, { waitUntil: "networkidle", timeout });
-      }
+      await page.goto(url, { waitUntil: "domcontentloaded", timeout });
     } catch (navError: unknown) {
-      // If networkidle timed out, the page is likely loaded enough.
-      // Only re-throw if the page didn't load at all.
+      // A timeout here usually means the DOM is up but the network never settled
+      // — proceed and let the content guard below decide if the page is usable.
       const message = navError instanceof Error ? navError.message : "";
       if (message.includes("Timeout") || message.includes("timeout")) {
-        // Page loaded but had persistent connections — proceed with scan
+        // Proceed with scan
       } else {
         throw navError;
       }
     }
 
-    // Post-navigation stabilization: allow JS frameworks to hydrate
-    // 3 seconds provides enough time for React/Vue/Angular to render
+    // Post-navigation stabilization: give JS frameworks a bounded window to
+    // hydrate. 1.2s (down from a blind 3s) is enough for the initial render of
+    // React/Vue/Angular apps while keeping per-page time low across a crawl.
+    const HYDRATION_WAIT_MS = 1200;
     if (isServerless()) {
-      await new Promise((r) => setTimeout(r, 3000));
+      await new Promise((r) => setTimeout(r, HYDRATION_WAIT_MS));
     } else {
       await page.waitForLoadState("domcontentloaded");
-      await page.waitForTimeout(3000);
+      await page.waitForTimeout(HYDRATION_WAIT_MS);
     }
 
     // Optional: wait for specific selector if provided (SPA support)

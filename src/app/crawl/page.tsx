@@ -65,11 +65,23 @@ import { createInitialTheaterState, reduceTheaterEvent, type TheaterState } from
 //   deep          — deeper discovery (higher maxDepth), auth optional
 type ScanMode = "public" | "authenticated" | "deep";
 
-// Per-mode crawl depth defaults (maps to the engine's maxDepth).
+// Per-mode defaults so the three modes behave meaningfully differently rather
+// than only changing crawl depth:
+//  - public:        fast, shallow surface scan of the marketing/public site
+//  - authenticated: gentler concurrency (avoids tripping auth rate-limits) and
+//                   a session-aware, slightly broader sweep behind the login
+//  - deep:          broad, deep discovery for full-site coverage
+const MODE_CONFIG: Record<ScanMode, { maxPages: number; maxDepth: number; concurrency: number }> = {
+  public: { maxPages: 25, maxDepth: 2, concurrency: 3 },
+  authenticated: { maxPages: 40, maxDepth: 3, concurrency: 2 },
+  deep: { maxPages: 75, maxDepth: 5, concurrency: 3 },
+};
+
+// Back-compat alias (depth still referenced elsewhere).
 const MODE_DEPTH: Record<ScanMode, number> = {
-  public: 3,
-  authenticated: 3,
-  deep: 5,
+  public: MODE_CONFIG.public.maxDepth,
+  authenticated: MODE_CONFIG.authenticated.maxDepth,
+  deep: MODE_CONFIG.deep.maxDepth,
 };
 
 // ── Types ──
@@ -126,6 +138,7 @@ interface AuditResult {
   timing: { auth: number; discovery: number; scanning: number; analysis: number; total: number };
   patterns: ViolationPattern[];
   discovery: { sitemapUrls: number; linkUrls: number; totalUnique: number; sitemapAvailable: boolean };
+  outcome?: "ok" | "all-failed" | "no-pages" | "launch-failed";
 }
 
 interface LiveProgress {
@@ -319,9 +332,12 @@ export default function CrawlPage() {
 
   function selectMode(m: ScanMode) {
     setMode(m);
-    // Discovery-based: sensible page-limit default + per-mode crawl depth.
-    setMaxPages("50");
-    setMaxDepth(String(MODE_DEPTH[m]));
+    // Apply per-mode defaults (page budget, depth, concurrency) so each mode is
+    // genuinely tuned, not just a depth change. Users can still adjust them.
+    const cfg = MODE_CONFIG[m];
+    setMaxPages(String(cfg.maxPages));
+    setMaxDepth(String(cfg.maxDepth));
+    setConcurrency(String(cfg.concurrency));
     setStep("config");
   }
 
@@ -618,9 +634,20 @@ export default function CrawlPage() {
           <Card className="border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950">
             <CardContent className="p-4 flex items-start gap-3">
               <XCircle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-red-800 dark:text-red-200">Audit Failed</p>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-red-800 dark:text-red-200">We couldn&apos;t finish the audit</p>
                 <p className="text-sm text-red-600 dark:text-red-400 mt-1">{error}</p>
+                <div className="flex flex-wrap gap-2 mt-3">
+                  <Button size="sm" onClick={() => handleAudit()} disabled={!url} className="h-8 text-xs">
+                    <Radio className="h-3.5 w-3.5 mr-1.5" /> Try again
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => setStep("config")} className="h-8 text-xs">
+                    Adjust settings
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => setStep("mode")} className="h-8 text-xs">
+                    New audit
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -862,6 +889,43 @@ function AuditResults({ result }: { result: AuditResult }) {
   const discoveredPages = result.pages;
   const cleanCount = discoveredPages.filter((p) => !p.error && p.violations === 0 && p.scanId).length;
   const errorCount = discoveredPages.filter((p) => p.error).length;
+
+  // Honest empty / all-failed state — never show a "score 0" success screen for
+  // a crawl that scanned nothing.
+  const noResults = result.pagesScanned === 0 || result.outcome === "no-pages" || result.outcome === "all-failed";
+  if (noResults) {
+    const isNoPages = result.outcome === "no-pages" || result.pagesDiscovered === 0;
+    const firstErr = result.errors?.[0]?.error;
+    return (
+      <Card className="border-amber-200 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-950/30">
+        <CardContent className="p-6 space-y-3">
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="h-6 w-6 text-amber-500 shrink-0" />
+            <div>
+              <h3 className="text-base font-semibold text-neutral-900 dark:text-white">
+                {isNoPages ? "No pages could be scanned" : "We couldn't scan any of the discovered pages"}
+              </h3>
+              <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-0.5">
+                {isNoPages
+                  ? `We discovered ${result.discovery?.totalUnique ?? 0} URL(s) but none were scannable.`
+                  : `${result.pagesDiscovered} page(s) were discovered, but every scan failed.`}
+              </p>
+            </div>
+          </div>
+          {firstErr && (
+            <p className="text-xs font-mono text-amber-700 dark:text-amber-300 bg-amber-100/60 dark:bg-amber-900/30 rounded-md px-3 py-2 wrap-break-word">
+              {firstErr}
+            </p>
+          )}
+          <ul className="text-sm text-neutral-600 dark:text-neutral-300 list-disc pl-5 space-y-1">
+            <li>Check the URL is correct and publicly reachable.</li>
+            <li>Some sites block automated scanners — try again, or use Authenticated mode.</li>
+            <li>For large or slow sites, retry with a lower speed (fewer pages in parallel).</li>
+          </ul>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-6">

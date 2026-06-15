@@ -25,7 +25,8 @@
  * ══════════════════════════════════════════════════════════════════════════════
  */
 
-import { launchBrowser } from "@/lib/scanner/browser/launch";
+import { launchBrowser, isServerless, isTransientBrowserError } from "@/lib/scanner/browser/launch";
+import { humanizeCrawlError } from "./crawlErrors";
 import { applyAuthToContext, AuthenticationError } from "@/lib/scanner/auth";
 import { executeScanPipeline } from "@/lib/scanner/pipelines/scanPipeline";
 import { evaluateCompliance } from "@/lib/compliance/policyEvaluator";
@@ -68,6 +69,17 @@ export interface CrawlConfig {
   siteId?: string;
 }
 
+/**
+ * Outcome of a finished crawl, so the UI can tell apart a real success from a
+ * run that completed but scanned nothing — instead of rendering a misleading
+ * "score 0" success screen.
+ *  - "ok":          at least one page scanned successfully
+ *  - "all-failed":  pages were discovered but every scan failed
+ *  - "no-pages":    discovery found nothing scannable
+ *  - "launch-failed": the browser could not start at all
+ */
+export type CrawlOutcome = "ok" | "all-failed" | "no-pages" | "launch-failed";
+
 export interface CrawlResult {
   id: string;
   startUrl: string;
@@ -85,6 +97,8 @@ export interface CrawlResult {
   timing: CrawlTiming;
   patterns: ViolationPattern[];
   discovery: DiscoveryMeta;
+  /** Set on every finished crawl. Absent on older records → treat as "ok". */
+  outcome?: CrawlOutcome;
 }
 
 export interface CrawlPageResult {
@@ -327,6 +341,21 @@ function isCancelled(jobId: string | undefined): boolean {
   return job?.cancelRequested ?? false;
 }
 
+/** Close a browser/context/page without ever throwing (teardown must not mask the real error). */
+async function safeClose(closable: { close: () => Promise<void> } | null | undefined): Promise<void> {
+  try { await closable?.close(); } catch { /* best-effort */ }
+}
+
+/**
+ * Effective scan concurrency. Serverless functions are memory-constrained, so
+ * launching many headless Chromiums at once is the direct cause of
+ * "Target closed" crashes — cap it there regardless of the requested value.
+ */
+function effectiveConcurrency(requested: number): number {
+  const safe = Math.max(1, Math.min(requested || 1, 10));
+  return isServerless() ? Math.min(safe, 2) : safe;
+}
+
 // ══════════════════════════════════════════════════════════════
 // MAIN ENGINE
 // ══════════════════════════════════════════════════════════════
@@ -374,13 +403,19 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
   let browser: Browser | null = null;
 
   try {
+    // launchBrowser() already retries transient Chromium crashes with backoff,
+    // so reaching this catch means the browser genuinely could not start.
     browser = await launchBrowser();
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Browser launch failed";
-    emit(config.jobId, { type: "error", error: `Browser launch failed: ${msg}`, timestamp: Date.now() });
-    return buildEmptyResult(crawlId, config, startTime, [
-      { url: config.startUrl, phase: "auth", error: `Browser launch failed: ${msg}`, timestamp: Date.now() },
-    ]);
+    crawlLogger.error("Browser launch failed after retries", { error: msg });
+    emit(config.jobId, { type: "error", error: humanizeCrawlError(msg), timestamp: Date.now() });
+    return {
+      ...buildEmptyResult(crawlId, config, startTime, [
+        { url: config.startUrl, phase: "auth", error: `Browser launch failed: ${msg}`, timestamp: Date.now() },
+      ]),
+      outcome: "launch-failed",
+    };
   }
 
   let context: BrowserContext;
@@ -394,12 +429,15 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
     });
     page = await context.newPage();
   } catch (err) {
-    await browser.close();
+    await safeClose(browser);
     const msg = err instanceof Error ? err.message : "Context creation failed";
-    emit(config.jobId, { type: "error", error: msg, timestamp: Date.now() });
-    return buildEmptyResult(crawlId, config, startTime, [
-      { url: config.startUrl, phase: "auth", error: msg, timestamp: Date.now() },
-    ]);
+    emit(config.jobId, { type: "error", error: humanizeCrawlError(msg), timestamp: Date.now() });
+    return {
+      ...buildEmptyResult(crawlId, config, startTime, [
+        { url: config.startUrl, phase: "auth", error: msg, timestamp: Date.now() },
+      ]),
+      outcome: "launch-failed",
+    };
   }
 
   if (config.auth && config.auth.method !== "none") {
@@ -442,13 +480,13 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
         failProof = Buffer.from(buf).toString("base64");
       } catch { /* ignore */ }
 
-      await context.close();
-      await browser.close();
+      await safeClose(context);
+      await safeClose(browser);
       timing.auth = Date.now() - authStart;
       timing.total = Date.now() - startTime;
 
       emit(config.jobId, { type: "auth-status", authenticated: false, method: config.auth.method, timestamp: Date.now() });
-      emit(config.jobId, { type: "error", error: `Authentication failed: ${message}`, timestamp: Date.now() });
+      emit(config.jobId, { type: "error", error: humanizeCrawlError(message, "auth"), timestamp: Date.now() });
 
       return {
         ...buildEmptyResult(crawlId, config, startTime, [
@@ -456,6 +494,7 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
         ]),
         auth: { authenticated: false, method: config.auth.method, proof: failProof },
         timing,
+        outcome: "launch-failed",
       };
     }
   }
@@ -594,6 +633,17 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
         error: err instanceof Error ? err.message : "Navigation failed",
         timestamp: Date.now(),
       });
+      // If the browser/page itself died (e.g. "Target closed"), every remaining
+      // goto would fail the same way — stop discovery and proceed to audit with
+      // the pages found so far (the root is always already in `visited`), rather
+      // than spinning through the whole queue failing.
+      const dead = isTransientBrowserError(err) || !(browser as { isConnected?: () => boolean }).isConnected?.();
+      if (dead) {
+        crawlLogger.warn("Discovery browser died — proceeding to audit with pages found so far", {
+          discovered: visited.size,
+        });
+        break;
+      }
     }
   }
 
@@ -635,19 +685,27 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
     timing.scanning = 0;
     timing.analysis = 0;
     timing.total = Date.now() - startTime;
-    emit(config.jobId, { type: "error", error: "No scannable pages discovered", timestamp: Date.now() });
-    return {
+    // Finishing with nothing to scan is a completed (if empty) audit, not a hard
+    // error — emit `complete` so the UI shows a clear "no pages found" state with
+    // the discovery stats, rather than a scary raw-error screen.
+    const emptyResult: CrawlResult = {
       ...buildEmptyResult(crawlId, config, startTime, errors.length > 0 ? errors : [
         { url: config.startUrl, phase: "discovery", error: "No scannable pages discovered", timestamp: Date.now() },
       ]),
       auth: authStatus,
       timing,
       discovery: { sitemapUrls: sitemapUrlCount, linkUrls: linkUrlCount, totalUnique: 0, sitemapAvailable },
+      outcome: "no-pages",
     };
+    emit(config.jobId, { type: "complete", result: emptyResult, timestamp: Date.now() });
+    return emptyResult;
   }
 
   const totalPages = pagesToScan.length;
-  crawlLogger.info("Audit phase started", { pages: totalPages, concurrency: config.concurrency });
+  // Cap concurrency on serverless: launching many headless Chromiums at once is
+  // the direct cause of "Target closed" crashes under memory pressure.
+  const concurrency = effectiveConcurrency(config.concurrency);
+  crawlLogger.info("Audit phase started", { pages: totalPages, concurrency, requested: config.concurrency });
 
   // Build scan options with exported session.
   // includeScreenshot drives the live "watch the crawl" viewport. The shot is
@@ -684,7 +742,14 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
           await delay(requestDelay);
         }
 
-        const scanResult = await executeScanPipeline(url, scanOptions);
+        // Hard per-page timeout so a single hung page can't stall a worker
+        // (and, across retries, the whole audit) for minutes.
+        const scanResult = await Promise.race([
+          executeScanPipeline(url, scanOptions),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error("Page scan timed out")), 35_000)
+          ),
+        ]);
 
         for (const v of scanResult.violations) {
           allViolations.push({
@@ -743,7 +808,7 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
         // Calculate ETA
         const avgTime = scanTimes.reduce((a, b) => a + b, 0) / scanTimes.length;
         const remaining = totalPages - pagesCompleted;
-        const eta = Math.round(avgTime * remaining / Math.max(config.concurrency, 1));
+        const eta = Math.round(avgTime * remaining / Math.max(concurrency, 1));
         const scanRate = pagesCompleted / ((Date.now() - scanStart) / 1000);
 
         // Emit page complete
@@ -828,7 +893,7 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
       break;
     }
 
-    while (pending.length > 0 && activeScans < config.concurrency) {
+    while (pending.length > 0 && activeScans < concurrency) {
       const { url, depth, index } = pending.shift()!;
       activeScans++;
       const p = scanPage(url, depth, index).finally(() => {
@@ -922,6 +987,9 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
     timing,
     patterns,
     discovery: { sitemapUrls: sitemapUrlCount, linkUrls: linkUrlCount, totalUnique: visited.size, sitemapAvailable },
+    // Pages were discovered but every scan failed → tell the UI so it shows an
+    // honest "couldn't scan any pages" state instead of a "score 0" success.
+    outcome: validResults.length === 0 ? "all-failed" : "ok",
   };
 
   emit(config.jobId, { type: "complete", result: finalResult, timestamp: Date.now() });

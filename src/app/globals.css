@@ -367,6 +367,12 @@ code, kbd, pre, samp, .font-mono {
   to { opacity: 1; transform: scale(1); }
 }
 
+/* Indeterminate progress bar (discovery phase) — sweeps a partial bar across */
+@keyframes indeterminate {
+  0% { transform: translateX(-120%); }
+  100% { transform: translateX(420%); }
+}
+
 /* ─── Utility classes ──────────────────────────────────────────────────────── */
 
 .animate-fade-in { animation: fadeIn var(--duration-normal) var(--ease-smooth) both; }
