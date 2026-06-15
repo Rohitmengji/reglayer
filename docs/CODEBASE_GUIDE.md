@@ -49,6 +49,8 @@ RegLayer is a **web accessibility compliance platform** built with:
 
 5. **Fire-and-forget side effects** — After a scan completes, webhooks, emails, and integrations are dispatched asynchronously without blocking the response.
 
+6. **Pure-core moat features** — The legal/data-network moat features (Anchored Evidence Chain, Litigation Defense File, Demand-Letter Triage, Fix Genome, VALG) each follow a strict trichotomy: a PURE core (no Prisma/Next/`server-only`, unit-testable like `chain.ts`) + a thin `server-only` loader + a thin route handler. Best-effort recorders never throw; all generated HTML is `escapeHtml`-escaped.
+
 ---
 
 ## Root Configuration Files
@@ -139,6 +141,14 @@ RegLayer is a **web accessibility compliance platform** built with:
 | `AuditLog` | Immutable action trail for compliance evidence |
 | `AccessRequest` | OAuth onboarding queue: users request workspace access |
 | `CreditGrant` | Admin-granted bonus AI credits |
+| `ComplianceProof` | Tamper-evident compliance proof issued from a scan. Now a Merkle-style hash chain: gained `prevHash`/`chainIndex`/`anchoredAt`/`anchorProof` + `@@unique([workspaceId, chainIndex])` (the Anchored Evidence Chain) |
+| `Monitor` (`monitors`) | Site monitoring rule: condition (score_below/score_drop/new_critical/new_violations) + threshold + notify channel |
+| `CrawlJobRecord` (`crawl_jobs`) | Durable crawl-job state (status, progress, pages scanned, result/error) for multi-page crawls |
+| `RumEventRecord` (`rum_events`) | Durable Real User Monitoring events (type, selector, page, session, viewport) |
+| `FixOutcomeRecord` (`fix_outcomes`) | Crowd-verified remediation outcome (success/failure) keyed by `ruleId` + normalized `fingerprint`; standalone, no enforced relations. Powers the Fix Genome [#169] |
+| `VendorObservation` (`vendor_observations`) | One row per (scan, vendor): vendor, category, violationCount, riskScore, observedAt; standalone. Powers the Vendor Accessibility Liability Graph [#170] |
+
+> **Counts**: 34 models, 10 enums. Standalone records (`FixOutcomeRecord`, `VendorObservation`, `RumEventRecord`) deliberately omit enforced relations so an outcome/observation survives deletion of its source scan and best-effort recorders never break the primary flow.
 
 #### Key Relationships:
 ```
@@ -231,6 +241,13 @@ All pages live in `src/app/` following Next.js App Router conventions. Each `pag
 | `admin/page.tsx` | `/admin` | Master admin panel: user management, credit grants |
 | `report/[id]/page.tsx` | `/report/:id` | Public shareable scan report (standalone, no sidebar) |
 | `certificate/[id]/page.tsx` | `/certificate/:id` | Compliance certificate (shareable badge) |
+| `demand-letter/page.tsx` | `/demand-letter` | Demand-Letter Triage: paste an ADA demand letter (or enter claims) and get a per-claim verdict + dollar exposure-delta against your scan/proof history |
+
+### Public Pages (No Auth Required) — Verification
+
+| Page | Route | Purpose |
+|------|-------|---------|
+| `verify/[proofId]/page.tsx` | `/verify/:proofId` | **Login-free** public verification of an Anchored Evidence Chain proof — recomputes the proof hash and walks the workspace chain so any third party can confirm tamper-evidence without trusting RegLayer |
 
 ---
 
@@ -326,6 +343,19 @@ All API routes live in `src/app/api/`. Each `route.ts` exports HTTP method handl
 | `remediate/script/route.ts` | GET | Serve remediation overlay script |
 | `revenue-impact/route.ts` | GET | Calculate revenue impact of non-compliance |
 | `violations/status/route.ts` | PATCH | Update violation status (fixed, in-progress, etc.) |
+
+### Legal Moat & Data-Network Routes
+
+These routes back the five newly-shipped moat features. Every one follows the same shape: **pure core → thin server loader → thin route handler** doing auth + format negotiation, with all generated HTML `escapeHtml`-escaped. All ownership-scoped routes use the shared `assertSiteAccess`/`assertScanAccess` helpers (see `src/lib/auth/access.ts`).
+
+| Route | Methods | Purpose |
+|-------|---------|---------|
+| `vault/[proofId]/verify/route.ts` | GET, POST | **Public, login-free** verification of an Anchored Evidence Chain proof — calls `verifyProof()` to recompute the hash and walk the workspace chain |
+| `sites/[siteId]/defense-file/route.ts` | GET, POST | Litigation Defense File — assembles a chronological, hash-verified good-faith remediation dossier (`?format=html\|json`). IDOR-safe via `assertSiteAccess` on **both** verbs |
+| `sites/[siteId]/demand-letter/route.ts` | POST | Demand-Letter Triage — accepts pasted `letterText` **or** a manual `claims` array, maps each claim onto scan/violation/proof history, returns verdicts + exposure-delta (`html\|json`). `assertSiteAccess`-gated, stateless |
+| `genome/recommend/route.ts` | GET | Fix Genome recommendations — `?ruleId=&scope=global\|workspace&by=rule\|fingerprint`; aggregates cross-tenant `FixOutcomeRecord`s into a confidence-rated "this fix works X% of the time" answer [#169] |
+| `vendor-graph/route.ts` | GET | Vendor Accessibility Liability Graph — `?vendor=&scope=global\|workspace&splitDays=`; reach-weighted liability scoring + regression-over-time detection [#170] |
+| `vendor-risk/route.ts` | GET | Per-scan third-party vendor risk. Now `assertScanAccess`-gated (closed a cross-tenant IDOR) and best-effort records observations into the VALG |
 
 ---
 
@@ -516,6 +546,64 @@ OpenAI integration for intelligent explanations.
 - **WHAT**: Generates human-readable compliance summary from scan data
 - **HOW**: Prompts GPT with scan metrics, returns markdown summary
 
+### Anchored Evidence Chain (`src/lib/vault/`)
+
+The legal moat: tamper-evident, independently verifiable compliance proofs. **Architecture pattern**: a PURE, framework-free core (`chain.ts`) any auditor can re-run, plus a thin `server-only` engine (`proofEngine.ts`) that persists to Prisma.
+
+#### `vault/chain.ts` — **PURE** (no Prisma, no Next, no `server-only`)
+- **WHY**: A proof whose checksum lives in the same row as its evidence is trivially forgeable, and there is no tamper-evidence *across* the proof set (delete/reorder/back-date leaves no trace)
+- **WHAT**: A Merkle-style hash chain. Key exports: `canonicalize` (recursive key-sorted deterministic JSON), `computeProofHash` (SHA-256 over `{ evidence, prevHash, chainIndex, issuedAt }`), `verifyProofIntegrity` (single-link recompute), `verifyChain` (walks a sorted chain, returns `{ valid, length, brokenAt, issues }`). Detects four `ChainProblem`s: `hash-mismatch`, `broken-link`, `index-gap`, `duplicate-index`
+- **HOW**: Tampering one proof's evidence breaks that proof's own hash; reordering/back-dating breaks the `prevHash` of every later proof. An empty chain is *vacuously valid*. Exhaustively unit-testable exactly as-is
+
+#### `vault/proofEngine.ts` — thin `server-only` engine
+- **WHY**: Turn the forgeable in-row self-checksum into a tamper-evident, independently verifiable chain
+- **WHAT**: `issueProof` appends a proof to the workspace's hash chain (`prevHash` + `chainIndex`, with a P2002 retry loop for the `@@unique([workspaceId, chainIndex])` race); `verifyProof` recomputes a proof's hash and verifies the chain up to it; `verifyWorkspaceChain` verifies the whole chain. `revokeProof`/`listProofs`/`getProof` round out the API
+- **HOW**: All hashing is delegated to the pure `chain.ts`. A best-effort `anchorProofHash` stub (no-op unless `OPENTIMESTAMPS_URL` is set) leaves room for external timestamp anchoring — **no third-party anchoring is claimed today**
+
+### Litigation Defense File (`src/lib/defense/`)
+
+Legal moat. One click assembles a chronological, hash-verified "ongoing good-faith remediation effort" dossier from data already recorded. **No migration needed.**
+
+#### `defense/defenseFile.ts` — **PURE**
+- **WHAT**: `assembleDefenseFile` (orchestrator), `buildTimeline` (full scan time series incl. FAILED attempts + per-violation status transitions from `AuditLog` + re-scan fix verifications + the proof ledger), `computeGoodFaithMetrics` (monitoring span, % verified-fixed, mean/median time-to-remediate, accessibility-score trend, chain integrity), `verifyProofsLocally` (re-verifies each proof independently), `renderDefenseFileHTML`, and `escapeHtml`
+- **HOW**: Honest framing baked in — revoked/expired proofs are NOT tampering; an empty chain is `"empty"`, never `"verified"`; no third-party timestamp anchoring is claimed
+
+#### `defense/loadDefenseFileData.ts` — thin `server-only` loader
+- **WHAT**: `loadDefenseFileData(args)` gathers scans, violations, audit logs and proofs for a site and feeds the pure assembler. A button to invoke this lives on `src/components/risk/RiskBreakdownCard.tsx`
+
+### Demand-Letter Triage (`src/lib/triage/`)
+
+Legal moat [feature ③, PR #168]. Paste an ADA demand letter → each alleged claim is mapped onto your scan/violation/proof history with a per-claim verdict plus a dollar exposure-delta. **Stateless — no migration.**
+
+#### `triage/demandLetter.ts` — **PURE**
+- **WHAT**: `assessClaims` (maps each claim to a `ClaimVerdict`: `never_detected` / `not_present_on_date` / `remediated` / `present_open` / `rule_unrecognized` / `no_scan_history`, bucketed into `rebutted`/`mitigated`/`exposed`/`unquantified`), `renderTriageHTML`, and `escapeHtml`. The dollar `ExposureModel` is **injected** so the core stays pure (gross alleged vs. net genuinely-open vs. rebutted)
+
+#### `triage/parseDemandLetter.ts`
+- **WHAT**: `parseDemandLetter(letterText)` uses `gpt-4o-mini` with zod validation, returning a `DemandClaim[]` (graceful null on failure). Exposes `KNOWN_TRIAGE_RULES`
+
+#### `triage/loadTriageData.ts` — thin `server-only` loader
+- **WHAT**: `loadTriageData(args)` plus `buildExposureModel(industry, primaryGeo)`, which derives the exposure model from `legalRiskEngine`'s `LITIGATION_WEIGHTS` / `INDUSTRY_MULTIPLIERS` / `GEO_MULTIPLIERS`
+
+### Fix Genome (`src/lib/genome/`)
+
+Data-network moat [feature ④, PR #169]. Learns which specific fix actually worked (re-scan-verified) and aggregates **cross-tenant** into "for this barrier, this fix works X% of the time, median Y days," confidence-rated.
+
+#### `genome/fixGenome.ts` — **PURE**
+- **WHAT**: `normalizeSelector`, `computeFingerprint` (`ruleId` + normalized structural selector), `aggregateOutcomes`, `recommendForRule` (confidence rated by sample size via `CONFIDENCE_THRESHOLDS = { high: 10, medium: 4, low: 1 }` → `high`/`medium`/`low`/`insufficient`). `GroupBy` is `"rule" | "fingerprint"`
+
+#### `genome/recordOutcome.ts` — **BEST-EFFORT** (never throws)
+- **WHAT**: `recordFixOutcome(args)` writes one `FixOutcomeRecord` per verified outcome (success AND failure), keyed by `ruleId` + fingerprint. Wired into `verifyViolationFix` in `src/lib/violations/status.ts`. Because it never throws, a pending migration cannot break the primary fix-verification flow
+
+### Vendor Accessibility Liability Graph / VALG (`src/lib/vendorgraph/`)
+
+Data-network moat [feature ⑤, PR #170]. Scores every third-party widget (Intercom, OneTrust, Stripe, YouTube, …) by the real a11y liability it injects across ALL embedding sites (reach-weighted), with regression-over-time detection.
+
+#### `vendorgraph/vendorGraph.ts` — **PURE**
+- **WHAT**: `aggregateVendorObservations`, `computeLiabilityScore(avgRiskScore, sitesAffected)` (reach-weighted), `detectVendorTrend` (regression over time; `TREND_THRESHOLD_PCT = 10` → `regressed`/`improved`/`stable`/`insufficient-data`)
+
+#### `vendorgraph/recordObservations.ts` — **BEST-EFFORT** (never throws)
+- **WHAT**: `recordVendorObservations(report)` writes one `VendorObservation` per (scan, vendor). Wired into `src/app/api/vendor-risk/route.ts`, which also gained `assertScanAccess` (closing a cross-tenant IDOR)
+
 ### Authentication (`src/lib/auth/`)
 
 #### `auth/config.ts`
@@ -527,6 +615,11 @@ OpenAI integration for intelligent explanations.
 - **WHY**: Role-based access control for team features
 - **WHAT**: Permission checks: `canManageTeam()`, `canEditSettings()`, `isAdmin()`
 - **HOW**: Queries `WorkspaceMember.role` and checks against required permission level
+
+#### `auth/access.ts` — **Security-by-construction**
+- **WHY**: Several routes loaded a `Scan`/`Site` by a caller-supplied id and trusted it, enabling cross-tenant reads and forged proofs bound to another tenant's scan. The correct ownership pattern existed in only one place and was never shared
+- **WHAT**: Single source of truth for "can this session access this scan/site?". Exports `assertScanAccess(scanId, session)` and `assertSiteAccess(siteId, session)`, each returning a discriminated `AccessResult` — `{ ok: true, userId, isMasterAdmin, workspaceId }` or `{ ok: false, status: 401|403|404, error }`
+- **HOW**: Master-admin bypass; otherwise workspace-membership (or, for legacy workspace-less scans, ownership by `userId`). Returns a result rather than throwing so callers map denials to the right HTTP status. Used across vault/vpat/statement/risk/score/simulate plus the new defense-file/demand-letter/vendor-risk routes. Closed proof-forgery (C-3) and IDOR (S-3) findings
 
 ### Credits (`src/lib/credits/`)
 
@@ -652,6 +745,8 @@ OpenAI integration for intelligent explanations.
 ---
 
 ## Testing
+
+> **Suite size**: 301 tests passing across 18 Vitest suites. The pure cores of the moat features (`chain.ts`, `defenseFile.ts`, `demandLetter.ts`, `fixGenome.ts`, `vendorGraph.ts`) are exhaustively unit-testable with no mocking because they take plain inputs and touch no Prisma/Next. A CI parity test also enforces that every user-facing string exists in all 7 i18n locale files.
 
 ### `src/__tests__/setup.ts`
 - **WHY**: Test environment configuration
@@ -847,7 +942,11 @@ OpenAI integration for intelligent explanations.
 8. **Progressive enhancement** — Works without AI/Redis/email (graceful degradation)
 9. **Multi-tenant isolation** — All data scoped to workspaces
 10. **Immutable audit trail** — Every action logged for compliance evidence
+11. **Pure-core / loader / handler trichotomy** — Every moat feature is split into (a) a PURE core with no Prisma/Next/`server-only` (exhaustively unit-testable exactly like `chain.ts`), (b) a thin `server-only` data loader, and (c) a thin route handler doing auth + format negotiation. All generated HTML is `escapeHtml`-escaped
+12. **Best-effort recorders never throw** — `recordFixOutcome` / `recordVendorObservations` swallow errors so a pending migration cannot break the primary flow
+13. **Security-by-construction ownership** — Shared `assertScanAccess` / `assertSiteAccess` discriminated assertions guard every ownership-scoped route (closed proof-forgery C-3 and IDOR S-3)
+14. **i18n parity in CI** — Every user-facing string exists in all 7 locale files; a parity test enforces this
 
 ---
 
-*Generated for RegLayer codebase comprehension. Last updated: May 2026.*
+*Generated for RegLayer codebase comprehension. Last updated: June 2026.*
