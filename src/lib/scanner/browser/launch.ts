@@ -119,6 +119,19 @@ async function makeServerlessContext(browser: any, options?: Record<string, unkn
   // Expose the Playwright-compatible context on the page for code that calls
   // page.context() (e.g. the auth applier). Overrides puppeteer's own context().
   page.context = () => ctx;
+
+  // Shim the Playwright page APIs the crawler uses but puppeteer lacks. Without
+  // these, the crawler's waitForPageReady() throws "waitForTimeout is not a
+  // function" DURING discovery — before link extraction — so only the root page
+  // is ever found (single-page crawls in production).
+  if (typeof page.waitForTimeout !== "function") {
+    page.waitForTimeout = (ms: number) => new Promise((r: (v?: unknown) => void) => setTimeout(r, ms));
+  }
+  if (typeof page.waitForLoadState !== "function") {
+    // puppeteer's goto() already waited for the requested lifecycle event; the
+    // extra "networkidle" settle is best-effort, so a no-op is safe here.
+    page.waitForLoadState = async () => {};
+  }
   return { ctx, page };
 }
 
