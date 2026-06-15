@@ -1515,6 +1515,13 @@ export const en = {
   "risk.generatingDefenseFile": "Assembling defense file…",
   "risk.defenseFileFailed": "Failed to generate defense file",
   "risk.defenseFileDescription": "A chronological, hash-verified record of your ongoing good-faith remediation effort.",
+  "demandLetter.title": "Demand-Letter Triage",
+  "demandLetter.subtitle": "Map an ADA demand letter against your evidence and rebut each claim",
+  "demandLetter.noSite": "No site selected. Open this from a site's risk page.",
+  "demandLetter.letterPlaceholder": "Paste the full text of the demand letter here…",
+  "demandLetter.analyze": "Analyze & download rebuttal",
+  "demandLetter.analyzing": "Analyzing…",
+  "demandLetter.failed": "Failed to analyze the letter",
 
   // Trends: Delta Cards
   "delta.aisScore": "AIS Score",
