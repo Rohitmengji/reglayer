@@ -3,7 +3,12 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import OpenAI from "openai";
 
-const openai = new OpenAI();
+// Lazy: `new OpenAI()` reads OPENAI_API_KEY and throws if absent. At module
+// top-level that crashes `next build` page-data collection (the key is a RUNTIME
+// secret, not present at build time). Construct it per-request instead.
+function getOpenAI() {
+  return new OpenAI();
+}
 
 /**
  * POST /api/blog/generate — AI full article generation
@@ -22,6 +27,8 @@ export async function POST(request: Request) {
   if (!body?.topic) {
     return NextResponse.json({ error: "topic required" }, { status: 400 });
   }
+
+  const openai = getOpenAI();
 
   const { topic, category = "Technical", tone = "practitioner" } = body;
 

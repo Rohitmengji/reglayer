@@ -8,7 +8,12 @@ interface RouteParams {
   params: Promise<{ slug: string }>;
 }
 
-const openai = new OpenAI();
+// Lazy: `new OpenAI()` reads OPENAI_API_KEY and throws if absent. At module
+// top-level that crashes `next build` page-data collection (the key is a RUNTIME
+// secret, not present at build time). Construct it per-request instead.
+function getOpenAI() {
+  return new OpenAI();
+}
 
 /**
  * POST /api/blog/[slug]/ai-edit — AI-assisted content editing
@@ -29,6 +34,8 @@ export async function POST(request: Request, { params }: RouteParams) {
   if (!body?.instruction) {
     return NextResponse.json({ error: "instruction required" }, { status: 400 });
   }
+
+  const openai = getOpenAI();
 
   const article = await prisma.article.findUnique({ where: { slug } });
   if (!article) {
