@@ -42,10 +42,33 @@ export async function GET(
   }
 
   const terminal = record.status === "complete" || record.status === "failed" || record.status === "cancelled";
+  // Reconstruct a JobProgress-shaped object from the durable record so a polling
+  // client gets the SAME shape it gets from the in-memory branch (which returns
+  // the full progress object) — never a bare integer.
+  const r = (record.result ?? null) as null | {
+    pagesDiscovered?: number; pagesScanned?: number; averageScore?: number;
+    totalViolations?: number; patterns?: unknown[]; errors?: unknown[];
+  };
+  const phase =
+    record.status === "complete" ? "complete"
+    : record.status === "failed" ? "failed"
+    : record.status === "cancelled" ? "cancelled"
+    : record.pagesScanned > 0 ? "scanning" : "discovering";
+  const progress = {
+    phase,
+    pagesDiscovered: r?.pagesDiscovered ?? record.pagesTotal,
+    pagesScanned: r?.pagesScanned ?? record.pagesScanned,
+    pagesTotal: record.pagesTotal,
+    pagesFailed: Array.isArray(r?.errors) ? r!.errors!.length : 0,
+    avgScore: r?.averageScore ?? 0,
+    totalViolations: r?.totalViolations ?? 0,
+    patternsFound: Array.isArray(r?.patterns) ? r!.patterns!.length : 0,
+    phaseTiming: {},
+  };
   return NextResponse.json({
     id: record.id,
     status: record.status,
-    progress: record.progress,
+    progress,
     startedAt: record.createdAt.getTime(),
     completedAt: terminal ? record.updatedAt.getTime() : undefined,
     error: record.error ?? undefined,
