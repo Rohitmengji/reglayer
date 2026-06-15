@@ -116,6 +116,48 @@ npx tsc --noEmit
 npm run lint
 ```
 
+### Testing the live crawl visualization (browser)
+
+The Site Audit page (`/crawl`) renders a live "watch the crawl happen" view: a
+faux-browser **viewport** (real per-page screenshot + a scanline sweep +
+violation pins), an animated **site-map** graph (nodes appear/link/recolor by
+score), and a **filmstrip** of captured pages. The pure event→view-model logic
+is unit-tested (`src/__tests__/crawl-theater.test.ts`); to verify the rendered
+experience end-to-end in a browser:
+
+```bash
+npm run build && npm start          # serve on :3000 (run bare — piping it SIGPIPE-kills the server)
+```
+
+1. Sign in at `/auth/login` (local dev: `admin@reglayer.dev` / `reglayer2024`).
+2. Go to `/crawl` → choose **Public Site** → enter a PUBLIC, multi-page URL with
+   internal links, e.g. `https://quotes.toscrape.com` (page limit ~5, depth 1) →
+   **Start … Audit**.
+   - Do **not** use `localhost`/private addresses — the SSRF guard blocks them
+     (`"Scanning internal addresses is not allowed"`). Use a public sandbox so
+     sitemap + link-BFS discovery has pages to find.
+3. While it runs (~20–60s), confirm: the viewport address bar tracks the page
+   being scanned, a blue scanline animates while "Scanning page…" shows, then the
+   real screenshot fades in with a score chip; the site map fills out and
+   recolors; the filmstrip fills left→right; on completion it transitions to the
+   Results view.
+
+Verify the screenshot transport + access control:
+
+- `GET /api/scan/<scanId>/thumbnail` (the `scanId` is in each `page-complete` SSE
+  event and in the Network tab) returns **200 `image/jpeg`** when authenticated.
+- The same URL while logged out returns **401**; a bogus id returns **404**
+  (it is ownership-gated via `assertScanAccess`).
+
+Accessibility: enable the OS "Reduce motion" setting and re-run — the scanline /
+pulse animations stop (handled by the global `prefers-reduced-motion` rule) while
+the screenshots, site map, and filmstrip still render and update.
+
+Screenshots are captured from the page the axe scanner already loaded (JPEG q40,
+~50 KB; no extra navigation), stored on each page's `Scan` row, and lazy-loaded
+by the client — they are **not** buffered into the crawl result, so large crawls
+stay memory-bounded.
+
 ---
 
 ## Git Workflow
