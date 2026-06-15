@@ -1511,6 +1511,10 @@ export const en = {
   "risk.context": "Risk Context",
   "risk.calculating": "Calculating...",
   "risk.recalcFailed": "Failed to recalculate",
+  "risk.generateDefenseFile": "Generate Litigation Defense File",
+  "risk.generatingDefenseFile": "Assembling defense file…",
+  "risk.defenseFileFailed": "Failed to generate defense file",
+  "risk.defenseFileDescription": "A chronological, hash-verified record of your ongoing good-faith remediation effort.",
 
   // Trends: Delta Cards
   "delta.aisScore": "AIS Score",

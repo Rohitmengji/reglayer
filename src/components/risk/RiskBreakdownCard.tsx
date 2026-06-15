@@ -22,6 +22,8 @@ interface RiskBreakdownCardProps {
   narrative: string;
   estimatedExposure: number;
   violationBreakdown: Array<{ ruleId: string; count: number; contribution: number }>;
+  /** Site whose defense file can be generated. When absent, the action is hidden. */
+  siteId?: string | null;
 }
 
 export function RiskBreakdownCard({
@@ -29,10 +31,40 @@ export function RiskBreakdownCard({
   narrative,
   estimatedExposure,
   violationBreakdown,
+  siteId,
 }: RiskBreakdownCardProps) {
   const { t } = useI18n();
   const [expanded, setExpanded] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [defenseError, setDefenseError] = useState<string | null>(null);
   const maxContribution = Math.max(...violationBreakdown.map((v) => v.contribution), 1);
+
+  async function handleGenerateDefenseFile() {
+    if (!siteId || generating) return;
+    setGenerating(true);
+    setDefenseError(null);
+    try {
+      const res = await fetch(`/api/sites/${siteId}/defense-file`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ format: "html" }),
+      });
+      if (!res.ok) throw new Error(await res.text().catch(() => ""));
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "RegLayer-Defense-File.html";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      setDefenseError(t("risk.defenseFileFailed"));
+    } finally {
+      setGenerating(false);
+    }
+  }
 
   return (
     <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg p-6 space-y-4">
@@ -94,6 +126,27 @@ export function RiskBreakdownCard({
             Estimated legal exposure based on violation profile × industry × geography multipliers.
             Actual exposure depends on jurisdiction, entity size, and litigation history.
           </p>
+        </div>
+      )}
+
+      {/* Litigation Defense File */}
+      {siteId && (
+        <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800">
+          <button
+            onClick={handleGenerateDefenseFile}
+            disabled={generating}
+            className="w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 text-sm font-medium"
+          >
+            {generating ? t("risk.generatingDefenseFile") : t("risk.generateDefenseFile")}
+          </button>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1.5">
+            {t("risk.defenseFileDescription")}
+          </p>
+          {defenseError && (
+            <p className="text-xs text-red-600 dark:text-red-400 mt-1" role="alert">
+              {defenseError}
+            </p>
+          )}
         </div>
       )}
     </div>

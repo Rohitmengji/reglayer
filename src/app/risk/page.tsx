@@ -128,6 +128,7 @@ export default function RiskPage() {
               narrative={score.narrative}
               estimatedExposure={score.estimatedExposure}
               violationBreakdown={score.violationBreakdown}
+              siteId={siteId}
             />
             {siteId && (
               <RiskContextForm
