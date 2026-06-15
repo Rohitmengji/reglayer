@@ -478,8 +478,11 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
 
   const discoveryStart = Date.now();
   const visited = new Set<string>();
+  const rootUrl = normalizeUrl(config.startUrl);
+  // child url -> parent url, so the live site-map graph can draw real edges.
+  const parentOf = new Map<string, string>();
   const queue: Array<{ url: string; depth: number }> = [
-    { url: normalizeUrl(config.startUrl), depth: 0 },
+    { url: rootUrl, depth: 0 },
   ];
   let sitemapUrlCount = 0;
   let sitemapAvailable = false;
@@ -494,7 +497,7 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
         && matchesPatterns(normalized, config.includePatterns, config.excludePatterns)) {
         queue.push({ url: normalized, depth: 1 });
         knownRouteCount++;
-        emit(config.jobId, { type: "discovery", url: normalized, source: "sitemap", total: queue.length, timestamp: Date.now() });
+        emit(config.jobId, { type: "discovery", url: normalized, source: "sitemap", total: queue.length, from: rootUrl, depth: 1, timestamp: Date.now() });
       }
     }
     if (knownRouteCount > 0) crawlLogger.info("Known routes injected", { count: knownRouteCount });
@@ -509,7 +512,7 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
       for (const sUrl of sitemapUrls) {
         if (!shouldSkipUrl(sUrl) && matchesPatterns(sUrl, config.includePatterns, config.excludePatterns)) {
           queue.push({ url: sUrl, depth: 1 });
-          emit(config.jobId, { type: "discovery", url: sUrl, source: "sitemap", total: queue.length, timestamp: Date.now() });
+          emit(config.jobId, { type: "discovery", url: sUrl, source: "sitemap", total: queue.length, from: rootUrl, depth: 1, timestamp: Date.now() });
         }
       }
       if (sitemapAvailable) crawlLogger.info("Sitemap discovered", { urls: sitemapUrlCount });
@@ -552,13 +555,16 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
             && matchesPatterns(nl, config.includePatterns, config.excludePatterns)) {
             queue.push({ url: nl, depth: current.depth + 1 });
             inboundLinks.set(nl, (inboundLinks.get(nl) || 0) + 1);
+            if (!parentOf.has(nl)) parentOf.set(nl, normalizedUrl);
           }
         }
       }
 
       // Emit discovery progress
       emit(config.jobId, {
-        type: "discovery", url: normalizedUrl, source: "bfs", total: visited.size, timestamp: Date.now(),
+        type: "discovery", url: normalizedUrl, source: "bfs", total: visited.size,
+        from: parentOf.get(normalizedUrl) ?? (normalizedUrl === rootUrl ? undefined : rootUrl),
+        depth: current.depth, timestamp: Date.now(),
       });
 
       // Emit progress with discovered count
@@ -643,11 +649,19 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
   const totalPages = pagesToScan.length;
   crawlLogger.info("Audit phase started", { pages: totalPages, concurrency: config.concurrency });
 
-  // Build scan options with exported session
+  // Build scan options with exported session.
+  // includeScreenshot drives the live "watch the crawl" viewport. The shot is
+  // captured from the page axe already loaded (no extra navigation) and lands
+  // on each page's Scan row via persistScan — it is intentionally NOT buffered
+  // into the in-memory results array below, and is lazy-loaded by the client
+  // from /api/scan/[scanId]/thumbnail. So large crawls stay memory-bounded.
   const validCookies = sessionCookies.filter((c) => c.name && c.value && c.domain);
-  const scanOptions: ScanOptions | undefined = validCookies.length > 0
-    ? { auth: { method: "cookies" as const, cookies: validCookies } }
-    : config.auth && config.auth.method !== "none" ? { auth: config.auth } : undefined;
+  const scanOptions: ScanOptions = {
+    includeScreenshot: true,
+    ...(validCookies.length > 0
+      ? { auth: { method: "cookies" as const, cookies: validCookies } }
+      : config.auth && config.auth.method !== "none" ? { auth: config.auth } : {}),
+  };
 
   const maxInbound = Math.max(1, ...inboundLinks.values());
   let activeScans = 0;
@@ -720,7 +734,9 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
           scanDuration,
           importance,
           consoleErrors: [],
-          screenshot: scanResult.screenshot,
+          // Screenshot is persisted on the Scan row (lazy-loaded via
+          // /api/scan/[scanId]/thumbnail) and deliberately NOT buffered here,
+          // keeping memory bounded for multi-hundred-page crawls.
           retryCount: attempt,
         });
 
@@ -734,6 +750,7 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
         emit(config.jobId, {
           type: "page-complete",
           url,
+          scanId: scanResult.id,
           score: scanResult.summary.score,
           violations: scanResult.summary.totalViolations,
           duration: scanDuration,

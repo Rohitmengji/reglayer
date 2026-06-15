@@ -105,6 +105,13 @@ export interface AxeScanResult {
   pageTitle: string;
   /** Auth result metadata (no credentials). Present only if auth was configured. */
   authResult?: { authenticated: boolean; method: string; error?: string };
+  /**
+   * Base64 JPEG of the viewport, captured from the already-loaded page (only
+   * when options.includeScreenshot is set). Capturing here — rather than via a
+   * second navigation in captureScreenshot() — avoids re-loading every page,
+   * which matters for multi-hundred-page crawls.
+   */
+  screenshot?: string;
 }
 
 export interface AxeViolation {
@@ -309,6 +316,22 @@ export async function runAccessibilityScan(
 
     const pageTitle = await page.title();
 
+    /**
+     * Optional viewport screenshot, captured from THIS page before the browser
+     * closes (no extra navigation). Used as live "watch the crawl" evidence and
+     * for single-scan visual records. JPEG q40 keeps each frame ~40-90 KB.
+     * Best-effort: a screenshot failure must never fail the scan.
+     */
+    let screenshot: string | undefined;
+    if (options?.includeScreenshot) {
+      try {
+        const buf = await page.screenshot({ type: "jpeg", quality: 40, fullPage: false });
+        screenshot = Buffer.from(buf).toString("base64");
+      } catch {
+        // Non-fatal — proceed without a screenshot.
+      }
+    }
+
     return {
       violations: results.violations.map((v) => ({
         id: v.id,
@@ -330,6 +353,7 @@ export async function runAccessibilityScan(
       url,
       pageTitle,
       ...(authResult && { authResult }),
+      ...(screenshot && { screenshot }),
     };
   } finally {
     if (browser) {
