@@ -852,3 +852,26 @@ model FixOutcomeRecord {
   @@index([fingerprint, success])
   @@map("fix_outcomes")
 }
+
+// ── Vendor Accessibility Liability Graph (VALG) ──
+// One row per (scan, vendor) observation. Aggregating across tenants scores every
+// third-party widget by the real-world accessibility liability it injects across all
+// sites that embed it — "the Moody's of web components" — and tracks regression over
+// time. Standalone (no enforced relations) so an observation survives deletion of its
+// source scan, mirroring the RumEventRecord / FixOutcomeRecord pattern.
+model VendorObservation {
+  id             String   @id @default(cuid())
+  workspaceId    String?
+  siteId         String?
+  scanId         String?
+  vendor         String // vendor display name (e.g. "Intercom")
+  category       String // VendorCategory (e.g. "chat-widget")
+  violationCount Int // violations attributed to this vendor in the scan
+  riskScore      Int // 0–100 vendor risk score from the scanner
+  observedAt     DateTime
+  createdAt      DateTime @default(now())
+
+  @@index([vendor, observedAt])
+  @@index([workspaceId, observedAt])
+  @@map("vendor_observations")
+}
