@@ -44,9 +44,56 @@ export async function launchBrowser(): Promise<Browser> {
       headless: true,
     });
 
-    // Return puppeteer browser cast as Playwright Browser
-    // Both share the same core interface we use (newPage, close)
-    return browser as unknown as Browser;
+    // Wrap puppeteer browser to provide Playwright-compatible newContext()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const wrapped: any = {
+      newContext: async (options?: Record<string, unknown>) => {
+        const incognito = await browser.createBrowserContext();
+        const page = await incognito.newPage();
+
+        if (options?.userAgent) {
+          await page.setUserAgent(options.userAgent as string);
+        }
+        if (options?.viewport) {
+          const vp = options.viewport as { width: number; height: number };
+          await page.setViewport(vp);
+        }
+
+        // Track cookies for Playwright API compat
+        let storedCookies: Array<Record<string, unknown>> = [];
+        let extraHeaders: Record<string, string> = {};
+
+        return {
+          newPage: async () => page,
+          close: async () => { await incognito.close(); },
+          cookies: async () => storedCookies,
+          addCookies: async (cookies: Array<Record<string, unknown>>) => {
+            storedCookies = cookies;
+            const mapped = cookies.map(c => ({
+              name: String(c.name),
+              value: String(c.value),
+              domain: String(c.domain),
+              path: String(c.path || "/"),
+              ...(c.expires ? { expires: Number(c.expires) } : {}),
+              httpOnly: Boolean(c.httpOnly),
+              secure: Boolean(c.secure),
+            }));
+            await page.setCookie(...mapped);
+          },
+          setExtraHTTPHeaders: async (headers: Record<string, string>) => {
+            extraHeaders = { ...extraHeaders, ...headers };
+            await page.setExtraHTTPHeaders(extraHeaders);
+          },
+          setHTTPCredentials: async (credentials: { username: string; password: string }) => {
+            await page.authenticate(credentials);
+          },
+        };
+      },
+      isConnected: () => browser.connected,
+      close: async () => { await browser.close(); },
+    };
+
+    return wrapped as Browser;
   }
 
   const { chromium } = await import("playwright");
