@@ -220,7 +220,13 @@ export const authOptions: NextAuthOptions = {
   },
   secret: (() => {
     const secret = process.env.NEXTAUTH_SECRET;
-    if (!secret && process.env.NODE_ENV === "production") {
+    // NODE_ENV is already "production" during `next build` page-data collection,
+    // but the runtime secret is injected by the host (Vercel) at REQUEST time,
+    // not at build time. Throwing here crashes the build ("Failed to collect
+    // page data") even though the deployed function will have the secret. Only
+    // enforce at actual runtime — never during the production build phase.
+    const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
+    if (!secret && process.env.NODE_ENV === "production" && !isBuildPhase) {
       throw new Error("NEXTAUTH_SECRET must be set in production");
     }
     return secret || "reglayer-dev-secret-local-only";
