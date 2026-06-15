@@ -18,6 +18,7 @@
  * them automatically.
  */
 
+import { useState } from "react";
 import { Globe, Lock, Loader2, CheckCircle2 } from "lucide-react";
 
 interface CrawlViewportProps {
@@ -53,6 +54,11 @@ function pathOf(url: string): string {
 }
 
 export function CrawlViewport({ phase, current, lastCaptured }: CrawlViewportProps) {
+  // Thumbnails can 404 transiently (the Scan row persists a moment after the
+  // page-complete event) or in environments without stored screenshots. Track
+  // failures so we fall back to the wireframe skeleton instead of a blank hero.
+  const [failedShots, setFailedShots] = useState<Set<string>>(new Set());
+  const showShot = !!lastCaptured && !failedShots.has(lastCaptured.scanId);
   const isScanning = phase === "scanning" && !!current;
   const displayUrl = current?.url ?? lastCaptured?.url ?? "";
   const host = (() => {
@@ -101,7 +107,7 @@ export function CrawlViewport({ phase, current, lastCaptured }: CrawlViewportPro
             : "Waiting for the first page"
         }
       >
-        {lastCaptured ? (
+        {showShot && lastCaptured ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             key={lastCaptured.scanId}
@@ -110,7 +116,10 @@ export function CrawlViewport({ phase, current, lastCaptured }: CrawlViewportPro
             className="absolute inset-0 h-full w-full object-cover object-top animate-fade-in"
             loading="lazy"
             decoding="async"
-            onError={(e) => { (e.currentTarget as HTMLImageElement).style.visibility = "hidden"; }}
+            onError={() => {
+              const id = lastCaptured.scanId;
+              setFailedShots((s) => { const n = new Set(s); n.add(id); return n; });
+            }}
           />
         ) : (
           // Wireframe skeleton stand-in while the first page loads

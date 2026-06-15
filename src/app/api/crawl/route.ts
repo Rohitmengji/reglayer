@@ -21,6 +21,12 @@ import { prisma } from "@/lib/database/prisma";
 import { getOrCreateWorkspace } from "@/lib/database/workspace";
 import { Prisma } from "@/generated/prisma/client";
 
+// The crawl launches headless Chromium and can run for a while; give it the
+// Node runtime and the maximum duration (the matching vercel.json entry also
+// raises memory and bundles the @sparticuz/chromium binary).
+export const runtime = "nodejs";
+export const maxDuration = 60;
+
 const crawlSchema = z.object({
   url: z.string().url(),
   maxPages: z.number().min(1).max(500).default(10),
