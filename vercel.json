@@ -14,22 +14,22 @@
   "functions": {
     "src/app/api/cron/run-schedules/route.ts": {
       "maxDuration": 60,
-      "memory": 3009,
+      "memory": 2048,
       "includeFiles": "node_modules/@sparticuz/chromium/bin/**"
     },
     "src/app/api/scan/route.ts": {
       "maxDuration": 60,
-      "memory": 3009,
+      "memory": 2048,
       "includeFiles": "node_modules/@sparticuz/chromium/bin/**"
     },
     "src/app/api/scan/crawl/route.ts": {
       "maxDuration": 60,
-      "memory": 3009,
+      "memory": 2048,
       "includeFiles": "node_modules/@sparticuz/chromium/bin/**"
     },
     "src/app/api/crawl/route.ts": {
       "maxDuration": 60,
-      "memory": 3009,
+      "memory": 2048,
       "includeFiles": "node_modules/@sparticuz/chromium/bin/**"
     }
   }
