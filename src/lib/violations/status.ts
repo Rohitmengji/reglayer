@@ -14,6 +14,7 @@
 import { prisma } from "@/lib/database/prisma";
 import { ViolationStatus } from "@/generated/prisma/client";
 import { runAccessibilityScan } from "@/lib/scanner/accessibility/axeScanner";
+import { recordFixOutcome, firstSelector } from "@/lib/genome/recordOutcome";
 
 // ─────────────── Types ───────────────
 
@@ -156,14 +157,16 @@ export async function updateViolationStatus(
 export async function verifyViolationFix(
   violationId: string
 ): Promise<VerifyFixResult> {
-  // Fetch violation with its scan URL
+  // Fetch violation with its scan context (URL + tenant + detection time for the genome)
   const violation = await prisma.violation.findUnique({
     where: { id: violationId },
     select: {
       id: true,
       ruleId: true,
       status: true,
-      scan: { select: { url: true } },
+      impact: true,
+      affectedElements: true,
+      scan: { select: { url: true, workspaceId: true, siteId: true, createdAt: true } },
     },
   });
 
@@ -185,20 +188,37 @@ export async function verifyViolationFix(
     (v) => v.id === violation.ruleId
   );
 
+  const verifiedAt = new Date();
+
+  // Fix Genome: record the outcome (success OR failure — both are signal). Best-effort;
+  // recordFixOutcome never throws, so a pending migration cannot break verification.
+  await recordFixOutcome({
+    workspaceId: violation.scan.workspaceId,
+    siteId: violation.scan.siteId,
+    violationId: violation.id,
+    ruleId: violation.ruleId,
+    selector: firstSelector(violation.affectedElements),
+    impact: violation.impact,
+    verifiedVia: "re-scan",
+    success: !stillFailing,
+    detectedAt: violation.scan.createdAt,
+    verifiedAt,
+  });
+
   if (!stillFailing) {
     // Fix confirmed — update status to VERIFIED
     await prisma.violation.update({
       where: { id: violationId },
       data: {
         status: ViolationStatus.VERIFIED,
-        verifiedAt: new Date(),
-        statusUpdatedAt: new Date(),
+        verifiedAt,
+        statusUpdatedAt: verifiedAt,
       },
     });
 
     return {
       verified: true,
-      verifiedAt: new Date().toISOString(),
+      verifiedAt: verifiedAt.toISOString(),
     };
   }
 
