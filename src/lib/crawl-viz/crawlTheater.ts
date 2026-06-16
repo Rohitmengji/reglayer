@@ -61,6 +61,13 @@ export interface TheaterState {
   /** Completed pages in completion order (newest last). */
   filmstrip: FilmstripEntry[];
   counts: { discovered: number; scanned: number; failed: number };
+  /**
+   * Data-URL screenshot of the page the crawler is on RIGHT NOW (discovery or
+   * scan). When present it backs the viewport directly — this is what lets the
+   * live view show real pages page-by-page through the whole crawl, including
+   * discovery. Sourced from the polled durable snapshot (LiveSnapshot.currentShot).
+   */
+  currentShot?: string;
 }
 
 // ── Events (subset of JobEvent the theater consumes) ────────────────────────

@@ -599,6 +599,17 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
         break;
       }
 
+      // Stream a live screenshot of the page we're on, so the viewport shows
+      // each page as it's visited DURING DISCOVERY (not a skeleton — discovery
+      // is often the longest phase on SPAs). Best-effort, low-quality, and
+      // never allowed to slow or break the crawl.
+      if (config.jobId) {
+        try {
+          const buf = await page.screenshot({ type: "jpeg", quality: 35 });
+          jobManager.setLiveShot(config.jobId, Buffer.from(buf).toString("base64"), normalizedUrl);
+        } catch { /* best-effort live frame */ }
+      }
+
       // Discover links
       if (current.depth < config.maxDepth) {
         const links = await discoverLinks(page, origin);
@@ -824,6 +835,15 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
           // keeping memory bounded for multi-hundred-page crawls.
           retryCount: attempt,
         });
+
+        // Keep the live viewport on the page we just scanned (its real
+        // screenshot), so scanning continues the page-by-page "watch it work"
+        // motion seamlessly from discovery. The same shot is persisted on the
+        // Scan row for the filmstrip/thumbnail; surfacing it inline here avoids
+        // the transient 404 flash while that row settles.
+        if (config.jobId && scanResult.screenshot) {
+          jobManager.setLiveShot(config.jobId, scanResult.screenshot);
+        }
 
         // Calculate ETA
         const avgTime = scanTimes.reduce((a, b) => a + b, 0) / scanTimes.length;

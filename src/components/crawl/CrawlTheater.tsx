@@ -33,7 +33,7 @@ export function CrawlTheater({ theater }: CrawlTheaterProps) {
           <p className="flex items-center gap-1.5 text-xs font-medium text-neutral-500 dark:text-neutral-400">
             <Eye className="h-3.5 w-3.5" aria-hidden="true" /> Live view
           </p>
-          <CrawlViewport phase={theater.phase} current={theater.current} lastCaptured={theater.lastCaptured} rootUrl={theater.rootUrl} />
+          <CrawlViewport phase={theater.phase} current={theater.current} lastCaptured={theater.lastCaptured} rootUrl={theater.rootUrl} currentShot={theater.currentShot} />
         </div>
 
         {/* Site map */}

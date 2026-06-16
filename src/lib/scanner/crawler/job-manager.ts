@@ -75,6 +75,15 @@ export interface LiveSnapshot {
   currentUrl: string | null;
   pages: LivePageSnapshot[];
   edges: Array<{ from: string; to: string }>;
+  /**
+   * A data-URL screenshot of the page the browser is on RIGHT NOW — updated as
+   * the crawler visits each page during discovery AND after each scan. This is
+   * what makes the faux-browser viewport show the actual page being processed,
+   * page by page, instead of a skeleton during the (often long) discovery phase.
+   * A single overwritten field (never accumulated), so the durable snapshot
+   * stays small even on 500-page crawls.
+   */
+  currentShot?: string;
 }
 
 export interface AuditJob {
@@ -173,6 +182,30 @@ class AuditJobManager {
     if (["complete", "failed", "cancelled"].includes(job.status)) return false;
     job.cancelRequested = true;
     return true;
+  }
+
+  /**
+   * Set the "live page" screenshot shown in the faux-browser viewport. Called
+   * by the crawler as it visits each page during discovery and after each scan,
+   * so the viewport tracks the page the browser is actually on — page by page —
+   * rather than a skeleton. `shot` may be raw base64 or a data URL; it is
+   * normalized to a data URL. Pass `url` to also advance the address bar
+   * (done during discovery; during scanning the page-start events drive it).
+   */
+  setLiveShot(jobId: string, shot: string, url?: string): void {
+    const job = this.jobs.get(jobId);
+    if (!job || !shot) return;
+    // Bound the frame so a pathologically large page can't bloat the durable
+    // snapshot (re-persisted every ~2.5s). Low-quality viewport JPEGs are well
+    // under this; an oversized one just keeps the previous frame.
+    if (shot.length > 600_000) {
+      if (url) job.live.currentUrl = url;
+      return;
+    }
+    job.live.currentShot = shot.startsWith("data:")
+      ? shot
+      : `data:image/${shot.startsWith("iVBOR") ? "png" : "jpeg"};base64,${shot}`;
+    if (url) job.live.currentUrl = url;
   }
 
   // ── Progress Updates (called from engine) ──
