@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
 
   const user = await prisma.user.findUnique({
     where: { email: session.user.email },
-    select: { plan: true, isMasterAdmin: true },
+    select: { plan: true, isMasterAdmin: true, memberships: { select: { workspaceId: true } } },
   });
 
   const { searchParams } = new URL(request.url);
@@ -39,7 +39,13 @@ export async function GET(request: NextRequest) {
   const retentionDate = new Date();
   retentionDate.setDate(retentionDate.getDate() - retentionDays);
 
-  const where = { createdAt: { gte: retentionDate } };
+  // SECURITY (IDOR): scope to the caller's workspace(s) — the audit log is the
+  // "immutable trail of THIS workspace's actions", never a cross-tenant feed.
+  // Master admins (platform operators) may read across workspaces.
+  const workspaceIds = user?.memberships.map((m) => m.workspaceId) ?? [];
+  const where = user?.isMasterAdmin
+    ? { createdAt: { gte: retentionDate } }
+    : { createdAt: { gte: retentionDate }, workspaceId: { in: workspaceIds.length ? workspaceIds : ["__none__"] } };
 
   const [logs, total] = await Promise.all([
     prisma.auditLog.findMany({
