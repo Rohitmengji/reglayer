@@ -65,16 +65,18 @@ import { createInitialTheaterState, reduceTheaterEvent, type TheaterState } from
 //   deep          — deeper discovery (higher maxDepth), auth optional
 type ScanMode = "public" | "authenticated" | "deep";
 
-// Per-mode defaults so the three modes behave meaningfully differently rather
-// than only changing crawl depth:
+// Per-mode defaults. Page budgets are tuned to what a single serverless
+// function can realistically scan within its ~60s limit (the crawl returns a
+// clean "partial" result if a run exceeds it, so these are safe upper bounds,
+// not hard caps the user can't change):
 //  - public:        fast, shallow surface scan of the marketing/public site
-//  - authenticated: gentler concurrency (avoids tripping auth rate-limits) and
-//                   a session-aware, slightly broader sweep behind the login
-//  - deep:          broad, deep discovery for full-site coverage
+//  - authenticated: gentler concurrency (avoids tripping auth rate-limits),
+//                   session-aware sweep behind the login
+//  - deep:          broader, deeper discovery for fuller coverage
 const MODE_CONFIG: Record<ScanMode, { maxPages: number; maxDepth: number; concurrency: number }> = {
-  public: { maxPages: 25, maxDepth: 2, concurrency: 3 },
-  authenticated: { maxPages: 40, maxDepth: 3, concurrency: 2 },
-  deep: { maxPages: 75, maxDepth: 5, concurrency: 3 },
+  public: { maxPages: 18, maxDepth: 2, concurrency: 3 },
+  authenticated: { maxPages: 18, maxDepth: 3, concurrency: 2 },
+  deep: { maxPages: 30, maxDepth: 4, concurrency: 3 },
 };
 
 // Back-compat alias (depth still referenced elsewhere).
@@ -138,7 +140,7 @@ interface AuditResult {
   timing: { auth: number; discovery: number; scanning: number; analysis: number; total: number };
   patterns: ViolationPattern[];
   discovery: { sitemapUrls: number; linkUrls: number; totalUnique: number; sitemapAvailable: boolean };
-  outcome?: "ok" | "all-failed" | "no-pages" | "launch-failed";
+  outcome?: "ok" | "all-failed" | "no-pages" | "launch-failed" | "partial";
 }
 
 interface LiveProgress {
@@ -169,7 +171,7 @@ interface LivePageEvent {
 interface LiveSnapshot {
   rootUrl: string | null;
   currentUrl: string | null;
-  pages: Array<{ url: string; scanId?: string; score?: number; violations?: number; status: "scanning" | "complete" | "error"; depth?: number }>;
+  pages: Array<{ url: string; scanId?: string; score?: number; violations?: number; status: "discovered" | "scanning" | "complete" | "error"; depth?: number }>;
   edges: Array<{ from: string; to: string }>;
 }
 
@@ -195,9 +197,17 @@ function theaterFromLive(live: LiveSnapshot | null, phase?: string): TheaterStat
     } else if (p.status === "error") {
       s = reduceTheaterEvent(s, { type: "page-start", url: p.url });
       s = reduceTheaterEvent(s, { type: "page-error", url: p.url });
+    } else if (p.status === "scanning") {
+      s = reduceTheaterEvent(s, { type: "page-start", url: p.url });
     }
+    // "discovered" stays a discovery node only (added above) — not scanning.
   }
-  if (live.currentUrl) s = reduceTheaterEvent(s, { type: "page-start", url: live.currentUrl });
+  // Only mark the current page as scanning if it isn't already finished, so the
+  // viewport doesn't get stuck showing "Scanning…" over a completed page.
+  const cur = (live.pages ?? []).find((p) => p.url === live.currentUrl);
+  if (live.currentUrl && (!cur || (cur.status !== "complete" && cur.status !== "error"))) {
+    s = reduceTheaterEvent(s, { type: "page-start", url: live.currentUrl });
+  }
   if (phase) s = reduceTheaterEvent(s, { type: "phase", phase });
   return s;
 }
@@ -367,10 +377,14 @@ export default function CrawlPage() {
         if (data?.live) {
           setTheater(theaterFromLive(data.live, data?.progress?.phase));
           if (Array.isArray(data.live.pages)) {
+            // The text "Live Results" list only shows pages actually being/already
+            // scanned — not the larger set of merely-discovered URLs.
             setLivePages(
-              data.live.pages.map((p: { url: string; score?: number; violations?: number; status: "scanning" | "complete" | "error" }) => ({
-                url: p.url, score: p.score ?? 0, violations: p.violations ?? 0, duration: 0, status: p.status,
-              }))
+              data.live.pages
+                .filter((p: { status: string }) => p.status !== "discovered")
+                .map((p: { url: string; score?: number; violations?: number; status: "scanning" | "complete" | "error" }) => ({
+                  url: p.url, score: p.score ?? 0, violations: p.violations ?? 0, duration: 0, status: p.status,
+                }))
             );
           }
         }
@@ -398,7 +412,9 @@ export default function CrawlPage() {
             setJobId(savedJobId);
             setUrl(savedUrl);
             setMode(savedMode);
-            setTheater(createInitialTheaterState());
+            // Seed the live view from the snapshot already in hand so the theater
+            // isn't blank for a full poll interval after a reload mid-crawl.
+            setTheater(theaterFromLive(data?.live ?? null, data?.progress?.phase));
             if (data?.progress && typeof data.progress === "object") setProgress(data.progress);
             setRunning(true);
             setStep("running");
@@ -1021,6 +1037,19 @@ function AuditResults({ result }: { result: AuditResult }) {
 
   return (
     <div className="space-y-6">
+      {result.outcome === "partial" && (
+        <Card className="border-amber-200 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-950/30">
+          <CardContent className="p-4 flex items-start gap-3">
+            <Clock className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+            <div className="text-sm">
+              <p className="font-medium text-neutral-900 dark:text-white">Stopped at the time limit — partial results</p>
+              <p className="text-neutral-600 dark:text-neutral-400 mt-0.5">
+                Scanned {result.pagesScanned} of {result.pagesDiscovered} discovered pages within the scan window. Re-run with fewer pages, or a narrower section, to cover the rest.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
       {/* Summary */}
       <Card className="overflow-hidden">
         <div className={`h-1.5 ${result.averageScore >= 90 ? "bg-green-500" : result.averageScore >= 70 ? "bg-yellow-500" : result.averageScore >= 50 ? "bg-orange-500" : "bg-red-500"}`} />

@@ -25,7 +25,7 @@
  * ══════════════════════════════════════════════════════════════════════════════
  */
 
-import { launchBrowser, isServerless, isTransientBrowserError } from "@/lib/scanner/browser/launch";
+import { launchBrowser, isServerless } from "@/lib/scanner/browser/launch";
 import { humanizeCrawlError } from "./crawlErrors";
 import { applyAuthToContext, AuthenticationError } from "@/lib/scanner/auth";
 import { executeScanPipeline } from "@/lib/scanner/pipelines/scanPipeline";
@@ -55,6 +55,14 @@ export interface CrawlConfig {
   requestDelay?: number;
   /** Max retries per failed page. Default: 2 */
   maxRetries?: number;
+  /**
+   * Absolute wall-clock deadline (Date.now() ms). When set (e.g. by the
+   * serverless route to ~10s under the function maxDuration), the crawl stops
+   * scheduling work and returns a "partial" result before the platform kills
+   * the function — so the job always reaches a terminal state instead of
+   * hanging forever at "processing".
+   */
+  deadline?: number;
   /** Job ID for progress reporting */
   jobId?: string;
   /** Known routes to inject directly (bypasses BFS — e.g. admin sidebar routes) */
@@ -78,7 +86,7 @@ export interface CrawlConfig {
  *  - "no-pages":    discovery found nothing scannable
  *  - "launch-failed": the browser could not start at all
  */
-export type CrawlOutcome = "ok" | "all-failed" | "no-pages" | "launch-failed";
+export type CrawlOutcome = "ok" | "all-failed" | "no-pages" | "launch-failed" | "partial";
 
 export interface CrawlResult {
   id: string;
@@ -366,6 +374,11 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
   const crawlLogger = logger.withContext({ crawlId, startUrl: config.startUrl });
   const requestDelay = config.requestDelay ?? 200;
   const maxRetries = config.maxRetries ?? 2;
+  // Wall-clock budget. On serverless the route sets this ~10s under maxDuration
+  // so the crawl returns a "partial" result before the lambda is killed.
+  const deadline = config.deadline ?? startTime + 10 * 60 * 1000;
+  const isExpired = () => Date.now() > deadline;
+  let timedOut = false;
 
   const origin = new URL(config.startUrl).origin;
   const results: CrawlPageResult[] = [];
@@ -561,6 +574,7 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
   // BFS discovery with authenticated session
   while (queue.length > 0 && visited.size < config.maxPages) {
     if (isCancelled(config.jobId)) break;
+    if (isExpired()) { timedOut = true; break; }
 
     const current = queue.shift()!;
     const normalizedUrl = normalizeUrl(current.url);
@@ -633,12 +647,17 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
         error: err instanceof Error ? err.message : "Navigation failed",
         timestamp: Date.now(),
       });
-      // If the browser/page itself died (e.g. "Target closed"), every remaining
-      // goto would fail the same way — stop discovery and proceed to audit with
-      // the pages found so far (the root is always already in `visited`), rather
-      // than spinning through the whole queue failing.
-      const dead = isTransientBrowserError(err) || !(browser as { isConnected?: () => boolean }).isConnected?.();
-      if (dead) {
+      // Only abort discovery if the BROWSER itself died (every remaining goto
+      // would fail identically). A per-page navigation TIMEOUT or load error must
+      // NOT stop the crawl — skip that page and keep discovering. (Previously
+      // isTransientBrowserError matched "timed out", so one slow page aborted the
+      // whole discovery → crawls capped at the few pages found before the first
+      // slow page.)
+      const msg = err instanceof Error ? err.message : "";
+      const browserDead =
+        /Target closed|Target\.createTarget|Session closed|Connection closed|browser has disconnected|Protocol error/i.test(msg) ||
+        !(browser as { isConnected?: () => boolean }).isConnected?.();
+      if (browserDead) {
         crawlLogger.warn("Discovery browser died — proceeding to audit with pages found so far", {
           discovered: visited.size,
         });
@@ -734,6 +753,7 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
     let lastError = "";
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       if (isCancelled(config.jobId)) return;
+      if (isExpired()) { timedOut = true; return; }
 
       const pageStart = Date.now();
       try {
@@ -887,13 +907,15 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
   const inFlight: Promise<void>[] = [];
 
   while (pending.length > 0 || inFlight.length > 0) {
-    if (isCancelled(config.jobId)) {
-      // Wait for in-flight scans to finish gracefully
+    if (isCancelled(config.jobId) || isExpired()) {
+      if (isExpired()) timedOut = true;
+      // Stop scheduling new pages; let in-flight scans finish, then assemble
+      // whatever we have into a partial result.
       if (inFlight.length > 0) await Promise.allSettled(inFlight);
       break;
     }
 
-    while (pending.length > 0 && activeScans < concurrency) {
+    while (pending.length > 0 && activeScans < concurrency && !isExpired()) {
       const { url, depth, index } = pending.shift()!;
       activeScans++;
       const p = scanPage(url, depth, index).finally(() => {
@@ -989,7 +1011,7 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
     discovery: { sitemapUrls: sitemapUrlCount, linkUrls: linkUrlCount, totalUnique: visited.size, sitemapAvailable },
     // Pages were discovered but every scan failed → tell the UI so it shows an
     // honest "couldn't scan any pages" state instead of a "score 0" success.
-    outcome: validResults.length === 0 ? "all-failed" : "ok",
+    outcome: validResults.length === 0 ? "all-failed" : timedOut ? "partial" : "ok",
   };
 
   emit(config.jobId, { type: "complete", result: finalResult, timestamp: Date.now() });

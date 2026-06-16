@@ -132,6 +132,24 @@ async function makeServerlessContext(browser: any, options?: Record<string, unkn
     // extra "networkidle" settle is best-effort, so a no-op is safe here.
     page.waitForLoadState = async () => {};
   }
+  // page.fill is Playwright-only; puppeteer has it on ElementHandle, not Page.
+  // The form-login auth path (applyFormAuth) calls page.fill(selector, value),
+  // so WITHOUT this shim every authenticated-mode crawl fails on Vercel with
+  // "page.fill is not a function". Replicate Playwright fill: focus, clear, type.
+  if (typeof page.fill !== "function") {
+    page.fill = async (selector: string, value: string) => {
+      const el = await page.waitForSelector(selector, { timeout: 10_000 });
+      if (!el) throw new Error(`fill: selector not found: ${selector}`);
+      await el.click({ clickCount: 3 }); // select existing text
+      try { await el.press("Backspace"); } catch { /* field may already be empty */ }
+      await el.type(value);
+    };
+  }
+  // page.viewportSize() is Playwright-only (puppeteer exposes page.viewport()).
+  // The screenshot fallback reads it; without this it throws and the shot is lost.
+  if (typeof page.viewportSize !== "function") {
+    page.viewportSize = () => (typeof page.viewport === "function" ? page.viewport() : VIEWPORT);
+  }
   return { ctx, page };
 }
 

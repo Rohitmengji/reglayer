@@ -42,7 +42,14 @@ export async function GET(
     return NextResponse.json({ error: "Job not found" }, { status: 404 });
   }
 
-  const terminal = record.status === "complete" || record.status === "failed" || record.status === "cancelled";
+  // Stuck-job recovery: if a record is still "processing" but hasn't been
+  // updated in well over the function budget (60s + the 2.5s ticker), the
+  // lambda was killed before finalizing. Surface it as failed so the client
+  // leaves the spinning state instead of polling forever.
+  const STALE_MS = 90_000;
+  const isStale = record.status === "processing" && Date.now() - record.updatedAt.getTime() > STALE_MS;
+  const effectiveStatus = isStale ? "failed" : record.status;
+  const terminal = effectiveStatus === "complete" || effectiveStatus === "failed" || effectiveStatus === "cancelled";
   // record.result holds EITHER the live snapshot ({__live,...}) while the crawl
   // is in flight, OR the full CrawlResult once finished. Disambiguate so the
   // client never mistakes the partial for a final result.
@@ -54,9 +61,9 @@ export async function GET(
   const live = raw && raw.__live !== undefined ? raw.__live : null;
   const r = terminal ? raw : null; // only treat as CrawlResult when finished
   const phase =
-    record.status === "complete" ? "complete"
-    : record.status === "failed" ? "failed"
-    : record.status === "cancelled" ? "cancelled"
+    effectiveStatus === "complete" ? "complete"
+    : effectiveStatus === "failed" ? "failed"
+    : effectiveStatus === "cancelled" ? "cancelled"
     : (raw?.phase as string | undefined) ?? (record.pagesScanned > 0 ? "scanning" : "discovering");
   const progress = {
     phase,
@@ -72,12 +79,15 @@ export async function GET(
   };
   return NextResponse.json({
     id: record.id,
-    status: record.status,
+    status: effectiveStatus,
     progress,
     startedAt: record.createdAt.getTime(),
     completedAt: terminal ? record.updatedAt.getTime() : undefined,
-    error: record.error ?? undefined,
-    result: terminal ? (record.result ?? undefined) : undefined,
+    error: isStale
+      ? "The audit stopped unexpectedly (it may have exceeded the time limit). Please try again with fewer pages."
+      : (record.error ?? undefined),
+    // Only the FULL CrawlResult is a result; a stale record's partial live blob is not.
+    result: terminal && !isStale ? (record.result ?? undefined) : undefined,
     live, // drives the live viewport / site-map / filmstrip via polling
   });
 }
@@ -92,9 +102,27 @@ export async function DELETE(
   }
 
   const { jobId } = await params;
-  const cancelled = jobManager.cancelJob(jobId);
-  if (!cancelled) {
-    return NextResponse.json({ error: "Job not found or already complete" }, { status: 404 });
+  // Cancel the in-memory job IF this lambda is the one running it.
+  const cancelledInMemory = jobManager.cancelJob(jobId);
+
+  // Durable cancel: on serverless the DELETE almost always lands on a DIFFERENT
+  // lambda than the crawl, so the in-memory cancel above is a no-op. Persist the
+  // intent to the record — the crawl's progress ticker (on the running instance)
+  // reads this each tick and stops, and the client poll sees "cancelled" and
+  // leaves the running view. Best-effort; don't fail the request on a write error.
+  try {
+    const rec = await prisma.crawlJobRecord.findUnique({ where: { id: jobId }, select: { status: true } });
+    if (!rec) {
+      return NextResponse.json({ error: "Job not found" }, { status: 404 });
+    }
+    if (rec.status === "processing") {
+      await prisma.crawlJobRecord.update({ where: { id: jobId }, data: { status: "cancelled" } });
+    }
+  } catch {
+    if (!cancelledInMemory) {
+      // couldn't reach the record and not in memory — nothing we can do
+      return NextResponse.json({ status: "cancelling", jobId });
+    }
   }
 
   return NextResponse.json({ status: "cancelling", jobId });
