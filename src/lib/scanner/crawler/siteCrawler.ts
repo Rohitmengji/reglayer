@@ -33,6 +33,7 @@ import { evaluateCompliance } from "@/lib/compliance/policyEvaluator";
 import { persistScan } from "@/services/scanService";
 import { logger } from "@/lib/telemetry/logger";
 import { jobManager, type JobEvent } from "./job-manager";
+import { computeLitigationSurface, type LitigationSurface } from "@/lib/risk/litigationSurface";
 import type { Browser, BrowserContext, Page } from "playwright-core";
 import type { AuthConfig } from "@/lib/validations/auth";
 import type { ScanOptions } from "@/lib/types";
@@ -105,6 +106,12 @@ export interface CrawlResult {
   timing: CrawlTiming;
   patterns: ViolationPattern[];
   discovery: DiscoveryMeta;
+  /**
+   * Site-wide ADA litigation exposure derived from the aggregate violations —
+   * the concrete backing for the "ADA litigation surface" promise. Absent on
+   * empty/failed crawls and older records.
+   */
+  litigationSurface?: LitigationSurface;
   /** Set on every finished crawl. Absent on older records → treat as "ok". */
   outcome?: CrawlOutcome;
 }
@@ -980,6 +987,11 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
   const patterns = analyzePatterns(allViolations, results.length);
 
   const validResults = results.filter((r) => r.scanId !== "");
+
+  // Site-wide ADA litigation surface from the aggregate violations — makes the
+  // "ADA litigation surface" promise concrete: which lawsuit-driving issues are
+  // present, how widespread, and the resulting exposure tier + dollar estimate.
+  const litigationSurface = computeLitigationSurface(allViolations, validResults.length);
   const scores = validResults.map((r) => r.score);
   const averageScore = scores.length > 0
     ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10 : 0;
@@ -1029,6 +1041,7 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
     timing,
     patterns,
     discovery: { sitemapUrls: sitemapUrlCount, linkUrls: linkUrlCount, totalUnique: visited.size, sitemapAvailable },
+    litigationSurface,
     // Pages were discovered but every scan failed → tell the UI so it shows an
     // honest "couldn't scan any pages" state instead of a "score 0" success.
     outcome: validResults.length === 0 ? "all-failed" : timedOut ? "partial" : "ok",
