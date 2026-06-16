@@ -13,7 +13,7 @@ import { z } from "zod";
 import { crawlSite } from "@/lib/scanner/crawler/siteCrawler";
 import { jobManager } from "@/lib/scanner/crawler/job-manager";
 import { getPlanContext } from "@/lib/credits/plan-context";
-import { validateScanUrl } from "@/lib/validations/ssrf";
+import { validateScanUrl, resolvesToInternalIp } from "@/lib/validations/ssrf";
 import { applyRateLimit } from "@/lib/rate-limit-middleware";
 import { authConfigSchema } from "@/lib/validations/auth";
 import { logger } from "@/lib/telemetry/logger";
@@ -72,10 +72,14 @@ export async function POST(request: NextRequest) {
   const { url, maxDepth, concurrency, requestDelay, includePatterns, excludePatterns, auth, authConfigId, knownRoutes } = parsed.data;
   let { maxPages } = parsed.data;
 
-  // SSRF protection
+  // SSRF protection — literal/encoding checks first, then a resolve-based check
+  // so a public hostname pointing at an internal IP can't be used as a probe.
   const ssrfError = validateScanUrl(url);
   if (ssrfError) {
     return NextResponse.json({ error: ssrfError }, { status: 400 });
+  }
+  if (await resolvesToInternalIp(url)) {
+    return NextResponse.json({ error: "Scanning private/internal IP addresses is not allowed" }, { status: 400 });
   }
 
   // Enforce page limit based on plan
