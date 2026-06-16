@@ -256,6 +256,9 @@ export default function CrawlPage() {
   const [urlError, setUrlError] = useState<string | null>(null);
   // The user's own most-recent site, fetched on mount to AUTO-DETECT a target.
   const [detectedUrl, setDetectedUrl] = useState<string | null>(null);
+  // True only when the URL was set BY auto-detect (not coincidentally typed),
+  // so the "auto-detected" hint is honest.
+  const [urlAutoDetected, setUrlAutoDetected] = useState(false);
   const [maxPages, setMaxPages] = useState("50");
   const [maxDepth, setMaxDepth] = useState("3");
   const [concurrency, setConcurrency] = useState("3");
@@ -325,8 +328,17 @@ export default function CrawlPage() {
       // (the SSE payload may be screenshot-stripped or arrive before the record).
       fetch(`/api/crawl/${id}`)
         .then((r) => r.json())
-        .then((data) => { if (data?.result) setResult(data.result); else if (payload?.result) setResult(payload.result); })
-        .catch(() => { if (payload?.result) setResult(payload.result); });
+        .then((data) => {
+          if (data?.result) setResult(data.result);
+          else if (payload?.result) setResult(payload.result);
+          // Never strand the user on a blank "done" page if BOTH the authoritative
+          // fetch and the event payload lack a result.
+          else if (kind === "complete") setError("The audit finished but its results couldn't be loaded. Please run it again.");
+        })
+        .catch(() => {
+          if (payload?.result) setResult(payload.result);
+          else if (kind === "complete") setError("The audit finished but its results couldn't be loaded. Please run it again.");
+        });
       if (kind === "cancelled") setProgress((prev) => (prev ? { ...prev, phase: "cancelled" } : prev));
     }
     setStep("done");
@@ -345,7 +357,14 @@ export default function CrawlPage() {
         setTheater((prev) => reduceTheaterEvent(prev, event));
         switch (event.type) {
           case "progress":
-            setProgress(event.progress);
+            // Keep progress monotonic so a late/stale SSE frame (e.g. after a
+            // reconnect to a warm lambda) can't regress what polling advanced.
+            setProgress((prev) => {
+              if (!prev) return event.progress;
+              return (event.progress.pagesScanned ?? 0) >= (prev.pagesScanned ?? 0)
+                ? { ...prev, ...event.progress }
+                : prev;
+            });
             break;
           case "page-start":
             setLivePages((prev) => [
@@ -482,8 +501,11 @@ export default function CrawlPage() {
   }, [stopTracking]);
 
   // Auto-detect a target: pre-fill the URL with the user's own most-recent site
-  // so "Target: auto-detected" is genuine. Never clobbers a typed/restored URL.
+  // so "Target: auto-detected" is genuine. Never clobbers a typed/restored URL,
+  // and stands down entirely if a crawl is already in progress (the reconnect
+  // effect owns the URL in that case — avoids a fill/overwrite race).
   useEffect(() => {
+    if (typeof window !== "undefined" && sessionStorage.getItem("reglayer_active_crawl")) return;
     let cancelled = false;
     (async () => {
       try {
@@ -493,7 +515,11 @@ export default function CrawlPage() {
         const top: string | undefined = data?.sites?.[0]?.url;
         if (cancelled || !top) return;
         setDetectedUrl(top);
-        setUrl((prev) => (prev ? prev : top));
+        setUrl((prev) => {
+          if (prev) return prev; // don't clobber a typed/restored URL
+          setUrlAutoDetected(true);
+          return top;
+        });
       } catch { /* auto-detect is best-effort */ }
     })();
     return () => { cancelled = true; };
@@ -617,7 +643,11 @@ export default function CrawlPage() {
 
   async function handleCancel() {
     if (!jobId) return;
-    try { await fetch(`/api/crawl/${jobId}`, { method: "DELETE" }); } catch {}
+    // Optimistic feedback: reflect the cancel intent immediately so the UI
+    // doesn't look unresponsive. The durable cancel is confirmed by the
+    // poll/SSE backstop within a cycle, which lands the terminal "cancelled".
+    setProgress((prev) => (prev ? { ...prev, phase: "cancelled" } : prev));
+    try { await fetch(`/api/crawl/${jobId}`, { method: "DELETE" }); } catch { /* poll backstop still lands it */ }
   }
 
   function handleReset() {
@@ -632,6 +662,7 @@ export default function CrawlPage() {
     setRunning(false);
     setUrl("");
     setUrlError(null);
+    setUrlAutoDetected(false);
     setMaxPages("50");
     setMaxDepth("3");
     setAuthConfig(undefined);
@@ -693,7 +724,7 @@ export default function CrawlPage() {
                 icon={<Eye className="h-6 w-6" />}
                 title="Public Site"
                 description="Discovers and audits the publicly-reachable pages of any site — no login required."
-                pageCountHint="Auto-discovered"
+                pageCountHint="Public pages"
                 color="blue"
                 features={["No login required", "Sitemap + link discovery", "ADA litigation surface"]}
                 onClick={() => selectMode("public")}
@@ -702,7 +733,7 @@ export default function CrawlPage() {
                 icon={<ShieldCheck className="h-6 w-6" />}
                 title="Authenticated App"
                 description="Logs in first, then discovers and audits the pages that live behind the login."
-                pageCountHint="Auto-discovered"
+                pageCountHint="Behind login"
                 color="violet"
                 features={["Requires authentication", "Crawls behind login", "Internal app coverage"]}
                 requiresAuth
@@ -712,7 +743,7 @@ export default function CrawlPage() {
                 icon={<Layers className="h-6 w-6" />}
                 title="Deep Crawl"
                 description="Deeper discovery that follows links further into the site — find template issues everywhere."
-                pageCountHint="Auto-discovered"
+                pageCountHint="Deeper crawl"
                 color="emerald"
                 features={["Higher crawl depth", "Auth optional", "Template pattern detection"]}
                 recommended
@@ -730,7 +761,7 @@ export default function CrawlPage() {
                 {url ? (
                   <>
                     <code className="text-neutral-700 dark:text-neutral-300">{url}</code>
-                    {detectedUrl && url === detectedUrl && (
+                    {urlAutoDetected && (
                       <span className="text-green-600 dark:text-green-400">· auto-detected</span>
                     )}
                   </>
@@ -767,7 +798,7 @@ export default function CrawlPage() {
                     type="url"
                     placeholder="https://www.yourcompany.com"
                     value={url}
-                    onChange={(e) => { setUrl(e.target.value); if (urlError) setUrlError(null); }}
+                    onChange={(e) => { setUrl(e.target.value); setUrlAutoDetected(false); if (urlError) setUrlError(null); }}
                     required
                     aria-invalid={!!urlError}
                     className={`mt-1 font-mono text-sm ${urlError ? "border-red-400 dark:border-red-600 focus-visible:ring-red-400" : ""}`}
@@ -843,7 +874,7 @@ export default function CrawlPage() {
                   <Button variant="outline" onClick={() => { setError(null); setStep("mode"); }} className="px-6">
                     <ArrowLeft className="h-4 w-4 mr-2" /> Back
                   </Button>
-                  <Button onClick={handleAudit} disabled={!url} className="flex-1 h-11 text-sm font-medium">
+                  <Button onClick={handleAudit} disabled={!url.trim()} className="flex-1 h-11 text-sm font-medium">
                     <Zap className="h-4 w-4 mr-2" />
                     Start {mode === "public" ? "Public Site" : mode === "authenticated" ? "Authenticated" : "Deep Crawl"} Audit
                     <ArrowRight className="h-4 w-4 ml-2" />
@@ -898,7 +929,7 @@ export default function CrawlPage() {
                 <p className="text-sm font-medium text-red-800 dark:text-red-200">We couldn&apos;t finish the audit</p>
                 <p className="text-sm text-red-600 dark:text-red-400 mt-1">{error}</p>
                 <div className="flex flex-wrap gap-2 mt-3">
-                  <Button size="sm" onClick={() => handleAudit()} disabled={!url} className="h-8 text-xs">
+                  <Button size="sm" onClick={() => handleAudit()} disabled={!url.trim()} className="h-8 text-xs">
                     <Radio className="h-3.5 w-3.5 mr-1.5" /> Try again
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => setStep("config")} className="h-8 text-xs">
@@ -1211,7 +1242,7 @@ function AuditResults({ result }: { result: AuditResult }) {
       )}
       {/* Summary */}
       <Card className="overflow-hidden">
-        <div className={`h-1.5 ${result.averageScore >= 90 ? "bg-green-500" : result.averageScore >= 70 ? "bg-yellow-500" : result.averageScore >= 50 ? "bg-orange-500" : "bg-red-500"}`} />
+        <div aria-hidden="true" className={`h-1.5 ${result.averageScore >= 90 ? "bg-green-500" : result.averageScore >= 70 ? "bg-yellow-500" : result.averageScore >= 50 ? "bg-orange-500" : "bg-red-500"}`} />
         <CardContent className="p-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
             <div className="flex items-center gap-4">
@@ -1294,7 +1325,7 @@ function AuditResults({ result }: { result: AuditResult }) {
       )}
 
       {/* Metrics */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
         <MetricCard icon={<Layers className="h-4 w-4" />} label="Pages" value={result.pagesScanned.toString()} sublabel={`of ${result.pagesDiscovered} found`} />
         <MetricCard icon={<BarChart3 className="h-4 w-4" />} label="Avg Score" value={result.averageScore.toString()} color={result.averageScore >= 90 ? "green" : result.averageScore >= 70 ? "yellow" : "red"} />
         <MetricCard icon={<AlertTriangle className="h-4 w-4" />} label="Violations" value={result.totalViolations.toString()} color={result.totalViolations > 0 ? "red" : "green"} />
@@ -1513,7 +1544,13 @@ function PageGroup({ pages, title, icon, color }: { pages: PageResult[]; title: 
           })}
         </div>
         {pages.length > 15 && !showAll && (
-          <button onClick={() => setShowAll(true)} className="w-full mt-3 py-2 text-sm text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950 rounded-lg font-medium">
+          <button
+            type="button"
+            onClick={() => setShowAll(true)}
+            aria-expanded={false}
+            aria-label={`Show all ${pages.length} discovered pages`}
+            className="w-full mt-3 py-2 text-sm text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950 rounded-lg font-medium"
+          >
             Show all {pages.length} pages
           </button>
         )}
