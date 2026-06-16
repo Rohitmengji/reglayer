@@ -9,6 +9,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
+import { mapPrismaScanToResult } from "@/lib/scanner/scanResultMapper";
+import { evaluateCompliance } from "@/lib/compliance/policyEvaluator";
 
 export async function GET(
   _request: NextRequest,
@@ -42,7 +44,12 @@ export async function GET(
       return NextResponse.json({ error: "Scan not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ scan });
+    // Return the rich ScanResult shape (not the raw Prisma row) + compliance, so
+    // the detail/report views render correctly instead of crashing on a null
+    // compliance / missing summary/timestamp/metadata fields.
+    const scanResult = mapPrismaScanToResult(scan);
+    const compliance = evaluateCompliance(scanResult.id, scanResult.violations);
+    return NextResponse.json({ scan: scanResult, compliance });
   } catch {
     return NextResponse.json({ error: "Failed to load scan" }, { status: 500 });
   }

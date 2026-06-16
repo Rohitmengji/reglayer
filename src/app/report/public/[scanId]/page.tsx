@@ -53,7 +53,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       card: "summary_large_image",
       title: `${scan.score}% Accessibility Score — ${scan.url}`,
     },
-    robots: { index: true, follow: true },
+    // SECURITY: do NOT let search engines index by-link reports — that passively
+    // exposed every scanned site's URL + violation profile to anyone searching.
+    // Reports remain viewable by direct link (the intended share behavior); a
+    // proper opt-in `isPublic` flag is the follow-up (needs a DB migration).
+    robots: { index: false, follow: false },
   };
 }
 
