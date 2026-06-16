@@ -183,7 +183,12 @@ export async function POST(request: NextRequest) {
         // record was set to "cancelled", stop the crawl here and DON'T overwrite
         // it back to "processing".
         const rec = await prisma.crawlJobRecord.findUnique({ where: { id: job.id }, select: { status: true } });
-        if (rec?.status === "cancelled") { jobManager.cancelJob(job.id); return; }
+        // Never overwrite an already-terminal record (complete/failed/cancelled)
+        // with a partial live snapshot — the finalizer owns terminal writes.
+        if (rec && rec.status !== "processing") {
+          if (rec.status === "cancelled") jobManager.cancelJob(job.id);
+          return;
+        }
         const p = j.progress;
         const total = p.pagesTotal || maxPages;
         await prisma.crawlJobRecord.update({
@@ -211,6 +216,10 @@ export async function POST(request: NextRequest) {
       // status BEFORE Vercel kills the lambda — so the job never hangs at
       // "processing" on deep/large crawls.
       const result = await crawlSite({ ...crawlConfig, jobId: job.id, deadline: Date.now() + 50_000 });
+      // Stop the progress ticker BEFORE writing the final result, so a ticker
+      // fire can't land its partial {__live} snapshot AFTER the full CrawlResult
+      // and silently blank out a completed audit (data-corruption race).
+      clearInterval(ticker);
       // crawlSite resolves (doesn't throw) for cancelled / internally-failed
       // crawls too — mirror the in-memory job's terminal status so the durable
       // record doesn't mislabel them as "complete".
@@ -247,6 +256,7 @@ export async function POST(request: NextRequest) {
         });
       }
     } catch (error) {
+      clearInterval(ticker); // stop partial writes before the terminal write
       const message = error instanceof Error ? error.message : "Crawl failed unexpectedly";
       logger.error("Background crawl failed", { jobId: job.id, error: message });
       jobManager.emitEvent(job.id, { type: "error", error: message, timestamp: Date.now() });

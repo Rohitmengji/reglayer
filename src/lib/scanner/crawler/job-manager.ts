@@ -196,9 +196,9 @@ class AuditJobManager {
     const job = this.jobs.get(jobId);
     if (!job || !shot) return;
     // Bound the frame so a pathologically large page can't bloat the durable
-    // snapshot (re-persisted every ~2.5s). Low-quality viewport JPEGs are well
-    // under this; an oversized one just keeps the previous frame.
-    if (shot.length > 600_000) {
+    // snapshot (re-persisted every ~2.5s → DB/egress cost). Low-quality viewport
+    // JPEGs are ~40-90KB; an oversized one just keeps the previous frame.
+    if (shot.length > 200_000) {
       if (url) job.live.currentUrl = url;
       return;
     }

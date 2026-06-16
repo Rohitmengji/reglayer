@@ -236,6 +236,10 @@ function shouldSkipUrl(url: string): boolean {
 // SITEMAP DISCOVERY
 // ══════════════════════════════════════════════════════════════
 
+/** Hard caps so a giant/malformed sitemap can't exhaust memory or CPU. */
+const MAX_SITEMAP_URLS = 5000;
+const MAX_SITEMAP_BYTES = 5_000_000;
+
 async function discoverFromSitemap(origin: string): Promise<string[]> {
   const urls: string[] = [];
   const candidates = [`${origin}/sitemap.xml`, `${origin}/sitemap-0.xml`];
@@ -251,14 +255,20 @@ async function discoverFromSitemap(origin: string): Promise<string[]> {
       clearTimeout(timeout);
       if (!res.ok) continue;
 
-      const xml = await res.text();
-      const locMatches = xml.matchAll(/<loc>\s*(.*?)\s*<\/loc>/gi);
+      let xml = await res.text();
+      // Bound parsing so a giant or malformed sitemap can't exhaust memory/CPU:
+      // cap the bytes scanned, bound each <loc> (no '<', ≤2KB) to avoid pathological
+      // backtracking, and stop after MAX_SITEMAP_URLS.
+      if (xml.length > MAX_SITEMAP_BYTES) xml = xml.slice(0, MAX_SITEMAP_BYTES);
+      const locMatches = xml.matchAll(/<loc>\s*([^<]{1,2048}?)\s*<\/loc>/gi);
       for (const match of locMatches) {
+        if (urls.length >= MAX_SITEMAP_URLS) break;
         const loc = match[1].trim();
         if (loc && isSameOrigin(loc, origin) && !shouldSkipUrl(loc)) {
           urls.push(normalizeUrl(loc));
         }
       }
+      if (urls.length >= MAX_SITEMAP_URLS) break;
     } catch { /* sitemap not available */ }
   }
   return [...new Set(urls)];
@@ -972,7 +982,9 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
       });
       inFlight.push(p);
     }
-    if (inFlight.length > 0) await Promise.race(inFlight);
+    // Race a COPY: a settling promise's finally() splices `inFlight`, so racing
+    // the live array risks iterating it mid-mutation.
+    if (inFlight.length > 0) await Promise.race([...inFlight]);
   }
 
   timing.scanning = Date.now() - scanStart;
@@ -1004,9 +1016,11 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
   emit(config.jobId, { type: "phase", phase: "analyzing", timestamp: Date.now() });
 
   const analysisStart = Date.now();
-  const patterns = analyzePatterns(allViolations, results.length);
-
   const validResults = results.filter((r) => r.scanId !== "");
+  // Use the count of SUCCESSFULLY-scanned pages as the template-issue denominator
+  // (a rule on >50% of scanned pages = template issue). Including failed pages
+  // (scanId="") would understate template prevalence.
+  const patterns = analyzePatterns(allViolations, validResults.length);
 
   // Site-wide ADA litigation surface from the aggregate violations — makes the
   // "ADA litigation surface" promise concrete: which lawsuit-driving issues are
