@@ -27,6 +27,13 @@ interface CrawlViewportProps {
   lastCaptured: { url: string; scanId: string; score: number; violations: number } | null;
   /** Target site root — shown in the address bar before the first page is captured. */
   rootUrl?: string | null;
+  /**
+   * Data-URL screenshot of the page the crawler is on RIGHT NOW (discovery or
+   * scan). When present it backs the frame directly — this is what makes the
+   * live view show real pages page-by-page through the WHOLE crawl, including
+   * discovery (instead of a skeleton until the first scan completes).
+   */
+  currentShot?: string;
 }
 
 function scoreText(score: number): string {
@@ -55,13 +62,19 @@ function pathOf(url: string): string {
   }
 }
 
-export function CrawlViewport({ phase, current, lastCaptured, rootUrl }: CrawlViewportProps) {
+export function CrawlViewport({ phase, current, lastCaptured, rootUrl, currentShot }: CrawlViewportProps) {
   // Thumbnails can 404 transiently (the Scan row persists a moment after the
   // page-complete event) or in environments without stored screenshots. Track
   // failures so we fall back to the wireframe skeleton instead of a blank hero.
   const [failedShots, setFailedShots] = useState<Set<string>>(new Set());
   const showShot = !!lastCaptured && !failedShots.has(lastCaptured.scanId);
   const isScanning = phase === "scanning" && !!current;
+  const isDiscovering = phase === "discovering" || phase === "connecting" || phase === "queued";
+  // The page the browser is on right now backs the frame directly when we have
+  // its live screenshot — covering discovery (no scanId/thumbnail yet) and
+  // scanning seamlessly. Falls back to the completed-page thumbnail, then the
+  // wireframe skeleton.
+  const showLiveShot = !!currentShot;
   const displayUrl = current?.url ?? lastCaptured?.url ?? rootUrl ?? "";
   // Pre-screenshot status so the viewport never looks blank/broken while the
   // browser is launching or discovering pages.
@@ -100,7 +113,7 @@ export function CrawlViewport({ phase, current, lastCaptured, rootUrl }: CrawlVi
             <span className="text-neutral-400">{host}</span>
             <span className="text-neutral-700 dark:text-neutral-200">{pathOf(displayUrl)}</span>
           </span>
-          {isScanning && <Loader2 className="h-3.5 w-3.5 text-blue-500 animate-spin shrink-0 ml-auto" aria-hidden="true" />}
+          {(isScanning || (isDiscovering && showLiveShot)) && <Loader2 className="h-3.5 w-3.5 text-blue-500 animate-spin shrink-0 ml-auto" aria-hidden="true" />}
         </div>
       </div>
 
@@ -111,12 +124,26 @@ export function CrawlViewport({ phase, current, lastCaptured, rootUrl }: CrawlVi
         aria-label={
           isScanning
             ? `Scanning ${displayUrl}`
+            : isDiscovering && showLiveShot
+            ? `Discovering pages, currently viewing ${displayUrl}`
             : lastCaptured
             ? `Last captured page ${lastCaptured.url}, accessibility score ${Math.round(lastCaptured.score)}`
             : "Waiting for the first page"
         }
       >
-        {showShot && lastCaptured ? (
+        {showLiveShot ? (
+          // The live page the browser is on right now (discovery or scan). Keyed
+          // by URL so navigating to a new page crossfades; re-polling the same
+          // page just swaps the src in place (no flicker).
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            key={displayUrl || "live"}
+            src={currentShot}
+            alt={`Live view of ${displayUrl}`}
+            className="absolute inset-0 h-full w-full object-cover object-top animate-fade-in"
+            decoding="async"
+          />
+        ) : showShot && lastCaptured ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             key={lastCaptured.scanId}
@@ -153,8 +180,10 @@ export function CrawlViewport({ phase, current, lastCaptured, rootUrl }: CrawlVi
           </>
         )}
 
-        {/* Scanline sweep — the "crawling each element" motion */}
-        {isScanning && (
+        {/* Scanline sweep — the "crawling each element" motion. Runs while
+            scanning AND while discovering over a live page, so the whole crawl
+            reads as active page-by-page work. */}
+        {(isScanning || (isDiscovering && showLiveShot)) && (
           <div
             className="absolute left-0 right-0 h-16 animate-scanline pointer-events-none"
             aria-hidden="true"
@@ -181,6 +210,10 @@ export function CrawlViewport({ phase, current, lastCaptured, rootUrl }: CrawlVi
           {isScanning ? (
             <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-blue-600/90 text-white shadow">
               <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> Scanning page…
+            </span>
+          ) : isDiscovering && showLiveShot ? (
+            <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-violet-600/90 text-white shadow">
+              <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> Discovering pages…
             </span>
           ) : lastCaptured ? (
             <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-white/95 dark:bg-neutral-900/95 shadow border border-neutral-200 dark:border-neutral-700">

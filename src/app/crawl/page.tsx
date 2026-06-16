@@ -173,6 +173,8 @@ interface LiveSnapshot {
   currentUrl: string | null;
   pages: Array<{ url: string; scanId?: string; score?: number; violations?: number; status: "discovered" | "scanning" | "complete" | "error"; depth?: number }>;
   edges: Array<{ from: string; to: string }>;
+  /** Data-URL screenshot of the page being visited right now (live viewport). */
+  currentShot?: string;
 }
 
 /**
@@ -209,6 +211,9 @@ function theaterFromLive(live: LiveSnapshot | null, phase?: string): TheaterStat
     s = reduceTheaterEvent(s, { type: "page-start", url: live.currentUrl });
   }
   if (phase) s = reduceTheaterEvent(s, { type: "phase", phase });
+  // The live page screenshot is a snapshot field (not an event) — attach it so
+  // the viewport can render the actual page the browser is on right now.
+  if (live.currentShot) s = { ...s, currentShot: live.currentShot };
   return s;
 }
 
