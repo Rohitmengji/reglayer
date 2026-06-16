@@ -47,6 +47,7 @@ import {
   ShieldCheck,
   History,
   Crosshair,
+  Scale,
 } from "lucide-react";
 import Link from "next/link";
 import { useI18n } from "@/components/i18n-provider";
@@ -140,7 +141,32 @@ interface AuditResult {
   timing: { auth: number; discovery: number; scanning: number; analysis: number; total: number };
   patterns: ViolationPattern[];
   discovery: { sitemapUrls: number; linkUrls: number; totalUnique: number; sitemapAvailable: boolean };
+  litigationSurface?: LitigationSurface;
   outcome?: "ok" | "all-failed" | "no-pages" | "launch-failed" | "partial";
+}
+
+// Mirrors the server's LitigationSurface (src/lib/risk/litigationSurface.ts).
+interface LitigationFactor {
+  ruleId: string;
+  label: string;
+  wcag: string;
+  plaintiffNote: string;
+  occurrences: number;
+  affectedPages: number;
+  lawsuitFrequency: number;
+  contribution: number;
+  estimatedExposure: number;
+  sampleUrls: string[];
+}
+interface LitigationSurface {
+  pagesScanned: number;
+  score: number;
+  tier: "LOW" | "MODERATE" | "HIGH" | "CRITICAL";
+  estimatedExposure: number;
+  coveredRuleCount: number;
+  totalHighRiskRules: number;
+  factors: LitigationFactor[];
+  summary: string;
 }
 
 interface LiveProgress {
@@ -225,6 +251,8 @@ export default function CrawlPage() {
   const [step, setStep] = useState<"mode" | "config" | "running" | "done">("mode");
   const [mode, setMode] = useState<ScanMode | null>(null);
   const [url, setUrl] = useState("");
+  // The user's own most-recent site, fetched on mount to AUTO-DETECT a target.
+  const [detectedUrl, setDetectedUrl] = useState<string | null>(null);
   const [maxPages, setMaxPages] = useState("50");
   const [maxDepth, setMaxDepth] = useState("3");
   const [concurrency, setConcurrency] = useState("3");
@@ -443,6 +471,24 @@ export default function CrawlPage() {
     return () => { stopTracking(); };
   }, [stopTracking]);
 
+  // Auto-detect a target: pre-fill the URL with the user's own most-recent site
+  // so "Target: auto-detected" is genuine. Never clobbers a typed/restored URL.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch("/api/sites");
+        if (!r.ok) return;
+        const data = await r.json();
+        const top: string | undefined = data?.sites?.[0]?.url;
+        if (cancelled || !top) return;
+        setDetectedUrl(top);
+        setUrl((prev) => (prev ? prev : top));
+      } catch { /* auto-detect is best-effort */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   function selectMode(m: ScanMode) {
     setMode(m);
     // Apply per-mode defaults (page budget, depth, concurrency) so each mode is
@@ -619,7 +665,17 @@ export default function CrawlPage() {
               </Link>
               <span className="text-neutral-300 dark:text-neutral-600">·</span>
               <span className="flex items-center gap-1.5">
-                <Crosshair className="h-3.5 w-3.5" /> Target: <code className="text-neutral-700 dark:text-neutral-300">{url || "auto-detected"}</code>
+                <Crosshair className="h-3.5 w-3.5" /> Target:{" "}
+                {url ? (
+                  <>
+                    <code className="text-neutral-700 dark:text-neutral-300">{url}</code>
+                    {detectedUrl && url === detectedUrl && (
+                      <span className="text-green-600 dark:text-green-400">· auto-detected</span>
+                    )}
+                  </>
+                ) : (
+                  <span className="text-neutral-400">enter a URL in the next step</span>
+                )}
               </span>
             </div>
           </div>
@@ -1091,6 +1147,9 @@ function AuditResults({ result }: { result: AuditResult }) {
         </CardContent>
       </Card>
 
+      {/* ADA Litigation Surface — the concrete backing for the Public Site promise */}
+      {result.litigationSurface && <LitigationSurfaceCard surface={result.litigationSurface} />}
+
       {/* Phase Timeline */}
       <div className="flex items-center gap-1 overflow-x-auto pb-2">
         {[
@@ -1198,6 +1257,87 @@ function AuditResults({ result }: { result: AuditResult }) {
       {/* Page Results — grouped */}
       {discoveredPages.length > 0 && <PageGroup pages={discoveredPages} title="Discovered Pages" icon={<Globe className="h-4 w-4 text-blue-500" />} color="blue" />}
     </div>
+  );
+}
+
+// ── ADA Litigation Surface ──
+
+/**
+ * The site-wide litigation exposure card — the concrete backing for the Public
+ * Site mode's "ADA litigation surface" promise. Renders which lawsuit-driving
+ * issue types are present, how widespread, and the resulting exposure tier +
+ * dollar estimate. Framed as an informational estimate (not legal advice).
+ */
+function LitigationSurfaceCard({ surface }: { surface: LitigationSurface }) {
+  const TIER: Record<LitigationSurface["tier"], { label: string; bar: string; chip: string; ring: string }> = {
+    LOW: { label: "Low exposure", bar: "bg-green-500", chip: "bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300", ring: "border-green-200 dark:border-green-800" },
+    MODERATE: { label: "Moderate exposure", bar: "bg-yellow-500", chip: "bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-300", ring: "border-yellow-200 dark:border-yellow-800" },
+    HIGH: { label: "High exposure", bar: "bg-orange-500", chip: "bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300", ring: "border-orange-200 dark:border-orange-800" },
+    CRITICAL: { label: "Critical exposure", bar: "bg-red-500", chip: "bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300", ring: "border-red-200 dark:border-red-800" },
+  };
+  const t = TIER[surface.tier];
+  const money = (n: number) => `$${n.toLocaleString()}`;
+
+  return (
+    <Card className={`overflow-hidden border ${t.ring}`}>
+      <div className={`h-1.5 ${t.bar}`} />
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <Scale className="h-4 w-4 text-neutral-700 dark:text-neutral-300" /> ADA Litigation Surface
+          <span className={`ml-auto px-2 py-0.5 rounded-full text-[11px] font-semibold ${t.chip}`}>{t.label}</span>
+        </CardTitle>
+        <p className="text-xs text-neutral-500">{surface.summary}</p>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Headline metrics */}
+        <div className="grid grid-cols-3 gap-3">
+          <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 p-3">
+            <p className="text-[10px] uppercase tracking-wide text-neutral-400 font-medium">Risk score</p>
+            <p className="text-2xl font-black text-neutral-900 dark:text-white">{surface.score}<span className="text-sm font-medium text-neutral-400">/100</span></p>
+          </div>
+          <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 p-3">
+            <p className="text-[10px] uppercase tracking-wide text-neutral-400 font-medium">Est. exposure</p>
+            <p className="text-2xl font-black text-neutral-900 dark:text-white">{money(surface.estimatedExposure)}</p>
+          </div>
+          <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 p-3">
+            <p className="text-[10px] uppercase tracking-wide text-neutral-400 font-medium">High-risk issues</p>
+            <p className="text-2xl font-black text-neutral-900 dark:text-white">{surface.coveredRuleCount}<span className="text-sm font-medium text-neutral-400">/{surface.totalHighRiskRules}</span></p>
+          </div>
+        </div>
+
+        {/* Litigation-driving factors */}
+        {surface.factors.length > 0 ? (
+          <div className="space-y-2">
+            {surface.factors.map((f) => (
+              <div key={f.ruleId} className="rounded-lg border border-neutral-200 dark:border-neutral-800 p-3">
+                <div className="flex items-start gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-neutral-900 dark:text-white">{f.label}</p>
+                    <p className="text-[11px] text-neutral-500 mt-0.5">{f.wcag} · cited in {Math.round(f.lawsuitFrequency * 100)}% of ADA web suits</p>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1.5">{f.plaintiffNote}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-sm font-bold text-neutral-900 dark:text-white">{f.affectedPages} page{f.affectedPages === 1 ? "" : "s"}</p>
+                    <p className="text-[11px] text-neutral-500">{f.occurrences} instance{f.occurrences === 1 ? "" : "s"}</p>
+                    <p className="text-[11px] text-neutral-400 mt-0.5">~{money(f.estimatedExposure)}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-lg border border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/30 p-3 flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
+            <p className="text-sm text-green-800 dark:text-green-300">None of the highest-litigation issue types were found — a low litigation surface.</p>
+          </div>
+        )}
+
+        <p className="text-[11px] text-neutral-400 flex items-start gap-1.5">
+          <Info className="h-3.5 w-3.5 shrink-0 mt-px" />
+          Informational estimate based on published ADA Title III filing data (issue frequency &amp; settlement ranges). Not legal advice.
+        </p>
+      </CardContent>
+    </Card>
   );
 }
 

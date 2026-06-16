@@ -10,50 +10,18 @@ import "server-only";
 
 import { prisma } from "@/lib/database/prisma";
 import type { RiskTier } from "@/generated/prisma/client";
+import {
+  LITIGATION_WEIGHTS,
+  INDUSTRY_MULTIPLIERS,
+  GEO_MULTIPLIERS,
+  IMPACT_MULTIPLIERS,
+  type LitigationWeightData,
+} from "./litigationWeights";
 
-export interface LitigationWeightData {
-  weight: number;
-  frequency: number;
-  avgSettlement: number;
-}
-
-/** The 6 violation types appearing in 96% of filed ADA lawsuits */
-export const LITIGATION_WEIGHTS: Record<string, LitigationWeightData> = {
-  "image-alt": { weight: 0.22, frequency: 0.67, avgSettlement: 28000 },
-  "label": { weight: 0.19, frequency: 0.61, avgSettlement: 25000 },
-  "color-contrast": { weight: 0.17, frequency: 0.54, avgSettlement: 22000 },
-  "link-name": { weight: 0.15, frequency: 0.48, avgSettlement: 19000 },
-  "keyboard": { weight: 0.14, frequency: 0.44, avgSettlement: 31000 },
-  "form-field-multiple-labels": { weight: 0.13, frequency: 0.39, avgSettlement: 21000 },
-};
-
-export const INDUSTRY_MULTIPLIERS: Record<string, number> = {
-  ecommerce: 1.8,
-  restaurant: 1.7,
-  healthcare: 1.6,
-  financial: 1.5,
-  education: 1.4,
-  government: 1.3,
-  hospitality: 1.2,
-  saas: 1.1,
-  other: 1.0,
-};
-
-export const GEO_MULTIPLIERS: Record<string, number> = {
-  NY: 1.9,
-  FL: 1.7,
-  CA: 1.6,
-  TX: 1.3,
-  EU: 1.8,
-  other: 1.0,
-};
-
-const IMPACT_MULTIPLIERS: Record<string, number> = {
-  critical: 2.0,
-  serious: 1.5,
-  moderate: 1.0,
-  minor: 0.5,
-};
+// Re-export the pure constants so existing importers of legalRiskEngine keep
+// working unchanged (the source of truth now lives in ./litigationWeights).
+export { LITIGATION_WEIGHTS, INDUSTRY_MULTIPLIERS, GEO_MULTIPLIERS };
+export type { LitigationWeightData };
 
 export type RiskContext = {
   industry: string;
