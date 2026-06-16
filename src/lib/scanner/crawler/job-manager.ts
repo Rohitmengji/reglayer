@@ -55,6 +55,28 @@ export interface JobProgress {
   };
 }
 
+/**
+ * A compact, serializable snapshot of the live crawl visualization state
+ * (the faux-browser viewport, site-map, and filmstrip). It is accumulated from
+ * events and persisted to the durable CrawlJobRecord so the client can render
+ * the live view by POLLING — essential on serverless, where the SSE stream and
+ * the crawl run on different instances and events never reach the browser.
+ */
+export interface LivePageSnapshot {
+  url: string;
+  scanId?: string;
+  score?: number;
+  violations?: number;
+  status: "scanning" | "complete" | "error";
+  depth?: number;
+}
+export interface LiveSnapshot {
+  rootUrl: string | null;
+  currentUrl: string | null;
+  pages: LivePageSnapshot[];
+  edges: Array<{ from: string; to: string }>;
+}
+
 export interface AuditJob {
   id: string;
   config: CrawlConfig;
@@ -65,6 +87,7 @@ export interface AuditJob {
   startedAt: number;
   completedAt?: number;
   cancelRequested: boolean;
+  live: LiveSnapshot;
 }
 
 export type JobEvent =
@@ -119,6 +142,7 @@ class AuditJobManager {
       },
       startedAt: Date.now(),
       cancelRequested: false,
+      live: { rootUrl: null, currentUrl: null, pages: [], edges: [] },
     };
 
     this.jobs.set(id, job);
@@ -157,6 +181,10 @@ class AuditJobManager {
     const job = this.jobs.get(jobId);
     if (!job) return;
 
+    // Accumulate the live-visualization snapshot (so it can be persisted to the
+    // durable record and rendered by polling, independent of the SSE stream).
+    this.accumulateLive(job, event);
+
     // Update job state from event
     switch (event.type) {
       case "phase":
@@ -186,6 +214,41 @@ class AuditJobManager {
     }
 
     this.emitter.emit(`job:${jobId}`, event);
+  }
+
+  /** Fold an event into the job's live snapshot (capped to keep the record small). */
+  private accumulateLive(job: AuditJob, event: JobEvent): void {
+    const live = job.live;
+    const MAX = 200;
+    const upsert = (url: string, patch: Partial<LivePageSnapshot>) => {
+      const existing = live.pages.find((p) => p.url === url);
+      if (existing) Object.assign(existing, patch);
+      else if (live.pages.length < MAX) live.pages.push({ url, status: "scanning", ...patch });
+    };
+    switch (event.type) {
+      case "discovery": {
+        if (live.rootUrl === null) live.rootUrl = event.depth === 0 ? event.url : (event.from ?? event.url);
+        if (event.from && event.from !== event.url && live.edges.length < MAX) {
+          if (!live.edges.some((e) => e.from === event.from && e.to === event.url)) {
+            live.edges.push({ from: event.from, to: event.url });
+          }
+        }
+        if (!live.pages.find((p) => p.url === event.url) && live.pages.length < MAX) {
+          live.pages.push({ url: event.url, status: "scanning", depth: event.depth });
+        }
+        break;
+      }
+      case "page-start":
+        live.currentUrl = event.url;
+        upsert(event.url, { status: "scanning" });
+        break;
+      case "page-complete":
+        upsert(event.url, { status: "complete", scanId: event.scanId, score: event.score, violations: event.violations });
+        break;
+      case "page-error":
+        upsert(event.url, { status: "error" });
+        break;
+    }
   }
 
   // ── Event Subscription (used by SSE endpoint) ──

@@ -165,6 +165,43 @@ interface LivePageEvent {
   error?: string;
 }
 
+// Durable live snapshot shape (from GET /api/crawl/[jobId].live).
+interface LiveSnapshot {
+  rootUrl: string | null;
+  currentUrl: string | null;
+  pages: Array<{ url: string; scanId?: string; score?: number; violations?: number; status: "scanning" | "complete" | "error"; depth?: number }>;
+  edges: Array<{ from: string; to: string }>;
+}
+
+/**
+ * Rebuild the live-visualization view-model from a durable snapshot (polled).
+ * Replays the snapshot through the same pure reducer the SSE path uses, so the
+ * viewport / site-map / filmstrip render identically whether driven by live SSE
+ * events (local) or by polling the durable record (serverless).
+ */
+function theaterFromLive(live: LiveSnapshot | null, phase?: string): TheaterState {
+  let s = createInitialTheaterState();
+  if (!live) return s;
+  for (const e of live.edges ?? []) {
+    s = reduceTheaterEvent(s, { type: "discovery", url: e.to, from: e.from });
+  }
+  for (const p of live.pages ?? []) {
+    const from = (live.edges ?? []).find((e) => e.to === p.url)?.from;
+    s = reduceTheaterEvent(s, { type: "discovery", url: p.url, from, depth: p.depth });
+  }
+  for (const p of live.pages ?? []) {
+    if (p.status === "complete" && p.scanId) {
+      s = reduceTheaterEvent(s, { type: "page-complete", url: p.url, scanId: p.scanId, score: p.score ?? 0, violations: p.violations ?? 0 });
+    } else if (p.status === "error") {
+      s = reduceTheaterEvent(s, { type: "page-start", url: p.url });
+      s = reduceTheaterEvent(s, { type: "page-error", url: p.url });
+    }
+  }
+  if (live.currentUrl) s = reduceTheaterEvent(s, { type: "page-start", url: live.currentUrl });
+  if (phase) s = reduceTheaterEvent(s, { type: "phase", phase });
+  return s;
+}
+
 // ══════════════════════════════════════════════════════════════
 // MAIN PAGE
 // ══════════════════════════════════════════════════════════════
@@ -323,9 +360,24 @@ export default function CrawlPage() {
               : prev;
           });
         }
+        // Rebuild the live visualization (viewport / site-map / filmstrip) from
+        // the durable snapshot. This is what makes the Live view work on
+        // serverless, where SSE delivers nothing (the crawl and the stream run
+        // on different lambdas).
+        if (data?.live) {
+          setTheater(theaterFromLive(data.live, data?.progress?.phase));
+          if (Array.isArray(data.live.pages)) {
+            setLivePages(
+              data.live.pages.map((p: { url: string; score?: number; violations?: number; status: "scanning" | "complete" | "error" }) => ({
+                url: p.url, score: p.score ?? 0, violations: p.violations ?? 0, duration: 0, status: p.status,
+              }))
+            );
+          }
+        }
       } catch { /* transient — keep polling */ }
     };
     pollRef.current = setInterval(poll, 3000);
+    void poll(); // immediate first poll so the live view fills fast
   }, [finishCrawl, stopTracking]);
 
   // Reconnect to active job on mount

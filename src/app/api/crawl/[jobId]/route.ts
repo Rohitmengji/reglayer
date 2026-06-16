@@ -31,6 +31,7 @@ export async function GET(
       completedAt: job.completedAt,
       error: job.error,
       result: job.result,
+      live: job.live, // drives the live viewport / site-map / filmstrip
     });
   }
 
@@ -42,24 +43,28 @@ export async function GET(
   }
 
   const terminal = record.status === "complete" || record.status === "failed" || record.status === "cancelled";
-  // Reconstruct a JobProgress-shaped object from the durable record so a polling
-  // client gets the SAME shape it gets from the in-memory branch (which returns
-  // the full progress object) — never a bare integer.
-  const r = (record.result ?? null) as null | {
+  // record.result holds EITHER the live snapshot ({__live,...}) while the crawl
+  // is in flight, OR the full CrawlResult once finished. Disambiguate so the
+  // client never mistakes the partial for a final result.
+  const raw = (record.result ?? null) as null | {
+    __live?: unknown; phase?: string; currentUrl?: string | null;
     pagesDiscovered?: number; pagesScanned?: number; averageScore?: number;
     totalViolations?: number; patterns?: unknown[]; errors?: unknown[];
   };
+  const live = raw && raw.__live !== undefined ? raw.__live : null;
+  const r = terminal ? raw : null; // only treat as CrawlResult when finished
   const phase =
     record.status === "complete" ? "complete"
     : record.status === "failed" ? "failed"
     : record.status === "cancelled" ? "cancelled"
-    : record.pagesScanned > 0 ? "scanning" : "discovering";
+    : (raw?.phase as string | undefined) ?? (record.pagesScanned > 0 ? "scanning" : "discovering");
   const progress = {
     phase,
     pagesDiscovered: r?.pagesDiscovered ?? record.pagesTotal,
     pagesScanned: r?.pagesScanned ?? record.pagesScanned,
     pagesTotal: record.pagesTotal,
     pagesFailed: Array.isArray(r?.errors) ? r!.errors!.length : 0,
+    currentUrl: raw?.currentUrl ?? undefined,
     avgScore: r?.averageScore ?? 0,
     totalViolations: r?.totalViolations ?? 0,
     patternsFound: Array.isArray(r?.patterns) ? r!.patterns!.length : 0,
@@ -72,7 +77,8 @@ export async function GET(
     startedAt: record.createdAt.getTime(),
     completedAt: terminal ? record.updatedAt.getTime() : undefined,
     error: record.error ?? undefined,
-    result: record.result ?? undefined,
+    result: terminal ? (record.result ?? undefined) : undefined,
+    live, // drives the live viewport / site-map / filmstrip via polling
   });
 }
 

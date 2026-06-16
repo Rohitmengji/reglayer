@@ -158,6 +158,12 @@ export async function POST(request: NextRequest) {
             progress: total > 0 ? Math.min(99, Math.round((p.pagesScanned / total) * 100)) : 0,
             pagesScanned: p.pagesScanned,
             pagesTotal: total,
+            // Persist the live-visualization snapshot so the client can render
+            // the faux-browser viewport / site-map / filmstrip by POLLING. On
+            // serverless the SSE stream and the crawl run on different lambdas,
+            // so SSE delivers nothing — polling the durable record is the only
+            // reliable channel. Overwritten by the full CrawlResult on finish.
+            result: { __live: j.live, phase: p.phase, currentUrl: p.currentUrl ?? null } as unknown as Prisma.InputJsonValue,
           },
         });
       } catch { /* best-effort durable progress */ }
