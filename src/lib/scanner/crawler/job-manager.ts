@@ -67,7 +67,7 @@ export interface LivePageSnapshot {
   scanId?: string;
   score?: number;
   violations?: number;
-  status: "scanning" | "complete" | "error";
+  status: "discovered" | "scanning" | "complete" | "error";
   depth?: number;
 }
 export interface LiveSnapshot {
@@ -223,7 +223,7 @@ class AuditJobManager {
     const upsert = (url: string, patch: Partial<LivePageSnapshot>) => {
       const existing = live.pages.find((p) => p.url === url);
       if (existing) Object.assign(existing, patch);
-      else if (live.pages.length < MAX) live.pages.push({ url, status: "scanning", ...patch });
+      else if (live.pages.length < MAX) live.pages.push({ url, status: "discovered", ...patch });
     };
     switch (event.type) {
       case "discovery": {
@@ -233,8 +233,9 @@ class AuditJobManager {
             live.edges.push({ from: event.from, to: event.url });
           }
         }
+        // Discovered, not yet scanning — only page-start promotes to "scanning".
         if (!live.pages.find((p) => p.url === event.url) && live.pages.length < MAX) {
-          live.pages.push({ url: event.url, status: "scanning", depth: event.depth });
+          live.pages.push({ url: event.url, status: "discovered", depth: event.depth });
         }
         break;
       }

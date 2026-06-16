@@ -25,6 +25,8 @@ interface CrawlViewportProps {
   phase: string;
   current: { url: string } | null;
   lastCaptured: { url: string; scanId: string; score: number; violations: number } | null;
+  /** Target site root — shown in the address bar before the first page is captured. */
+  rootUrl?: string | null;
 }
 
 function scoreText(score: number): string {
@@ -53,14 +55,21 @@ function pathOf(url: string): string {
   }
 }
 
-export function CrawlViewport({ phase, current, lastCaptured }: CrawlViewportProps) {
+export function CrawlViewport({ phase, current, lastCaptured, rootUrl }: CrawlViewportProps) {
   // Thumbnails can 404 transiently (the Scan row persists a moment after the
   // page-complete event) or in environments without stored screenshots. Track
   // failures so we fall back to the wireframe skeleton instead of a blank hero.
   const [failedShots, setFailedShots] = useState<Set<string>>(new Set());
   const showShot = !!lastCaptured && !failedShots.has(lastCaptured.scanId);
   const isScanning = phase === "scanning" && !!current;
-  const displayUrl = current?.url ?? lastCaptured?.url ?? "";
+  const displayUrl = current?.url ?? lastCaptured?.url ?? rootUrl ?? "";
+  // Pre-screenshot status so the viewport never looks blank/broken while the
+  // browser is launching or discovering pages.
+  const prepLabel =
+    phase === "connecting" || phase === "queued" || phase === "" ? "Launching secure browser…"
+    : phase === "discovering" ? "Discovering pages…"
+    : phase === "analyzing" ? "Analyzing results…"
+    : "Preparing scan…";
   const host = (() => {
     try {
       return new URL(displayUrl).host;
@@ -122,17 +131,26 @@ export function CrawlViewport({ phase, current, lastCaptured }: CrawlViewportPro
             }}
           />
         ) : (
-          // Wireframe skeleton stand-in while the first page loads
-          <div className="absolute inset-0 p-6 space-y-3" aria-hidden="true">
-            <div className="h-8 w-1/3 rounded bg-neutral-200 dark:bg-neutral-800 animate-pulse-soft" />
-            <div className="h-3 w-3/4 rounded bg-neutral-200 dark:bg-neutral-800 animate-pulse-soft" />
-            <div className="h-3 w-2/3 rounded bg-neutral-200 dark:bg-neutral-800 animate-pulse-soft" />
-            <div className="grid grid-cols-3 gap-3 pt-4">
-              <div className="h-20 rounded bg-neutral-200 dark:bg-neutral-800 animate-pulse-soft" />
-              <div className="h-20 rounded bg-neutral-200 dark:bg-neutral-800 animate-pulse-soft" />
-              <div className="h-20 rounded bg-neutral-200 dark:bg-neutral-800 animate-pulse-soft" />
+          // Wireframe skeleton + an intentional "what it's doing now" overlay,
+          // so the early connecting/discovering phase reads as live activity
+          // rather than a blank/broken panel.
+          <>
+            <div className="absolute inset-0 p-6 space-y-3 opacity-60" aria-hidden="true">
+              <div className="h-8 w-1/3 rounded bg-neutral-200 dark:bg-neutral-800 animate-pulse-soft" />
+              <div className="h-3 w-3/4 rounded bg-neutral-200 dark:bg-neutral-800 animate-pulse-soft" />
+              <div className="h-3 w-2/3 rounded bg-neutral-200 dark:bg-neutral-800 animate-pulse-soft" />
+              <div className="grid grid-cols-3 gap-3 pt-4">
+                <div className="h-20 rounded bg-neutral-200 dark:bg-neutral-800 animate-pulse-soft" />
+                <div className="h-20 rounded bg-neutral-200 dark:bg-neutral-800 animate-pulse-soft" />
+                <div className="h-20 rounded bg-neutral-200 dark:bg-neutral-800 animate-pulse-soft" />
+              </div>
             </div>
-          </div>
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-center px-6">
+              <Loader2 className="h-6 w-6 text-blue-500 animate-spin" aria-hidden="true" />
+              <p className="text-sm font-medium text-neutral-700 dark:text-neutral-200">{prepLabel}</p>
+              {host && <p className="text-xs font-mono text-neutral-500 truncate max-w-full">{host}</p>}
+            </div>
+          </>
         )}
 
         {/* Scanline sweep — the "crawling each element" motion */}
