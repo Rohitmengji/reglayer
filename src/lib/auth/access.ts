@@ -84,6 +84,46 @@ export async function assertScanAccess(
 }
 
 /**
+ * Assert the session may access the given crawl job. Mirrors assertScanAccess:
+ * master admin bypass, else workspace membership, else legacy userId ownership.
+ *
+ * `fallbackOwner` lets the caller pass the in-memory job's owner (job.config)
+ * so the hot poll path can authorize WITHOUT a durable-record lookup while the
+ * crawl is live; the record is only read when no fallback owner is available.
+ */
+export async function assertCrawlJobAccess(
+  jobId: string,
+  session: Session | null,
+  fallbackOwner?: { workspaceId?: string | null; userId?: string | null }
+): Promise<AccessResult> {
+  const user = await resolveUser(session);
+  if (!user) return { ok: false, status: 401, error: "Authentication required" };
+
+  let owner: { workspaceId: string | null; userId: string | null } | null = null;
+  if (fallbackOwner && (fallbackOwner.workspaceId != null || fallbackOwner.userId != null)) {
+    owner = { workspaceId: fallbackOwner.workspaceId ?? null, userId: fallbackOwner.userId ?? null };
+  } else {
+    const record = await prisma.crawlJobRecord.findUnique({
+      where: { id: jobId },
+      select: { workspaceId: true, userId: true },
+    });
+    owner = record ? { workspaceId: record.workspaceId, userId: record.userId } : null;
+  }
+  if (!owner) return { ok: false, status: 404, error: "Job not found" };
+
+  if (user.isMasterAdmin) {
+    return { ok: true, userId: user.id, isMasterAdmin: true, workspaceId: owner.workspaceId };
+  }
+  const workspaceIds = user.memberships.map((m) => m.workspaceId);
+  const ownsByWorkspace = owner.workspaceId !== null && workspaceIds.includes(owner.workspaceId);
+  const ownsByUser = owner.userId !== null && owner.userId === user.id;
+  if (ownsByWorkspace || ownsByUser) {
+    return { ok: true, userId: user.id, isMasterAdmin: false, workspaceId: owner.workspaceId };
+  }
+  return { ok: false, status: 403, error: "You do not have access to this audit" };
+}
+
+/**
  * Assert the session may access the given site (always workspace-scoped).
  */
 export async function assertSiteAccess(

@@ -20,6 +20,7 @@ import { NextRequest } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { jobManager, type JobEvent } from "@/lib/scanner/crawler/job-manager";
+import { assertCrawlJobAccess } from "@/lib/auth/access";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +37,15 @@ export async function GET(
   const job = jobManager.getJob(jobId);
   if (!job) {
     return new Response("Job not found", { status: 404 });
+  }
+
+  // Ownership check (IDOR guard): don't stream another tenant's live audit.
+  const access = await assertCrawlJobAccess(jobId, session, {
+    workspaceId: job.config.workspaceId ?? null,
+    userId: job.config.userId ?? null,
+  });
+  if (!access.ok) {
+    return new Response(access.error, { status: access.status });
   }
 
   // If job is already complete, send single event and close

@@ -9,6 +9,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { jobManager } from "@/lib/scanner/crawler/job-manager";
 import { prisma } from "@/lib/database/prisma";
+import { assertCrawlJobAccess } from "@/lib/auth/access";
 
 export async function GET(
   _request: NextRequest,
@@ -21,6 +22,18 @@ export async function GET(
 
   const { jobId } = await params;
   const job = jobManager.getJob(jobId);
+
+  // Ownership check (IDOR guard): job IDs are guessable, so a status/result/live
+  // read must be scoped to the caller's workspace. Use the in-memory job's owner
+  // as the fast path (no DB read while the crawl is live); otherwise the helper
+  // reads the durable record.
+  const access = await assertCrawlJobAccess(jobId, session, job
+    ? { workspaceId: job.config.workspaceId ?? null, userId: job.config.userId ?? null }
+    : undefined);
+  if (!access.ok) {
+    return NextResponse.json({ error: access.error }, { status: access.status });
+  }
+
   if (job) {
     // In-memory state is authoritative when present (live progress object).
     return NextResponse.json({
@@ -102,6 +115,16 @@ export async function DELETE(
   }
 
   const { jobId } = await params;
+
+  // Ownership check (IDOR guard): never let one user cancel another's audit.
+  const existing = jobManager.getJob(jobId);
+  const access = await assertCrawlJobAccess(jobId, session, existing
+    ? { workspaceId: existing.config.workspaceId ?? null, userId: existing.config.userId ?? null }
+    : undefined);
+  if (!access.ok) {
+    return NextResponse.json({ error: access.error }, { status: access.status });
+  }
+
   // Cancel the in-memory job IF this lambda is the one running it.
   const cancelledInMemory = jobManager.cancelJob(jobId);
 
