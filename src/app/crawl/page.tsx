@@ -55,6 +55,7 @@ import { ScanAuthSection } from "@/components/scanner/scan-auth-section";
 import type { AuthConfig } from "@/lib/validations/auth";
 import { CrawlTheater } from "@/components/crawl/CrawlTheater";
 import { createInitialTheaterState, reduceTheaterEvent, type TheaterState } from "@/lib/crawl-viz/crawlTheater";
+import { normalizeTargetUrl } from "@/lib/crawl-viz/targetUrl";
 
 // ══════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -251,6 +252,8 @@ export default function CrawlPage() {
   const [step, setStep] = useState<"mode" | "config" | "running" | "done">("mode");
   const [mode, setMode] = useState<ScanMode | null>(null);
   const [url, setUrl] = useState("");
+  // Inline validation message for the target URL (e.g. "google" isn't a domain).
+  const [urlError, setUrlError] = useState<string | null>(null);
   // The user's own most-recent site, fetched on mount to AUTO-DETECT a target.
   const [detectedUrl, setDetectedUrl] = useState<string | null>(null);
   const [maxPages, setMaxPages] = useState("50");
@@ -265,6 +268,13 @@ export default function CrawlPage() {
   const [result, setResult] = useState<AuditResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [authConfig, setAuthConfig] = useState<AuthConfig | undefined>(undefined);
+  // A saved auth config selected in ScanAuthSection — sent to the API as
+  // authConfigId and resolved server-side (credentials never reach the client).
+  const [savedConfigId, setSavedConfigId] = useState<string | undefined>(undefined);
+  // Guards against double-starting a crawl (e.g. a fast double-click on Start).
+  const startingRef = useRef(false);
+  // Shown when the server clamped maxPages to the plan limit (so it isn't silent).
+  const [clampNotice, setClampNotice] = useState<string | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
   // Polling backstop: guarantees the UI reaches a correct terminal state and
   // keeps progress moving even if SSE never connects, drops, or lands on a
@@ -497,6 +507,14 @@ export default function CrawlPage() {
     setMaxPages(String(cfg.maxPages));
     setMaxDepth(String(cfg.maxDepth));
     setConcurrency(String(cfg.concurrency));
+    // Public audits must never carry credentials. Clear any auth configured
+    // under a previous Authenticated/Deep selection so it can't leak in.
+    if (m === "public") {
+      setAuthConfig(undefined);
+      setSavedConfigId(undefined);
+    }
+    setUrlError(null);
+    setError(null);
     setStep("config");
   }
 
@@ -515,6 +533,32 @@ export default function CrawlPage() {
   }
 
   async function handleAudit() {
+    // Guard against double-start (fast double-click, or Try-again while a job is
+    // already starting) — one click, one crawl.
+    if (startingRef.current) return;
+
+    // Validate the target FIRST — a bad domain like "google" (→ https://google/)
+    // must be caught here with a clear inline message, not after a wasted crawl.
+    const { url: targetUrl, error: vErr } = normalizeTargetUrl(url);
+    if (vErr || !targetUrl) {
+      setUrlError(vErr || "Enter a valid web address.");
+      setStep("config");
+      return;
+    }
+    // Authenticated mode means "behind the login" — refuse to silently run it as
+    // a public crawl when no credentials (inline or saved) are configured.
+    const hasAuth = !!savedConfigId || (!!authConfig && authConfig.method !== "none");
+    if (mode === "authenticated" && !hasAuth) {
+      setUrlError(null);
+      setError("Authenticated audits need a login. Configure authentication (or pick a saved login) below, then start.");
+      setStep("config");
+      return;
+    }
+    setUrlError(null);
+    setError(null);
+    if (targetUrl !== url) setUrl(targetUrl);
+
+    startingRef.current = true;
     setRunning(true);
     setError(null);
     setResult(null);
@@ -524,11 +568,14 @@ export default function CrawlPage() {
     setJobId(null);
     setStep("running");
 
-    // Normalize the target URL: accept bare domains (e.g. "example.com") by
-    // defaulting to https://. The crawler scans only this URL's own origin.
-    const rawUrl = url.trim();
-    const targetUrl = /^https?:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`;
-    if (targetUrl !== url) setUrl(targetUrl);
+    // Clamp the page budget: an empty/0 field must fall back to the mode default
+    // rather than POST maxPages:0 (which the API rejects → "Failed to start").
+    const safeMaxPages = Math.min(500, Math.max(1, Number(maxPages) || MODE_CONFIG[mode ?? "public"].maxPages));
+    // Public audits never send credentials — even if auth was configured under a
+    // previous Authenticated/Deep selection and left behind by the Back button.
+    const includeAuth = mode !== "public";
+    const inlineAuth = includeAuth && authConfig && authConfig.method !== "none" ? authConfig : undefined;
+    const sendSavedId = includeAuth ? savedConfigId : undefined;
 
     try {
       // No knownRoutes: the engine does real discovery for the target site
@@ -538,23 +585,33 @@ export default function CrawlPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           url: targetUrl,
-          maxPages: Number(maxPages),
+          maxPages: safeMaxPages,
           maxDepth: Number(maxDepth) || MODE_DEPTH[mode ?? "public"],
-          concurrency: Number(concurrency),
-          ...(authConfig && authConfig.method !== "none" && { auth: authConfig }),
+          concurrency: Number(concurrency) || MODE_CONFIG[mode ?? "public"].concurrency,
+          // A saved login (resolved server-side) takes precedence over inline auth.
+          ...(sendSavedId ? { authConfigId: sendSavedId } : inlineAuth ? { auth: inlineAuth } : {}),
         }),
       });
       if (!res.ok) {
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "Failed to start audit");
       }
       const data = await res.json();
+      // Surface a silent plan clamp so a 50→5 (FREE) reduction isn't mysterious.
+      if (data?.config?.maxPages && data.config.maxPages < safeMaxPages) {
+        setProgress(null);
+        setClampNotice(`Your plan limits audits to ${data.config.maxPages} pages — scanning the first ${data.config.maxPages}.`);
+      } else {
+        setClampNotice(null);
+      }
       setJobId(data.jobId);
       connectSSE(data.jobId);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to start audit");
       setRunning(false);
       setStep("done");
+    } finally {
+      startingRef.current = false;
     }
   }
 
@@ -574,9 +631,13 @@ export default function CrawlPage() {
     setJobId(null);
     setRunning(false);
     setUrl("");
+    setUrlError(null);
     setMaxPages("50");
     setMaxDepth("3");
     setAuthConfig(undefined);
+    setSavedConfigId(undefined);
+    setClampNotice(null);
+    startingRef.current = false;
     stopTracking();
   }
 
@@ -702,8 +763,22 @@ export default function CrawlPage() {
               <CardContent className="p-6 space-y-4">
                 <div>
                   <label className="text-sm font-medium text-neutral-700 dark:text-neutral-200">Target URL</label>
-                  <Input type="url" placeholder="https://www.yourcompany.com" value={url} onChange={(e) => setUrl(e.target.value)} required className="mt-1 font-mono text-sm" />
-                  <p className="text-xs text-neutral-400 mt-1">We&apos;ll crawl this site and discover its pages automatically.</p>
+                  <Input
+                    type="url"
+                    placeholder="https://www.yourcompany.com"
+                    value={url}
+                    onChange={(e) => { setUrl(e.target.value); if (urlError) setUrlError(null); }}
+                    required
+                    aria-invalid={!!urlError}
+                    className={`mt-1 font-mono text-sm ${urlError ? "border-red-400 dark:border-red-600 focus-visible:ring-red-400" : ""}`}
+                  />
+                  {urlError ? (
+                    <p className="text-xs text-red-600 dark:text-red-400 mt-1 flex items-center gap-1.5">
+                      <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> {urlError}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-neutral-400 mt-1">We&apos;ll crawl this site and discover its pages automatically.</p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -751,13 +826,21 @@ export default function CrawlPage() {
                         ? "Log in so the crawler can discover and audit pages behind the login. Configure authentication below or select a saved config."
                         : "Add login details to also discover pages behind authentication, or leave blank to crawl public pages only."}
                     </p>
-                    <ScanAuthSection onAuthChange={setAuthConfig} scanUrl={url} />
+                    <ScanAuthSection key={mode} onAuthChange={setAuthConfig} onSavedConfigChange={setSavedConfigId} scanUrl={url} />
+                  </div>
+                )}
+
+                {/* Inline error (e.g. authenticated mode started with no login) */}
+                {error && (
+                  <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/40 p-3 flex items-start gap-2.5">
+                    <XCircle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
+                    <p className="text-xs text-red-700 dark:text-red-300">{error}</p>
                   </div>
                 )}
 
                 {/* Time estimate + start */}
                 <div className="flex items-center gap-3 pt-2">
-                  <Button variant="outline" onClick={() => setStep("mode")} className="px-6">
+                  <Button variant="outline" onClick={() => { setError(null); setStep("mode"); }} className="px-6">
                     <ArrowLeft className="h-4 w-4 mr-2" /> Back
                   </Button>
                   <Button onClick={handleAudit} disabled={!url} className="flex-1 h-11 text-sm font-medium">
@@ -778,6 +861,14 @@ export default function CrawlPage() {
         )}
 
         {/* ══════════════ STEP 3: RUNNING ══════════════ */}
+        {(step === "running" || step === "done") && clampNotice && (
+          <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/30 mb-4">
+            <CardContent className="p-3 flex items-start gap-2.5">
+              <Info className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
+              <p className="text-xs text-blue-800 dark:text-blue-200">{clampNotice}</p>
+            </CardContent>
+          </Card>
+        )}
         {step === "running" && (
           <div className="mb-4">
             <CrawlTheater theater={theater} />
@@ -1053,9 +1144,16 @@ function LiveStat({ label, value, color }: { label: string; value: string; color
 // ══════════════════════════════════════════════════════════════
 
 function AuditResults({ result }: { result: AuditResult }) {
+  // Defensive defaults: a partial/older/stale durable record may be missing
+  // arrays/objects. Never let a missing field white-screen the results page.
+  const pages = result.pages ?? [];
+  const patterns = result.patterns ?? [];
+  const errors = result.errors ?? [];
+  const timing = result.timing ?? { auth: 0, discovery: 0, scanning: 0, analysis: 0, total: 0 };
+  const discovery = result.discovery ?? { sitemapUrls: 0, linkUrls: 0, totalUnique: 0, sitemapAvailable: false };
   // Discovery-based audit: pages aren't pre-classified into public/admin —
   // present everything the crawler found as one collection.
-  const discoveredPages = result.pages;
+  const discoveredPages = pages;
   const cleanCount = discoveredPages.filter((p) => !p.error && p.violations === 0 && p.scanId).length;
   const errorCount = discoveredPages.filter((p) => p.error).length;
 
@@ -1064,7 +1162,7 @@ function AuditResults({ result }: { result: AuditResult }) {
   const noResults = result.pagesScanned === 0 || result.outcome === "no-pages" || result.outcome === "all-failed";
   if (noResults) {
     const isNoPages = result.outcome === "no-pages" || result.pagesDiscovered === 0;
-    const firstErr = result.errors?.[0]?.error;
+    const firstErr = errors?.[0]?.error;
     return (
       <Card className="border-amber-200 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-950/30">
         <CardContent className="p-6 space-y-3">
@@ -1076,7 +1174,7 @@ function AuditResults({ result }: { result: AuditResult }) {
               </h3>
               <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-0.5">
                 {isNoPages
-                  ? `We discovered ${result.discovery?.totalUnique ?? 0} URL(s) but none were scannable.`
+                  ? `We discovered ${discovery?.totalUnique ?? 0} URL(s) but none were scannable.`
                   : `${result.pagesDiscovered} page(s) were discovered, but every scan failed.`}
               </p>
             </div>
@@ -1126,7 +1224,7 @@ function AuditResults({ result }: { result: AuditResult }) {
               <div>
                 <p className="text-sm font-semibold text-neutral-900 dark:text-white">Overall Score</p>
                 <p className="text-xs text-neutral-500 mt-0.5">{result.pagesScanned} pages · {result.totalViolations} violations · {formatDuration(result.duration)}</p>
-                <p className="text-xs text-neutral-400 mt-0.5">{result.patterns.filter(p => p.isTemplateIssue).length} template issues found</p>
+                <p className="text-xs text-neutral-400 mt-0.5">{patterns.filter(p => p.isTemplateIssue).length} template issues found</p>
               </div>
             </div>
             <div className="flex gap-4 sm:ml-auto">
@@ -1153,10 +1251,10 @@ function AuditResults({ result }: { result: AuditResult }) {
       {/* Phase Timeline */}
       <div className="flex items-center gap-1 overflow-x-auto pb-2">
         {[
-          { name: "Auth", dur: result.timing.auth, icon: <Shield className="h-3.5 w-3.5" />, ok: result.auth?.authenticated ? "success" : result.auth ? "error" : "skip" },
-          { name: "Discover", dur: result.timing.discovery, icon: <Search className="h-3.5 w-3.5" />, ok: "success" },
-          { name: "Scan", dur: result.timing.scanning, icon: <Activity className="h-3.5 w-3.5" />, ok: "success" },
-          { name: "Analyze", dur: result.timing.analysis, icon: <BarChart3 className="h-3.5 w-3.5" />, ok: "success" },
+          { name: "Auth", dur: timing.auth, icon: <Shield className="h-3.5 w-3.5" />, ok: result.auth?.authenticated ? "success" : result.auth ? "error" : "skip" },
+          { name: "Discover", dur: timing.discovery, icon: <Search className="h-3.5 w-3.5" />, ok: "success" },
+          { name: "Scan", dur: timing.scanning, icon: <Activity className="h-3.5 w-3.5" />, ok: "success" },
+          { name: "Analyze", dur: timing.analysis, icon: <BarChart3 className="h-3.5 w-3.5" />, ok: "success" },
         ].map((p, i) => (
           <div key={p.name} className="flex items-center">
             {i > 0 && <div className="w-4 h-px bg-neutral-300 dark:bg-neutral-600 mx-1" />}
@@ -1200,22 +1298,22 @@ function AuditResults({ result }: { result: AuditResult }) {
         <MetricCard icon={<Layers className="h-4 w-4" />} label="Pages" value={result.pagesScanned.toString()} sublabel={`of ${result.pagesDiscovered} found`} />
         <MetricCard icon={<BarChart3 className="h-4 w-4" />} label="Avg Score" value={result.averageScore.toString()} color={result.averageScore >= 90 ? "green" : result.averageScore >= 70 ? "yellow" : "red"} />
         <MetricCard icon={<AlertTriangle className="h-4 w-4" />} label="Violations" value={result.totalViolations.toString()} color={result.totalViolations > 0 ? "red" : "green"} />
-        <MetricCard icon={<Activity className="h-4 w-4" />} label="Patterns" value={result.patterns.length.toString()} sublabel={`${result.patterns.filter(p => p.isTemplateIssue).length} template`} />
-        <MetricCard icon={<Search className="h-4 w-4" />} label="Discovery" value="Routes" sublabel={`${result.discovery.totalUnique} URLs`} />
+        <MetricCard icon={<Activity className="h-4 w-4" />} label="Patterns" value={patterns.length.toString()} sublabel={`${patterns.filter(p => p.isTemplateIssue).length} template`} />
+        <MetricCard icon={<Search className="h-4 w-4" />} label="Discovery" value="Routes" sublabel={`${discovery.totalUnique} URLs`} />
         <MetricCard icon={<Clock className="h-4 w-4" />} label="Duration" value={formatDuration(result.duration)} sublabel={`${result.pagesScanned} pages`} />
       </div>
 
       {/* Patterns */}
-      {result.patterns.length > 0 && (
+      {patterns.length > 0 && (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm flex items-center gap-2">
-              <Layers className="h-4 w-4 text-violet-500" /> Violation Patterns <Badge variant="outline" className="ml-auto">{result.patterns.length}</Badge>
+              <Layers className="h-4 w-4 text-violet-500" /> Violation Patterns <Badge variant="outline" className="ml-auto">{patterns.length}</Badge>
             </CardTitle>
             <p className="text-xs text-neutral-500">Issues on multiple pages — fix in template to resolve everywhere</p>
           </CardHeader>
           <CardContent className="space-y-2">
-            {result.patterns.slice(0, 10).map((p) => (
+            {patterns.slice(0, 10).map((p) => (
               <div key={p.ruleId} className="flex items-center gap-3 p-3 rounded-lg bg-neutral-50 dark:bg-neutral-800/50">
                 <Badge variant={p.impact === "critical" ? "critical" : p.impact === "serious" ? "serious" : "outline"} className="shrink-0 text-[10px]">{p.impact}</Badge>
                 <div className="flex-1 min-w-0">
@@ -1233,15 +1331,15 @@ function AuditResults({ result }: { result: AuditResult }) {
       )}
 
       {/* Errors */}
-      {result.errors.length > 0 && (
+      {errors.length > 0 && (
         <Card className="border-amber-200 dark:border-amber-800">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm flex items-center gap-2 text-amber-800 dark:text-amber-200">
-              <AlertTriangle className="h-4 w-4" /> Issues ({result.errors.length})
+              <AlertTriangle className="h-4 w-4" /> Issues ({errors.length})
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-1.5">
-            {result.errors.slice(0, 10).map((err, i) => (
+            {errors.slice(0, 10).map((err, i) => (
               <div key={i} className="flex items-start gap-2 text-xs">
                 <Badge variant="outline" className="text-[9px] shrink-0 mt-0.5 uppercase">{err.phase}</Badge>
                 <span className="text-amber-700 dark:text-amber-300 break-all">
@@ -1290,7 +1388,7 @@ function LitigationSurfaceCard({ surface }: { surface: LitigationSurface }) {
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Headline metrics */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
           <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 p-3">
             <p className="text-[10px] uppercase tracking-wide text-neutral-400 font-medium">Risk score</p>
             <p className="text-2xl font-black text-neutral-900 dark:text-white">{surface.score}<span className="text-sm font-medium text-neutral-400">/100</span></p>
@@ -1401,8 +1499,13 @@ function PageGroup({ pages, title, icon, color }: { pages: PageResult[]; title: 
                   )}
                 </div>
                 {p.scanId && (
-                  <Link href={`/report/${p.scanId}`} className="text-neutral-400 hover:text-blue-500 transition-colors opacity-0 group-hover:opacity-100">
-                    <ExternalLink className="h-4 w-4" />
+                  <Link
+                    href={`/report/${p.scanId}`}
+                    aria-label={`Open full report for ${p.url}`}
+                    title="Open full report"
+                    className="text-neutral-400 hover:text-blue-500 transition-colors opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+                  >
+                    <ExternalLink className="h-4 w-4" aria-hidden="true" />
                   </Link>
                 )}
               </div>

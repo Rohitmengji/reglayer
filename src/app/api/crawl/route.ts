@@ -19,6 +19,8 @@ import { authConfigSchema } from "@/lib/validations/auth";
 import { logger } from "@/lib/telemetry/logger";
 import { prisma } from "@/lib/database/prisma";
 import { getOrCreateWorkspace } from "@/lib/database/workspace";
+import { decryptJson } from "@/lib/crypto";
+import type { AuthConfig } from "@/lib/validations/auth";
 import { Prisma } from "@/generated/prisma/client";
 
 // The crawl launches headless Chromium and can run for a while; give it the
@@ -36,6 +38,10 @@ const crawlSchema = z.object({
   includePatterns: z.array(z.string()).optional(),
   excludePatterns: z.array(z.string()).optional(),
   auth: authConfigSchema.optional(),
+  // A saved auth config selected in the UI — resolved + decrypted server-side
+  // (credentials are never sent to or from the client). Takes precedence over
+  // inline `auth`. This is what makes "saved auth configs" actually work for crawls.
+  authConfigId: z.string().optional(),
   knownRoutes: z.array(z.string()).optional(),
 });
 
@@ -63,7 +69,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { url, maxDepth, concurrency, requestDelay, includePatterns, excludePatterns, auth, knownRoutes } = parsed.data;
+  const { url, maxDepth, concurrency, requestDelay, includePatterns, excludePatterns, auth, authConfigId, knownRoutes } = parsed.data;
   let { maxPages } = parsed.data;
 
   // SSRF protection
@@ -99,6 +105,26 @@ export async function POST(request: NextRequest) {
     workspaceId = resolved || null;
   }
 
+  // Resolve the effective auth. A saved-config selection (authConfigId) wins and
+  // is decrypted server-side (workspace-scoped → IDOR-safe); otherwise use the
+  // inline auth. Either way, never crawl with a half-formed/"none" auth.
+  let resolvedAuth: AuthConfig | undefined = auth && auth.method !== "none" ? auth : undefined;
+  if (authConfigId && workspaceId) {
+    const saved = await prisma.authConfig.findFirst({
+      where: { id: authConfigId, workspaceId },
+      select: { encryptedData: true },
+    });
+    if (!saved) {
+      return NextResponse.json({ error: "Selected saved login was not found for this workspace." }, { status: 404 });
+    }
+    try {
+      const decrypted = decryptJson<AuthConfig>(saved.encryptedData);
+      if (decrypted && decrypted.method && decrypted.method !== "none") resolvedAuth = decrypted;
+    } catch {
+      return NextResponse.json({ error: "Could not read the saved login. Re-save it and try again." }, { status: 400 });
+    }
+  }
+
   // Create job
   const crawlConfig = {
     startUrl: url,
@@ -108,7 +134,7 @@ export async function POST(request: NextRequest) {
     requestDelay,
     includePatterns,
     excludePatterns,
-    auth: auth && auth.method !== "none" ? auth : undefined,
+    auth: resolvedAuth,
     knownRoutes,
     // Durable per-page Scan persistence (R-5)
     userEmail,

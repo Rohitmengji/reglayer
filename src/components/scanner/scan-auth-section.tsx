@@ -37,11 +37,18 @@ interface SavedConfig {
 interface ScanAuthSectionProps {
   /** Called when auth config changes. Parent passes this to scan options. */
   onAuthChange: (config: AuthConfig | undefined) => void;
+  /**
+   * Called when the user selects (or clears) a SAVED auth config. The parent
+   * sends this id to the API as `authConfigId`, which is resolved + decrypted
+   * server-side — so saved configs actually authenticate the crawl instead of
+   * silently running unauthenticated.
+   */
+  onSavedConfigChange?: (savedConfigId: string | undefined) => void;
   /** Target URL for testing auth (from the scan URL input) */
   scanUrl?: string;
 }
 
-export function ScanAuthSection({ onAuthChange, scanUrl }: ScanAuthSectionProps) {
+export function ScanAuthSection({ onAuthChange, onSavedConfigChange, scanUrl }: ScanAuthSectionProps) {
   const { t } = useI18n();
   const [expanded, setExpanded] = useState(false);
   const [method, setMethod] = useState<AuthConfig["method"]>("none");
@@ -132,17 +139,24 @@ export function ScanAuthSection({ onAuthChange, scanUrl }: ScanAuthSectionProps)
 
   function handleMethodChange(newMethod: AuthConfig["method"]) {
     setMethod(newMethod);
+    // Choosing a method deselects any saved config (the user is now defining
+    // auth inline) — clear it both locally and for the parent.
     setSelectedSavedId("");
+    onSavedConfigChange?.(undefined);
     if (newMethod === "none") {
       onAuthChange(undefined);
     }
   }
 
   function handleUseSaved(configId: string) {
-    setSelectedSavedId(configId);
-    // Notify parent — the actual config will be resolved server-side from the saved ID
-    // For now, we send a marker that tells the scan to load from saved config
-    onAuthChange({ method: "none" }); // Placeholder — actual resolution happens via savedConfigId param
+    // Toggle off if the same row is clicked again.
+    const next = selectedSavedId === configId ? "" : configId;
+    setSelectedSavedId(next);
+    // The credentials live encrypted server-side; we send only the id. The crawl
+    // API resolves + decrypts it (workspace-scoped). Clear any inline auth so the
+    // saved config is unambiguously the source of truth.
+    onAuthChange(undefined);
+    onSavedConfigChange?.(next || undefined);
   }
 
   async function handleTestAuth() {
@@ -219,7 +233,10 @@ export function ScanAuthSection({ onAuthChange, scanUrl }: ScanAuthSectionProps)
       const res = await fetch(`/api/auth-configs/${configId}`, { method: "DELETE" });
       if (res.ok) {
         setSavedConfigs((prev) => prev.filter((c) => c.id !== configId));
-        if (selectedSavedId === configId) setSelectedSavedId("");
+        if (selectedSavedId === configId) {
+          setSelectedSavedId("");
+          onSavedConfigChange?.(undefined);
+        }
         toast.success("Auth config deleted");
       }
     } catch {
