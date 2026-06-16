@@ -387,7 +387,11 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
   const isExpired = () => Date.now() > deadline;
   let timedOut = false;
 
-  const origin = new URL(config.startUrl).origin;
+  // Mutable: a root-level redirect (apex→www, http→https) moves the canonical
+  // origin. We adopt the landed origin after the first navigation so discovery
+  // isn't confined to the pre-redirect origin (which silently yields a 1-page
+  // "success"). See the depth-0 handling in the discovery loop below.
+  let origin = new URL(config.startUrl).origin;
   const results: CrawlPageResult[] = [];
   const errors: CrawlError[] = [];
   const allViolations: RawViolation[] = [];
@@ -597,6 +601,22 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
     try {
       await page.goto(normalizedUrl, { waitUntil: "domcontentloaded", timeout: 20000 });
       await waitForPageReady(page, 6000);
+
+      // Adopt a root-level redirect to the canonical origin (apex→www,
+      // http→https, bare→canonical). Without this, discovery filters every
+      // discovered link against the PRE-redirect origin → it finds nothing and
+      // the crawl silently returns a misleading 1-page "success".
+      if (current.depth === 0) {
+        try {
+          const landed = new URL(page.url()).origin;
+          if (landed !== origin) {
+            crawlLogger.info("Adopting redirected origin for discovery", { from: origin, to: landed });
+            origin = landed;
+            // Don't re-scan the same content under both origins.
+            visited.add(normalizeUrl(page.url()));
+          }
+        } catch { /* keep the original origin */ }
+      }
 
       // Session health check
       if (config.auth && isLoginRedirect(page.url(), config.auth)) {
