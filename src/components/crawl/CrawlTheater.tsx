@@ -27,7 +27,7 @@ export function CrawlTheater({ theater }: CrawlTheaterProps) {
 
   return (
     <div className="space-y-4">
-      <div className="grid lg:grid-cols-3 gap-4">
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Viewport — the hero */}
         <div className="lg:col-span-2 space-y-1.5">
           <p className="flex items-center gap-1.5 text-xs font-medium text-neutral-500 dark:text-neutral-400">
