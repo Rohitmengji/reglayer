@@ -13,6 +13,11 @@ import Link from "next/link";
 import { Shield, Check, Zap, Building2, ArrowRight, Globe, Users, Scan, FileText, BarChart3, Webhook, Lock } from "lucide-react";
 import { Footer } from "@/components/layout/footer";
 import { useI18n } from "@/components/i18n-provider";
+import { PLAN_LIMITS } from "@/lib/credits/plan-limits";
+
+// Single source of truth: the displayed scan allowance is DERIVED from the
+// enforced backend limit, so pricing can never advertise more than users get.
+const scansLabel = (n: number) => (n === -1 ? "Unlimited scans" : `${n} scans per month`);
 
 const plans = [
   {
@@ -23,7 +28,7 @@ const plans = [
     cta: "Get Started",
     ctaVariant: "outline" as const,
     features: [
-      { text: "5 scans per month", icon: Scan },
+      { text: scansLabel(PLAN_LIMITS.FREE.scansPerMonth), icon: Scan },
       { text: "1 monitored site", icon: Globe },
       { text: "WCAG 2.1 Level AA checks", icon: Check },
       { text: "Basic compliance score", icon: BarChart3 },
@@ -31,7 +36,7 @@ const plans = [
       { text: "Community support", icon: Users },
     ],
     limits: {
-      scansPerMonth: 5,
+      scansPerMonth: PLAN_LIMITS.FREE.scansPerMonth,
       sites: 1,
       teamMembers: 1,
     },
@@ -45,7 +50,7 @@ const plans = [
     ctaVariant: "primary" as const,
     popular: true,
     features: [
-      { text: "Unlimited scans", icon: Scan },
+      { text: scansLabel(PLAN_LIMITS.PRO.scansPerMonth), icon: Scan },
       { text: "10 monitored sites", icon: Globe },
       { text: "EN 301 549 compliance", icon: Check },
       { text: "Accessibility Statement generator", icon: FileText },
@@ -58,7 +63,7 @@ const plans = [
       { text: "Priority email support", icon: Check },
     ],
     limits: {
-      scansPerMonth: -1,
+      scansPerMonth: PLAN_LIMITS.PRO.scansPerMonth,
       sites: 10,
       teamMembers: 5,
     },

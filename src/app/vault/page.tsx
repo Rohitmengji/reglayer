@@ -96,6 +96,27 @@ export default function VaultPage() {
     }
   };
 
+  // Download the proof as a self-contained JSON certificate (the "download for
+  // offline storage" the UI advertises) — includes the public verification URL
+  // so a recipient can independently confirm it.
+  const downloadProof = (proof: Proof) => {
+    const record = {
+      ...proof,
+      verifyUrl: `${window.location.origin}/verify/${proof.id}`,
+      exportedAt: new Date().toISOString(),
+      issuer: "RegLayer",
+    };
+    const blob = new Blob([JSON.stringify(record, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `reglayer-proof-${proof.id}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
   const getStatus = (proof: Proof) => {
     if (proof.revokedAt) return "revoked";
     if (proof.expiresAt && new Date(proof.expiresAt) < new Date()) return "expired";
@@ -244,8 +265,13 @@ export default function VaultPage() {
                     >
                       {verifying === proof.id ? "Verifying..." : "Verify"}
                     </button>
-                    <button className="rounded-md border border-gray-200 p-1.5 text-gray-500 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-700">
-                      <Download className="h-4 w-4" />
+                    <button
+                      onClick={() => downloadProof(proof)}
+                      aria-label={`Download proof ${proof.title}`}
+                      title="Download proof (JSON)"
+                      className="rounded-md border border-gray-200 p-1.5 text-gray-500 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-700"
+                    >
+                      <Download className="h-4 w-4" aria-hidden="true" />
                     </button>
                   </div>
                 </div>

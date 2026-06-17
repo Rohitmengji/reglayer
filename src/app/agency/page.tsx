@@ -218,7 +218,8 @@ export default function AgencyDashboard() {
   const removeClient = async (clientId: string) => {
     if (!agency) return;
     try {
-      await fetch(`/api/agency/${agency.id}/clients/${clientId}`, { method: "DELETE" });
+      const res = await fetch(`/api/agency/${agency.id}/clients/${clientId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to remove client");
       await loadAgency();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Remove failed");
@@ -250,7 +251,8 @@ export default function AgencyDashboard() {
   const revokeApiKey = async (keyId: string) => {
     if (!agency) return;
     try {
-      await fetch(`/api/agency/${agency.id}/api-keys/${keyId}`, { method: "DELETE" });
+      const res = await fetch(`/api/agency/${agency.id}/api-keys/${keyId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to revoke key");
       await loadAgency();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Revoke failed");

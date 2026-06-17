@@ -15,6 +15,7 @@
  */
 
 import { useEffect, useState, useCallback } from "react";
+import { toast } from "sonner";
 import { useI18n } from "@/components/i18n-provider";
 import { useSearchParams } from "next/navigation";
 import { useUrlState } from "@/hooks/use-url-state";
@@ -130,7 +131,9 @@ export default function ViolationsPage() {
 
       // If filtering by exceptions, also fetch ACCEPTABLE_RISK and merge
       if (activeTab === "EXCEPTIONS") {
-        const params2 = new URLSearchParams({ scanId: effectiveScanId, page: "1", limit: "100", status: "ACCEPTABLE_RISK" });
+        // Paginate the second exception status in lock-step with the first
+        // (was hardcoded page:"1", so paging past 1 silently dropped/duplicated rows).
+        const params2 = new URLSearchParams({ scanId: effectiveScanId, page: String(currentPage), limit: "25", status: "ACCEPTABLE_RISK" });
         const resp2 = await fetch(`/api/violations?${params2}`);
         if (resp2.ok) {
           const extra: ViolationsResponse = await resp2.json();
@@ -189,9 +192,21 @@ export default function ViolationsPage() {
         })
       );
 
-      await Promise.allSettled(promises);
+      // Don't swallow failures: count rejections + non-OK responses and surface
+      // them, so a bulk action that partially (or fully) failed isn't silently
+      // reported as success.
+      const results = await Promise.allSettled(promises);
+      const failed = results.filter(
+        (r) => r.status === "rejected" || (r.status === "fulfilled" && !r.value.ok)
+      ).length;
       setBulkUpdating(false);
       setSelectedIds(new Set());
+      // Non-intrusive feedback (a full-page error would wipe the list).
+      if (failed > 0) {
+        toast.error(`${failed} of ${promises.length} update${promises.length === 1 ? "" : "s"} failed — please retry.`);
+      } else {
+        toast.success(`Updated ${promises.length} violation${promises.length === 1 ? "" : "s"}.`);
+      }
       fetchViolations(); // Refresh
     },
     [selectedIds, fetchViolations]
