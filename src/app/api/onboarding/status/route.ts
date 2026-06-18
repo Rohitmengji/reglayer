@@ -33,13 +33,17 @@ export async function GET() {
   const workspaceId = membership?.workspaceId;
 
   // Check each onboarding step in parallel
-  const [siteCount, scanCount, teamCount, integrationCount] = await Promise.all([
+  const [siteCount, scanCount, teamCount, integrationCount, firstFixed] = await Promise.all([
     workspaceId ? prisma.site.count({ where: { workspaceId } }) : Promise.resolve(0),
     prisma.scan.count({ where: { userId: user.id } }),
     workspaceId
       ? prisma.workspaceMember.count({ where: { workspaceId } })
       : Promise.resolve(0),
     prisma.integration.count({ where: { userId: user.id } }).catch(() => 0),
+    prisma.violation.findFirst({
+      where: { scan: { userId: user.id }, status: { in: ["FIXED", "VERIFIED"] } },
+      select: { id: true },
+    }).catch(() => null),
   ]);
 
   return NextResponse.json({
@@ -52,6 +56,6 @@ export async function GET() {
     hasScan: scanCount > 0,
     hasTeammate: teamCount > 1,
     hasIntegration: integrationCount > 0,
-    hasFixed: false, // TODO: track when user fixes first issue
+    hasFixed: !!firstFixed,
   });
 }
