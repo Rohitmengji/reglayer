@@ -3,7 +3,10 @@
  *
  * WHY: Teams need to see what changed between two scans (did we fix/introduce issues?).
  * WHAT: GET with base and head scan IDs, returns diff (fixed, introduced, persistent violations).
- * HOW: Loads both scans' violations, computes set difference by ruleId + element target.
+ * HOW: Loads both scans' violations and diffs them BY RULE (ruleId). A Violation row
+ *      is per-rule (it aggregates all affected elements for that rule on the scan), so
+ *      rule-level is the correct comparison granularity here — a rule counts as "fixed"
+ *      when it's gone in head, "introduced" when new in head, else "persistent".
  */
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
