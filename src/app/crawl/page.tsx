@@ -869,12 +869,13 @@ export default function CrawlPage() {
                   </div>
                 )}
 
-                {/* Time estimate + start */}
-                <div className="flex items-center gap-3 pt-2">
-                  <Button variant="outline" onClick={() => { setError(null); setStep("mode"); }} className="px-6">
+                {/* Time estimate + start — stacked full-width on mobile, but the
+                    CTA must not stretch the full card width on large screens. */}
+                <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 pt-2">
+                  <Button variant="outline" onClick={() => { setError(null); setStep("mode"); }} className="w-full sm:w-auto px-6">
                     <ArrowLeft className="h-4 w-4 mr-2" /> Back
                   </Button>
-                  <Button onClick={handleAudit} disabled={!url.trim()} className="flex-1 h-11 text-sm font-medium">
+                  <Button onClick={handleAudit} disabled={!url.trim()} className="w-full sm:w-auto sm:min-w-64 h-11 text-sm font-medium">
                     <Zap className="h-4 w-4 mr-2" />
                     Start {mode === "public" ? "Public Site" : mode === "authenticated" ? "Authenticated" : "Deep Crawl"} Audit
                     <ArrowRight className="h-4 w-4 ml-2" />
