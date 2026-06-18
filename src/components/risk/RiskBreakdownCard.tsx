@@ -9,6 +9,7 @@
 
 import { useState } from "react";
 import { useI18n } from "@/components/i18n-provider";
+import { formatExposure } from "@/lib/risk/litigationWeights";
 
 interface RiskFactor {
   ruleId: string;
@@ -120,7 +121,7 @@ export function RiskBreakdownCard({
       {expanded && (
         <div className="p-4 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 rounded-lg">
           <p className="text-2xl font-bold text-red-700 dark:text-red-300">
-            ${estimatedExposure.toLocaleString()}
+            {formatExposure(estimatedExposure)}
           </p>
           <p className="text-xs text-red-600 dark:text-red-400 mt-1">
             Estimated legal exposure based on violation profile × industry × geography multipliers.

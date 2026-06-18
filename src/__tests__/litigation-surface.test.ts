@@ -107,3 +107,18 @@ describe("computeLitigationSurface", () => {
     }
   });
 });
+
+import { formatExposure, EXPOSURE_CAP } from "@/lib/risk/litigationWeights";
+
+describe("formatExposure", () => {
+  it("formats normal amounts with $ and commas", () => {
+    expect(formatExposure(18760)).toBe("$18,760");
+    expect(formatExposure(0)).toBe("$0");
+    expect(formatExposure(1234.7)).toBe("$1,235");
+  });
+  it("marks the capped ceiling with a trailing + (honest: it's a floor, not exact)", () => {
+    expect(formatExposure(EXPOSURE_CAP)).toBe("$500,000+");
+    expect(formatExposure(EXPOSURE_CAP + 1)).toBe("$500,000+");
+    expect(formatExposure(9_999_999)).toBe("$500,000+");
+  });
+});

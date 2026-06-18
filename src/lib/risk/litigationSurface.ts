@@ -29,6 +29,7 @@ import {
   LITIGATION_WEIGHTS,
   IMPACT_MULTIPLIERS,
   LITIGATION_RULE_INFO,
+  EXPOSURE_CAP,
 } from "./litigationWeights";
 
 export type LitigationTier = "LOW" | "MODERATE" | "HIGH" | "CRITICAL";
@@ -76,8 +77,6 @@ export interface LitigationSurface {
   summary: string;
 }
 
-/** Upper bound on the reported exposure so a huge crawl can't print a silly number. */
-const EXPOSURE_CAP = 500_000;
 const SAMPLE_URLS_PER_FACTOR = 4;
 
 function tierFor(score: number): LitigationTier {

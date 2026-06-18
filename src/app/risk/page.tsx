@@ -14,6 +14,7 @@ import { RiskScoreBadge } from "@/components/risk/RiskScoreBadge";
 import { RiskBreakdownCard } from "@/components/risk/RiskBreakdownCard";
 import { RiskContextForm } from "@/components/risk/RiskContextForm";
 import { RiskDisclaimer } from "@/components/risk/RiskDisclaimer";
+import { formatExposure } from "@/lib/risk/litigationWeights";
 
 interface RiskScore {
   finalScore: number;
@@ -114,7 +115,7 @@ export default function RiskPage() {
             <RiskScoreBadge score={score.finalScore} tier={score.tier} />
             <div className="mt-4 text-center">
               <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-                ${score.estimatedExposure.toLocaleString()}
+                {formatExposure(score.estimatedExposure)}
               </p>
               <p className="text-xs text-zinc-500">{t("risk.exposure")}</p>
             </div>
