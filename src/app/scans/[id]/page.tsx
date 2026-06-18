@@ -80,6 +80,29 @@ export default function ScanDetailPage({
 
   const { scan, compliance } = entry;
 
+  // Generate the PDF via POST /api/reports (the one working PDF path, shared with
+  // the dashboard) and download the returned blob. The previous `<a href>` pointed
+  // at GET /api/reports/:id/pdf, which does not exist (404).
+  async function handleExportPdf() {
+    try {
+      const response = await fetch("/api/reports", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scan, compliance }),
+      });
+      if (!response.ok) return;
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `reglayer-report-${scan.id}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      // network failure — no-op (matches the dashboard's export UX)
+    }
+  }
+
   return (
     <AppShell>
       <div className="space-y-6">
@@ -97,12 +120,10 @@ export default function ScanDetailPage({
             </h1>
             <p className="mt-1 text-sm text-neutral-500">{scan.url}</p>
           </div>
-          <a href={`/api/reports/${scan.id}/pdf`} target="_blank" rel="noopener noreferrer">
-            <Button variant="outline" size="sm">
-              <Download className="mr-2 h-4 w-4" />
-              {t("scanDetail.exportPdf")}
-            </Button>
-          </a>
+          <Button variant="outline" size="sm" onClick={handleExportPdf}>
+            <Download className="mr-2 h-4 w-4" />
+            {t("scanDetail.exportPdf")}
+          </Button>
         </div>
 
         {/* Metadata */}

@@ -60,6 +60,24 @@ export async function GET() {
     const portfolioTotalScans = portfolioAgg._count;
     const portfolioTotalViolations = portfolioAgg._sum.totalViolations ?? 0;
 
+    // "Sites Monitored" must be an ALL-TIME distinct-host count to match the other
+    // portfolio KPIs (which are all-time). Counting only the windowed `siteRankings`
+    // undercounts: a site last scanned >12 weeks ago (or past the 500-row cap) would
+    // vanish from the site total while its scans still feed Total Scans.
+    const allSiteUrls = await prisma.scan.groupBy({
+      by: ["url"],
+      where: { status: "COMPLETED", ...scopeFilter },
+    });
+    const distinctHosts = new Set<string>();
+    for (const row of allSiteUrls) {
+      try {
+        distinctHosts.add(new URL(row.url).hostname);
+      } catch {
+        distinctHosts.add(row.url);
+      }
+    }
+    const portfolioTotalSites = distinctHosts.size;
+
     // Group by site (hostname)
     const siteMap = new Map<string, typeof recentScans>();
     for (const scan of recentScans) {
@@ -151,7 +169,7 @@ export async function GET() {
 
     return NextResponse.json({
       portfolio: {
-        totalSites: siteRankings.length,
+        totalSites: portfolioTotalSites,
         totalScans: portfolioTotalScans,
         avgScore: portfolioAvgScore,
         totalViolations: portfolioTotalViolations,

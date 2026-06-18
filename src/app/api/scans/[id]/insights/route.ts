@@ -11,6 +11,7 @@ import { authOptions } from "@/lib/auth/config";
 import { assertScanAccess } from "@/lib/auth/access";
 import { prisma } from "@/lib/database/prisma";
 import { consumeCredits } from "@/lib/credits";
+import { scoreFromStoredViolations } from "@/lib/scoring/reportScore";
 
 /**
  * AI Insights API
@@ -114,7 +115,8 @@ export async function GET(
   return NextResponse.json({
     scanId: id,
     url: scan.url,
-    score: scan.score,
+    // canonical recompute — one scan, one score across every surface
+    score: scoreFromStoredViolations(scan.violations),
     insights,
   });
 }

@@ -318,15 +318,16 @@ export function buildTimeline(input: DefenseFileInput): TimelineEvent[] {
     if (log.action === "violation.status_updated") {
       const toStatus = readMetaString(log.metadata, "status");
       const note = readMetaString(log.metadata, "note");
+      // The status route records the real prior status in metadata. Logs written
+      // before that fix carry no value → readMetaString returns null (never fabricated).
+      const fromStatus = readMetaString(log.metadata, "previousStatus");
       events.push({
         at: log.createdAt,
         kind: "violation_status_changed",
-        title: `Violation status updated${toStatus ? ` → ${toStatus}` : ""}`,
+        title: `Violation status updated${fromStatus && toStatus ? ` ${fromStatus} → ${toStatus}` : toStatus ? ` → ${toStatus}` : ""}`,
         detail: note ? `Note: ${note}` : "Status change recorded.",
         violationId: log.target,
-        // The status route hardcodes previousStatus=null, so prior status is genuinely
-        // unknown — we never fabricate one.
-        fromStatus: null,
+        fromStatus,
         toStatus,
         actorId: log.actor,
       });

@@ -152,7 +152,7 @@ export async function PATCH(request: NextRequest) {
         action: "violation.status_updated",
         actor: user.id,
         target: violationId,
-        metadata: { status, note: note ?? null, previousStatus: null },
+        metadata: { status, note: note ?? null, previousStatus: result.previousStatus },
       },
     });
 

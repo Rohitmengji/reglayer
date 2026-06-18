@@ -56,10 +56,11 @@ export interface RevenueImpactResult {
   // Per-violation cost
   costPerViolation: number;
 
-  // Industry context
+  // Industry context. NOTE: avgScore is an assumed baseline, not measured peer
+  // data — there is no real percentile/ranking, only this score-vs-baseline compare.
   industryComparison: {
     avgScore: number;
-    percentile: number;
+    yourScore: number;
     competitorEstimate: string;
   };
 
@@ -189,11 +190,10 @@ export function calculateRevenueImpact(
     ? Math.round(monthlyLoss / accessibility.totalViolations)
     : 0;
 
-  // Industry comparison
-  const industryAvg = 72; // Average accessibility score across industries
-  const percentile = Math.min(99, Math.max(1, Math.round(
-    (accessibility.score / 100) * 100
-  )));
+  // Industry comparison. `industryAvg` is an assumed typical automated-scan score,
+  // NOT measured peer data — so we present an honest score-vs-baseline compare and
+  // deliberately do NOT manufacture a "percentile" (the old value was just the score).
+  const industryAvg = 72;
 
   // Legal risk assessment
   const legalRisk = assessLegalRisk(accessibility, region, annualLoss);
@@ -215,10 +215,10 @@ export function calculateRevenueImpact(
     costPerViolation,
     industryComparison: {
       avgScore: industryAvg,
-      percentile,
-      competitorEstimate: accessibility.score > industryAvg
-        ? "Above average — you're ahead of most competitors"
-        : "Below average — competitors may be capturing your lost audience",
+      yourScore: Math.round(accessibility.score),
+      competitorEstimate: accessibility.score >= industryAvg
+        ? "At or above the assumed industry baseline"
+        : "Below the assumed industry baseline",
     },
     legalRisk,
     recommendations,

@@ -28,6 +28,8 @@ export interface UpdateStatusInput {
 export interface UpdateStatusResult {
   id: string;
   status: ViolationStatus;
+  /** The status the violation held BEFORE this update — for the audit trail. */
+  previousStatus: ViolationStatus;
   statusNote: string | null;
   statusUpdatedAt: string;
   statusUpdatedBy: string;
@@ -41,7 +43,8 @@ export interface VerifyFixResult {
 
 export interface ViolationFilter {
   scanId?: string;
-  status?: ViolationStatus;
+  /** A single status, or several (e.g. the Exceptions tab = WONT_FIX + ACCEPTABLE_RISK). */
+  status?: ViolationStatus | ViolationStatus[];
   impact?: string;
   page?: number;
   limit?: number;
@@ -105,10 +108,10 @@ export async function updateViolationStatus(
     );
   }
 
-  // Verify violation exists
+  // Verify violation exists (and capture its prior status for the audit trail)
   const violation = await prisma.violation.findUnique({
     where: { id: violationId },
-    select: { id: true, scanId: true },
+    select: { id: true, scanId: true, status: true },
   });
 
   if (!violation) {
@@ -140,6 +143,7 @@ export async function updateViolationStatus(
   return {
     id: updated.id,
     status: updated.status,
+    previousStatus: violation.status,
     statusNote: updated.statusNote,
     statusUpdatedAt: updated.statusUpdatedAt?.toISOString() ?? new Date().toISOString(),
     statusUpdatedBy: updated.statusUpdatedBy ?? userId,
@@ -244,7 +248,11 @@ export async function getFilteredViolations(
   // Build where clause
   const where: Record<string, unknown> = {};
   if (filter.scanId) where.scanId = filter.scanId;
-  if (filter.status) where.status = filter.status;
+  if (filter.status) {
+    // One query for one OR many statuses, so a multi-status view (Exceptions =
+    // WONT_FIX + ACCEPTABLE_RISK) paginates with a single correct `total`.
+    where.status = Array.isArray(filter.status) ? { in: filter.status } : filter.status;
+  }
   if (filter.impact) where.impact = filter.impact;
 
   // Count total for pagination
@@ -271,8 +279,13 @@ export async function getFilteredViolations(
       verifiedAt: true,
     },
     orderBy: [
-      { status: "asc" }, // OPEN sorts first alphabetically before others
-      { impact: "asc" }, // critical < minor alphabetically = correct severity order
+      // Postgres orders enums by their SCHEMA DECLARATION order (not alphabetical).
+      // ViolationStatus is declared OPEN, IN_PROGRESS, FIXED, VERIFIED, WONT_FIX,
+      // ACCEPTABLE_RISK — so asc puts actionable (OPEN) rows first.
+      { status: "asc" },
+      // Impact is declared critical, serious, moderate, minor — so asc is true
+      // severity order (critical first), again by declaration not alphabet.
+      { impact: "asc" },
     ],
     skip,
     take: limit,

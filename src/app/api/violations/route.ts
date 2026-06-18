@@ -54,20 +54,26 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Validate status param if provided
-    let status: ViolationStatus | undefined;
+    // Validate status param if provided. Accepts a single value or a
+    // comma-separated list (e.g. the Exceptions tab = WONT_FIX,ACCEPTABLE_RISK).
+    let status: ViolationStatus | ViolationStatus[] | undefined;
     if (statusParam) {
-      if (!Object.values(ViolationStatus).includes(statusParam as ViolationStatus)) {
+      const requested = statusParam.split(",").map((s) => s.trim()).filter(Boolean);
+      const valid = Object.values(ViolationStatus);
+      const invalid = requested.filter((s) => !valid.includes(s as ViolationStatus));
+      if (invalid.length > 0) {
         return NextResponse.json(
           {
             error: "INVALID_STATUS",
-            message: `Invalid status. Must be one of: ${Object.values(ViolationStatus).join(", ")}`,
+            message: `Invalid status. Must be one of: ${valid.join(", ")}`,
             field: "status",
           },
           { status: 400 }
         );
       }
-      status = statusParam as ViolationStatus;
+      status = requested.length === 1
+        ? (requested[0] as ViolationStatus)
+        : (requested as ViolationStatus[]);
     }
 
     // Verify scan belongs to user's workspace — the two lookups are

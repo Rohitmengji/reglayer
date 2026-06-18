@@ -55,38 +55,49 @@ export async function POST(request: NextRequest) {
 
   const workspace = user.memberships[0].workspace;
 
-  // Re-use existing Stripe customer or create new
-  let customerId = workspace.stripeCustomerId;
-  if (!customerId) {
-    const customer = await stripe.customers.create({
-      email: session.user.email,
-      name: workspace.name,
-      metadata: { workspaceId: workspace.id, userId: user.id },
+  // Wrap every Stripe call: the `!stripe` guard above only catches an ABSENT key.
+  // A present-but-invalid key (e.g. a placeholder) makes `stripe` truthy, so these
+  // calls would throw and surface as an opaque 500. Return a clean 502 instead.
+  try {
+    // Re-use existing Stripe customer or create new
+    let customerId = workspace.stripeCustomerId;
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: session.user.email,
+        name: workspace.name,
+        metadata: { workspaceId: workspace.id, userId: user.id },
+      });
+      customerId = customer.id;
+      await prisma.workspace.update({
+        where: { id: workspace.id },
+        data: { stripeCustomerId: customerId, billingEmail: session.user.email },
+      });
+    }
+
+    // Create checkout session
+    const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
+    const checkoutSession = await stripe.checkout.sessions.create({
+      customer: customerId,
+      mode: "subscription",
+      line_items: [{ price: priceId, quantity: 1 }],
+      success_url: `${baseUrl}/settings?tab=billing&status=success`,
+      cancel_url: `${baseUrl}/pricing?status=cancelled`,
+      subscription_data: {
+        trial_period_days: workspace.plan === "FREE" ? 14 : undefined,
+        metadata: { workspaceId: workspace.id },
+      },
+      metadata: { workspaceId: workspace.id, plan },
+      allow_promotion_codes: true,
     });
-    customerId = customer.id;
-    await prisma.workspace.update({
-      where: { id: workspace.id },
-      data: { stripeCustomerId: customerId, billingEmail: session.user.email },
-    });
+
+    return NextResponse.json({ url: checkoutSession.url });
+  } catch (err) {
+    console.error("[billing/checkout] Stripe error:", err);
+    return NextResponse.json(
+      { error: "Could not start checkout. Billing is temporarily unavailable." },
+      { status: 502 }
+    );
   }
-
-  // Create checkout session
-  const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
-  const checkoutSession = await stripe.checkout.sessions.create({
-    customer: customerId,
-    mode: "subscription",
-    line_items: [{ price: priceId, quantity: 1 }],
-    success_url: `${baseUrl}/settings?tab=billing&status=success`,
-    cancel_url: `${baseUrl}/pricing?status=cancelled`,
-    subscription_data: {
-      trial_period_days: workspace.plan === "FREE" ? 14 : undefined,
-      metadata: { workspaceId: workspace.id },
-    },
-    metadata: { workspaceId: workspace.id, plan },
-    allow_promotion_codes: true,
-  });
-
-  return NextResponse.json({ url: checkoutSession.url });
 }
 
 /**

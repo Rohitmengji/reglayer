@@ -254,7 +254,7 @@ export default function AnalyticsPage() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400">New Violations / Week</p>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400">Violations Found / Week</p>
                   <p className="text-2xl font-bold text-orange-600">
                     {data.velocityMetrics.newViolationsPerWeek}
                   </p>

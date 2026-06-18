@@ -71,7 +71,10 @@ export function ViolationsChart({ data }: { data: ViolationData[] }) {
         </div>
         <span className="text-lg font-bold tabular-nums text-foreground">
           {data.reduce((sum, d) => sum + d.critical + d.serious + d.moderate + d.minor, 0)}
-          <span className="text-xs font-normal text-muted ml-1">total</span>
+          {/* This sums only the categories charted (the dashboard feeds the top issue
+              groups), which can be fewer than the headline "Violations Found" total —
+              so label it "shown", not "total". */}
+          <span className="text-xs font-normal text-muted ml-1">shown</span>
         </span>
       </div>
       <ResponsiveContainer width="100%" height={200}>

@@ -10,6 +10,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { assertScanAccess } from "@/lib/auth/access";
 import { prisma } from "@/lib/database/prisma";
+import { scoreFromStoredViolations } from "@/lib/scoring/reportScore";
 
 /**
  * GET /api/scans/:id/export
@@ -48,6 +49,8 @@ export async function GET(
           wcagCriteria: true,
           wcagLevel: true,
           tags: true,
+          // needed by the canonical score recompute (node-count multiplier)
+          affectedElements: true,
         },
       },
     },
@@ -99,12 +102,13 @@ export async function GET(
     });
   }
 
-  // JSON format (default)
+  // JSON format (default). Recompute the score via the canonical helper so the
+  // exported artifact (handed to auditors) matches report/[id], badge, certificate.
   return NextResponse.json({
     scan: {
       id: scan.id,
       url: scan.url,
-      score: scan.score,
+      score: scoreFromStoredViolations(scan.violations),
       scannedAt: scan.createdAt,
       totalViolations: scan.totalViolations,
     },

@@ -69,8 +69,11 @@ export async function POST(request: NextRequest) {
         await prisma.workspace.update({
           where: { id: workspaceId },
           data: {
-            stripePriceId: priceId || null,
-            plan: plan || "FREE",
+            // Only touch plan/price when the price is RECOGNIZED. An unknown price
+            // (a renamed/new Stripe price, or a proration event) must not silently
+            // downgrade an active paid subscription to FREE — leave the plan as-is.
+            // Real downgrades arrive as `customer.subscription.deleted` below.
+            ...(plan ? { plan, stripePriceId: priceId } : {}),
             trialEndsAt: sub.trial_end ? new Date(sub.trial_end * 1000) : null,
           },
         });

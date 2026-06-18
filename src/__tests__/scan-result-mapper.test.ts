@@ -41,14 +41,22 @@ function prismaViolation(over: Record<string, unknown> = {}) {
 
 describe("mapPrismaScanToResult", () => {
   it("produces the rich ScanResult shape the detail page expects", () => {
-    const r = mapPrismaScanToResult(prismaScan({ violations: [prismaViolation()] }));
+    const r = mapPrismaScanToResult(prismaScan({
+      violations: [
+        prismaViolation({ impact: "critical" }),
+        prismaViolation({ impact: "serious" }),
+        prismaViolation({ impact: "moderate" }),
+      ],
+    }));
     // timestamp from completedAt, ISO string
     expect(r.timestamp).toBe("2026-06-16T10:00:05.000Z");
     expect(new Date(r.timestamp).toString()).not.toBe("Invalid Date");
     // status lower-cased
     expect(r.status).toBe("completed");
-    // summary object (not flat columns)
-    expect(r.summary).toEqual({ totalViolations: 3, critical: 1, serious: 1, moderate: 1, minor: 0, score: 87 });
+    // summary object (not flat columns). The score is RECOMPUTED from the
+    // violations via the canonical helper (10 + 5 + 2 = 17 penalty → 83), NOT
+    // read from the stored `score` column (87) — one scan, one score everywhere.
+    expect(r.summary).toEqual({ totalViolations: 3, critical: 1, serious: 1, moderate: 1, minor: 0, score: 83 });
     // metadata.scanDuration from duration, pageTitle from column
     expect(r.metadata.scanDuration).toBe(4200);
     expect(r.metadata.pageTitle).toBe("Example");
@@ -71,7 +79,9 @@ describe("mapPrismaScanToResult", () => {
       score: null, pageTitle: null, duration: null, metadata: null, completedAt: null, startedAt: null,
       violations: [prismaViolation({ helpUrl: null, tags: null, affectedElements: "not-an-array" })],
     }));
-    expect(r.summary.score).toBe(0);
+    // score is recomputed from the (single serious) violation → 95, so a null
+    // stored `score` no longer surfaces a misleading 0.
+    expect(r.summary.score).toBe(95);
     expect(r.metadata.scanDuration).toBe(0);
     expect(r.metadata.pageTitle).toBe("");
     expect(typeof r.timestamp).toBe("string");
