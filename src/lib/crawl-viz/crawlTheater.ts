@@ -68,6 +68,8 @@ export interface TheaterState {
    * discovery. Sourced from the polled durable snapshot (LiveSnapshot.currentShot).
    */
   currentShot?: string;
+  /** Aspect (height/width) of currentShot when tall → drives the scroll-to-footer pan. */
+  currentShotAspect?: number;
 }
 
 // ── Events (subset of JobEvent the theater consumes) ────────────────────────

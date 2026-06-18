@@ -84,6 +84,13 @@ export interface LiveSnapshot {
    * stays small even on 500-page crawls.
    */
   currentShot?: string;
+  /**
+   * Aspect ratio (height/width) of currentShot when it's a tall, full-content
+   * capture. Drives the client's "scroll to footer" pan — the viewport scrolls
+   * the tall image from top to bottom. Absent for short/viewport shots (the
+   * client then shows them statically).
+   */
+  currentShotAspect?: number;
 }
 
 export interface AuditJob {
@@ -192,19 +199,24 @@ class AuditJobManager {
    * normalized to a data URL. Pass `url` to also advance the address bar
    * (done during discovery; during scanning the page-start events drive it).
    */
-  setLiveShot(jobId: string, shot: string, url?: string): void {
+  setLiveShot(jobId: string, shot: string, url?: string, aspect?: number): void {
     const job = this.jobs.get(jobId);
     if (!job || !shot) return;
     // Bound the frame so a pathologically large page can't bloat the durable
-    // snapshot (re-persisted every ~2.5s → DB/egress cost). Low-quality viewport
-    // JPEGs are ~40-90KB; an oversized one just keeps the previous frame.
-    if (shot.length > 200_000) {
+    // snapshot (re-persisted every ~2.5s → DB/egress cost). A tall bounded clip
+    // (≤3 screens, q30) lands well under this; an oversized one keeps the
+    // previous frame rather than dropping the live view.
+    if (shot.length > 420_000) {
       if (url) job.live.currentUrl = url;
       return;
     }
     job.live.currentShot = shot.startsWith("data:")
       ? shot
       : `data:image/${shot.startsWith("iVBOR") ? "png" : "jpeg"};base64,${shot}`;
+    // Only treat genuinely-tall captures as scrollable (height/width clearly
+    // exceeds the 16:10 frame ⇒ aspect > ~0.78); else clear it so short/viewport
+    // shots render statically.
+    job.live.currentShotAspect = aspect && aspect > 0.78 ? aspect : undefined;
     if (url) job.live.currentUrl = url;
   }
 

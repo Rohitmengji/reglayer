@@ -34,7 +34,16 @@ interface CrawlViewportProps {
    * discovery (instead of a skeleton until the first scan completes).
    */
   currentShot?: string;
+  /**
+   * Aspect (height/width) of currentShot when it's a tall, full-content capture.
+   * When tall enough, the viewport SCROLLS the page top→footer while scanning
+   * (like a real scanner reading the whole page). Absent → static frame.
+   */
+  currentShotAspect?: number;
 }
+
+// The viewport frame is aspect-[16/10] → its height/width ratio is 10/16.
+const FRAME_ASPECT = 10 / 16;
 
 function scoreText(score: number): string {
   if (score >= 90) return "text-green-600 dark:text-green-400";
@@ -62,20 +71,29 @@ function pathOf(url: string): string {
   }
 }
 
-export function CrawlViewport({ phase, current, lastCaptured, rootUrl, currentShot }: CrawlViewportProps) {
+export function CrawlViewport({ phase, current, lastCaptured, rootUrl, currentShot, currentShotAspect }: CrawlViewportProps) {
   // Thumbnails can 404 transiently (the Scan row persists a moment after the
   // page-complete event) or in environments without stored screenshots. Track
   // failures so we fall back to the wireframe skeleton instead of a blank hero.
   const [failedShots, setFailedShots] = useState<Set<string>>(new Set());
+  // The live shot data-URL can occasionally fail to decode; track by URL so we
+  // fall back to the skeleton rather than render a broken frame.
+  const [failedLiveUrls, setFailedLiveUrls] = useState<Set<string>>(new Set());
   const showShot = !!lastCaptured && !failedShots.has(lastCaptured.scanId);
   const isScanning = phase === "scanning" && !!current;
   const isDiscovering = phase === "discovering" || phase === "connecting" || phase === "queued";
+  const displayUrl = current?.url ?? lastCaptured?.url ?? rootUrl ?? "";
   // The page the browser is on right now backs the frame directly when we have
   // its live screenshot — covering discovery (no scanId/thumbnail yet) and
   // scanning seamlessly. Falls back to the completed-page thumbnail, then the
   // wireframe skeleton.
-  const showLiveShot = !!currentShot;
-  const displayUrl = current?.url ?? lastCaptured?.url ?? rootUrl ?? "";
+  const showLiveShot = !!currentShot && !failedLiveUrls.has(displayUrl);
+  // A tall capture (clearly taller than the 16:10 frame) can be SCROLLED top→
+  // footer while scanning. translateY % is relative to the image's own height:
+  //   shift = (frameH - imgH)/imgH = (FRAME_ASPECT - aspect)/aspect  (negative).
+  const canScrollShot = !!currentShotAspect && currentShotAspect > FRAME_ASPECT + 0.15;
+  const scanShiftPct = canScrollShot ? ((FRAME_ASPECT - currentShotAspect!) / currentShotAspect!) * 100 : 0;
+  const scrolling = canScrollShot && (isScanning || (isDiscovering && showLiveShot));
   // Pre-screenshot status so the viewport never looks blank/broken while the
   // browser is launching or discovering pages.
   const prepLabel =
@@ -133,15 +151,27 @@ export function CrawlViewport({ phase, current, lastCaptured, rootUrl, currentSh
       >
         {showLiveShot ? (
           // The live page the browser is on right now (discovery or scan). Keyed
-          // by URL so navigating to a new page crossfades; re-polling the same
-          // page just swaps the src in place (no flicker).
+          // by URL so a NEW page remounts (the scroll pan restarts from the top),
+          // while re-polling the SAME page just swaps the src in place — the pan
+          // continues uninterrupted. A tall capture (canScrollShot) is rendered
+          // full-width/auto-height and translated top→footer; short/viewport
+          // shots use the static top-crop.
           // eslint-disable-next-line @next/next/no-img-element
           <img
             key={displayUrl || "live"}
             src={currentShot}
             alt={`Live view of ${displayUrl}`}
-            className="absolute inset-0 h-full w-full object-cover object-top animate-fade-in"
+            className={
+              scrolling
+                ? "absolute inset-x-0 top-0 w-full h-auto animate-fade-in animate-scan-scroll"
+                : "absolute inset-0 h-full w-full object-cover object-top animate-fade-in"
+            }
+            style={scrolling ? ({ "--scan-shift": `${scanShiftPct}%` } as React.CSSProperties) : undefined}
             decoding="async"
+            onError={() => {
+              const u = displayUrl;
+              setFailedLiveUrls((s) => { const n = new Set(s); n.add(u); return n; });
+            }}
           />
         ) : showShot && lastCaptured ? (
           // eslint-disable-next-line @next/next/no-img-element
