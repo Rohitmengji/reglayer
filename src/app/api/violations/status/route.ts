@@ -15,6 +15,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
+import { assertScanAccess } from "@/lib/auth/access";
 import { prisma } from "@/lib/database/prisma";
 import { ViolationStatus } from "@/generated/prisma/client";
 import { z } from "zod";
@@ -51,6 +52,12 @@ export async function GET(request: NextRequest) {
         { error: "MISSING_PARAM", message: "scanId query parameter is required" },
         { status: 400 }
       );
+    }
+
+    // IDOR guard: only the scan's owner/workspace may read its status summary.
+    const access = await assertScanAccess(scanId, session);
+    if (!access.ok) {
+      return NextResponse.json({ error: "FORBIDDEN", message: access.error }, { status: access.status });
     }
 
     const summary = await getStatusSummary(scanId);

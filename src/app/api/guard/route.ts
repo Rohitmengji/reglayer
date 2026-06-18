@@ -84,6 +84,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Admin access required" }, { status: 403 });
     }
 
+    // IDOR guard: the siteId must belong to this workspace — otherwise an admin
+    // of one workspace could bind a guard policy to another tenant's site.
+    const site = await prisma.site.findFirst({ where: { id: siteId, workspaceId }, select: { id: true } });
+    if (!site) {
+      return NextResponse.json({ error: "Site not found in this workspace" }, { status: 404 });
+    }
+
     // Get latest completed scan as initial baseline
     const latestScan = await prisma.scan.findFirst({
       where: { siteId, status: "COMPLETED" },

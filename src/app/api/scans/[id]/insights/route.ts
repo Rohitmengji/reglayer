@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
+import { assertScanAccess } from "@/lib/auth/access";
 import { prisma } from "@/lib/database/prisma";
 import { consumeCredits } from "@/lib/credits";
 
@@ -38,6 +39,12 @@ export async function GET(
   });
   if (!user) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+
+  // IDOR guard: verify the caller owns this scan BEFORE loading it or consuming credits.
+  const access = await assertScanAccess(id, session);
+  if (!access.ok) {
+    return NextResponse.json({ error: access.error }, { status: access.status });
   }
 
   // Verify scan exists BEFORE consuming credits

@@ -14,6 +14,9 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth/config";
+import { assertScanAccess } from "@/lib/auth/access";
 import { prisma } from "@/lib/database/prisma";
 import { generateFixCards } from "@/lib/intelligence/fix-prioritizer";
 import type { AccessibilityViolation } from "@/lib/types";
@@ -29,6 +32,13 @@ export async function GET(
 
   if (!scanId) {
     return NextResponse.json({ error: "scanId is required" }, { status: 400 });
+  }
+
+  // IDOR guard: only the scan's owner/workspace may read its fix cards.
+  const session = await getServerSession(authOptions);
+  const access = await assertScanAccess(scanId, session);
+  if (!access.ok) {
+    return NextResponse.json({ error: access.error }, { status: access.status });
   }
 
   const scan = await prisma.scan.findUnique({

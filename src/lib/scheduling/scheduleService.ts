@@ -235,8 +235,10 @@ export async function markScheduleFailed(scheduleId: string, cron: string, error
 /**
  * Toggle a schedule enabled/disabled.
  */
-export async function toggleScheduleInDB(scheduleId: string) {
-  const schedule = await prisma.schedule.findUnique({ where: { id: scheduleId } });
+export async function toggleScheduleInDB(scheduleId: string, workspaceId: string) {
+  // Workspace-scoped lookup (IDOR guard): a caller can only toggle schedules in
+  // their own workspace, not any schedule by guessing its id.
+  const schedule = await prisma.schedule.findFirst({ where: { id: scheduleId, workspaceId } });
   if (!schedule) return null;
 
   const enabled = !schedule.enabled;

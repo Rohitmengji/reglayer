@@ -153,6 +153,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Missing 'scanId' parameter" }, { status: 400 });
   }
 
+  // IDOR guard: only the scan's owner/workspace may generate its VPAT.
+  const access = await assertScanAccess(scanId, session);
+  if (!access.ok) {
+    return NextResponse.json({ error: access.error }, { status: access.status });
+  }
+
   const scan = await prisma.scan.findUnique({
     where: { id: scanId },
     include: { violations: true },

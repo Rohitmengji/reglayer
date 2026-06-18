@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
 import { rateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
@@ -67,6 +69,12 @@ export async function POST(request: NextRequest) {
  * GET — Retrieve conversion funnel stats (authenticated, admin only)
  */
 export async function GET(request: NextRequest) {
+  // Business funnel KPIs are internal — restrict to platform (master) admins.
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.isMasterAdmin) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const { searchParams } = request.nextUrl;
   // FIX C10: validate + cap `days`; return 400 on invalid instead of crashing.
   const parsedDays = daysSchema.safeParse(searchParams.get("days") ?? undefined);

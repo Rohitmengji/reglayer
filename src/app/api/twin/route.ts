@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
+import { assertScanAccess } from "@/lib/auth/access";
 import { generateFingerprint, compareTwins } from "@/lib/twin/digitalTwinEngine";
 import { z } from "zod";
 
@@ -30,6 +31,14 @@ export async function POST(request: NextRequest) {
     }
 
     const { baselineScanId, proposedScanId } = parsed.data;
+
+    // IDOR guard: the caller must own BOTH scans being compared.
+    const [baseAccess, propAccess] = await Promise.all([
+      assertScanAccess(baselineScanId, session),
+      assertScanAccess(proposedScanId, session),
+    ]);
+    if (!baseAccess.ok) return NextResponse.json({ error: baseAccess.error }, { status: baseAccess.status });
+    if (!propAccess.ok) return NextResponse.json({ error: propAccess.error }, { status: propAccess.status });
 
     const [baseline, proposed] = await Promise.all([
       generateFingerprint(baselineScanId),
@@ -60,6 +69,12 @@ export async function GET(request: NextRequest) {
     const scanId = request.nextUrl.searchParams.get("scanId");
     if (!scanId) {
       return NextResponse.json({ error: "scanId is required" }, { status: 400 });
+    }
+
+    // IDOR guard: only the scan's owner/workspace may read its fingerprint.
+    const access = await assertScanAccess(scanId, session);
+    if (!access.ok) {
+      return NextResponse.json({ error: access.error }, { status: access.status });
     }
 
     const fingerprint = await generateFingerprint(scanId);

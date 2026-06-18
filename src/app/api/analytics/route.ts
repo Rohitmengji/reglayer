@@ -26,6 +26,12 @@ export async function GET(request: NextRequest) {
     select: { workspaceId: true },
   });
   const workspaceId = membership?.workspaceId;
+  // SECURITY: never call generateAnalytics with an undefined workspaceId — the
+  // engine treats "no workspaceId" as "no filter" and would return EVERY tenant's
+  // scans. A user with no workspace has no analytics.
+  if (!workspaceId) {
+    return NextResponse.json({ error: "You must belong to a workspace to view analytics." }, { status: 403 });
+  }
 
   try {
     const report = await generateAnalytics(days, workspaceId);

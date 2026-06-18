@@ -58,8 +58,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Slug already taken" }, { status: 409 });
     }
 
-    // Require an ownerId in the body or default to current user
-    const ownerId = (body.ownerId as string) || user.id;
+    // Mass-assignment guard: only a master admin may assign ownership to another
+    // user. A workspace ADMIN/OWNER always becomes the owner of what they create.
+    const ownerId = user.isMasterAdmin && typeof body.ownerId === "string" && body.ownerId
+      ? body.ownerId
+      : user.id;
 
     const agency = await prisma.agency.create({
       data: {

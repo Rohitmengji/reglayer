@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
+import { assertScanAccess } from "@/lib/auth/access";
 import { prisma } from "@/lib/database/prisma";
 
 /**
@@ -32,6 +33,14 @@ export async function GET(request: NextRequest) {
       { status: 400 }
     );
   }
+
+  // IDOR guard: the caller must own BOTH scans being compared.
+  const [baseAccess, headAccess] = await Promise.all([
+    assertScanAccess(baseId, session),
+    assertScanAccess(headId, session),
+  ]);
+  if (!baseAccess.ok) return NextResponse.json({ error: baseAccess.error }, { status: baseAccess.status });
+  if (!headAccess.ok) return NextResponse.json({ error: headAccess.error }, { status: headAccess.status });
 
   const [baseScan, headScan] = await Promise.all([
     prisma.scan.findUnique({ where: { id: baseId }, include: { violations: true } }),

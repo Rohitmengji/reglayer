@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
+import { assertScanAccess } from "@/lib/auth/access";
 import { generateRemediationPlan } from "@/lib/remediation/smartPipeline";
 
 export async function GET(request: NextRequest) {
@@ -17,6 +18,12 @@ export async function GET(request: NextRequest) {
     const scanId = request.nextUrl.searchParams.get("scanId");
     if (!scanId) {
       return NextResponse.json({ error: "scanId is required" }, { status: 400 });
+    }
+
+    // IDOR guard: only the scan's owner/workspace may generate its remediation plan.
+    const access = await assertScanAccess(scanId, session);
+    if (!access.ok) {
+      return NextResponse.json({ error: access.error }, { status: access.status });
     }
 
     const plan = await generateRemediationPlan(scanId);

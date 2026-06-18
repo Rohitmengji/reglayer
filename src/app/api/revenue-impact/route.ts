@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
+import { assertScanAccess } from "@/lib/auth/access";
 import { prisma } from "@/lib/database/prisma";
 import { calculateRevenueImpact } from "@/lib/analytics/revenue-calculator";
 import { z } from "zod";
@@ -62,6 +63,11 @@ export async function POST(request: NextRequest) {
   let accessibilityData;
 
   if (scanId) {
+    // IDOR guard: only the scan's owner/workspace may use it for impact analysis.
+    const access = await assertScanAccess(scanId, session);
+    if (!access.ok) {
+      return NextResponse.json({ error: access.error }, { status: access.status });
+    }
     const scan = await prisma.scan.findUnique({
       where: { id: scanId },
       select: {
@@ -160,6 +166,12 @@ export async function GET(request: NextRequest) {
       { error: "Missing 'scanId' parameter" },
       { status: 400 }
     );
+  }
+
+  // IDOR guard: only the scan's owner/workspace may use it for impact analysis.
+  const access = await assertScanAccess(scanId, session);
+  if (!access.ok) {
+    return NextResponse.json({ error: access.error }, { status: access.status });
   }
 
   const scan = await prisma.scan.findUnique({
