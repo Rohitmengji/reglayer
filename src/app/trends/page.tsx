@@ -231,6 +231,10 @@ export default function TrendsPage() {
         <DeltaCards
           delta={data.delta}
           streak={data.streak}
+          // Pass the CURRENT counts (latest point) — without these the Violations
+          // card showed the delta (not the count) and Critical Issues showed 0.
+          currentViolations={data.violationTrend.at(-1)?.total ?? 0}
+          currentCritical={data.violationTrend.at(-1)?.critical ?? 0}
         />
 
         {/* Charts */}

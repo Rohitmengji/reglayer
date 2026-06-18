@@ -364,9 +364,14 @@ export default function ExecutiveDashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-sm">Site Rankings</CardTitle>
-                <CardDescription>All monitored sites ranked by compliance score</CardDescription>
+                <CardDescription>
+                  {/* API returns the lowest-scoring 20; show the true total honestly. */}
+                  {portfolio.totalSites > siteRankings.length
+                    ? `Showing the ${siteRankings.length} lowest-scoring of ${portfolio.totalSites} monitored sites`
+                    : "All monitored sites ranked by compliance score"}
+                </CardDescription>
               </div>
-              <Badge variant="secondary">{siteRankings.length} sites</Badge>
+              <Badge variant="secondary">{portfolio.totalSites} sites</Badge>
             </div>
           </CardHeader>
           <CardContent>
