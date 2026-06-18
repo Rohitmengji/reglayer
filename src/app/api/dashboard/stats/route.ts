@@ -46,7 +46,7 @@ export async function GET() {
     ? { workspaceId: membership.workspaceId }
     : { userId: user.id };
 
-  const [scanAgg, recentScans, violationStats] = await Promise.all([
+  const [scanAgg, recentScans, violationStats, distinctUrls] = await Promise.all([
     // Headline numbers reflect the FULL scoped dataset, not just the last 10.
     prisma.scan.aggregate({
       where: { status: "COMPLETED", ...scopeFilter },
@@ -73,6 +73,12 @@ export async function GET() {
       orderBy: { _count: { ruleId: "desc" } },
       take: 10,
     }),
+    // Distinct scanned URLs across the FULL dataset — "Sites Monitored" must
+    // reflect every unique site, not just whatever appeared in the last 10 scans.
+    prisma.scan.groupBy({
+      by: ["url"],
+      where: { status: "COMPLETED", ...scopeFilter },
+    }),
   ]);
 
   // Headline metrics from the full scoped dataset (aggregate, not last-10).
@@ -88,9 +94,9 @@ export async function GET() {
   const prevAvg = prev5.length > 0 ? prev5.reduce((a, b) => a + b, 0) / prev5.length : recentAvg;
   const trend = recentAvg - prevAvg;
 
-  // Sites monitored (unique URLs)
-  const uniqueUrls = new Set(recentScans.map((s) => {
-    try { return new URL(s.url).hostname; } catch { return s.url; }
+  // Sites monitored — distinct hostnames across ALL scanned URLs (not last-10).
+  const uniqueUrls = new Set(distinctUrls.map((g) => {
+    try { return new URL(g.url).hostname; } catch { return g.url; }
   }));
 
   return NextResponse.json({

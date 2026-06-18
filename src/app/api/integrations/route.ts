@@ -13,7 +13,10 @@ import { prisma } from "@/lib/database/prisma";
 import { getOrCreateWorkspace } from "@/lib/database/workspace";
 import { encryptToken } from "@/lib/crypto";
 
-const VALID_PROVIDERS = ["slack", "jira", "github", "linear", "teams", "gitlab", "zapier", "email"];
+// Only providers the event dispatcher actually delivers to (lib/integrations/dispatcher.ts).
+// linear/gitlab/zapier/email are "coming soon" in the UI and intentionally not
+// connectable yet — accepting them would store a config that never fires.
+const VALID_PROVIDERS = ["slack", "jira", "github", "teams"];
 
 /**
  * GET /api/integrations — List all integrations for the user's workspace
