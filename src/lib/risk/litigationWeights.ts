@@ -117,3 +117,17 @@ export const RAW_SCORE_CEILING = 50;
 
 /** Settlement-probability factor applied to average settlements ($). */
 export const SETTLEMENT_PROBABILITY = 0.15;
+
+/**
+ * Upper bound on a reported legal-exposure estimate. Both the per-scan risk
+ * engine and the crawl's litigation surface clamp to this, so a site with more
+ * exposure still shows this ceiling — format it with a trailing "+" so it reads
+ * as a floor, not a precise computed figure.
+ */
+export const EXPOSURE_CAP = 500_000;
+
+/** Format an estimated $ exposure, marking the capped ceiling as "$500,000+". */
+export function formatExposure(n: number): string {
+  const v = Math.round(n || 0);
+  return v >= EXPOSURE_CAP ? `$${EXPOSURE_CAP.toLocaleString()}+` : `$${v.toLocaleString()}`;
+}

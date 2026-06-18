@@ -56,6 +56,7 @@ import type { AuthConfig } from "@/lib/validations/auth";
 import { CrawlTheater } from "@/components/crawl/CrawlTheater";
 import { createInitialTheaterState, reduceTheaterEvent, type TheaterState } from "@/lib/crawl-viz/crawlTheater";
 import { normalizeTargetUrl } from "@/lib/crawl-viz/targetUrl";
+import { formatExposure } from "@/lib/risk/litigationWeights";
 
 // ══════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -1429,7 +1430,7 @@ function LitigationSurfaceCard({ surface }: { surface: LitigationSurface }) {
           </div>
           <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 p-3">
             <p className="text-[10px] uppercase tracking-wide text-neutral-400 font-medium">Est. exposure</p>
-            <p className="text-2xl font-black text-neutral-900 dark:text-white">{money(surface.estimatedExposure)}</p>
+            <p className="text-2xl font-black text-neutral-900 dark:text-white">{formatExposure(surface.estimatedExposure)}</p>
           </div>
           <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 p-3">
             <p className="text-[10px] uppercase tracking-wide text-neutral-400 font-medium">High-risk issues</p>
