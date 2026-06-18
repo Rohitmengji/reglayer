@@ -177,6 +177,8 @@ export default function ExecutiveDashboardPage() {
                   <p className={`text-3xl font-bold mt-1 ${getScoreColor(portfolio.avgScore)}`}>
                     {portfolio.avgScore}
                   </p>
+                  {/* Clarify scope: this is the all-time average, distinct from the 12-week trend chart below. */}
+                  <p className="text-[11px] text-neutral-400 mt-0.5">All-time average across all scans</p>
                 </div>
                 <div className={`h-12 w-12 rounded-full flex items-center justify-center ${portfolio.avgScore >= 70 ? "bg-green-100 dark:bg-green-900/30" : "bg-red-100 dark:bg-red-900/30"}`}>
                   <Shield className={`h-6 w-6 ${portfolio.avgScore >= 70 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`} />

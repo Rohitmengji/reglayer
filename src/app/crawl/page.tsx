@@ -1010,7 +1010,7 @@ function LiveProgressDashboard({ progress, livePages, onCancel }: {
 
   return (
     <div className="space-y-4" aria-busy="true">
-      <Card className="border-blue-200 dark:border-blue-800 bg-gradient-to-r from-blue-50 to-violet-50 dark:from-blue-950/50 dark:to-violet-950/50 overflow-hidden">
+      <Card className="border-blue-200 dark:border-blue-800 bg-linear-to-r from-blue-50 to-violet-50 dark:from-blue-950/50 dark:to-violet-950/50 overflow-hidden">
         <CardContent className="p-5 space-y-4">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -1053,7 +1053,7 @@ function LiveProgressDashboard({ progress, livePages, onCancel }: {
                 aria-valuemax={100}
                 aria-valuetext={`${progress.pagesScanned} of ${progress.pagesTotal} pages scanned`}
               >
-                <div className="h-full bg-gradient-to-r from-blue-500 to-violet-500 rounded-full transition-all duration-500 ease-out" style={{ width: `${pct}%` }} />
+                <div className="h-full bg-linear-to-r from-blue-500 to-violet-500 rounded-full transition-all duration-500 ease-out" style={{ width: `${pct}%` }} />
               </div>
             </div>
           )}
@@ -1067,7 +1067,7 @@ function LiveProgressDashboard({ progress, livePages, onCancel }: {
                 aria-label="Discovering pages"
                 aria-valuetext={`${progress.pagesDiscovered} pages discovered`}
               >
-                <div className="h-full bg-gradient-to-r from-blue-400 to-blue-600 rounded-full animate-[indeterminate_2s_ease-in-out_infinite] w-1/3" />
+                <div className="h-full bg-linear-to-r from-blue-400 to-blue-600 rounded-full animate-[indeterminate_2s_ease-in-out_infinite] w-1/3" />
               </div>
             </div>
           )}
@@ -1124,7 +1124,7 @@ function LiveProgressDashboard({ progress, livePages, onCancel }: {
           </CardHeader>
           {expanded && (
             <CardContent className="pt-0">
-              <div className="space-y-1 max-h-[400px] overflow-y-auto">
+              <div className="space-y-1 max-h-100 overflow-y-auto">
                 {[...livePages].reverse().map((p) => {
                   const path = p.url.replace(/^https?:\/\/[^/]+/, "") || "/";
                   return (
@@ -1143,7 +1143,7 @@ function LiveProgressDashboard({ progress, livePages, onCancel }: {
                       </div>
                       {p.status === "complete" && <span className="text-[10px] text-neutral-400 shrink-0">{(p.duration / 1000).toFixed(1)}s</span>}
                       {p.status === "complete" && p.violations > 0 && <Badge variant="outline" className="text-[10px] shrink-0">{p.violations}</Badge>}
-                      {p.status === "error" && <span className="text-[10px] text-red-500 truncate max-w-[120px]">{p.error}</span>}
+                      {p.status === "error" && <span className="text-[10px] text-red-500 truncate max-w-30">{p.error}</span>}
                     </div>
                   );
                 })}
