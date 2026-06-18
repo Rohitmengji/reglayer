@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
+import { assertScanAccess } from "@/lib/auth/access";
 import { prisma } from "@/lib/database/prisma";
 
 /**
@@ -26,6 +27,12 @@ export async function GET(
   }
 
   const { id } = await params;
+
+  // IDOR guard: only the scan's owner/workspace may read its compliance matrix.
+  const access = await assertScanAccess(id, session);
+  if (!access.ok) {
+    return NextResponse.json({ error: access.error }, { status: access.status });
+  }
 
   const scan = await prisma.scan.findUnique({
     where: { id },

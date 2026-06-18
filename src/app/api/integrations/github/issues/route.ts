@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
+import { assertScanAccess } from "@/lib/auth/access";
 import { z } from "zod";
 import { createBatchIssue, createIssueFromViolation } from "@/lib/integrations/github";
 import { prisma } from "@/lib/database/prisma";
@@ -50,6 +51,13 @@ export async function POST(request: NextRequest) {
   }
 
   const { scanId, owner, repo, token, mode, violationIds } = parsed.data;
+
+  // IDOR guard: only the scan's owner/workspace may file issues from its violations.
+  const access = await assertScanAccess(scanId, session);
+  if (!access.ok) {
+    return NextResponse.json({ error: access.error }, { status: access.status });
+  }
+
   const config = { token, owner, repo };
   const reportUrl = `${request.nextUrl.origin}/report/${scanId}`;
 

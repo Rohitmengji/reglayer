@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
+import { assertSiteAccess } from "@/lib/auth/access";
 import { getRiskTrend } from "@/lib/risk/legalRiskEngine";
 
 export async function GET(
@@ -20,6 +21,13 @@ export async function GET(
     }
 
     const { siteId } = await params;
+
+    // IDOR guard: only members of the site's workspace may read its risk trend.
+    const access = await assertSiteAccess(siteId, session);
+    if (!access.ok) {
+      return NextResponse.json({ error: access.error }, { status: access.status });
+    }
+
     const { searchParams } = new URL(request.url);
 
     const from = searchParams.get("from") ? new Date(searchParams.get("from")!) : undefined;

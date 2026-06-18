@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
 
     // Toggle schedule
     if (body.action === "toggle" && body.id) {
-      const schedule = await toggleScheduleInDB(body.id);
+      const schedule = await toggleScheduleInDB(body.id, workspaceId);
       if (!schedule) {
         return NextResponse.json({ error: "Schedule not found" }, { status: 404 });
       }

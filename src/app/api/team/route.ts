@@ -266,6 +266,11 @@ export async function PATCH(request: NextRequest) {
     if (!target) {
       return NextResponse.json({ error: "Member not found" }, { status: 404 });
     }
+    // IDOR guard: the target member must be in the caller's workspace — an
+    // admin of one workspace must not be able to change roles in another.
+    if (target.workspaceId !== myMembership.workspaceId) {
+      return NextResponse.json({ error: "Member not found" }, { status: 404 });
+    }
     if (target.role === "OWNER") {
       return NextResponse.json({ error: "Cannot change owner role" }, { status: 403 });
     }

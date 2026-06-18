@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
+import { assertSiteAccess } from "@/lib/auth/access";
 import { generateForecast } from "@/lib/forecasting/complianceForecast";
 import { z } from "zod";
 
@@ -26,6 +27,12 @@ export async function GET(request: NextRequest) {
 
     if (!siteId) {
       return NextResponse.json({ error: "siteId is required" }, { status: 400 });
+    }
+
+    // IDOR guard: only members of the site's workspace may forecast it.
+    const access = await assertSiteAccess(siteId, session);
+    if (!access.ok) {
+      return NextResponse.json({ error: access.error }, { status: access.status });
     }
 
     // FIX C10: reject invalid targetScore with 400 instead of crashing on NaN.

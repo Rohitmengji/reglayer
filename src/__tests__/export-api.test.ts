@@ -24,9 +24,20 @@ vi.mock("@/lib/database/prisma", () => ({
   },
 }));
 
+// The export route now enforces tenant ownership via assertScanAccess (IDOR
+// guard). Mock it so the format tests focus on output; one test flips it to
+// denied to lock in the access check.
+vi.mock("@/lib/auth/access", () => ({
+  assertScanAccess: vi.fn(),
+}));
+
 import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/database/prisma";
+import { assertScanAccess } from "@/lib/auth/access";
 import { GET } from "@/app/api/scans/[id]/export/route";
+
+const allowAccess = () =>
+  vi.mocked(assertScanAccess).mockResolvedValue({ ok: true, userId: "u1", isMasterAdmin: false, workspaceId: "ws1" } as never);
 
 function makeRequest(format?: string): NextRequest {
   const url = format
@@ -68,6 +79,7 @@ const mockScan = {
 describe("GET /api/scans/[id]/export", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    allowAccess(); // default: caller owns the scan
   });
 
   it("returns 401 when not authenticated", async () => {
@@ -77,6 +89,18 @@ describe("GET /api/scans/[id]/export", () => {
     const res = await GET(req as any, { params: Promise.resolve({ id: "scan_123" }) });
 
     expect(res.status).toBe(401);
+  });
+
+  it("returns 403 when the caller does not own the scan (IDOR guard)", async () => {
+    vi.mocked(getServerSession).mockResolvedValue({ user: { email: "attacker@test.com" } } as any);
+    vi.mocked(assertScanAccess).mockResolvedValue({ ok: false, status: 403, error: "You do not have access to this scan" } as never);
+
+    const req = makeRequest();
+    const res = await GET(req as any, { params: Promise.resolve({ id: "scan_123" }) });
+
+    expect(res.status).toBe(403);
+    // Must not have loaded the scan once access was denied.
+    expect(prisma.scan.findUnique).not.toHaveBeenCalled();
   });
 
   it("returns 404 when scan not found", async () => {
