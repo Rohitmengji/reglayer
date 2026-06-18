@@ -11,6 +11,7 @@
 
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/database/prisma";
+import { scoreFromStoredViolations } from "@/lib/scoring/reportScore";
 
 interface Params {
   params: Promise<{ siteId: string }>;
@@ -30,7 +31,7 @@ export async function GET(request: NextRequest, { params }: Params) {
         where: { status: "COMPLETED" },
         orderBy: { createdAt: "desc" },
         take: 1,
-        select: { score: true, createdAt: true, totalViolations: true },
+        select: { violations: { select: { impact: true, affectedElements: true } }, createdAt: true },
       },
     },
   });
@@ -42,21 +43,14 @@ export async function GET(request: NextRequest, { params }: Params) {
   }
 
   const scan = site.scans[0];
-  const score = Math.round(scan.score ?? 0);
-
-  let statusText: string;
-  let color: string;
-
-  if (score >= 90) {
-    statusText = `${score}% Compliant`;
-    color = "#22c55e"; // green
-  } else if (score >= 70) {
-    statusText = `${score}% Partial`;
-    color = "#eab308"; // yellow
-  } else {
-    statusText = `${score}% Needs Work`;
-    color = "#ef4444"; // red
-  }
+  // Canonical score (shared with the report pages, the ?url= badge, and the
+  // certificate). Band the color on the precise score; display the rounded
+  // integer — and NEVER label it "Compliant" (a WCAG conformance claim the
+  // automated scan cannot establish).
+  const precise = scoreFromStoredViolations(scan.violations);
+  const score = Math.round(precise);
+  const statusText = `${score}/100`;
+  const color = precise >= 90 ? "#22c55e" : precise >= 70 ? "#eab308" : "#ef4444";
 
   const svg = generateBadgeSvg("RegLayer", statusText, color, style, theme);
 

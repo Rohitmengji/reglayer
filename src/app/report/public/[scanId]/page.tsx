@@ -27,6 +27,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/database/prisma";
 import Link from "next/link";
 import { Shield, CheckCircle2, AlertTriangle, XCircle, ExternalLink, ArrowRight } from "lucide-react";
+import { scoreFromStoredViolations } from "@/lib/scoring/reportScore";
 
 interface PageProps {
   params: Promise<{ scanId: string }>;
@@ -36,22 +37,25 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { scanId } = await params;
   const scan = await prisma.scan.findFirst({
     where: { id: scanId },
-    select: { url: true, score: true },
+    select: { url: true, violations: { select: { impact: true, affectedElements: true } } },
   }).catch(() => null);
 
   if (!scan) return { title: "Report Not Found — RegLayer" };
 
+  // Same canonical score as the page body, so the social-preview title agrees.
+  const score = Math.round(scoreFromStoredViolations(scan.violations));
+
   return {
-    title: `${scan.score ?? 0}% Accessibility Score — ${scan.url} | RegLayer`,
-    description: `Accessibility compliance report for ${scan.url}. Score: ${scan.score}%. Powered by RegLayer automated WCAG scanning.`,
+    title: `Accessibility Score ${score}/100 — ${scan.url} | RegLayer`,
+    description: `Automated accessibility scan for ${scan.url}. Score: ${score}/100. Automated WCAG scanning by RegLayer — not a conformance determination.`,
     openGraph: {
-      title: `${scan.score}% Accessibility Score`,
-      description: `${scan.url} scored ${scan.score}% on RegLayer's WCAG compliance scan.`,
+      title: `Accessibility Score ${score}/100`,
+      description: `${scan.url} scored ${score}/100 on RegLayer's automated WCAG scan.`,
       type: "website",
     },
     twitter: {
       card: "summary_large_image",
-      title: `${scan.score}% Accessibility Score — ${scan.url}`,
+      title: `Accessibility Score ${score}/100 — ${scan.url}`,
     },
     // SECURITY: do NOT let search engines index by-link reports — that passively
     // exposed every scanned site's URL + violation profile to anyone searching.
@@ -69,7 +73,6 @@ export default async function PublicReportPage({ params }: PageProps) {
     select: {
       id: true,
       url: true,
-      score: true,
       createdAt: true,
       totalViolations: true,
       critical: true,
@@ -77,16 +80,24 @@ export default async function PublicReportPage({ params }: PageProps) {
       moderate: true,
       minor: true,
       metadata: true,
+      violations: { select: { impact: true, affectedElements: true } },
     },
   }).catch(() => null);
 
   if (!scan) notFound();
 
-  const score = scan.score ?? 0;
-  const scoreColor = score >= 90 ? "text-emerald-500" : score >= 60 ? "text-amber-500" : "text-red-500";
-  const scoreBg = score >= 90 ? "bg-emerald-50 dark:bg-emerald-950/20" : score >= 60 ? "bg-amber-50 dark:bg-amber-950/20" : "bg-red-50 dark:bg-red-950/20";
-  const scoreRing = score >= 90 ? "ring-emerald-200 dark:ring-emerald-800" : score >= 60 ? "ring-amber-200 dark:ring-amber-800" : "ring-red-200 dark:ring-red-800";
-  const scoreLabel = score >= 90 ? "Compliant" : score >= 60 ? "Needs Improvement" : "Critical Issues";
+  // Canonical score recomputed from violations (shared with report/[id], badge,
+  // certificate) so the same scan never shows two different numbers. Band the
+  // color/label on the precise value and display the rounded integer — matching
+  // report/[id] + badge so boundary scores get the same verdict everywhere.
+  const precise = scoreFromStoredViolations(scan.violations);
+  const score = Math.round(precise);
+  const scoreColor = precise >= 90 ? "text-emerald-500" : precise >= 60 ? "text-amber-500" : "text-red-500";
+  const scoreBg = precise >= 90 ? "bg-emerald-50 dark:bg-emerald-950/20" : precise >= 60 ? "bg-amber-50 dark:bg-amber-950/20" : "bg-red-50 dark:bg-red-950/20";
+  const scoreRing = precise >= 90 ? "ring-emerald-200 dark:ring-emerald-800" : precise >= 60 ? "ring-amber-200 dark:ring-amber-800" : "ring-red-200 dark:ring-red-800";
+  // Score band only — NOT a conformance verdict. "Compliant" would assert WCAG
+  // conformance from an automated score, which the scan cannot establish.
+  const scoreLabel = precise >= 90 ? "Strong automated score" : precise >= 60 ? "Needs Improvement" : "Critical Issues";
 
   const meta = (scan.metadata as Record<string, unknown> | null) ?? {};
   const pagesScanned = (meta.pagesScanned as number) ?? 1;
@@ -119,7 +130,7 @@ export default async function PublicReportPage({ params }: PageProps) {
             </span>
           </div>
           <h1 className="text-2xl font-bold text-neutral-900 dark:text-white mb-2">
-            Accessibility Score: {score}%
+            Accessibility Score: {score} / 100
           </h1>
           <p className="text-sm text-neutral-600 dark:text-neutral-300 mb-1">
             {scan.url}
@@ -128,11 +139,11 @@ export default async function PublicReportPage({ params }: PageProps) {
             Scanned {new Date(scan.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
           </p>
           <div className={`inline-flex items-center gap-1.5 mt-4 px-3 py-1 rounded-full text-xs font-medium ${
-            score >= 90 ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" :
-            score >= 60 ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" :
+            precise >= 90 ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" :
+            precise >= 60 ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" :
             "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
           }`}>
-            {score >= 90 ? <CheckCircle2 className="h-3 w-3" /> : score >= 60 ? <AlertTriangle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+            {precise >= 90 ? <CheckCircle2 className="h-3 w-3" /> : precise >= 60 ? <AlertTriangle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
             {scoreLabel}
           </div>
         </div>

@@ -118,17 +118,20 @@ export default function ScanDetailPage({
             label={t("scanDetail.duration")}
             value={`${scan.metadata.scanDuration}ms`}
           />
-          <MetaCard
-            icon={Cpu}
-            label={t("scanDetail.compliance")}
-            value={`${compliance.overallCompliance}%`}
-          />
+          {compliance && (
+            <MetaCard
+              icon={Cpu}
+              label={t("scanDetail.compliance")}
+              value={`${compliance.overallCompliance}%`}
+            />
+          )}
         </div>
 
         {/* Score */}
         <ScoreCard summary={scan.summary} />
 
         {/* Compliance Rules */}
+        {compliance && (
         <Card>
           <CardHeader>
             <CardTitle className="text-sm font-medium">
@@ -158,6 +161,7 @@ export default function ScanDetailPage({
             </div>
           </CardContent>
         </Card>
+        )}
 
         {/* Violations */}
         {scan.violations.length > 0 && (

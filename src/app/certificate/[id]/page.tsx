@@ -201,7 +201,7 @@ export default function CertificatePage() {
                   />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-lg font-black text-neutral-900 dark:text-white">{cert.score}%</span>
+                  <span className="text-lg font-black text-neutral-900 dark:text-white">{Math.round(cert.score)}</span>
                 </div>
               </div>
 
@@ -209,8 +209,16 @@ export default function CertificatePage() {
               <div className={`rounded-xl ${config.bg} px-5 py-3 border ${config.border} text-center`}>
                 <Award className={`h-7 w-7 ${config.text} mx-auto`} />
                 <p className={`text-sm font-bold ${config.text} mt-1`}>{config.label}</p>
-                <p className="text-[10px] text-neutral-500 dark:text-neutral-400">{config.description}</p>
+                <p className="text-[10px] text-neutral-500 dark:text-neutral-400">Automated estimate: {config.description}</p>
               </div>
+            </div>
+
+            {/* Honesty disclaimer — co-located with the tier claim above so the
+                conformance language is never read in isolation. */}
+            <div className="mt-4 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/70 dark:bg-amber-950/30 px-3.5 py-3 text-left">
+              <p className="text-[10.5px] leading-relaxed text-amber-800 dark:text-amber-300">
+                <strong>Based on automated testing only.</strong> Automated checks evaluate a subset of WCAG 2.1 / EN 301 549 success criteria and cannot confirm full conformance. This is not a formal conformance audit or legal certification — complete conformance requires manual evaluation.
+              </p>
             </div>
 
             {/* URL */}

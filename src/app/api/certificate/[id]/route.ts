@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/database/prisma";
 import { applyRateLimit } from "@/lib/rate-limit-middleware";
+import { scoreFromStoredViolations } from "@/lib/scoring/reportScore";
 
 /**
  * GET /api/certificate/[id]
@@ -25,10 +26,15 @@ export async function GET(
 
   const { id } = await params;
 
-  // Only counts are needed — don't pull every violation row for a public page
   const scan = await prisma.scan.findUnique({
     where: { id },
-    include: { _count: { select: { violations: true } } },
+    select: {
+      id: true, url: true, createdAt: true, status: true,
+      critical: true, serious: true, moderate: true, minor: true,
+      // Pulled so the score is recomputed from the SAME canonical formula as the
+      // report pages + badge — the certificate must not show a divergent number.
+      violations: { select: { impact: true, affectedElements: true } },
+    },
   });
 
   if (!scan || scan.status !== "COMPLETED") {
@@ -40,7 +46,7 @@ export async function GET(
 
   const criticalCount = scan.critical ?? 0;
   const seriousCount = scan.serious ?? 0;
-  const score = scan.score ?? 0;
+  const score = scoreFromStoredViolations(scan.violations);
 
   // Determine compliance level
   let level: "gold" | "silver" | "bronze" | "in-progress";
@@ -68,7 +74,7 @@ export async function GET(
       serious: seriousCount,
       moderate: scan.moderate ?? 0,
       minor: scan.minor ?? 0,
-      total: scan._count.violations,
+      total: scan.violations.length,
     },
     verificationUrl: `https://reglayer.vercel.app/certificate/${scan.id}`,
   };

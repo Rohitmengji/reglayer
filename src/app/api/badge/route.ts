@@ -8,33 +8,20 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/database/prisma";
 import { applyRateLimit } from "@/lib/rate-limit-middleware";
+import { scoreFromStoredViolations } from "@/lib/scoring/reportScore";
 
 /**
  * Accessibility Score Badge API
- * 
+ *
  * GET /api/badge?url=<encodedUrl>&style=flat|flat-square|plastic
- * 
+ *
  * Returns an SVG badge (like shields.io) showing the latest
  * accessibility score for a given URL. Embed in READMEs, dashboards, etc.
- * 
+ *
  * Usage:
  *   ![Accessibility](https://reglayer.vercel.app/api/badge?url=https://example.com)
  */
 
-function recalculateScore(violations: { impact: string; affectedElements: unknown }[]): number {
-  if (violations.length === 0) return 100;
-  const severityBase: Record<string, number> = {
-    CRITICAL: 10, critical: 10, SERIOUS: 5, serious: 5,
-    MODERATE: 2, moderate: 2, MINOR: 0.5, minor: 0.5,
-  };
-  const totalPenalty = violations.reduce((sum, v) => {
-    const base = severityBase[v.impact] ?? 1;
-    const nodes = Array.isArray(v.affectedElements) ? v.affectedElements : [];
-    const nodeCount = Math.max(1, nodes.length);
-    return sum + base * (1 + Math.log2(nodeCount) / 4);
-  }, 0);
-  return Math.round(Math.max(0, Math.min(100, 100 - totalPenalty)));
-}
 export async function GET(request: NextRequest) {
   // Public path (bypasses the proxy's global limiter) and a cache-busting
   // ?url= goes straight to the database — keep a per-IP ceiling
@@ -55,7 +42,7 @@ export async function GET(request: NextRequest) {
   const latestScan = await prisma.scan.findFirst({
     where: { url, status: "COMPLETED" },
     orderBy: { createdAt: "desc" },
-    select: { score: true, violations: { select: { impact: true, affectedElements: true } } },
+    select: { violations: { select: { impact: true, affectedElements: true } } },
   });
 
   if (!latestScan) {
@@ -67,10 +54,11 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  // Recalculate score from violations for accuracy
-  const score = recalculateScore(latestScan.violations);
+  // Canonical score (shared with report pages + certificate). Band the color on
+  // the precise score, display the rounded integer — matching report/[id] exactly.
+  const score = scoreFromStoredViolations(latestScan.violations);
   const color = getScoreColor(score);
-  const value = `${score}/100`;
+  const value = `${Math.round(score)}/100`;
 
   return new Response(renderBadge(label, value, color, style), {
     headers: {

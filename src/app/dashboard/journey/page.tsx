@@ -116,6 +116,9 @@ export default function JourneyPage() {
           <p className="text-muted-foreground">
             Scan multi-step user flows. Catches accessibility bugs that only appear during navigation.
           </p>
+          <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+            Requires Pro or Enterprise plan.
+          </p>
         </div>
 
         {/* Input */}

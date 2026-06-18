@@ -120,7 +120,7 @@ export async function GET() {
   });
   } catch {
     return NextResponse.json(
-      { error: "Failed to load dashboard stats", totalScans: 0, avgScore: 0, totalViolations: 0, sitesMonitored: 0, trend: 0, recentScans: [], topViolations: [] },
+      { error: "Failed to load dashboard stats" },
       { status: 500 }
     );
   }

@@ -69,6 +69,9 @@ export default function RevenueImpactPage() {
           <p className="text-muted-foreground">
             Estimate how much revenue you&apos;re losing due to accessibility barriers.
           </p>
+          <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+            Illustrative model only — based on published disability statistics and your inputs, not measured user behavior. Treat as directional, not exact.
+          </p>
         </div>
 
         {/* Input Form */}
@@ -126,7 +129,7 @@ export default function RevenueImpactPage() {
                 <CardContent className="pt-6">
                   <div className="flex items-center gap-2 mb-2">
                     <DollarSign className="h-5 w-5 text-red-500" />
-                    <span className="text-sm text-muted-foreground">Monthly Loss</span>
+                    <span className="text-sm text-muted-foreground">Est. Monthly Loss</span>
                   </div>
                   <p className="text-3xl font-bold text-red-600">
                     ${result.estimatedMonthlyLoss.toLocaleString()}
@@ -137,7 +140,7 @@ export default function RevenueImpactPage() {
                 <CardContent className="pt-6">
                   <div className="flex items-center gap-2 mb-2">
                     <TrendingDown className="h-5 w-5 text-red-500" />
-                    <span className="text-sm text-muted-foreground">Annual Loss</span>
+                    <span className="text-sm text-muted-foreground">Est. Annual Loss</span>
                   </div>
                   <p className="text-3xl font-bold text-red-600">
                     ${result.estimatedAnnualLoss.toLocaleString()}
@@ -198,6 +201,7 @@ export default function RevenueImpactPage() {
                     <Shield className="h-5 w-5" />
                     <h3 className="font-semibold">Legal Risk Assessment</h3>
                   </div>
+                  <p className="text-[11px] text-amber-600 dark:text-amber-400 mb-3">Directional estimate from published ADA filing data — not legal advice.</p>
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <span>Risk Level</span>

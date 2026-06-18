@@ -77,13 +77,10 @@ export async function GET(request: NextRequest): Promise<Response> {
         },
       });
     } catch {
-      return NextResponse.json({
-        scope,
-        vendor,
-        vendors: [],
-        trend: null,
-        note: "Vendor Liability Graph storage is not yet provisioned (migration pending).",
-      });
+      return NextResponse.json(
+        { error: "Vendor Liability Graph storage is not yet provisioned (migration pending)." },
+        { status: 503 },
+      );
     }
 
     const observations: VendorObservationInput[] = rows.map((r) => ({

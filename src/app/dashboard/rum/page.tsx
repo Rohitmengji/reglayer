@@ -106,6 +106,9 @@ export default function RumPage() {
         <p className="text-muted-foreground">
           Detect accessibility barriers as real users encounter them in production.
         </p>
+        <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+          Requires embedding a ~3 KB JavaScript snippet on your site. No data appears until the snippet is installed and visitors interact with your pages.
+        </p>
       </div>
 
       {/* Snippet embed section */}

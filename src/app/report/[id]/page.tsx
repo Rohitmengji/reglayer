@@ -10,35 +10,10 @@ import { prisma } from "@/lib/database/prisma";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Shield, ExternalLink, Clock, AlertTriangle, CheckCircle2, ArrowLeft, Eye, TrendingUp } from "lucide-react";
+import { scoreFromStoredViolations } from "@/lib/scoring/reportScore";
 
 interface ReportPageProps {
   params: Promise<{ id: string }>;
-}
-
-/**
- * Recalculate accessibility score from stored violations using accurate algorithm.
- * Ensures historical scans display correct scores even if stored score used old formula.
- */
-function recalculateScore(violations: { impact: string; affectedElements: unknown }[]): number {
-  if (violations.length === 0) return 100;
-
-  const severityBase: Record<string, number> = {
-    CRITICAL: 10, critical: 10,
-    SERIOUS: 5, serious: 5,
-    MODERATE: 2, moderate: 2,
-    MINOR: 0.5, minor: 0.5,
-  };
-
-  const totalPenalty = violations.reduce((sum, violation) => {
-    const base = severityBase[violation.impact] ?? 1;
-    const elements = Array.isArray(violation.affectedElements) ? violation.affectedElements : [];
-    const nodeCount = Math.max(1, elements.length);
-    const nodeMultiplier = 1 + Math.log2(nodeCount) / 4;
-    return sum + base * nodeMultiplier;
-  }, 0);
-
-  const score = Math.max(0, Math.min(100, 100 - totalPenalty));
-  return Math.round(score * 10) / 10;
 }
 
 export default async function PublicReportPage({ params }: ReportPageProps) {
@@ -53,8 +28,9 @@ export default async function PublicReportPage({ params }: ReportPageProps) {
     notFound();
   }
 
-  // Recalculate score from violations for accuracy
-  const score = recalculateScore(scan.violations);
+  // Canonical score recomputed from violations (shared with public report, badge,
+  // and certificate) so one scan shows one number everywhere.
+  const score = scoreFromStoredViolations(scan.violations);
   const scoreColor =
     score >= 90 ? "text-green-600" : score >= 70 ? "text-yellow-600" : score >= 50 ? "text-orange-600" : "text-red-600";
   const ringColor =
@@ -100,6 +76,7 @@ export default async function PublicReportPage({ params }: ReportPageProps) {
       </header>
 
       <main className="mx-auto max-w-5xl px-4 sm:px-6 py-8 sm:py-10 space-y-6">
+        <h1 className="sr-only">Accessibility scan report for {scan.url}</h1>
         {/* Back button */}
         <Link
           href="/scans"
@@ -120,7 +97,7 @@ export default async function PublicReportPage({ params }: ReportPageProps) {
               <div className="relative shrink-0">
                 {/* Subtle glow behind ring */}
                 <div className="absolute inset-0 blur-2xl opacity-20" style={{ backgroundColor: ringColor }} />
-                <svg width="130" height="130" viewBox="0 0 130 130" className="relative">
+                <svg width="130" height="130" viewBox="0 0 130 130" className="relative" role="img" aria-label={`Accessibility score ${Math.round(score)} of 100 — ${scoreLabel}`}>
                   <circle cx="65" cy="65" r="54" fill="none" stroke="currentColor" strokeWidth="8" className="text-neutral-100 dark:text-neutral-800" />
                   <circle
                     cx="65" cy="65" r="54"
@@ -142,7 +119,8 @@ export default async function PublicReportPage({ params }: ReportPageProps) {
               {/* Info */}
               <div className="flex-1 text-center sm:text-left">
                 <h2 className="text-lg font-semibold text-neutral-900 dark:text-white tracking-tight">Accessibility Score</h2>
-                <p className={`text-sm font-medium mt-0.5 ${scoreColor}`}>{scoreLabel} — meets WCAG 2.2 AA</p>
+                <p className={`text-sm font-medium mt-0.5 ${scoreColor}`}>{scoreLabel}</p>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1 max-w-md mx-auto sm:mx-0">Automated scan result — not a WCAG conformance determination. Automated testing detects roughly 30–40% of WCAG 2.1 AA criteria; full conformance requires manual auditing.</p>
                 
                 <div className="mt-4 space-y-1.5">
                   <div className="flex items-center gap-2 justify-center sm:justify-start text-[13px] text-neutral-500 dark:text-neutral-400">
@@ -180,9 +158,10 @@ export default async function PublicReportPage({ params }: ReportPageProps) {
         {scan.compliance !== null && (
           <div className="rounded-xl border border-neutral-200/80 dark:border-neutral-800/80 bg-white dark:bg-neutral-900 p-5 ring-1 ring-neutral-100 dark:ring-neutral-800/50">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-neutral-900 dark:text-white tracking-tight">WCAG 2.1 Compliance</h2>
+              <h2 className="text-sm font-semibold text-neutral-900 dark:text-white tracking-tight">Automated WCAG 2.1 checks passed</h2>
               <span className="text-sm font-bold tabular-nums text-neutral-900 dark:text-white">{Math.round(scan.compliance)}%</span>
             </div>
+            <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">Pass rate across the automated WCAG 2.1 rule checks RegLayer runs — a subset of the standard, not full WCAG coverage.</p>
             <div className="mt-3 h-2 rounded-full bg-neutral-100 dark:bg-neutral-800 overflow-hidden">
               <div
                 className="h-full rounded-full bg-linear-to-r from-green-400 to-green-500 transition-all"
@@ -267,8 +246,8 @@ export default async function PublicReportPage({ params }: ReportPageProps) {
             <div className="inline-flex items-center justify-center h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/40 mb-3">
               <CheckCircle2 className="h-6 w-6 text-green-600 dark:text-green-400" />
             </div>
-            <p className="text-base font-semibold text-green-800 dark:text-green-200">All Clear</p>
-            <p className="text-sm text-green-600/80 dark:text-green-400/80 mt-1">No accessibility violations detected. Meets WCAG 2.2 AA.</p>
+            <p className="text-base font-semibold text-green-800 dark:text-green-200">No automated violations found</p>
+            <p className="text-sm text-green-600/80 dark:text-green-400/80 mt-1">No issues were detected by automated checks. Automated scanning covers only part of WCAG 2.1 AA — this is not a conformance determination and does not replace a manual audit.</p>
           </div>
         )}
 
@@ -278,7 +257,7 @@ export default async function PublicReportPage({ params }: ReportPageProps) {
           <p className="text-xs text-neutral-500 dark:text-neutral-400">Show your accessibility score in your README:</p>
           <div className="flex items-center gap-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={`/api/badge?url=${encodeURIComponent(scan.url)}`} alt="Accessibility Score" />
+            <img src={`/api/badge?url=${encodeURIComponent(scan.url)}`} alt={`Accessibility score ${Math.round(score)} of 100 for ${scan.url}`} />
           </div>
           <code className="block rounded-lg bg-neutral-50 dark:bg-neutral-800/50 p-3 text-[11px] font-mono text-neutral-600 dark:text-neutral-400 break-all border border-neutral-100 dark:border-neutral-800">
             {`![Accessibility](https://reglayer.vercel.app/api/badge?url=${encodeURIComponent(scan.url)})`}
