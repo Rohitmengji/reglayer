@@ -22,6 +22,8 @@ interface IntegrationDef {
   icon: string;
   category: string;
   fields: { key: string; label: string; placeholder: string; type?: string }[];
+  /** Listed on the roadmap but not yet wired to the event dispatcher. */
+  comingSoon?: boolean;
 }
 
 interface ConnectedIntegration {
@@ -75,6 +77,7 @@ const integrationDefs: IntegrationDef[] = [
     description: "Sync violations to Linear issues with automatic priority mapping and labels.",
     icon: "📐",
     category: "Project Management",
+    comingSoon: true,
     fields: [
       { key: "accessToken", label: "API Key", placeholder: "lin_api_...", type: "password" },
       { key: "teamId", label: "Team ID", placeholder: "Team identifier" },
@@ -96,6 +99,7 @@ const integrationDefs: IntegrationDef[] = [
     description: "Create GitLab issues and integrate accessibility checks into CI/CD pipelines.",
     icon: "🦊",
     category: "Development",
+    comingSoon: true,
     fields: [
       { key: "domain", label: "GitLab Domain", placeholder: "gitlab.com or self-hosted" },
       { key: "projectId", label: "Project ID", placeholder: "12345" },
@@ -108,6 +112,7 @@ const integrationDefs: IntegrationDef[] = [
     description: "Connect RegLayer to 5,000+ apps with custom automation workflows.",
     icon: "⚡",
     category: "Automation",
+    comingSoon: true,
     fields: [
       { key: "webhookUrl", label: "Zapier Webhook URL", placeholder: "https://hooks.zapier.com/hooks/catch/..." },
     ],
@@ -118,6 +123,7 @@ const integrationDefs: IntegrationDef[] = [
     description: "Send compliance reports via your own SMTP server.",
     icon: "📧",
     category: "Communication",
+    comingSoon: true,
     fields: [
       { key: "host", label: "SMTP Host", placeholder: "smtp.company.com" },
       { key: "port", label: "Port", placeholder: "587" },
@@ -274,6 +280,11 @@ export default function IntegrationsPage() {
                                   <div className="flex items-center gap-2">
                                     <h3 className="font-semibold text-neutral-900 dark:text-white">{def.name}</h3>
                                     {isActive && <CheckCircle2 className="h-4 w-4 text-green-600" />}
+                                    {def.comingSoon && (
+                                      <span className="rounded-full bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5 text-[10px] font-medium text-neutral-500 dark:text-neutral-400">
+                                        Coming soon
+                                      </span>
+                                    )}
                                   </div>
                                   <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1 leading-relaxed">
                                     {def.description}
@@ -325,7 +336,15 @@ export default function IntegrationsPage() {
                             {/* Actions */}
                             {!isOpen && (
                               <div className="mt-4 flex items-center gap-2">
-                                {isActive ? (
+                                {def.comingSoon ? (
+                                  <button
+                                    disabled
+                                    title="This integration isn't available yet"
+                                    className="rounded-lg px-3 py-1.5 text-xs font-medium bg-neutral-100 text-neutral-400 dark:bg-neutral-800 dark:text-neutral-500 cursor-not-allowed"
+                                  >
+                                    Coming soon
+                                  </button>
+                                ) : isActive ? (
                                   <button
                                     onClick={() => setDisconnectTarget(def.id)}
                                     className="rounded-lg px-3 py-1.5 text-xs font-medium bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-950/50 transition-colors"
