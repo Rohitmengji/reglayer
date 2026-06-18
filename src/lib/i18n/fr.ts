@@ -1340,6 +1340,7 @@ export const fr = {
   "landing.sitesScanned": "Sites scannés",
   "landing.countries": "Pays",
   "landing.uptime": "Disponibilité",
+  "landing.wcagRules": "Règles WCAG vérifiées",
   "landing.scanTime": "Temps de scan",
   "landing.featuresSubtitle": "Pour les développeurs et responsables conformité qui doivent respecter les normes mondiales d'accessibilité — WCAG, ADA, EAA, Section 508 et plus.",
   "landing.deepScanningDesc": "Analyse axe-core contre WCAG 2.2 AA avec Chromium headless. Aussi strict qu'un testeur manuel. Résultats en moins de 30 secondes.",

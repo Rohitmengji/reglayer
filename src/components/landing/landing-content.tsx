@@ -160,10 +160,8 @@ export function LandingContent() {
             </div>
             <AnimatedStats
               stats={[
-                { value: "500+", label: t("landing.sitesScanned"), icon: "scan" },
-                { value: "30+", label: t("landing.countries"), icon: "globe" },
-                { value: "99.7%", label: t("landing.uptime"), icon: "uptime" },
                 { value: "< 30s", label: t("landing.scanTime"), icon: "speed" },
+                { value: "80+", label: t("landing.wcagRules"), icon: "scan" },
               ]}
             />
           </div>

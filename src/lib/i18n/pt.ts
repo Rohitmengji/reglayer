@@ -1070,6 +1070,7 @@ export const pt = {
   "landing.sitesScanned": "Sites digitalizados",
   "landing.countries": "Países",
   "landing.uptime": "Disponibilidade",
+  "landing.wcagRules": "Regras WCAG verificadas",
   "landing.scanTime": "Tempo de digitalização",
   "landing.featuresSubtitle": "Para programadores e responsáveis de conformidade que precisam cumprir normas globais de acessibilidade.",
   "landing.deepScanningDesc": "Análise axe-core contra WCAG 2.2 AA com Chromium headless. Resultados em menos de 30 segundos.",
