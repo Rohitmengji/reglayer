@@ -373,6 +373,16 @@ code, kbd, pre, samp, .font-mono {
   100% { transform: translateX(420%); }
 }
 
+/* Scan-scroll: pan a tall page screenshot from top → footer while scanning, so
+   the live viewport reads the whole page like a real scanner. --scan-shift is
+   set inline per-image (negative %, relative to the image's own height) = how
+   far the tall image must rise so its bottom edge reaches the frame's bottom. */
+@keyframes scan-scroll {
+  0%   { transform: translateY(0); }
+  10%  { transform: translateY(0); }                       /* dwell at top: "landed" */
+  100% { transform: translateY(var(--scan-shift, 0)); }    /* … then read down to the footer */
+}
+
 /* ─── Utility classes ──────────────────────────────────────────────────────── */
 
 .animate-fade-in { animation: fadeIn var(--duration-normal) var(--ease-smooth) both; }
@@ -384,6 +394,14 @@ code, kbd, pre, samp, .font-mono {
 .animate-pulse-soft { animation: pulse-soft 2s ease-in-out infinite; }
 .animate-scanline { animation: scanline 2.2s ease-in-out infinite; }
 .animate-node-pop { animation: nodePop 0.4s var(--ease-bouncy) both; }
+.animate-scan-scroll { animation: scan-scroll 6s ease-in-out forwards; will-change: transform; backface-visibility: hidden; }
+/* Reduced motion: the global `*` rule collapses every animation to ~0ms, which
+   would freeze this at the TOP. Override so it instead holds the FOOTER, so
+   motion-averse users still see the full page (just without the pan). */
+@media (prefers-reduced-motion: reduce) {
+  .animate-scan-scroll { animation: none !important; transform: translateY(var(--scan-shift, 0)); }
+}
+:root[data-a11y-motion="reduced"] .animate-scan-scroll { animation: none !important; transform: translateY(var(--scan-shift, 0)); }
 
 /* Stagger children animations */
 .stagger-children > * { animation: slideUp var(--duration-normal) var(--ease-snappy) both; }

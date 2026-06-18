@@ -202,6 +202,8 @@ interface LiveSnapshot {
   edges: Array<{ from: string; to: string }>;
   /** Data-URL screenshot of the page being visited right now (live viewport). */
   currentShot?: string;
+  /** Aspect (height/width) of a tall currentShot → drives scroll-to-footer pan. */
+  currentShotAspect?: number;
 }
 
 /**
@@ -240,7 +242,7 @@ function theaterFromLive(live: LiveSnapshot | null, phase?: string): TheaterStat
   if (phase) s = reduceTheaterEvent(s, { type: "phase", phase });
   // The live page screenshot is a snapshot field (not an event) — attach it so
   // the viewport can render the actual page the browser is on right now.
-  if (live.currentShot) s = { ...s, currentShot: live.currentShot };
+  if (live.currentShot) s = { ...s, currentShot: live.currentShot, currentShotAspect: live.currentShotAspect };
   return s;
 }
 

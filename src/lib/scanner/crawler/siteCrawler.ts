@@ -637,14 +637,36 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
       }
 
       // Stream a live screenshot of the page we're on, so the viewport shows
-      // each page as it's visited DURING DISCOVERY (not a skeleton — discovery
-      // is often the longest phase on SPAs). Best-effort, low-quality, and
-      // never allowed to slow or break the crawl.
+      // each page as it's visited DURING DISCOVERY (the longest phase on SPAs).
+      // Capture a BOUNDED-TALL clip (top → up to 3 screens) so the live viewport
+      // can scroll the page top-to-bottom like a real scanner reading it. Capped
+      // height keeps payload sane; best-effort with a viewport-shot fallback so a
+      // clip/eval failure never blanks the frame or slows the crawl.
       if (config.jobId) {
         try {
-          const buf = await page.screenshot({ type: "jpeg", quality: 35 });
-          jobManager.setLiveShot(config.jobId, Buffer.from(buf).toString("base64"), normalizedUrl);
-        } catch { /* best-effort live frame */ }
+          const dims = await page.evaluate(() => {
+            const vw = window.innerWidth || 1280;
+            const vh = window.innerHeight || 720;
+            const h = Math.max(vh, Math.min(document.documentElement.scrollHeight || 0, vh * 3));
+            return { w: vw, h: Math.round(h) };
+          });
+          const buf = await page.screenshot({
+            type: "jpeg",
+            quality: 30,
+            clip: { x: 0, y: 0, width: dims.w, height: dims.h },
+          });
+          jobManager.setLiveShot(
+            config.jobId,
+            Buffer.from(buf).toString("base64"),
+            normalizedUrl,
+            dims.h / dims.w, // aspect (height/width) → drives the scroll pan client-side
+          );
+        } catch {
+          try {
+            const buf = await page.screenshot({ type: "jpeg", quality: 35 });
+            jobManager.setLiveShot(config.jobId, Buffer.from(buf).toString("base64"), normalizedUrl);
+          } catch { /* best-effort live frame */ }
+        }
       }
 
       // Discover links
