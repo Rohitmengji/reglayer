@@ -11,9 +11,27 @@ import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
 import { authenticateApiKey } from "@/lib/auth/api-key";
 import { validateScanUrl } from "@/lib/validations/ssrf";
-import { remediate } from "@/lib/remediation/engine";
+import { remediate, type FixRecord } from "@/lib/remediation/engine";
 import { z } from "zod";
 import { applyRateLimit } from "@/lib/rate-limit-middleware";
+
+/** Plain-English summary of an applied fix for the remediation UI. */
+const FIX_LABELS: Record<string, string> = {
+  "image-alt": "Added descriptive alt text to an image",
+  "input-image-alt": "Added alt text to an image button",
+  "link-name": "Added discernible text to a link",
+  "button-name": "Added an accessible name to a button",
+  "label": "Associated a label with a form field",
+  "color-contrast": "Adjusted colors to meet the contrast ratio",
+  "html-has-lang": "Set the page language attribute",
+  "document-title": "Added a descriptive page title",
+  "aria-required-attr": "Added a required ARIA attribute",
+  "frame-title": "Added a title to a frame",
+};
+function describeFix(f: FixRecord): string {
+  const base = FIX_LABELS[f.category] ?? `Fixed ${f.category.replace(/-/g, " ")}`;
+  return f.selector ? `${base} (${f.selector})` : base;
+}
 
 /**
  * Auto-Remediation Edge Layer API
@@ -130,7 +148,13 @@ export async function POST(request: NextRequest) {
       url,
       totalFixes: result.totalFixes,
       categories: result.categories,
-      fixes: result.fixesApplied.slice(0, 50), // Limit response size
+      // Attach a human-readable description per fix — the UI renders
+      // fix.description, which the raw FixRecord (category/selector/before/after)
+      // didn't include, leaving the list blank.
+      fixes: result.fixesApplied.slice(0, 50).map((f) => ({
+        ...f,
+        description: describeFix(f),
+      })),
       timestamp: new Date().toISOString(),
     });
   } catch (error) {

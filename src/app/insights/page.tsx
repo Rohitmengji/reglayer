@@ -33,6 +33,8 @@ interface Insight {
   codeExample: string | object;
   effort: string | object;
   priority: string | object;
+  /** false when AI was unavailable and this is the rule-based fallback. */
+  aiGenerated?: boolean;
 }
 
 function str(val: unknown): string {
@@ -180,9 +182,17 @@ function InsightsContent() {
                     </Badge>
                     <CardTitle className="text-sm">{entry.ruleId}</CardTitle>
                   </div>
-                  {entry.cached && (
-                    <span className="text-xs text-neutral-500 dark:text-neutral-400">cached</span>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {/* Honest labeling: don't pass off the rule-based fallback as AI. */}
+                    {entry.insight.aiGenerated === false && (
+                      <span className="text-xs rounded-full bg-neutral-100 dark:bg-neutral-700 px-2 py-0.5 text-neutral-500 dark:text-neutral-400">
+                        Rule-based (AI unavailable)
+                      </span>
+                    )}
+                    {entry.cached && (
+                      <span className="text-xs text-neutral-500 dark:text-neutral-400">cached</span>
+                    )}
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="p-6 space-y-5">

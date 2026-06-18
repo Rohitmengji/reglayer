@@ -91,11 +91,15 @@ export async function GET(
       // Generate new insight
       const insight = await generateInsight(apiKey, v, scan.url);
 
-      // Cache it
-      await prisma.violation.update({
-        where: { id: v.id },
-        data: { aiExplanation: JSON.stringify(insight) },
-      }).catch(() => {/* non-critical */});
+      // Cache ONLY genuine AI output — never persist the rule-based fallback,
+      // or a transient AI outage would permanently freeze canned text as "the
+      // AI explanation" for this violation.
+      if (insight.aiGenerated) {
+        await prisma.violation.update({
+          where: { id: v.id },
+          data: { aiExplanation: JSON.stringify(insight) },
+        }).catch(() => {/* non-critical */});
+      }
 
       return {
         violationId: v.id,
@@ -168,28 +172,25 @@ Respond in JSON format:
     }),
   });
 
-  if (!response.ok) {
-    return {
-      explanation: violation.description,
-      userImpact: "Users with disabilities may be unable to access this content.",
-      fixStrategy: violation.help,
-      codeExample: "",
-      effort: "moderate",
-      priority: "Fix to improve accessibility compliance.",
-    };
-  }
+  // Rule-based fallback when AI is unavailable/unparseable. Flagged with
+  // aiGenerated:false so the UI can label it honestly (not pass it off as AI),
+  // and the caller skips caching it so it's retried once AI is back.
+  const fallback = {
+    explanation: violation.description,
+    userImpact: "Users with disabilities may be unable to access this content.",
+    fixStrategy: violation.help,
+    codeExample: "",
+    effort: "moderate",
+    priority: "Fix to improve accessibility compliance.",
+    aiGenerated: false,
+  };
+
+  if (!response.ok) return fallback;
 
   const data = await response.json();
   try {
-    return JSON.parse(data.choices[0].message.content);
+    return { ...JSON.parse(data.choices[0].message.content), aiGenerated: true };
   } catch {
-    return {
-      explanation: violation.description,
-      userImpact: "Users with disabilities may be unable to access this content.",
-      fixStrategy: violation.help,
-      codeExample: "",
-      effort: "moderate",
-      priority: "Fix to improve accessibility compliance.",
-    };
+    return fallback;
   }
 }
