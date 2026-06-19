@@ -358,26 +358,26 @@ export default function ManualTestingPage() {
               </Card>
             ) : !error ? (
               <Card className="border-dashed border-neutral-200 dark:border-neutral-800">
-                <CardContent className="p-8">
-                  <div className="text-center mb-6">
-                    <ClipboardCheck className="h-10 w-10 text-neutral-300 dark:text-neutral-600 mx-auto mb-3" aria-hidden="true" />
-                    <p className="text-sm font-medium text-neutral-700 dark:text-neutral-200">No manual test audits yet</p>
-                    <p className="text-xs text-neutral-500 mt-1 max-w-md mx-auto">Generate your first manual test plan from a completed scan to start verifying WCAG criteria that require human judgment.</p>
+                <CardContent className="py-12 px-6">
+                  <div className="flex flex-col items-center text-center max-w-lg mx-auto">
+                    <ClipboardCheck className="h-10 w-10 text-neutral-300 dark:text-neutral-600 mb-4" aria-hidden="true" />
+                    <h3 className="text-base font-semibold text-neutral-800 dark:text-neutral-200">No manual test audits yet</h3>
+                    <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-2">Generate your first manual test plan from a completed scan to start verifying WCAG criteria that require human judgment.</p>
                   </div>
-                  <div className="border-t border-neutral-100 dark:border-neutral-800 pt-5 mt-5">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-3">How it works</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                      <div className="flex items-start gap-2">
-                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-900/40 text-[10px] font-bold text-violet-600">1</span>
+                  <div className="border-t border-neutral-100 dark:border-neutral-800 pt-6 mt-8">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-4 text-center">How it works</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                      <div className="flex flex-col items-center text-center gap-2">
+                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-900/40 text-xs font-bold text-violet-600">1</span>
                         <p className="text-xs text-neutral-600 dark:text-neutral-400">Run a scan on any page, then paste the scan ID above</p>
                       </div>
-                      <div className="flex items-start gap-2">
-                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-900/40 text-[10px] font-bold text-violet-600">2</span>
-                        <p className="text-xs text-neutral-600 dark:text-neutral-400">We generate a structured checklist of criteria needing human judgment</p>
+                      <div className="flex flex-col items-center text-center gap-2">
+                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-900/40 text-xs font-bold text-violet-600">2</span>
+                        <p className="text-xs text-neutral-600 dark:text-neutral-400">We generate a structured checklist of criteria needing human verification</p>
                       </div>
-                      <div className="flex items-start gap-2">
-                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-900/40 text-[10px] font-bold text-violet-600">3</span>
-                        <p className="text-xs text-neutral-600 dark:text-neutral-400">Record pass/fail verdicts — attested results feed VPAT &amp; Defense File</p>
+                      <div className="flex flex-col items-center text-center gap-2">
+                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-900/40 text-xs font-bold text-violet-600">3</span>
+                        <p className="text-xs text-neutral-600 dark:text-neutral-400">Record pass/fail verdicts — results feed your VPAT and Defense File</p>
                       </div>
                     </div>
                   </div>
