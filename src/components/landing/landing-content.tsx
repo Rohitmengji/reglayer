@@ -114,15 +114,16 @@ export function LandingContent() {
 
       <main>
         {/* Hero Section */}
-        <section className="mx-auto max-w-5xl px-4 sm:px-6 pt-10 sm:pt-20 pb-12 sm:pb-24 text-center">
-          <div className="inline-flex items-center gap-2 rounded-full border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 px-3 py-1 text-xs font-medium text-neutral-600 dark:text-neutral-300 mb-8">
-            <Zap className="h-3 w-3" />
-            {t("landing.heroBadge")}
+        <section className="mx-auto max-w-5xl px-4 sm:px-6 pt-8 sm:pt-20 pb-10 sm:pb-24 text-center">
+          <div className="inline-flex items-center gap-1.5 sm:gap-2 rounded-full border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 px-2.5 sm:px-3 py-1 text-[10px] sm:text-xs font-medium text-neutral-600 dark:text-neutral-300 mb-6 sm:mb-8">
+            <Zap className="h-3 w-3 shrink-0" />
+            <span className="sm:hidden">WCAG 2.2 + ADA + EAA + Section 508</span>
+            <span className="hidden sm:inline">{t("landing.heroBadge")}</span>
           </div>
-          <h1 className="text-3xl font-bold tracking-tight text-neutral-900 dark:text-white sm:text-6xl leading-[1.1]">
+          <h1 className="text-[1.75rem] sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-neutral-900 dark:text-white leading-[1.15]">
             {t("landing.heroTitle")}
           </h1>
-          <p className="mx-auto mt-5 max-w-2xl text-base sm:text-lg text-neutral-600 dark:text-neutral-300 leading-relaxed">
+          <p className="mx-auto mt-4 sm:mt-5 max-w-2xl text-sm sm:text-base md:text-lg text-neutral-600 dark:text-neutral-300 leading-relaxed">
             {t("landing.heroDesc")}
           </p>
           <div className="mt-10 flex flex-row justify-center gap-3 sm:gap-4">
@@ -152,7 +153,7 @@ export function LandingContent() {
 
         {/* Social Proof */}
         <section className="border-y border-neutral-100 dark:border-neutral-800 py-12 sm:py-16">
-          <div className="mx-auto max-w-5xl px-4 sm:px-6">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6">
             <div className="text-center mb-6 sm:mb-8">
               <p className="inline-flex items-center gap-2 rounded-full bg-neutral-100 dark:bg-neutral-800 px-3 sm:px-4 py-1.5 text-[10px] sm:text-xs font-medium uppercase tracking-wider text-neutral-600 dark:text-neutral-300">
                 <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
@@ -165,6 +166,8 @@ export function LandingContent() {
                 { value: "80+", label: t("landing.wcagRules"), icon: "scan" },
                 { value: "6", label: "Standards Covered", icon: "shield" },
                 { value: "24/7", label: "Continuous Monitoring", icon: "clock" },
+                { value: "99.9%", label: "Uptime SLA", icon: "uptime" },
+                { value: "50+", label: "Pages per Scan", icon: "globe" },
               ]}
             />
           </div>
