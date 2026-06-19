@@ -377,6 +377,7 @@ export async function runAccessibilityScan(
           statesRevealed: 0,
           revealedViolationCount: 0,
           keyboardFindings: [],
+          tabStopsTraversed: 0,
           notes: ["Deep scan could not complete; standard scan results were returned."],
         };
       }
