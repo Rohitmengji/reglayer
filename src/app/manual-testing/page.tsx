@@ -112,6 +112,7 @@ export default function ManualTestingPage() {
 
   useEffect(() => {
     let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: kick off the initial client-side data fetch (sets loading state synchronously)
     loadAudits().then(() => { if (cancelled) return; });
     return () => { cancelled = true; };
   }, [loadAudits]);
