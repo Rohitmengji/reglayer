@@ -11,6 +11,12 @@ export interface ArticleSection {
   list?: string[];
   callout?: { title: string; body: string };
   stats?: Array<{ value: string; label: string; color: string; labelColor: string; bg: string; border: string }>;
+  // Client-friendly blocks (added via the block editor). All optional so existing
+  // articles stay valid; the public renderer renders whichever are present.
+  image?: { url: string; alt: string };
+  quote?: { text: string; attribution?: string };
+  button?: { label: string; url: string };
+  divider?: boolean;
 }
 
 export interface ArticleContent {

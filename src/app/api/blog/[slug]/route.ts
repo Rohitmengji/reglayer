@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
+import { validateArticleContent } from "@/lib/blog/blockHelpers";
 
 interface RouteParams {
   params: Promise<{ slug: string }>;
@@ -53,6 +54,15 @@ export async function PATCH(request: Request, { params }: RouteParams) {
   const body = await request.json().catch(() => null);
   if (!body) {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
+  }
+
+  // Validate content shape before it's ever persisted (defensive — never store a
+  // shape the public renderer can't handle, even though this route is admin-only).
+  if (body.content !== undefined) {
+    const check = validateArticleContent(body.content);
+    if (!check.ok) {
+      return NextResponse.json({ error: `Invalid content: ${check.error}` }, { status: 400 });
+    }
   }
 
   const article = await prisma.article.findUnique({ where: { slug } });
