@@ -9,6 +9,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useI18n } from "@/components/i18n-provider";
+import { AppShell } from "@/components/layout/app-shell";
 import {
   Shield,
   ShieldCheck,
@@ -125,14 +126,17 @@ export default function VaultPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
-      </div>
+      <AppShell>
+        <div className="flex min-h-[60vh] items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-[3px] border-neutral-200 border-t-neutral-900 dark:border-neutral-700 dark:border-t-white" />
+        </div>
+      </AppShell>
     );
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+    <AppShell>
+      <div className="space-y-8">
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3">
@@ -140,10 +144,10 @@ export default function VaultPage() {
             <Shield className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">
               {t("vault.title")}
             </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">
               {t("vault.subtitle")}
             </p>
           </div>
@@ -152,24 +156,24 @@ export default function VaultPage() {
 
       {/* Stats */}
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-4">
-        <div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-          <div className="text-sm text-gray-500 dark:text-gray-400">Total Proofs</div>
-          <div className="text-2xl font-bold text-gray-900 dark:text-white">{total}</div>
+        <div className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-700 dark:bg-neutral-800">
+          <div className="text-sm text-neutral-500 dark:text-neutral-400">Total Proofs</div>
+          <div className="text-2xl font-bold text-neutral-900 dark:text-white">{total}</div>
         </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-          <div className="text-sm text-gray-500 dark:text-gray-400">Valid</div>
+        <div className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-700 dark:bg-neutral-800">
+          <div className="text-sm text-neutral-500 dark:text-neutral-400">Valid</div>
           <div className="text-2xl font-bold text-green-600">
             {proofs.filter((p) => getStatus(p) === "valid").length}
           </div>
         </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-          <div className="text-sm text-gray-500 dark:text-gray-400">Expired</div>
+        <div className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-700 dark:bg-neutral-800">
+          <div className="text-sm text-neutral-500 dark:text-neutral-400">Expired</div>
           <div className="text-2xl font-bold text-amber-600">
             {proofs.filter((p) => getStatus(p) === "expired").length}
           </div>
         </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-          <div className="text-sm text-gray-500 dark:text-gray-400">Revoked</div>
+        <div className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-700 dark:bg-neutral-800">
+          <div className="text-sm text-neutral-500 dark:text-neutral-400">Revoked</div>
           <div className="text-2xl font-bold text-red-600">
             {proofs.filter((p) => getStatus(p) === "revoked").length}
           </div>
@@ -178,10 +182,10 @@ export default function VaultPage() {
 
       {/* Proof List */}
       {proofs.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-12 text-center dark:border-gray-600 dark:bg-gray-800/50">
-          <FileCheck className="mx-auto mb-3 h-12 w-12 text-gray-500 dark:text-gray-400" />
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white">No proofs yet</h3>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+        <div className="rounded-lg border border-dashed border-neutral-300 bg-neutral-50 p-12 text-center dark:border-neutral-600 dark:bg-neutral-800/50">
+          <FileCheck className="mx-auto mb-3 h-12 w-12 text-neutral-500 dark:text-neutral-400" />
+          <h3 className="text-lg font-medium text-neutral-900 dark:text-white">No proofs yet</h3>
+          <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
             Compliance proofs are automatically generated when scans complete with passing scores.
           </p>
         </div>
@@ -192,7 +196,7 @@ export default function VaultPage() {
             return (
               <div
                 key={proof.id}
-                className="rounded-lg border border-gray-200 bg-white p-4 transition-shadow hover:shadow-sm dark:border-gray-700 dark:bg-gray-800"
+                className="rounded-lg border border-neutral-200 bg-white p-4 transition-shadow hover:shadow-sm dark:border-neutral-700 dark:bg-neutral-800"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
@@ -206,24 +210,24 @@ export default function VaultPage() {
                       {status === "revoked" && (
                         <ShieldX className="h-4 w-4 shrink-0 text-red-600" />
                       )}
-                      <span className="font-medium text-gray-900 dark:text-white truncate">
+                      <span className="font-medium text-neutral-900 dark:text-white truncate">
                         {proof.title}
                       </span>
                       <span
-                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${TYPE_COLORS[proof.type] ?? "bg-gray-100 text-gray-700"}`}
+                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${TYPE_COLORS[proof.type] ?? "bg-neutral-100 text-neutral-700"}`}
                       >
                         {TYPE_LABELS[proof.type] ?? proof.type}
                       </span>
                     </div>
 
-                    <div className="mt-1.5 flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400 flex-wrap">
+                    <div className="mt-1.5 flex items-center gap-4 text-sm text-neutral-500 dark:text-neutral-400 flex-wrap">
                       <span className="flex items-center gap-1">
                         <ExternalLink className="h-3.5 w-3.5" />
                         {proof.site.name || new URL(proof.site.url).hostname}
                       </span>
                       <span>{proof.standard}</span>
                       {proof.score !== null && (
-                        <span className="font-medium text-gray-700 dark:text-gray-300">
+                        <span className="font-medium text-neutral-700 dark:text-neutral-300">
                           Score: {proof.score.toFixed(0)}
                         </span>
                       )}
@@ -236,7 +240,7 @@ export default function VaultPage() {
                       </span>
                     </div>
 
-                    <div className="mt-1.5 flex items-center gap-1 text-xs font-mono text-gray-400 dark:text-gray-500">
+                    <div className="mt-1.5 flex items-center gap-1 text-xs font-mono text-neutral-400 dark:text-neutral-500">
                       <Hash className="h-3 w-3" />
                       <span className="truncate">{proof.hash}</span>
                     </div>
@@ -261,7 +265,7 @@ export default function VaultPage() {
                     <button
                       onClick={() => handleVerify(proof.id)}
                       disabled={verifying === proof.id}
-                      className="rounded-md border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                      className="rounded-md border border-neutral-200 px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50 dark:border-neutral-600 dark:text-neutral-300 dark:hover:bg-neutral-700"
                     >
                       {verifying === proof.id ? "Verifying..." : "Verify"}
                     </button>
@@ -269,7 +273,7 @@ export default function VaultPage() {
                       onClick={() => downloadProof(proof)}
                       aria-label={`Download proof ${proof.title}`}
                       title="Download proof (JSON)"
-                      className="rounded-md border border-gray-200 p-1.5 text-gray-500 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-700"
+                      className="rounded-md border border-neutral-200 p-1.5 text-neutral-500 hover:bg-neutral-50 dark:border-neutral-600 dark:text-neutral-400 dark:hover:bg-neutral-700"
                     >
                       <Download className="h-4 w-4" aria-hidden="true" />
                     </button>
@@ -281,5 +285,6 @@ export default function VaultPage() {
         </div>
       )}
     </div>
+    </AppShell>
   );
 }

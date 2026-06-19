@@ -290,7 +290,7 @@ export default function ScreenReaderPage() {
   return (
     <AppShell>
       <div className="flex-1 overflow-auto">
-        <div className="mx-auto max-w-6xl px-4 py-8 space-y-6">
+        <div className="space-y-8">
           {/* Header */}
           <div>
             <h1 className="text-2xl font-bold text-neutral-900 dark:text-white flex items-center gap-2">

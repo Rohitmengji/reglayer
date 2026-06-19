@@ -10,6 +10,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { useI18n } from "@/components/i18n-provider";
+import { AppShell } from "@/components/layout/app-shell";
 import { RiskScoreBadge } from "@/components/risk/RiskScoreBadge";
 import { RiskBreakdownCard } from "@/components/risk/RiskBreakdownCard";
 import { RiskContextForm } from "@/components/risk/RiskContextForm";
@@ -71,34 +72,37 @@ export default function RiskPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500" />
-      </div>
+      <AppShell>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="h-8 w-8 animate-spin rounded-full border-[3px] border-neutral-200 border-t-neutral-900 dark:border-neutral-700 dark:border-t-white" />
+        </div>
+      </AppShell>
     );
   }
 
   if (error) {
     return (
-      <div className="max-w-4xl mx-auto p-6">
+      <AppShell>
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
           <p className="text-red-700 dark:text-red-300">{error}</p>
         </div>
-      </div>
+      </AppShell>
     );
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">{t("risk.title")}</h1>
-        <p className="text-zinc-500 dark:text-zinc-400 mt-1">
-          {t("risk.subtitle")}
-        </p>
-      </div>
+    <AppShell>
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{t("risk.title")}</h1>
+          <p className="text-neutral-500 dark:text-neutral-400 mt-1">
+            {t("risk.subtitle")}
+          </p>
+        </div>
 
       {!score ? (
-        <div className="bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg p-6">
-          <p className="text-zinc-600 dark:text-zinc-400">
+        <div className="bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg p-6">
+          <p className="text-neutral-600 dark:text-neutral-400">
             No risk score calculated yet. Run a scan and configure your industry context below.
           </p>
           {siteId && (
@@ -114,10 +118,10 @@ export default function RiskPage() {
           <div className="lg:col-span-1 flex flex-col items-center justify-start pt-4">
             <RiskScoreBadge score={score.finalScore} tier={score.tier} />
             <div className="mt-4 text-center">
-              <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+              <p className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
                 {formatExposure(score.estimatedExposure)}
               </p>
-              <p className="text-xs text-zinc-500">{t("risk.exposure")}</p>
+              <p className="text-xs text-neutral-500">{t("risk.exposure")}</p>
             </div>
             <RiskDisclaimer />
           </div>
@@ -144,5 +148,6 @@ export default function RiskPage() {
         </div>
       )}
     </div>
+    </AppShell>
   );
 }
