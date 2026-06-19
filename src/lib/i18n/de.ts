@@ -14,6 +14,7 @@ export const de = {
   "nav.compliance": "Konformität",
   "nav.crawl": "Website crawlen",
   "nav.analysis": "Analyse",
+  "nav.manualTesting": "Manuelles Testen",
   "nav.screenReader": "Screenreader",
   "nav.priorities": "Prioritäten",
   "nav.insights": "KI-Einblicke",

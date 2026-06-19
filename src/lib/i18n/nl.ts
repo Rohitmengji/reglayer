@@ -14,6 +14,7 @@ export const nl = {
   "nav.compliance": "Conformiteit",
   "nav.crawl": "Site crawlen",
   "nav.analysis": "Analyse",
+  "nav.manualTesting": "Handmatig Testen",
   "nav.screenReader": "Schermlezer",
   "nav.priorities": "Prioriteiten",
   "nav.insights": "AI-inzichten",
