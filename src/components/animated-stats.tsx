@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Globe, Scan, Clock, Activity } from "lucide-react";
+import { Globe, Scan, Clock, Activity, Shield } from "lucide-react";
 
 interface Stat {
   value: string;
@@ -14,6 +14,8 @@ const iconMap: Record<string, typeof Globe> = {
   globe: Globe,
   uptime: Activity,
   speed: Clock,
+  shield: Shield,
+  clock: Activity,
 };
 
 function useCountUp(end: number, duration: number, start: boolean, decimals: number = 0) {

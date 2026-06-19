@@ -124,17 +124,17 @@ export function LandingContent() {
           <p className="mx-auto mt-5 max-w-2xl text-base sm:text-lg text-neutral-600 dark:text-neutral-300 leading-relaxed">
             {t("landing.heroDesc")}
           </p>
-          <div className="mt-10 flex flex-col sm:flex-row justify-center gap-4">
+          <div className="mt-10 flex flex-row justify-center gap-3 sm:gap-4">
             <Link
               href="/auth/login"
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-neutral-900 px-6 py-3.5 text-sm font-medium text-white hover:bg-neutral-800 transition-colors"
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-neutral-900 px-4 sm:px-6 py-3 sm:py-3.5 text-sm font-medium text-white hover:bg-neutral-800 transition-colors"
             >
               {t("landing.startScanning")}
               <ArrowRight className="h-4 w-4" />
             </Link>
             <Link
               href="/pricing"
-              className="inline-flex items-center justify-center gap-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-6 py-3.5 text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors"
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-4 sm:px-6 py-3 sm:py-3.5 text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors"
             >
               {t("landing.viewPricing")}
             </Link>
@@ -162,6 +162,8 @@ export function LandingContent() {
               stats={[
                 { value: "< 30s", label: t("landing.scanTime"), icon: "speed" },
                 { value: "80+", label: t("landing.wcagRules"), icon: "scan" },
+                { value: "6", label: "Standards Covered", icon: "shield" },
+                { value: "24/7", label: "Continuous Monitoring", icon: "clock" },
               ]}
             />
           </div>
