@@ -14,6 +14,7 @@ export const fr = {
   "nav.compliance": "Conformité",
   "nav.crawl": "Explorer le site",
   "nav.analysis": "Analyse",
+  "nav.manualTesting": "Tests Manuels",
   "nav.screenReader": "Lecteur d'écran",
   "nav.priorities": "Priorités",
   "nav.insights": "Analyses IA",
