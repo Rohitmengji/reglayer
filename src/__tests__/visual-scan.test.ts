@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { normalizeVisualFindings } from "@/lib/ai/visualScan";
+import { normalizeVisualFindings } from "@/lib/ai/visualFindings";
 
 describe("normalizeVisualFindings", () => {
   it("accepts a {findings:[...]} payload and passes valid entries", () => {
