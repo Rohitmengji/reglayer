@@ -5,6 +5,7 @@ import { ArrowLeft, Clock, Calendar } from "lucide-react";
 import { articles } from "./content";
 import { ArticleEditorWrapper } from "./editor-wrapper";
 import { ArticleActions } from "@/components/blog/article-actions";
+import { safeUrl } from "@/lib/blog/blockHelpers";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -113,6 +114,38 @@ export default async function ArticlePage({ params }: PageProps) {
                   <p className="text-sm text-neutral-700 dark:text-neutral-300">{section.callout.body}</p>
                 </div>
               )}
+              {section.image?.url && safeUrl(section.image.url) && (
+                <figure className="mt-4">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- client-supplied external URLs can't use the next/image optimizer (unconfigured domains) */}
+                  <img
+                    src={safeUrl(section.image.url)}
+                    alt={section.image.alt || ""}
+                    className="rounded-lg border border-neutral-200 dark:border-neutral-700 max-w-full h-auto"
+                  />
+                  {section.image.alt && (
+                    <figcaption className="mt-1.5 text-xs text-neutral-500 dark:text-neutral-400">{section.image.alt}</figcaption>
+                  )}
+                </figure>
+              )}
+              {section.quote?.text && (
+                <blockquote className="mt-4 border-l-4 border-accent pl-4 italic text-neutral-700 dark:text-neutral-300">
+                  <p className="text-base">“{section.quote.text}”</p>
+                  {section.quote.attribution && (
+                    <cite className="mt-1.5 block text-xs not-italic text-neutral-500 dark:text-neutral-400">— {section.quote.attribution}</cite>
+                  )}
+                </blockquote>
+              )}
+              {section.button?.label && safeUrl(section.button.url) && (
+                <div className="mt-4">
+                  <a
+                    href={safeUrl(section.button.url)}
+                    className="inline-flex items-center rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent/90 transition-colors"
+                  >
+                    {section.button.label}
+                  </a>
+                </div>
+              )}
+              {section.divider && <hr className="mt-6 border-neutral-200 dark:border-neutral-700" />}
             </section>
           ))}
         </div>
