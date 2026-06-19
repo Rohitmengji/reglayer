@@ -1070,6 +1070,7 @@ export const it = {
   "landing.sitesScanned": "Siti scansionati",
   "landing.countries": "Paesi",
   "landing.uptime": "Disponibilità",
+  "landing.wcagRules": "Regole WCAG verificate",
   "landing.scanTime": "Tempo di scansione",
   "landing.featuresSubtitle": "Per sviluppatori e responsabili conformità che devono soddisfare gli standard globali di accessibilità.",
   "landing.deepScanningDesc": "Analisi axe-core contro WCAG 2.2 AA con Chromium headless. Risultati in meno di 30 secondi.",

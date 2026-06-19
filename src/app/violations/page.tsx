@@ -109,7 +109,10 @@ export default function ViolationsPage() {
     // Map tab to status query
     let statusParam = "";
     if (activeTab === "EXCEPTIONS") {
-      statusParam = "WONT_FIX";
+      // Both exception statuses in ONE query — the API does `status IN (...)`, so
+      // pagination and `total` stay correct (was two paged fetches concatenated,
+      // which over-filled pages and desynced the page count).
+      statusParam = "WONT_FIX,ACCEPTABLE_RISK";
     } else if (activeTab !== "ALL") {
       statusParam = activeTab;
     }
@@ -128,20 +131,6 @@ export default function ViolationsPage() {
         throw new Error(errData.message ?? `Error ${response.status}`);
       }
       const result: ViolationsResponse = await response.json();
-
-      // If filtering by exceptions, also fetch ACCEPTABLE_RISK and merge
-      if (activeTab === "EXCEPTIONS") {
-        // Paginate the second exception status in lock-step with the first
-        // (was hardcoded page:"1", so paging past 1 silently dropped/duplicated rows).
-        const params2 = new URLSearchParams({ scanId: effectiveScanId, page: String(currentPage), limit: "25", status: "ACCEPTABLE_RISK" });
-        const resp2 = await fetch(`/api/violations?${params2}`);
-        if (resp2.ok) {
-          const extra: ViolationsResponse = await resp2.json();
-          result.violations = [...result.violations, ...extra.violations];
-          result.total += extra.total;
-        }
-      }
-
       setData(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load violations");

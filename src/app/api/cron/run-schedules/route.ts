@@ -334,18 +334,34 @@ async function handleRegression(
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://reglayer.vercel.app";
   const reportUrl = `${appUrl}/scans/${regression.currentScanId}`;
 
-  // Email alert to workspace owner
+  // Email alert to workspace owner — but honor their notification preferences.
+  // A regression is a compliance drop / new-violations event, so gate on those
+  // toggles (default ON when the owner has no preference row).
   if (ownerEmail) {
-    await sendRegressionAlert(ownerEmail, {
-      url: regression.url,
-      previousScore: regression.previousScore ?? 0,
-      currentScore: regression.currentScore,
-      scoreDelta: regression.scoreDelta,
-      newViolations: regression.newViolations,
-      fixedViolations: regression.fixedViolations,
-      reportUrl,
-      scheduleName: scheduleName || "Scheduled scan",
-    }).catch(() => {});
+    const owner = await prisma.user.findUnique({
+      where: { email: ownerEmail },
+      select: { id: true },
+    });
+    const prefs = owner
+      ? await prisma.notificationPreference.findUnique({
+          where: { userId: owner.id },
+          select: { complianceAlerts: true, newViolations: true },
+        })
+      : null;
+    const wantsRegressionEmail = !prefs || prefs.complianceAlerts || prefs.newViolations;
+
+    if (wantsRegressionEmail) {
+      await sendRegressionAlert(ownerEmail, {
+        url: regression.url,
+        previousScore: regression.previousScore ?? 0,
+        currentScore: regression.currentScore,
+        scoreDelta: regression.scoreDelta,
+        newViolations: regression.newViolations,
+        fixedViolations: regression.fixedViolations,
+        reportUrl,
+        scheduleName: scheduleName || "Scheduled scan",
+      }).catch(() => {});
+    }
   }
 
   // Dispatch to integrations (Slack, etc.) with regression context

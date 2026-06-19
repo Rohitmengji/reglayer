@@ -29,11 +29,21 @@ export async function POST() {
     return NextResponse.json({ error: "No billing account" }, { status: 404 });
   }
 
-  const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
-  const portalSession = await stripe.billingPortal.sessions.create({
-    customer: user.memberships[0].workspace.stripeCustomerId,
-    return_url: `${baseUrl}/settings?tab=billing`,
-  });
+  // The `!stripe` guard only catches an absent key; a present-but-invalid key
+  // would throw here and 500. Wrap and return a clean 502.
+  try {
+    const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
+    const portalSession = await stripe.billingPortal.sessions.create({
+      customer: user.memberships[0].workspace.stripeCustomerId,
+      return_url: `${baseUrl}/settings?tab=billing`,
+    });
 
-  return NextResponse.json({ url: portalSession.url });
+    return NextResponse.json({ url: portalSession.url });
+  } catch (err) {
+    console.error("[billing/portal] Stripe error:", err);
+    return NextResponse.json(
+      { error: "Could not open billing portal. Billing is temporarily unavailable." },
+      { status: 502 }
+    );
+  }
 }

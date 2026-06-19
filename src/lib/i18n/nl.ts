@@ -1070,6 +1070,7 @@ export const nl = {
   "landing.sitesScanned": "Gescande sites",
   "landing.countries": "Landen",
   "landing.uptime": "Beschikbaarheid",
+  "landing.wcagRules": "Gecontroleerde WCAG-regels",
   "landing.scanTime": "Scantijd",
   "landing.featuresSubtitle": "Voor ontwikkelaars en compliance-medewerkers die mondiale toegankelijkheidsstandaarden moeten naleven.",
   "landing.deepScanningDesc": "axe-core analyse tegen WCAG 2.2 AA met headless Chromium. Resultaten in minder dan 30 seconden.",

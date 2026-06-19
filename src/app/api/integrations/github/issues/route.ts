@@ -3,7 +3,9 @@
  *
  * WHY: Teams want to auto-create GitHub issues from accessibility violations.
  * WHAT: POST creates GitHub issues for selected violations with labels and assignees.
- * HOW: Uses GitHub API with connected OAuth token. Creates issues with violation details + fix guidance.
+ * HOW: Uses the GitHub REST API with a Personal Access Token (PAT) supplied by the
+ *      client in the request body (owner/repo/token) — there is no GitHub OAuth flow.
+ *      Creates issues with violation details + fix guidance.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";

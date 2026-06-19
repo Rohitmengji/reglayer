@@ -23,7 +23,7 @@ interface RevenueResult {
   unreachableVisitorsMonthly: number;
   breakdown: Record<string, { visitors: number; revenue: number; description: string }>;
   costPerViolation: number;
-  industryComparison: { avgScore: number; percentile: number; competitorEstimate: string };
+  industryComparison: { avgScore: number; yourScore: number; competitorEstimate: string };
   legalRisk: { level: string; estimatedLitigationCost: number; lawsuitProbability: string; relevantLaws: string[] };
   recommendations: Array<{ action: string; potentialRecovery: number; effort: string; priority: number }>;
   accessibility: { score: number; totalViolations: number; critical: number; serious: number; moderate: number; minor: number };
@@ -162,10 +162,11 @@ export default function RevenueImpactPage() {
                 <CardContent className="pt-6">
                   <div className="flex items-center gap-2 mb-2">
                     <BarChart3 className="h-5 w-5 text-blue-500" />
-                    <span className="text-sm text-muted-foreground">Percentile</span>
+                    <span className="text-sm text-muted-foreground">Score vs. Baseline</span>
                   </div>
                   <p className="text-3xl font-bold">
-                    {result.industryComparison.percentile}th
+                    {result.industryComparison.yourScore}
+                    <span className="text-base font-normal text-muted-foreground"> / {result.industryComparison.avgScore} avg</span>
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">{result.industryComparison.competitorEstimate}</p>
                 </CardContent>

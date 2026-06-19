@@ -20,6 +20,7 @@ import type {
   ViolationImpact,
   ScanStatus,
 } from "@/lib/types";
+import { scoreFromStoredViolations } from "@/lib/scoring/reportScore";
 
 type ScanWithViolations = Scan & { violations: Violation[] };
 
@@ -62,7 +63,11 @@ export function mapPrismaScanToResult(scan: ScanWithViolations): ScanResult {
       serious: scan.serious ?? 0,
       moderate: scan.moderate ?? 0,
       minor: scan.minor ?? 0,
-      score: scan.score ?? 0,
+      // Recompute from the violations actually shown, via the canonical helper —
+      // the same source of truth report/[id], the badge, and the certificate use.
+      // Guarantees one scan shows ONE score everywhere, even for legacy rows whose
+      // stored `score` predates the current formula.
+      score: scoreFromStoredViolations(scan.violations ?? []),
     },
     violations: (scan.violations ?? []).map(mapViolation),
     screenshot: scan.screenshot ?? undefined,

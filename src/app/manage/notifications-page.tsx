@@ -18,16 +18,18 @@ interface NotificationPrefs {
   newViolations: boolean;
   complianceAlerts: boolean;
   teamActivity: boolean;
-  scheduledReports: boolean;
 }
 
+// Only toggles backed by a real delivery path are shown. Each maps to code that
+// actually gates an email: scanComplete (scanService), newViolations/teamActivity
+// (notification feed), complianceAlerts (scheduled-scan regression alerts),
+// weeklyDigest (digest cron). "Scheduled Reports" was removed — nothing sent one.
 const notificationSettings = [
   { key: "scanComplete" as const, label: "Scan Complete", description: "Get notified when a scan finishes running" },
   { key: "newViolations" as const, label: "New Violations Detected", description: "Alert when new accessibility issues are found" },
-  { key: "complianceAlerts" as const, label: "Compliance Status Changes", description: "Notify when compliance level drops below threshold" },
+  { key: "complianceAlerts" as const, label: "Compliance Status Changes", description: "Notify when a scheduled scan detects a compliance regression" },
   { key: "weeklyDigest" as const, label: "Weekly Digest", description: "Summary of accessibility progress every Monday" },
   { key: "teamActivity" as const, label: "Team Activity", description: "When team members join, leave, or change roles" },
-  { key: "scheduledReports" as const, label: "Scheduled Reports", description: "Receive automated compliance reports on schedule" },
 ];
 
 export default function NotificationsPage() {
@@ -37,7 +39,6 @@ export default function NotificationsPage() {
     newViolations: true,
     complianceAlerts: true,
     teamActivity: false,
-    scheduledReports: false,
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

@@ -1321,6 +1321,7 @@ export const en = {
   "landing.sitesScanned": "Sites Scanned",
   "landing.countries": "Countries",
   "landing.uptime": "Uptime",
+  "landing.wcagRules": "WCAG Rules Checked",
   "landing.scanTime": "Scan Time",
 
   // Landing page — features
@@ -1334,10 +1335,10 @@ export const en = {
   "landing.multiStandardDesc": "Compliance scores mapped to WCAG 2.2, ADA, Section 508, EAA, and EN 301 549 with trend analytics.",
   "landing.auditReports": "Audit-Ready Reports",
   "landing.auditReportsDesc": "Generate PDF and HTML compliance reports for auditors, legal teams, and regulatory bodies.",
-  "landing.aiFixes": "AI Fix Suggestions",
-  "landing.aiFixesDesc": "GPT-powered explanations with code-level remediation steps for every violation.",
-  "landing.continuousMonitoring": "Continuous Monitoring",
-  "landing.continuousMonitoringDesc": "Scheduled scans with alerts for regressions. Catch issues in CI/CD before deployment.",
+  "landing.aiFixes": "Automated Fix Suggestions",
+  "landing.aiFixesDesc": "Rule-based remediation steps with code snippets for every violation. AI explanations available when configured.",
+  "landing.continuousMonitoring": "Scheduled Monitoring",
+  "landing.continuousMonitoringDesc": "Recurring scans on your schedule with alerts for regressions. Gate deployments via the CI/CD API.",
 
   // Landing page — compliance standards
   "landing.builtForStandards": "Built for worldwide accessibility standards",
@@ -1366,14 +1367,14 @@ export const en = {
   "landing.testimonial3Role": "CTO, E-commerce (Paris)",
 
   // Landing page — trust badges
-  "landing.soc2": "SOC 2 Type II",
-  "landing.soc2Sub": "Enterprise security",
+  "landing.soc2": "Security-First",
+  "landing.soc2Sub": "Encrypted at rest & transit",
   "landing.gdpr": "GDPR Compliant",
   "landing.gdprSub": "EU data processing",
   "landing.euHosted": "EU Hosted",
   "landing.euHostedSub": "Frankfurt data center",
-  "landing.ssoRbac": "SSO & RBAC",
-  "landing.ssoRbacSub": "Enterprise access control",
+  "landing.ssoRbac": "RBAC",
+  "landing.ssoRbacSub": "Role-based access control",
 
   // Landing page — final CTA
   "landing.ctaTitle": "Don't wait for the EAA deadline",

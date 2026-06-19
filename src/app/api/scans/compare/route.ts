@@ -13,6 +13,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { assertScanAccess } from "@/lib/auth/access";
 import { prisma } from "@/lib/database/prisma";
+import { scoreFromStoredViolations } from "@/lib/scoring/reportScore";
 
 /**
  * Scan Comparison API
@@ -83,7 +84,12 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  const scoreDelta = (headScan.score ?? 0) - (baseScan.score ?? 0);
+  // Recompute both panels' scores from their violations via the canonical helper,
+  // so the Before/After hero numbers and the delta chip always match the score
+  // shown on report/[id], the badge, and the certificate for the same scan.
+  const baseScore = scoreFromStoredViolations(baseScan.violations);
+  const headScore = scoreFromStoredViolations(headScan.violations);
+  const scoreDelta = headScore - baseScore;
   const complianceDelta = (headScan.compliance ?? 0) - (baseScan.compliance ?? 0);
 
   return NextResponse.json({
@@ -91,14 +97,14 @@ export async function GET(request: NextRequest) {
       base: {
         id: baseScan.id,
         url: baseScan.url,
-        score: baseScan.score,
+        score: baseScore,
         totalViolations: baseScan.totalViolations,
         scannedAt: baseScan.createdAt,
       },
       head: {
         id: headScan.id,
         url: headScan.url,
-        score: headScan.score,
+        score: headScore,
         totalViolations: headScan.totalViolations,
         scannedAt: headScan.createdAt,
       },

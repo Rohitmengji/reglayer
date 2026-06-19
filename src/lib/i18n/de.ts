@@ -1446,6 +1446,7 @@ export const de = {
   "landing.sitesScanned": "Gescannte Websites",
   "landing.countries": "Länder",
   "landing.uptime": "Verfügbarkeit",
+  "landing.wcagRules": "Geprüfte WCAG-Regeln",
   "landing.scanTime": "Scan-Zeit",
   "landing.featuresSubtitle": "Für Entwickler und Compliance-Beauftragte, die weltweite Barrierefreiheitsstandards erfüllen müssen — WCAG, ADA, EAA, Section 508 und mehr.",
   "landing.deepScanningDesc": "axe-core-basierte Analyse gegen WCAG 2.2 AA mit headless Chromium. Streng wie ein manueller Tester. Ergebnisse in unter 30 Sekunden.",
