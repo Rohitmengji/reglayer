@@ -241,6 +241,39 @@ export default function ManualTestingPage() {
           </div>
         </header>
 
+        {/* Value proposition — helps users understand what this page does */}
+        {!selectedAudit && !planLoading && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="flex items-start gap-3 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4">
+              <div className="h-8 w-8 rounded-lg bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center shrink-0">
+                <Eye className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-neutral-900 dark:text-white">Human Verification</p>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">Test focus order, keyboard access, and semantic meaning that scanners miss</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4">
+              <div className="h-8 w-8 rounded-lg bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0">
+                <Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-neutral-900 dark:text-white">AI-Guided Steps</p>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">Get specific testing instructions for each criterion with accessibility tree evidence</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4">
+              <div className="h-8 w-8 rounded-lg bg-green-100 dark:bg-green-900/40 flex items-center justify-center shrink-0">
+                <Shield className="h-4 w-4 text-green-600 dark:text-green-400" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-neutral-900 dark:text-white">Legal-Ready Record</p>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">Attested verdicts feed into VPAT and Defense File for procurement & litigation</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div aria-live="polite" aria-atomic="true" className="sr-only">{successMsg}{error}</div>
 
         {successMsg && (
@@ -330,11 +363,30 @@ export default function ManualTestingPage() {
                 </CardContent>
               </Card>
             ) : !error ? (
-              <Card className="border-dashed">
-                <CardContent className="p-8 text-center">
-                  <ClipboardCheck className="h-10 w-10 text-neutral-300 dark:text-neutral-600 mx-auto mb-3" aria-hidden="true" />
-                  <p className="text-sm font-medium text-neutral-700 dark:text-neutral-200">No manual test audits yet</p>
-                  <p className="text-xs text-neutral-500 mt-1 max-w-md mx-auto">Generate your first manual test plan from a completed scan to start verifying WCAG criteria that require human judgment.</p>
+              <Card className="border-dashed border-neutral-200 dark:border-neutral-800">
+                <CardContent className="p-8">
+                  <div className="text-center mb-6">
+                    <ClipboardCheck className="h-10 w-10 text-neutral-300 dark:text-neutral-600 mx-auto mb-3" aria-hidden="true" />
+                    <p className="text-sm font-medium text-neutral-700 dark:text-neutral-200">No manual test audits yet</p>
+                    <p className="text-xs text-neutral-500 mt-1 max-w-md mx-auto">Generate your first manual test plan from a completed scan to start verifying WCAG criteria that require human judgment.</p>
+                  </div>
+                  <div className="border-t border-neutral-100 dark:border-neutral-800 pt-5 mt-5">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-3">How it works</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="flex items-start gap-2">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-900/40 text-[10px] font-bold text-violet-600">1</span>
+                        <p className="text-xs text-neutral-600 dark:text-neutral-400">Run a scan on any page, then paste the scan ID above</p>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-900/40 text-[10px] font-bold text-violet-600">2</span>
+                        <p className="text-xs text-neutral-600 dark:text-neutral-400">We generate a structured checklist of criteria needing human judgment</p>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-900/40 text-[10px] font-bold text-violet-600">3</span>
+                        <p className="text-xs text-neutral-600 dark:text-neutral-400">Record pass/fail verdicts — attested results feed VPAT &amp; Defense File</p>
+                      </div>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             ) : null}
