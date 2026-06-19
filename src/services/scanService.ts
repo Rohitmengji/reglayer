@@ -291,6 +291,9 @@ export async function persistScan(
       metadata: {
         browserEngine: scan.metadata.browserEngine,
         axeCoreVersion: scan.metadata.axeCoreVersion,
+        ...((scan.metadata.deepScan
+          ? { deepScan: scan.metadata.deepScan }
+          : {}) as Record<string, unknown>),
         ...(scope?.metadata ?? {}),
       },
       violations: {

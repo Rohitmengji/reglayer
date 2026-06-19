@@ -27,6 +27,7 @@ import { performScan } from "@/services/scanService";
 import { authOptions } from "@/lib/auth/config";
 import { logger } from "@/lib/telemetry/logger";
 import { getPlanContext, getMonthlyScansCount } from "@/lib/credits/plan-context";
+import { PLAN_LIMITS, type PlanType } from "@/lib/credits/plan-limits";
 import { rateLimit, RATE_LIMITS, rateLimitHeaders } from "@/lib/rate-limit";
 import { AuthenticationError } from "@/lib/scanner/auth";
 import { cacheSetNX, cacheDel } from "@/lib/cache/redis";
@@ -104,6 +105,20 @@ export async function POST(request: NextRequest) {
             { status: 429 }
           );
         }
+      }
+    }
+
+    // Deep Scan is a paid capability — gate server-side (defense-in-depth; the UI
+    // hides the toggle for FREE). A FREE caller requesting it gets a clear upgrade
+    // prompt rather than a silently-downgraded scan.
+    if (options?.deep) {
+      const plan = (planCtx?.plan ?? "FREE") as PlanType;
+      if (!PLAN_LIMITS[plan]?.features?.deepScan) {
+        await cacheDel(dedupKey);
+        return NextResponse.json(
+          { error: "Deep Scan requires a PRO or Enterprise plan.", upgradeRequired: true },
+          { status: 403 }
+        );
       }
     }
 

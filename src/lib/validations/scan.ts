@@ -36,6 +36,7 @@ export const scanRequestSchema = z.object({
       timeout: z.number().min(1000).max(60000).optional(),
       tags: z.array(z.string()).optional(),
       auth: authConfigSchema.optional(),
+      deep: z.boolean().optional(),
     })
     .optional(),
 });

@@ -151,6 +151,62 @@ export default function ScanDetailPage({
         {/* Score */}
         <ScoreCard summary={scan.summary} />
 
+        {/* Deep Scan report — only when a deep scan ran */}
+        {scan.metadata.deepScan?.ran && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Cpu className="h-4 w-4" />
+                Deep Scan
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <p className="text-neutral-600 dark:text-neutral-300">
+                Beyond the initial page, revealed{" "}
+                <strong>{scan.metadata.deepScan.statesRevealed}</strong> interactive state(s) and re-scanned them
+                {scan.metadata.deepScan.revealedViolationCount > 0 ? (
+                  <>
+                    {" "}— surfacing <strong>{scan.metadata.deepScan.revealedViolationCount}</strong> additional issue(s),
+                    now included in the violations above.
+                  </>
+                ) : (
+                  <> — no extra issues were hidden in interactive content.</>
+                )}
+              </p>
+
+              {scan.metadata.deepScan.keyboardFindings.length > 0 && (
+                <div>
+                  <p className="font-medium text-neutral-900 dark:text-white">
+                    Keyboard reachability ({scan.metadata.deepScan.keyboardFindings.length})
+                  </p>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-1.5">
+                    Heuristic checks — reported separately, not folded into the automated score.
+                  </p>
+                  <ul className="space-y-1">
+                    {scan.metadata.deepScan.keyboardFindings.slice(0, 20).map((f, i) => (
+                      <li
+                        key={`${f.selector}-${i}`}
+                        className="rounded-md border border-neutral-100 dark:border-neutral-700 px-2.5 py-1.5"
+                      >
+                        <code className="text-xs text-neutral-500 dark:text-neutral-400 wrap-break-word">{f.selector}</code>
+                        <span className="block text-xs text-neutral-700 dark:text-neutral-300">{f.issue}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {scan.metadata.deepScan.notes.length > 0 && (
+                <ul className="list-disc pl-4 text-xs text-neutral-500 dark:text-neutral-400">
+                  {scan.metadata.deepScan.notes.map((n, i) => (
+                    <li key={i}>{n}</li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         {/* Compliance Rules */}
         {compliance && (
         <Card>

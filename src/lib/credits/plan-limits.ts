@@ -18,6 +18,7 @@ export const PLAN_LIMITS = {
       scheduledScans: false,
       webhooks: 0,
       manualTesting: false,
+      deepScan: false,
     },
   },
   PRO: {
@@ -34,6 +35,7 @@ export const PLAN_LIMITS = {
       scheduledScans: true,
       webhooks: 3,
       manualTesting: true,
+      deepScan: true,
     },
   },
   ENTERPRISE: {
@@ -50,6 +52,7 @@ export const PLAN_LIMITS = {
       scheduledScans: true,
       webhooks: -1, // unlimited
       manualTesting: true,
+      deepScan: true,
     },
   },
 } as const;
