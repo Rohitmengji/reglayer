@@ -121,7 +121,10 @@ export default function ManualTestingPage() {
     setPlanLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/audits/${encodeURIComponent(auditId)}/plan`);
+      // Request AI enrichment so guidance is genuinely AI-drafted (the server
+      // caps + caches per item, so this only spends credits on first load and
+      // degrades to static guidance when AI is unavailable).
+      const res = await fetch(`/api/audits/${encodeURIComponent(auditId)}/plan?enrich=true`);
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         if (res.status === 403) throw new Error("You don't have access to this audit.");

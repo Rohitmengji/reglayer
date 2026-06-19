@@ -4,16 +4,23 @@
  * HOW: Auth → IDOR guard → return plan. Optionally fills AI guidance on demand.
  */
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
+import { applyRateLimit } from "@/lib/rate-limit-middleware";
 import { PLAN_LIMITS, type PlanType } from "@/lib/credits/plan-limits";
 import { generateGuidance } from "@/lib/ai/manualTestGuidance";
-import type { ManualTestPlan, ManualTestItem } from "@/lib/testing/manualTestPlan";
+import type { ManualTestPlan } from "@/lib/testing/manualTestPlan";
+
+/** Cap AI-guidance generation per request: bounds credit spend AND keeps the
+ *  serverless function well under its time budget (each call hits OpenAI). The
+ *  plan is pre-sorted by litigation risk, so the highest-priority criteria are
+ *  enriched first; repeat loads enrich the next batch until all are done. */
+const MAX_ENRICH_PER_REQUEST = 8;
 
 export async function GET(
-  _request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -21,6 +28,11 @@ export async function GET(
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
+
+    // Enrichment generates AI guidance (spends credits + calls OpenAI), so this
+    // GET is a sensitive, side-effecting read — rate-limit it like a mutation.
+    const rl = await applyRateLimit(request, "api");
+    if (rl) return rl;
 
     const { id } = await params;
 
@@ -80,43 +92,64 @@ export async function GET(
       return NextResponse.json({ error: "No test plan generated" }, { status: 404 });
     }
 
-    // Check if AI guidance enrichment was requested (and not already done)
-    const url = new URL(_request.url);
-    const enrichAI = url.searchParams.get("enrich") === "true";
+    // AI-guidance enrichment (opt-in via ?enrich=true). Makes "AI-Guided" real:
+    // the UI requests it on plan load, and the AI drafts richer per-criterion
+    // guidance. Idempotent — only un-enriched, untested items are processed, so
+    // once an item is AI-enriched it's never re-charged on later loads.
+    const enrichAI = request.nextUrl.searchParams.get("enrich") === "true";
 
     if (enrichAI) {
-      // Plan gate already verified above — safe to enrich
-      let updated = false;
-      const updatedItems: ManualTestItem[] = [];
+      // Highest-priority un-enriched items first (plan is pre-sorted by risk),
+      // capped per request — see MAX_ENRICH_PER_REQUEST.
+      const toEnrich = plan.items
+        .filter((it) => !it.aiGenerated && it.verdict === "untested")
+        .slice(0, MAX_ENRICH_PER_REQUEST);
 
-      for (const item of plan.items) {
-        if (!item.aiGenerated && item.verdict === "untested") {
+      if (toEnrich.length > 0) {
+        // Generate guidance OUTSIDE any transaction — these are slow OpenAI calls
+        // and must never hold a DB row lock.
+        const enriched = new Map<string, string>();
+        for (const item of toEnrich) {
           const result = await generateGuidance(item, user.id);
-          if (result.aiGenerated) {
-            updatedItems.push({ ...item, guidance: result.guidance, aiGenerated: true });
-            updated = true;
-          } else {
-            updatedItems.push(item);
-          }
-        } else {
-          updatedItems.push(item);
+          if (result.aiGenerated) enriched.set(item.criterion, result.guidance);
         }
-      }
 
-      if (updated) {
-        const updatedPlan = { ...plan, items: updatedItems };
-        await prisma.auditRequest.update({
-          where: { id },
-          data: { findings: updatedPlan as unknown as object },
-        });
-        return NextResponse.json({
-          plan: updatedPlan,
-          scores: {
-            automated: audit.automatedScore,
-            manual: audit.manualScore,
-            combined: audit.combinedScore,
-          },
-        });
+        if (enriched.size > 0) {
+          // Persist under a row lock, merging ONLY guidance+aiGenerated into the
+          // freshly-read items — so a verdict written concurrently (PATCH) or a
+          // concurrent enrich is never clobbered; already-enriched items stay put.
+          const mergedPlan = await prisma.$transaction(async (tx) => {
+            await tx.$queryRaw`SELECT id FROM audit_requests WHERE id = ${id} FOR UPDATE`;
+            const fresh = await tx.auditRequest.findUnique({
+              where: { id },
+              select: { findings: true },
+            });
+            const freshPlan = fresh?.findings as unknown as ManualTestPlan | null;
+            if (!freshPlan?.items) return null;
+            const items = freshPlan.items.map((it) =>
+              enriched.has(it.criterion) && !it.aiGenerated
+                ? { ...it, guidance: enriched.get(it.criterion) as string, aiGenerated: true }
+                : it
+            );
+            const updatedPlan = { ...freshPlan, items };
+            await tx.auditRequest.update({
+              where: { id },
+              data: { findings: updatedPlan as unknown as object },
+            });
+            return updatedPlan;
+          });
+
+          if (mergedPlan) {
+            return NextResponse.json({
+              plan: mergedPlan,
+              scores: {
+                automated: audit.automatedScore,
+                manual: audit.manualScore,
+                combined: audit.combinedScore,
+              },
+            });
+          }
+        }
       }
     }
 

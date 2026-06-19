@@ -49,6 +49,13 @@ export interface ManualTestPlan {
   scanId: string;
   generatedAt: string;
   snapshotRef: { capturedAt: string; totalElements: number } | null;
+  /**
+   * How many A/AA criteria the automated scan actually covered (i.e. eligible
+   * criteria NOT in the manual plan). Stored at build time so combinedScore can
+   * weight the automated side exactly, instead of a fragile `TOTAL - items.length`
+   * literal that breaks if the catalog changes.
+   */
+  automatedCriteriaCount: number;
   items: ManualTestItem[];
 }
 
@@ -255,6 +262,9 @@ export function buildTestPlan(
   // Sort by litigation risk weight (highest first)
   manualItems.sort((a, b) => getLitigationWeight(b.criterion) - getLitigationWeight(a.criterion));
 
+  // Criteria scored purely by automation = eligible A/AA minus the manual set.
+  const automatedCriteriaCount = Math.max(0, eligible.length - manualItems.length);
+
   return {
     version: 1,
     scanId,
@@ -262,6 +272,7 @@ export function buildTestPlan(
     snapshotRef: snapshot
       ? { capturedAt: snapshot.capturedAt, totalElements: snapshot.totalElements }
       : null,
+    automatedCriteriaCount,
     items: manualItems,
   };
 }
