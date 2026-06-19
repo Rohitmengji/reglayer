@@ -1,5 +1,5 @@
-import { DetailPageSkeleton } from "@/components/ui/skeletons";
+import { InitialSpinner } from "@/components/ui/initial-spinner";
 
 export default function Loading() {
-  return <DetailPageSkeleton />;
+  return <InitialSpinner />;
 }

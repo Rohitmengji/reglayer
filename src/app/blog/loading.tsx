@@ -1,5 +1,5 @@
-import { ListPageSkeleton } from "@/components/ui/skeletons";
+import { InitialSpinner } from "@/components/ui/initial-spinner";
 
 export default function Loading() {
-  return <ListPageSkeleton />;
+  return <InitialSpinner />;
 }

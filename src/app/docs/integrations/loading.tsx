@@ -1,5 +1,5 @@
-import { DocsSkeleton } from "@/components/ui/skeletons";
+import { InitialSpinner } from "@/components/ui/initial-spinner";
 
 export default function Loading() {
-  return <DocsSkeleton />;
+  return <InitialSpinner />;
 }

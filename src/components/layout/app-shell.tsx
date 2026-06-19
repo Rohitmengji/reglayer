@@ -110,7 +110,7 @@ export function AppShell({ children, bare }: { children: React.ReactNode; bare?:
     return (
       <div className="flex h-screen items-center justify-center bg-neutral-50 dark:bg-neutral-950">
         <div className="flex flex-col items-center gap-3">
-          <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full" />
+          <div className="h-8 w-8 animate-spin rounded-full border-[3px] border-neutral-200 border-t-neutral-900 dark:border-neutral-700 dark:border-t-white" />
           <p className="text-sm text-neutral-500 dark:text-neutral-400">Loading...</p>
         </div>
       </div>
