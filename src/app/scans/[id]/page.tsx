@@ -32,6 +32,11 @@ export default function ScanDetailPage({
   const storeEntry = getScanById(id);
   const [entry, setEntry] = useState(storeEntry || null);
   const [loading, setLoading] = useState(!storeEntry);
+  const [visualLoading, setVisualLoading] = useState(false);
+  const [visualFindings, setVisualFindings] = useState<
+    Array<{ category: string; issue: string; severity: string; confidence: number }> | null
+  >(null);
+  const [visualMsg, setVisualMsg] = useState<string | null>(null);
 
   useEffect(() => {
     if (storeEntry || entry) return;
@@ -100,6 +105,27 @@ export default function ScanDetailPage({
       URL.revokeObjectURL(url);
     } catch {
       // network failure — no-op (matches the dashboard's export UX)
+    }
+  }
+
+  // Run the on-demand AI Visual Review: screenshots the page and asks a vision
+  // model for visually-apparent issues axe can't see (AI-suggested, plan-gated).
+  async function runVisualReview() {
+    setVisualLoading(true);
+    setVisualMsg(null);
+    try {
+      const res = await fetch(`/api/scans/${encodeURIComponent(scan.id)}/visual`, { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setVisualMsg(data.upgradeRequired ? "AI Visual Review is a Pro feature." : data.error || "Visual review failed.");
+        return;
+      }
+      setVisualFindings(data.findings ?? []);
+      if (data.findings?.length === 0) setVisualMsg(data.message || "No visually-apparent issues found.");
+    } catch {
+      setVisualMsg("Network error — please try again.");
+    } finally {
+      setVisualLoading(false);
     }
   }
 

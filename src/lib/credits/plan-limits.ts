@@ -83,6 +83,7 @@ export const AI_CREDIT_COSTS = {
   priorityRanking: 3, // AI-powered priority ranking
   complianceAssessment: 5, // AI compliance evaluation
   manualTestGuidance: 2, // AI-drafted manual test guidance per criterion
+  visualScan: 4, // Vision-model review of a page screenshot
 } as const;
 
 export type PlanType = keyof typeof PLAN_LIMITS;
