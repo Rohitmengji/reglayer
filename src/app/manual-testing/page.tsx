@@ -230,7 +230,7 @@ export default function ManualTestingPage() {
 
   return (
     <AppShell>
-      <div className="space-y-6 max-w-5xl mx-auto px-4 sm:px-0">
+      <div className="space-y-8 max-w-4xl mx-auto px-4 sm:px-0">
         <header className="flex items-center gap-3">
           <div className="h-10 w-10 rounded-xl bg-linear-to-br from-violet-500 to-indigo-600 flex items-center justify-center" aria-hidden="true">
             <ClipboardCheck className="h-5 w-5 text-white" />
@@ -243,33 +243,27 @@ export default function ManualTestingPage() {
 
         {/* Value proposition — helps users understand what this page does */}
         {!selectedAudit && !planLoading && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="flex items-start gap-3 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4">
-              <div className="h-8 w-8 rounded-lg bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center shrink-0">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 flex flex-col">
+              <div className="h-9 w-9 rounded-lg bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center mb-3">
                 <Eye className="h-4 w-4 text-violet-600 dark:text-violet-400" />
               </div>
-              <div>
-                <p className="text-sm font-medium text-neutral-900 dark:text-white">Human Verification</p>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">Test focus order, keyboard access, and semantic meaning that scanners miss</p>
-              </div>
+              <p className="text-sm font-medium text-neutral-900 dark:text-white">Human Verification</p>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1 flex-1">Test focus order, keyboard access, and semantic meaning that automated scanners cannot determine.</p>
             </div>
-            <div className="flex items-start gap-3 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4">
-              <div className="h-8 w-8 rounded-lg bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0">
+            <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 flex flex-col">
+              <div className="h-9 w-9 rounded-lg bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center mb-3">
                 <Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-400" />
               </div>
-              <div>
-                <p className="text-sm font-medium text-neutral-900 dark:text-white">AI-Guided Steps</p>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">Get specific testing instructions for each criterion with accessibility tree evidence</p>
-              </div>
+              <p className="text-sm font-medium text-neutral-900 dark:text-white">AI-Guided Steps</p>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1 flex-1">Get specific testing instructions for each WCAG criterion with real accessibility tree evidence.</p>
             </div>
-            <div className="flex items-start gap-3 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4">
-              <div className="h-8 w-8 rounded-lg bg-green-100 dark:bg-green-900/40 flex items-center justify-center shrink-0">
+            <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 flex flex-col">
+              <div className="h-9 w-9 rounded-lg bg-green-100 dark:bg-green-900/40 flex items-center justify-center mb-3">
                 <Shield className="h-4 w-4 text-green-600 dark:text-green-400" />
               </div>
-              <div>
-                <p className="text-sm font-medium text-neutral-900 dark:text-white">Legal-Ready Record</p>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">Attested verdicts feed into VPAT and Defense File for procurement & litigation</p>
-              </div>
+              <p className="text-sm font-medium text-neutral-900 dark:text-white">Legal-Ready Record</p>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1 flex-1">Attested verdicts feed into VPAT and Defense File for procurement officers and litigation defense.</p>
             </div>
           </div>
         )}
