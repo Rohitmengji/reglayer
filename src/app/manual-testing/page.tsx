@@ -232,7 +232,7 @@ export default function ManualTestingPage() {
     <AppShell>
       <div className="space-y-6 max-w-5xl mx-auto px-4 sm:px-0">
         <header className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center" aria-hidden="true">
+          <div className="h-10 w-10 rounded-xl bg-linear-to-br from-violet-500 to-indigo-600 flex items-center justify-center" aria-hidden="true">
             <ClipboardCheck className="h-5 w-5 text-white" />
           </div>
           <div>
@@ -382,14 +382,14 @@ function PlanView({ plan, scores, onVerdict, onBack }: {
         </div>
       </div>
 
-      <Card className="bg-gradient-to-r from-violet-50 to-indigo-50 dark:from-violet-950/30 dark:to-indigo-950/30 border-violet-200 dark:border-violet-800">
+      <Card className="bg-linear-to-r from-violet-50 to-indigo-50 dark:from-violet-950/30 dark:to-indigo-950/30 border-violet-200 dark:border-violet-800">
         <CardContent className="p-4">
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm font-medium text-neutral-900 dark:text-white">Manual Test Progress</p>
             <span className="text-xs text-neutral-500">{evaluated} of {plan.items.length} evaluated ({pct}%)</span>
           </div>
           <div className="h-2 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Evaluation progress">
-            <div className="h-full bg-gradient-to-r from-violet-500 to-indigo-500 rounded-full transition-all duration-300" style={{ width: `${pct}%` }} />
+            <div className="h-full bg-linear-to-r from-violet-500 to-indigo-500 rounded-full transition-all duration-300" style={{ width: `${pct}%` }} />
           </div>
           <div className="flex gap-4 mt-2 text-xs">
             <span className="text-green-600 dark:text-green-400">{passed} pass</span>

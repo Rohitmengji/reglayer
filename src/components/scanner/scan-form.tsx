@@ -223,7 +223,7 @@ export function ScanForm({ onScanComplete }: ScanFormProps) {
             checked={deep}
             onChange={(e) => setDeep(e.target.checked)}
             disabled={isScanning}
-            className="mt-0.5 h-4 w-4 shrink-0 rounded border-neutral-300 dark:border-neutral-600"
+            className="mt-0.5 h-4 w-4 shrink-0 rounded border-neutral-300 dark:border-neutral-600 accent-indigo-600 cursor-pointer"
           />
           <span className="min-w-0">
             <span className="flex items-center gap-1.5 text-sm font-medium text-neutral-900 dark:text-white">

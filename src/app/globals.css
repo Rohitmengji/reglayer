@@ -31,9 +31,9 @@ input, textarea, [contenteditable] {
 }
 
 /* Remove all native focus indicators — custom focus styles are applied via Tailwind */
-input:focus,
-input:focus-visible,
-input:focus-within {
+input:focus:not([type="checkbox"]):not([type="radio"]),
+input:focus-visible:not([type="checkbox"]):not([type="radio"]),
+input:focus-within:not([type="checkbox"]):not([type="radio"]) {
   outline: none !important;
   outline-offset: 0 !important;
   box-shadow: none !important;

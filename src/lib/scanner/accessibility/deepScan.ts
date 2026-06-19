@@ -50,10 +50,53 @@ export interface KbElement {
 }
 
 export interface KeyboardFinding {
-  ruleId: "keyboard-reachable" | "tabindex-positive";
+  ruleId: "keyboard-reachable" | "tabindex-positive" | "focus-trap";
   impact: ViolationImpact;
   issue: string;
   selector: string;
+}
+
+/** One observed Tab stop while driving the real keyboard through the page. */
+export interface TabStop {
+  /** Unique per-element index tag, or null when focus left all tracked elements. */
+  idx: string | null;
+  /** Human-readable selector of the element focus landed on. */
+  selector: string;
+}
+
+/**
+ * Pure: detect keyboard traps from a real Tab-traversal sequence. A trap is
+ * flagged when focus stays on the SAME element (same unique idx) for 3+
+ * consecutive Tab presses — i.e. Tab cannot move focus past it (WCAG 2.1.2).
+ * Uses the unique idx (not the selector) so two controls that share a selector
+ * are never mistaken for stuck focus.
+ */
+export function detectFocusTraps(steps: TabStop[]): KeyboardFinding[] {
+  const findings: KeyboardFinding[] = [];
+  const reported = new Set<string>();
+  let runIdx: string | null = null;
+  let runLen = 0;
+
+  for (const step of steps) {
+    if (step.idx !== null && step.idx === runIdx) {
+      runLen++;
+      if (runLen >= 3 && !reported.has(step.idx)) {
+        reported.add(step.idx);
+        findings.push({
+          ruleId: "focus-trap",
+          impact: "critical",
+          issue:
+            "Keyboard focus appears trapped — repeated Tab presses do not move focus past this element, so keyboard and screen-reader users can get stuck (WCAG 2.1.2 No Keyboard Trap).",
+          selector: step.selector,
+        });
+      }
+    } else {
+      runIdx = step.idx;
+      runLen = step.idx === null ? 0 : 1;
+    }
+  }
+
+  return findings;
 }
 
 const INTERACTIVE_ROLES = new Set([
@@ -150,8 +193,10 @@ export interface DeepScanReport {
   statesRevealed: number;
   /** Count of NEW axe violations surfaced only after revealing interactive content. */
   revealedViolationCount: number;
-  /** Keyboard-reachability heuristics (separate from axe — not in the axe score). */
+  /** Keyboard findings: reachability heuristics + real Tab-driven focus traps (not in the axe score). */
   keyboardFindings: KeyboardFinding[];
+  /** How many distinct Tab stops were traversed (0 when the keyboard couldn't be driven). */
+  tabStopsTraversed: number;
   /** Honest notes about partial/interrupted coverage. */
   notes: string[];
 }
@@ -159,6 +204,11 @@ export interface DeepScanReport {
 /** Minimal page surface Deep Scan needs — satisfied by Playwright & puppeteer pages. */
 export interface EvaluablePage {
   evaluate<T>(fn: (...args: unknown[]) => T | Promise<T>, ...args: unknown[]): Promise<T>;
+}
+
+/** Page that can also drive the real keyboard (both Playwright & puppeteer pages can). */
+export interface KeyboardCapablePage extends EvaluablePage {
+  keyboard?: { press: (key: string) => Promise<void> };
 }
 
 /**
@@ -264,7 +314,51 @@ async function collectKeyboardElements(page: EvaluablePage, maxElements: number)
 }
 
 /**
- * Run the two deep passes over an already-loaded page.
+ * Drive the REAL keyboard: Tab through the page (bounded) and detect focus traps
+ * (WCAG 2.1.2). Tags every focusable element with a unique data attribute first,
+ * so genuinely-stuck focus is never confused with same-looking siblings. Returns
+ * ran:false (a no-op) when the environment can't drive the keyboard.
+ */
+async function auditFocusTraps(
+  page: KeyboardCapablePage,
+  maxTabs: number,
+): Promise<{ ran: boolean; findings: KeyboardFinding[]; stops: number }> {
+  const kb = page.keyboard;
+  if (!kb || typeof kb.press !== "function") {
+    return { ran: false, findings: [], stops: 0 };
+  }
+
+  // Tag focusable elements with a unique index, and clear current focus so the
+  // first Tab lands on the first focusable element.
+  const focusableCount = await page.evaluate(() => {
+    const sel =
+      'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),summary,[tabindex]:not([tabindex="-1"]),[contenteditable="true"]';
+    const els = Array.from(document.querySelectorAll(sel));
+    els.forEach((el, i) => el.setAttribute("data-rl-fidx", String(i)));
+    (document.activeElement as HTMLElement | null)?.blur?.();
+    return els.length;
+  });
+
+  if (!focusableCount) return { ran: true, findings: [], stops: 0 };
+
+  const steps: TabStop[] = [];
+  const cap = Math.min(maxTabs, focusableCount + 5);
+  for (let i = 0; i < cap; i++) {
+    await kb.press("Tab");
+    const step = (await page.evaluate(() => {
+      const el = document.activeElement as HTMLElement | null;
+      if (!el || el === document.body) return { idx: null, selector: "" };
+      return { idx: el.getAttribute("data-rl-fidx"), selector: el.id ? `#${el.id}` : el.tagName.toLowerCase() };
+    })) as TabStop;
+    steps.push(step);
+  }
+
+  const distinctStops = new Set(steps.map((s) => s.idx).filter((x): x is string => x !== null)).size;
+  return { ran: true, findings: detectFocusTraps(steps), stops: distinctStops };
+}
+
+/**
+ * Run the deep passes over an already-loaded page.
  *
  * @param page     The live page (already navigated + hydrated + scanned once).
  * @param runAxe   Closure that runs axe on the CURRENT page state and returns its
@@ -276,11 +370,12 @@ export async function runDeepPasses(
   page: EvaluablePage,
   runAxe: () => Promise<AxeViolationLike[]>,
   baseViolations: AxeViolationLike[],
-  opts?: { maxTriggers?: number; maxElements?: number },
+  opts?: { maxTriggers?: number; maxElements?: number; maxTabs?: number },
 ): Promise<{ report: DeepScanReport; extraViolations: AxeViolationLike[] }> {
   const notes: string[] = [];
   let statesRevealed = 0;
   let extraViolations: AxeViolationLike[] = [];
+  let tabStopsTraversed = 0;
 
   // Pass 1: reveal-and-rescan.
   try {
@@ -295,7 +390,7 @@ export async function runDeepPasses(
     notes.push("Interactive-state sweep was interrupted; deep results may be partial.");
   }
 
-  // Pass 2: keyboard-reachability heuristics.
+  // Pass 2: keyboard-reachability heuristics (static, in-page).
   let keyboardFindings: KeyboardFinding[] = [];
   try {
     const elements = await collectKeyboardElements(page, opts?.maxElements ?? 400);
@@ -304,12 +399,26 @@ export async function runDeepPasses(
     notes.push("Keyboard-reachability audit was interrupted.");
   }
 
+  // Pass 3: real Tab-driven focus-trap detection (where the keyboard can be driven).
+  try {
+    const ft = await auditFocusTraps(page as KeyboardCapablePage, opts?.maxTabs ?? 60);
+    if (ft.ran) {
+      tabStopsTraversed = ft.stops;
+      if (ft.findings.length > 0) keyboardFindings = [...keyboardFindings, ...ft.findings];
+    } else {
+      notes.push("Tab-driven focus-trap check was unavailable in this environment.");
+    }
+  } catch {
+    notes.push("Tab-driven focus-trap check was interrupted.");
+  }
+
   return {
     report: {
       ran: true,
       statesRevealed,
       revealedViolationCount: extraViolations.reduce((n, v) => n + Math.max(1, v.nodes.length), 0),
       keyboardFindings,
+      tabStopsTraversed,
       notes,
     },
     extraViolations,

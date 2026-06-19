@@ -7,8 +7,10 @@ import { describe, it, expect } from "vitest";
 import {
   analyzeKeyboard,
   dedupeNewViolations,
+  detectFocusTraps,
   type KbElement,
   type AxeViolationLike,
+  type TabStop,
 } from "@/lib/scanner/accessibility/deepScan";
 
 const baseEl: KbElement = {
@@ -98,5 +100,33 @@ describe("dedupeNewViolations", () => {
 
   it("returns empty when the revealed pass adds nothing new", () => {
     expect(dedupeNewViolations([mk("x", "#a")], [mk("x", "#a")])).toHaveLength(0);
+  });
+});
+
+describe("detectFocusTraps", () => {
+  const stop = (idx: string | null, selector = "x"): TabStop => ({ idx, selector });
+
+  it("flags focus stuck on the same element for 3+ consecutive Tab presses", () => {
+    const findings = detectFocusTraps([stop("0"), stop("1"), stop("1"), stop("1"), stop("2")]);
+    expect(findings).toHaveLength(1);
+    expect(findings[0].ruleId).toBe("focus-trap");
+    expect(findings[0].impact).toBe("critical");
+  });
+
+  it("does NOT flag normal forward traversal", () => {
+    expect(detectFocusTraps([stop("0"), stop("1"), stop("2"), stop("3")])).toHaveLength(0);
+  });
+
+  it("does NOT flag two consecutive on the same element (below threshold)", () => {
+    expect(detectFocusTraps([stop("1"), stop("1"), stop("2")])).toHaveLength(0);
+  });
+
+  it("ignores null stops (focus left all tracked elements)", () => {
+    expect(detectFocusTraps([stop(null), stop(null), stop(null), stop(null)])).toHaveLength(0);
+  });
+
+  it("reports each trapped element only once", () => {
+    const findings = detectFocusTraps([stop("1"), stop("1"), stop("1"), stop("1"), stop("1")]);
+    expect(findings).toHaveLength(1);
   });
 });
