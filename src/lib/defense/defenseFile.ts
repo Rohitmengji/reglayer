@@ -51,7 +51,8 @@ export type DefenseEventKind =
   | "violation_status_changed"
   | "violation_verified"
   | "proof_issued"
-  | "proof_revoked";
+  | "proof_revoked"
+  | "manual_test_attested";
 
 export interface TimelineEvent {
   at: Date;
@@ -144,6 +145,14 @@ export interface DefenseFileInput {
   auditLogs: DefenseAuditInput[];
   proofs: DefenseProofInput[];
   chainReport: ChainVerificationReport;
+  /** Manual test attestations from AI-guided manual testing (v1) */
+  manualTestAttestations?: Array<{
+    criterion: string;
+    verdict: string;
+    attestedBy: string | null;
+    attestedAt: string | null;
+    auditRequestId: string;
+  }>;
 }
 
 export type ExposureTrend = "improving" | "worsening" | "flat" | "insufficient-data";
@@ -172,6 +181,10 @@ export interface GoodFaithMetrics {
   chainIntegrity: ChainIntegrity;
   proofCount: number;
   revokedProofCount: number;
+  /** Manual test coverage (from AI-guided manual testing v1) */
+  manualCriteriaAttested: number;
+  manualCriteriaTotal: number;
+  manualCoveragePercent: number;
 }
 
 export interface ProofVerification {
@@ -211,6 +224,7 @@ const KIND_ORDER: Record<DefenseEventKind, number> = {
   violation_verified: 2,
   proof_issued: 3,
   proof_revoked: 4,
+  manual_test_attested: 5,
 };
 
 // ─────────────── Small pure helpers ───────────────
@@ -415,6 +429,21 @@ export function buildTimeline(input: DefenseFileInput): TimelineEvent[] {
     }
   }
 
+  // (6) Manual test attestations — human-verified WCAG criteria verdicts.
+  if (input.manualTestAttestations) {
+    for (const att of input.manualTestAttestations) {
+      if (att.attestedAt) {
+        events.push({
+          at: new Date(att.attestedAt),
+          kind: "manual_test_attested" as DefenseEventKind,
+          title: `Manual test: WCAG ${att.criterion} — ${att.verdict}`,
+          detail: `Human-attested verdict for criterion ${att.criterion}. Audit ID: ${att.auditRequestId}`,
+          actorId: att.attestedBy,
+        });
+      }
+    }
+  }
+
   // Chronological sort with a deterministic, content-based tie-break.
   events.sort((a, b) => {
     const dt = a.at.getTime() - b.at.getTime();
@@ -522,6 +551,15 @@ export function computeGoodFaithMetrics(input: DefenseFileInput): GoodFaithMetri
   const chainIntegrity: ChainIntegrity =
     chainReport.length === 0 ? "empty" : chainReport.valid ? "verified" : "broken";
 
+  // Manual test coverage (from AI-guided manual testing)
+  const manualAttestations = input.manualTestAttestations ?? [];
+  const manualCriteriaAttested = manualAttestations.length;
+  // Total WCAG A/AA criteria = 52 (canonical)
+  const manualCriteriaTotal = 52;
+  const manualCoveragePercent = manualCriteriaTotal > 0
+    ? round1((100 * manualCriteriaAttested) / manualCriteriaTotal)
+    : 0;
+
   return {
     totalScans: scans.length,
     completedScans: completed.length,
@@ -545,6 +583,9 @@ export function computeGoodFaithMetrics(input: DefenseFileInput): GoodFaithMetri
     chainIntegrity,
     proofCount: proofs.length,
     revokedProofCount: proofs.filter((p) => p.revokedAt !== null).length,
+    manualCriteriaAttested,
+    manualCriteriaTotal,
+    manualCoveragePercent,
   };
 }
 

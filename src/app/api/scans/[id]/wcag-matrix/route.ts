@@ -10,6 +10,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { assertScanAccess } from "@/lib/auth/access";
 import { prisma } from "@/lib/database/prisma";
+import { WCAG_CRITERIA } from "@/lib/wcag/criteria";
 
 /**
  * GET /api/scans/:id/wcag-matrix
@@ -77,63 +78,6 @@ interface MatrixEntry {
   violations: string[];
   impact: string | null;
 }
-
-// WCAG 2.1 criteria with principles
-const WCAG_CRITERIA: Array<{ criterion: string; level: string; principle: string; title: string }> = [
-  // Perceivable
-  { criterion: "1.1.1", level: "A", principle: "Perceivable", title: "Non-text Content" },
-  { criterion: "1.2.1", level: "A", principle: "Perceivable", title: "Audio-only and Video-only" },
-  { criterion: "1.2.2", level: "A", principle: "Perceivable", title: "Captions (Prerecorded)" },
-  { criterion: "1.2.3", level: "A", principle: "Perceivable", title: "Audio Description or Media Alternative" },
-  { criterion: "1.2.5", level: "AA", principle: "Perceivable", title: "Audio Description (Prerecorded)" },
-  { criterion: "1.3.1", level: "A", principle: "Perceivable", title: "Info and Relationships" },
-  { criterion: "1.3.2", level: "A", principle: "Perceivable", title: "Meaningful Sequence" },
-  { criterion: "1.3.3", level: "A", principle: "Perceivable", title: "Sensory Characteristics" },
-  { criterion: "1.3.4", level: "AA", principle: "Perceivable", title: "Orientation" },
-  { criterion: "1.3.5", level: "AA", principle: "Perceivable", title: "Identify Input Purpose" },
-  { criterion: "1.4.1", level: "A", principle: "Perceivable", title: "Use of Color" },
-  { criterion: "1.4.2", level: "A", principle: "Perceivable", title: "Audio Control" },
-  { criterion: "1.4.3", level: "AA", principle: "Perceivable", title: "Contrast (Minimum)" },
-  { criterion: "1.4.4", level: "AA", principle: "Perceivable", title: "Resize Text" },
-  { criterion: "1.4.5", level: "AA", principle: "Perceivable", title: "Images of Text" },
-  { criterion: "1.4.10", level: "AA", principle: "Perceivable", title: "Reflow" },
-  { criterion: "1.4.11", level: "AA", principle: "Perceivable", title: "Non-text Contrast" },
-  { criterion: "1.4.12", level: "AA", principle: "Perceivable", title: "Text Spacing" },
-  { criterion: "1.4.13", level: "AA", principle: "Perceivable", title: "Content on Hover or Focus" },
-  // Operable
-  { criterion: "2.1.1", level: "A", principle: "Operable", title: "Keyboard" },
-  { criterion: "2.1.2", level: "A", principle: "Operable", title: "No Keyboard Trap" },
-  { criterion: "2.1.4", level: "A", principle: "Operable", title: "Character Key Shortcuts" },
-  { criterion: "2.2.1", level: "A", principle: "Operable", title: "Timing Adjustable" },
-  { criterion: "2.2.2", level: "A", principle: "Operable", title: "Pause, Stop, Hide" },
-  { criterion: "2.3.1", level: "A", principle: "Operable", title: "Three Flashes or Below" },
-  { criterion: "2.4.1", level: "A", principle: "Operable", title: "Bypass Blocks" },
-  { criterion: "2.4.2", level: "A", principle: "Operable", title: "Page Titled" },
-  { criterion: "2.4.3", level: "A", principle: "Operable", title: "Focus Order" },
-  { criterion: "2.4.4", level: "A", principle: "Operable", title: "Link Purpose (In Context)" },
-  { criterion: "2.4.5", level: "AA", principle: "Operable", title: "Multiple Ways" },
-  { criterion: "2.4.6", level: "AA", principle: "Operable", title: "Headings and Labels" },
-  { criterion: "2.4.7", level: "AA", principle: "Operable", title: "Focus Visible" },
-  { criterion: "2.5.1", level: "A", principle: "Operable", title: "Pointer Gestures" },
-  { criterion: "2.5.2", level: "A", principle: "Operable", title: "Pointer Cancellation" },
-  { criterion: "2.5.3", level: "A", principle: "Operable", title: "Label in Name" },
-  { criterion: "2.5.4", level: "A", principle: "Operable", title: "Motion Actuation" },
-  // Understandable
-  { criterion: "3.1.1", level: "A", principle: "Understandable", title: "Language of Page" },
-  { criterion: "3.1.2", level: "AA", principle: "Understandable", title: "Language of Parts" },
-  { criterion: "3.2.1", level: "A", principle: "Understandable", title: "On Focus" },
-  { criterion: "3.2.2", level: "A", principle: "Understandable", title: "On Input" },
-  { criterion: "3.2.3", level: "AA", principle: "Understandable", title: "Consistent Navigation" },
-  { criterion: "3.2.4", level: "AA", principle: "Understandable", title: "Consistent Identification" },
-  { criterion: "3.3.1", level: "A", principle: "Understandable", title: "Error Identification" },
-  { criterion: "3.3.2", level: "A", principle: "Understandable", title: "Labels or Instructions" },
-  { criterion: "3.3.3", level: "AA", principle: "Understandable", title: "Error Suggestion" },
-  { criterion: "3.3.4", level: "AA", principle: "Understandable", title: "Error Prevention (Legal, Financial, Data)" },
-  // Robust
-  { criterion: "4.1.1", level: "A", principle: "Robust", title: "Parsing" },
-  { criterion: "4.1.2", level: "A", principle: "Robust", title: "Name, Role, Value" },
-  { criterion: "4.1.3", level: "AA", principle: "Robust", title: "Status Messages" },
-];
 
 function buildWcagMatrix(violations: ViolationRow[]): MatrixEntry[] {
   // Map violations to criteria

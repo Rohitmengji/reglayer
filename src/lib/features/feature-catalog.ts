@@ -152,6 +152,7 @@ export const SIDEBAR_FEATURE_MAP: Record<string, string> = {
   "/crawl": "crawl",
   "/compliance": "compliance",
   "/analysis": "analysis",
+  "/manual-testing": "manualTesting",
   "/automation": "automation",
   "/manage": "manage",
   "/executive": "executive",

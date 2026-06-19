@@ -31,6 +31,12 @@ export interface VPATInput {
   scanData: VPATScanData;
   standard: "WCAG21-A" | "WCAG21-AA" | "WCAG21-AAA" | "Section508" | "EN301549";
   notes?: string;
+  /** Manual test verdicts to override automated-only inference (from AI-guided manual testing) */
+  manualVerdicts?: Array<{
+    criterion: string;
+    verdict: "pass" | "fail" | "na";
+    attestedBy?: string | null;
+  }>;
 }
 
 export interface VPATScanData {
@@ -242,14 +248,41 @@ export function generateVPAT(input: VPATInput): VPATDocument {
     }
   }
 
+  // Build manual verdict lookup (from AI-guided manual testing)
+  const manualVerdictMap = new Map<string, { verdict: string; attestedBy?: string | null }>();
+  if (input.manualVerdicts) {
+    for (const mv of input.manualVerdicts) {
+      manualVerdictMap.set(mv.criterion, { verdict: mv.verdict, attestedBy: mv.attestedBy });
+    }
+  }
+
   // Evaluate each criterion
   const evaluatedCriteria: VPATCriterion[] = applicableCriteria.map((criterion) => {
     const violations = violationsByCriterion.get(criterion.id) || [];
 
+    // Check for manual verdict override
+    const manualVerdict = manualVerdictMap.get(criterion.id);
+
     let conformance: ConformanceLevel;
     let remarks: string;
 
-    if (violations.length === 0) {
+    if (manualVerdict) {
+      // Manual verdict takes precedence — human-attested
+      if (manualVerdict.verdict === "pass") {
+        conformance = "Supports";
+        remarks = "Human-attested pass via manual testing.";
+      } else if (manualVerdict.verdict === "fail") {
+        conformance = "Does Not Support";
+        remarks = "Human-attested fail via manual testing." +
+          (violations.length > 0 ? ` Additionally, ${violations.length} automated violation(s) detected.` : "");
+      } else {
+        conformance = "Not Applicable";
+        remarks = "Determined not applicable via manual testing.";
+      }
+      if (manualVerdict.attestedBy) {
+        remarks += ` (Attested by tester)`;
+      }
+    } else if (violations.length === 0) {
       conformance = "Supports";
       remarks = "No violations detected during automated testing.";
     } else {

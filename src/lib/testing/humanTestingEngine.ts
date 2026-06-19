@@ -77,7 +77,8 @@ export type AuditType =
   | "keyboard-test"
   | "cognitive-review"
   | "usability-test"
-  | "vpat-validation";
+  | "vpat-validation"
+  | "manual-test";
 
 export interface AuditFinding {
   id: string;
@@ -104,6 +105,7 @@ export const AUDIT_PRICING: Record<AuditType, { base: number; perPage: number; c
   "cognitive-review": { base: 1200, perPage: 100, currency: "USD" },
   "usability-test": { base: 1500, perPage: 120, currency: "USD" },
   "vpat-validation": { base: 3000, perPage: 0, currency: "USD" },
+  "manual-test": { base: 0, perPage: 0, currency: "USD" }, // Self-serve, no marketplace cost
 };
 
 /**
@@ -225,6 +227,7 @@ export async function matchTesters(
     "cognitive-review": ["cognitive"],
     "usability-test": ["usability"],
     "vpat-validation": ["vpat-review"],
+    "manual-test": ["wcag-audit"], // Not used in v1 (self-serve) but type-safe
   };
 
   const requiredExpertise = expertiseMap[type] ?? [];
@@ -240,4 +243,38 @@ export async function matchTesters(
   });
 
   return testers as unknown as TesterProfile[];
+}
+
+/**
+ * Get a single audit request, scoped by workspace for IDOR safety.
+ */
+export async function getAuditRequest(
+  id: string,
+  workspaceId: string
+): Promise<AuditRequest | null> {
+  const audit = await prisma.auditRequest.findFirst({
+    where: { id, workspaceId },
+  });
+
+  if (!audit) return null;
+
+  return {
+    id: audit.id,
+    workspaceId: audit.workspaceId,
+    siteId: audit.siteId,
+    testerId: audit.testerId,
+    status: audit.status as AuditStatus,
+    type: audit.type as AuditType,
+    scope: audit.scope,
+    requirements: audit.requirements ?? "",
+    urgency: (audit.urgency ?? "standard") as "standard" | "rush" | "critical",
+    budget: audit.budget,
+    currency: audit.currency,
+    findings: (audit.findings as unknown as AuditFinding[]) ?? [],
+    combinedScore: audit.combinedScore,
+    automatedScore: audit.automatedScore,
+    manualScore: audit.manualScore,
+    createdAt: audit.createdAt,
+    completedAt: audit.completedAt,
+  };
 }

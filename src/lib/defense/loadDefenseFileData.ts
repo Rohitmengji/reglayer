@@ -197,5 +197,43 @@ export async function loadDefenseFileData(args: {
     chainReport = await verifyWorkspaceChain(site.workspaceId);
   }
 
-  return { site, generatedAt, scans, violations, auditLogs, proofs, chainReport };
+  // Manual test attestations for this site (from manual-test AuditRequests)
+  let manualTestAttestations: Array<{
+    criterion: string;
+    verdict: string;
+    attestedBy: string | null;
+    attestedAt: string | null;
+    auditRequestId: string;
+  }> = [];
+
+  if (site.workspaceId) {
+    const manualAudits = await prisma.auditRequest.findMany({
+      where: {
+        workspaceId: site.workspaceId,
+        siteId: site.id,
+        type: "manual-test",
+        status: { in: ["in-progress", "completed"] },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 1, // Latest manual test only
+      select: { id: true, findings: true },
+    });
+
+    if (manualAudits.length > 0) {
+      const findings = manualAudits[0].findings as { items?: Array<{ criterion: string; verdict: string; attestedBy: string | null; attestedAt: string | null }> } | null;
+      if (findings?.items) {
+        manualTestAttestations = findings.items
+          .filter((item) => item.verdict !== "untested")
+          .map((item) => ({
+            criterion: item.criterion,
+            verdict: item.verdict,
+            attestedBy: item.attestedBy,
+            attestedAt: item.attestedAt,
+            auditRequestId: manualAudits[0].id,
+          }));
+      }
+    }
+  }
+
+  return { site, generatedAt, scans, violations, auditLogs, proofs, chainReport, manualTestAttestations };
 }

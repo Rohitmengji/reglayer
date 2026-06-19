@@ -17,6 +17,7 @@ export const PLAN_LIMITS = {
       complianceReports: "summary" as const,
       scheduledScans: false,
       webhooks: 0,
+      manualTesting: false,
     },
   },
   PRO: {
@@ -32,6 +33,7 @@ export const PLAN_LIMITS = {
       complianceReports: "full" as const,
       scheduledScans: true,
       webhooks: 3,
+      manualTesting: true,
     },
   },
   ENTERPRISE: {
@@ -47,6 +49,7 @@ export const PLAN_LIMITS = {
       complianceReports: "full" as const,
       scheduledScans: true,
       webhooks: -1, // unlimited
+      manualTesting: true,
     },
   },
 } as const;
@@ -76,6 +79,7 @@ export const AI_CREDIT_COSTS = {
   insightsAnalysis: 5, // Full AI insights for a scan
   priorityRanking: 3, // AI-powered priority ranking
   complianceAssessment: 5, // AI compliance evaluation
+  manualTestGuidance: 2, // AI-drafted manual test guidance per criterion
 } as const;
 
 export type PlanType = keyof typeof PLAN_LIMITS;
