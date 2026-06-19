@@ -9,6 +9,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useI18n } from "@/components/i18n-provider";
+import { AppShell } from "@/components/layout/app-shell";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   ShieldCheck,
@@ -86,14 +87,17 @@ export default function GuardPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
-      </div>
+      <AppShell>
+        <div className="flex min-h-[60vh] items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-[3px] border-neutral-200 border-t-neutral-900 dark:border-neutral-700 dark:border-t-white" />
+        </div>
+      </AppShell>
     );
   }
 
   return (
-    <div className="w-full mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8 overflow-hidden">
+    <AppShell>
+      <div className="space-y-8">
       {/* Header */}
       <div className="mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3 min-w-0">
@@ -101,10 +105,10 @@ export default function GuardPage() {
             <ShieldAlert className="h-5 w-5 text-orange-600 dark:text-orange-400" />
           </div>
           <div className="min-w-0">
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
+            <h1 className="text-xl sm:text-2xl font-bold text-neutral-900 dark:text-white">
               {t("guard.title")}
             </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">
               {t("guard.subtitle")}
             </p>
           </div>
@@ -141,12 +145,12 @@ export default function GuardPage() {
 
       {/* Policy List */}
       {policies.length === 0 && !showCreate ? (
-        <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-6 sm:p-12 text-center dark:border-gray-600 dark:bg-gray-800/50">
-          <ShieldAlert className="mx-auto mb-3 h-12 w-12 text-gray-500 dark:text-gray-400" />
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+        <div className="rounded-lg border border-dashed border-neutral-300 bg-neutral-50 p-6 sm:p-12 text-center dark:border-neutral-600 dark:bg-neutral-800/50">
+          <ShieldAlert className="mx-auto mb-3 h-12 w-12 text-neutral-500 dark:text-neutral-400" />
+          <h3 className="text-lg font-medium text-neutral-900 dark:text-white">
             No guard policies yet
           </h3>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
             Create a policy to start blocking deployments when accessibility quality drops.
           </p>
         </div>
@@ -157,8 +161,8 @@ export default function GuardPage() {
               key={policy.id}
               className={`rounded-lg border p-5 transition-shadow hover:shadow-sm ${
                 policy.enabled
-                  ? "border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800"
-                  : "border-gray-100 bg-gray-50 opacity-60 dark:border-gray-800 dark:bg-gray-900"
+                  ? "border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-800"
+                  : "border-neutral-100 bg-neutral-50 opacity-60 dark:border-neutral-800 dark:bg-neutral-900"
               }`}
             >
               <div className="flex items-start justify-between">
@@ -167,33 +171,33 @@ export default function GuardPage() {
                     {policy.enabled ? (
                       <ShieldCheck className="h-4 w-4 text-green-600" />
                     ) : (
-                      <ShieldAlert className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                      <ShieldAlert className="h-4 w-4 text-neutral-500 dark:text-neutral-400" />
                     )}
-                    <h3 className="font-semibold text-gray-900 dark:text-white">
+                    <h3 className="font-semibold text-neutral-900 dark:text-white">
                       {policy.name}
                     </h3>
-                    <span className="text-sm text-gray-500 dark:text-gray-400">
+                    <span className="text-sm text-neutral-500 dark:text-neutral-400">
                       {policy.site.name || new URL(policy.site.url).hostname}
                     </span>
                   </div>
 
                   {/* Thresholds */}
                   <div className="mt-3 flex flex-wrap gap-3">
-                    <div className="flex items-center gap-1.5 rounded-md bg-gray-100 px-2.5 py-1 text-xs dark:bg-gray-700">
+                    <div className="flex items-center gap-1.5 rounded-md bg-neutral-100 px-2.5 py-1 text-xs dark:bg-neutral-700">
                       <Target className="h-3 w-3 text-blue-600" />
-                      <span className="text-gray-700 dark:text-gray-300">
+                      <span className="text-neutral-700 dark:text-neutral-300">
                         Min Score: {policy.minScore}
                       </span>
                     </div>
-                    <div className="flex items-center gap-1.5 rounded-md bg-gray-100 px-2.5 py-1 text-xs dark:bg-gray-700">
+                    <div className="flex items-center gap-1.5 rounded-md bg-neutral-100 px-2.5 py-1 text-xs dark:bg-neutral-700">
                       <AlertTriangle className="h-3 w-3 text-red-600" />
-                      <span className="text-gray-700 dark:text-gray-300">
+                      <span className="text-neutral-700 dark:text-neutral-300">
                         Max Critical: {policy.maxCritical}
                       </span>
                     </div>
-                    <div className="flex items-center gap-1.5 rounded-md bg-gray-100 px-2.5 py-1 text-xs dark:bg-gray-700">
+                    <div className="flex items-center gap-1.5 rounded-md bg-neutral-100 px-2.5 py-1 text-xs dark:bg-neutral-700">
                       <TrendingDown className="h-3 w-3 text-amber-600" />
-                      <span className="text-gray-700 dark:text-gray-300">
+                      <span className="text-neutral-700 dark:text-neutral-300">
                         Max Drop: {policy.maxScoreDrop}pts
                       </span>
                     </div>
@@ -211,14 +215,14 @@ export default function GuardPage() {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => togglePolicy(policy.id, !policy.enabled)}
-                    className="rounded-md border border-gray-200 p-1.5 text-gray-500 hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700"
+                    className="rounded-md border border-neutral-200 p-1.5 text-neutral-500 hover:bg-neutral-50 dark:border-neutral-600 dark:hover:bg-neutral-700"
                     title={policy.enabled ? "Disable" : "Enable"}
                   >
                     <Settings2 className="h-4 w-4" />
                   </button>
                   <button
                     onClick={() => setDeleteTarget(policy.id)}
-                    className="rounded-md border border-gray-200 p-1.5 text-red-500 hover:bg-red-50 dark:border-gray-600 dark:hover:bg-red-900/20"
+                    className="rounded-md border border-neutral-200 p-1.5 text-red-500 hover:bg-red-50 dark:border-neutral-600 dark:hover:bg-red-900/20"
                     title="Delete"
                     aria-label={`Delete policy ${policy.name}`}
                   >
@@ -232,14 +236,14 @@ export default function GuardPage() {
       )}
 
       {/* CI Integration Code Block */}
-      <div className="mt-8 rounded-lg border border-gray-200 bg-gray-50 p-5 dark:border-gray-700 dark:bg-gray-800">
-        <h3 className="text-sm font-medium text-gray-900 dark:text-white">
+      <div className="mt-8 rounded-lg border border-neutral-200 bg-neutral-50 p-5 dark:border-neutral-700 dark:bg-neutral-800">
+        <h3 className="text-sm font-medium text-neutral-900 dark:text-white">
           CI/CD Integration
         </h3>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+        <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
           Add this to your GitHub Actions workflow to gate deployments:
         </p>
-        <pre className="mt-3 overflow-x-auto rounded-md bg-gray-900 p-4 text-xs text-gray-100">
+        <pre className="mt-3 overflow-x-auto rounded-md bg-neutral-900 p-4 text-xs text-neutral-100">
           {`- name: Accessibility Guard
   run: |
     RESULT=$(curl -s -X POST \\
@@ -268,5 +272,6 @@ export default function GuardPage() {
         onCancel={() => setDeleteTarget(null)}
       />
     </div>
+    </AppShell>
   );
 }
