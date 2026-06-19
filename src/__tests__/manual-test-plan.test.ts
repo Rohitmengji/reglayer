@@ -43,6 +43,20 @@ describe("buildTestPlan", () => {
     expect(plan.items.every((i) => i.level === "A" || i.level === "AA")).toBe(true);
   });
 
+  it("stores automatedCriteriaCount as eligible A/AA minus the manual set (never negative)", () => {
+    const aaTotal = WCAG_CRITERIA.filter((c) => c.level === "A" || c.level === "AA").length;
+
+    // Full automation coverage → manual plan is exactly the MANUAL_ONLY set
+    const full = buildTestPlan(new Set(WCAG_CRITERIA.map((c) => c.criterion)), "scan_a");
+    expect(full.automatedCriteriaCount).toBe(aaTotal - full.items.length);
+    expect(full.automatedCriteriaCount).toBeGreaterThan(0);
+
+    // Zero automation coverage → every eligible criterion is manual; automated = 0
+    const none = buildTestPlan(new Set(), "scan_b");
+    expect(none.items.length).toBe(aaTotal);
+    expect(none.automatedCriteriaCount).toBe(0);
+  });
+
   it("orders items by litigation weight (highest risk first)", () => {
     const plan = buildTestPlan(new Set(), "scan_order");
     // 1.1.1 (weight 95) should come before 3.2.3 (weight 30 default)

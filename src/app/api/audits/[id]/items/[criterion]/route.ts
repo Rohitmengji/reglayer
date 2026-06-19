@@ -11,7 +11,8 @@ import { prisma } from "@/lib/database/prisma";
 import { applyRateLimit } from "@/lib/rate-limit-middleware";
 import { rollupManualScore, combineScores } from "@/lib/testing/manualScore";
 import { PLAN_LIMITS, type PlanType } from "@/lib/credits/plan-limits";
-import type { ManualTestPlan, ManualTestItem, ManualVerdict } from "@/lib/testing/manualTestPlan";
+import type { ManualTestPlan, ManualVerdict } from "@/lib/testing/manualTestPlan";
+import { WCAG_CRITERIA } from "@/lib/wcag/criteria";
 import { z } from "zod";
 
 const verdictSchema = z.object({
@@ -96,65 +97,90 @@ export async function PATCH(
       return NextResponse.json({ error: "Not a manual test audit" }, { status: 400 });
     }
 
-    const plan = audit.findings as unknown as ManualTestPlan | null;
-    if (!plan || !plan.items) {
+    if (!audit.findings) {
       return NextResponse.json({ error: "No test plan found" }, { status: 404 });
     }
 
-    // Find the item by criterion
-    const itemIndex = plan.items.findIndex((item) => item.criterion === criterion);
-    if (itemIndex === -1) {
-      return NextResponse.json({ error: `Criterion ${criterion} not found in plan` }, { status: 404 });
-    }
+    // The verdict write is a read-modify-write of the whole findings JSON. Two
+    // testers (or two tabs) attesting different criteria concurrently would each
+    // read the same baseline and the last write would silently clobber the other's
+    // verdict — a data-integrity bug on a compliance product. Serialize per-audit
+    // by re-reading under a row lock (SELECT ... FOR UPDATE) inside a transaction.
+    const result = await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM audit_requests WHERE id = ${id} FOR UPDATE`;
 
-    // Update the item
-    const now = new Date().toISOString();
-    const updatedItem: ManualTestItem = {
-      ...plan.items[itemIndex],
-      verdict: verdict as ManualVerdict,
-      note: note ?? null,
-      attestedBy: user.id,
-      attestedAt: now,
-    };
+      const fresh = await tx.auditRequest.findUnique({
+        where: { id },
+        select: { findings: true, automatedScore: true },
+      });
+      const plan = fresh?.findings as unknown as ManualTestPlan | null;
+      if (!plan || !plan.items) {
+        return { ok: false as const, status: 404, error: "No test plan found" };
+      }
 
-    const updatedItems = [...plan.items];
-    updatedItems[itemIndex] = updatedItem;
-    const updatedPlan: ManualTestPlan = { ...plan, items: updatedItems };
+      const itemIndex = plan.items.findIndex((item) => item.criterion === criterion);
+      if (itemIndex === -1) {
+        return { ok: false as const, status: 404, error: `Criterion ${criterion} not found in plan` };
+      }
 
-    // Recompute scores
-    const manualRollup = rollupManualScore(updatedItems);
-    const automatedScore = audit.automatedScore ?? 0;
+      const now = new Date().toISOString();
+      const updatedItems = [...plan.items];
+      updatedItems[itemIndex] = {
+        ...plan.items[itemIndex],
+        verdict: verdict as ManualVerdict,
+        note: note ?? null,
+        attestedBy: user.id,
+        attestedAt: now,
+      };
+      const updatedPlan: ManualTestPlan = { ...plan, items: updatedItems };
 
-    // Count how many criteria automation covered (total - manual items)
-    const automatedCriteriaCount = 52 - updatedItems.length;
-    const combined = combineScores(automatedScore, automatedCriteriaCount, manualRollup);
+      const manualRollup = rollupManualScore(updatedItems);
+      const automatedScore = fresh?.automatedScore ?? 0;
+      // Prefer the count stored on the plan; fall back to the catalog size for
+      // plans created before that field existed (clamped so it can't go negative).
+      const automatedCriteriaCount = typeof plan.automatedCriteriaCount === "number"
+        ? plan.automatedCriteriaCount
+        : Math.max(0, WCAG_CRITERIA.length - updatedItems.length);
+      const combined = combineScores(automatedScore, automatedCriteriaCount, manualRollup);
 
-    // Determine status
-    const allEvaluated = manualRollup.counts.untested === 0;
-    const status = allEvaluated ? "completed" : "in-progress";
+      const allEvaluated = manualRollup.counts.untested === 0;
+      const status = allEvaluated ? "completed" : "in-progress";
 
-    // Write to DB
-    await prisma.auditRequest.update({
-      where: { id },
-      data: {
-        findings: updatedPlan as unknown as object,
-        manualScore: manualRollup.score,
-        combinedScore: combined.combinedScore,
+      await tx.auditRequest.update({
+        where: { id },
+        data: {
+          findings: updatedPlan as unknown as object,
+          manualScore: manualRollup.score,
+          combinedScore: combined.combinedScore,
+          status,
+          ...(allEvaluated ? { completedAt: new Date() } : {}),
+        },
+      });
+
+      return {
+        ok: true as const,
+        manual: manualRollup.score,
+        combined: combined.combinedScore,
+        evaluated: manualRollup.evaluated,
+        total: manualRollup.counts.total,
         status,
-        ...(allEvaluated ? { completedAt: new Date() } : {}),
-      },
+      };
     });
+
+    if (!result.ok) {
+      return NextResponse.json({ error: result.error }, { status: result.status });
+    }
 
     return NextResponse.json({
       criterion,
       verdict,
       scores: {
-        manual: manualRollup.score,
-        combined: combined.combinedScore,
-        evaluated: manualRollup.evaluated,
-        total: manualRollup.counts.total,
+        manual: result.manual,
+        combined: result.combined,
+        evaluated: result.evaluated,
+        total: result.total,
       },
-      status,
+      status: result.status,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Internal server error";

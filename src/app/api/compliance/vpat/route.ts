@@ -10,7 +10,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
 import { generateVPAT, vpatToMarkdown, vpatToHTML } from "@/lib/compliance/vpat-generator";
-import type { VPATViolation } from "@/lib/compliance/vpat-generator";
+import type { VPATViolation, VPATInput } from "@/lib/compliance/vpat-generator";
 import { assertScanAccess } from "@/lib/auth/access";
 import { z } from "zod";
 
@@ -104,7 +104,8 @@ export async function POST(request: NextRequest) {
     };
   });
 
-  // Generate VPAT document
+  // Generate VPAT document, layering in human-attested manual verdicts where present
+  const manualVerdicts = await loadManualVerdicts(scan.siteId);
   const vpatDoc = generateVPAT({
     ...vpatConfig,
     scanData: {
@@ -114,6 +115,7 @@ export async function POST(request: NextRequest) {
       violations,
       scanDate: scan.createdAt.toISOString(),
     },
+    manualVerdicts,
   });
 
   // Return in requested format
@@ -183,6 +185,7 @@ export async function GET(request: NextRequest) {
     };
   });
 
+  const manualVerdicts = await loadManualVerdicts(scan.siteId);
   const vpatDoc = generateVPAT({
     productName: new URL(scan.url).hostname,
     vendorName: session.user.name || "Organization",
@@ -194,6 +197,7 @@ export async function GET(request: NextRequest) {
       violations,
       scanDate: scan.createdAt.toISOString(),
     },
+    manualVerdicts,
   });
 
   if (format === "html") {
@@ -209,6 +213,33 @@ export async function GET(request: NextRequest) {
   }
 
   return NextResponse.json(vpatDoc);
+}
+
+/**
+ * Load the latest manual-test audit's human-attested verdicts for a site, so the
+ * VPAT/ACR can report human-determined conformance for the criteria automation
+ * can't decide — instead of inferring everything from the automated scan alone.
+ * Returns undefined when there's no manual testing on record.
+ */
+async function loadManualVerdicts(siteId: string | null): Promise<VPATInput["manualVerdicts"]> {
+  if (!siteId) return undefined;
+  const audit = await prisma.auditRequest.findFirst({
+    where: { siteId, type: "manual-test" },
+    orderBy: { createdAt: "desc" },
+    select: { findings: true },
+  });
+  const plan = audit?.findings as unknown as {
+    items?: Array<{ criterion: string; verdict: string; attestedBy: string | null }>;
+  } | null;
+  if (!plan?.items) return undefined;
+  const verdicts = plan.items
+    .filter((it) => it.verdict === "pass" || it.verdict === "fail" || it.verdict === "na")
+    .map((it) => ({
+      criterion: it.criterion,
+      verdict: it.verdict as "pass" | "fail" | "na",
+      attestedBy: it.attestedBy,
+    }));
+  return verdicts.length > 0 ? verdicts : undefined;
 }
 
 /**

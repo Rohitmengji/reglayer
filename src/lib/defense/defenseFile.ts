@@ -709,6 +709,15 @@ export function renderDefenseFileHTML(
     },
     { label: "Accessibility score trend", value: metrics.exposureTrend, cls: trendClass(metrics.exposureTrend) },
     { label: "Chain integrity", value: metrics.chainIntegrity, cls: integrityClass(metrics.chainIntegrity) },
+    // Manual-testing coverage — only surfaced when human attestations exist, so an
+    // automated-only defense file doesn't show a misleading "0 of 52".
+    ...(metrics.manualCriteriaAttested > 0
+      ? [{
+          label: "Manual criteria attested",
+          value: `${metrics.manualCriteriaAttested} of ${metrics.manualCriteriaTotal} (${metrics.manualCoveragePercent}%)`,
+          cls: "supports",
+        }]
+      : []),
   ];
 
   const cardsHtml = metricCards
