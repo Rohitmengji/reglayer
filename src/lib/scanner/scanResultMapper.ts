@@ -76,6 +76,11 @@ export function mapPrismaScanToResult(scan: ScanWithViolations): ScanResult {
       pageTitle: scan.pageTitle ?? "",
       browserEngine: typeof meta.browserEngine === "string" ? meta.browserEngine : "chromium",
       axeCoreVersion: typeof meta.axeCoreVersion === "string" ? meta.axeCoreVersion : "4.x",
+      // Carry the Deep Scan report through from the stored metadata JSON so it
+      // renders on persisted scans, not just the live result.
+      ...(meta.deepScan
+        ? { deepScan: meta.deepScan as import("@/lib/scanner/accessibility/deepScan").DeepScanReport }
+        : {}),
     },
   };
 }

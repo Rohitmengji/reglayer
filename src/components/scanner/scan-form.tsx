@@ -62,6 +62,7 @@ export function ScanForm({ onScanComplete }: ScanFormProps) {
   const [currentStage, setCurrentStage] = useState(0);
   const [errorInfo, setErrorInfo] = useState<{ message: string; retryable: boolean } | null>(null);
   const [authConfig, setAuthConfig] = useState<AuthConfig | undefined>(undefined);
+  const [deep, setDeep] = useState(false);
   const slowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const stageTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const abortRef = useRef<AbortController | null>(null);
@@ -115,9 +116,10 @@ export function ScanForm({ onScanComplete }: ScanFormProps) {
 
     try {
       const scanBody: Record<string, unknown> = { url: targetUrl };
-      if (authConfig && authConfig.method !== "none") {
-        scanBody.options = { auth: authConfig };
-      }
+      const options: Record<string, unknown> = {};
+      if (authConfig && authConfig.method !== "none") options.auth = authConfig;
+      if (deep) options.deep = true;
+      if (Object.keys(options).length > 0) scanBody.options = options;
 
       const res = await fetch("/api/scan", {
         method: "POST",
@@ -212,6 +214,27 @@ export function ScanForm({ onScanComplete }: ScanFormProps) {
 
         {/* Authentication Section */}
         <ScanAuthSection onAuthChange={handleAuthChange} scanUrl={normalizeUrl(url)} />
+
+        {/* Deep Scan toggle — goes beyond a single static pass: reveals interactive
+            states (menus/dialogs/accordions) and probes keyboard reachability. */}
+        <label className="flex items-start gap-2.5 rounded-lg border border-neutral-200 dark:border-neutral-800 px-3 py-2.5 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={deep}
+            onChange={(e) => setDeep(e.target.checked)}
+            disabled={isScanning}
+            className="mt-0.5 h-4 w-4 shrink-0 rounded border-neutral-300 dark:border-neutral-600"
+          />
+          <span className="min-w-0">
+            <span className="flex items-center gap-1.5 text-sm font-medium text-neutral-900 dark:text-white">
+              Deep Scan
+              <span className="rounded bg-indigo-100 dark:bg-indigo-900/40 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-indigo-700 dark:text-indigo-300">Pro</span>
+            </span>
+            <span className="block text-xs text-neutral-500 dark:text-neutral-400">
+              Also reveals interactive states (menus, dialogs, accordions) and re-scans them, plus checks keyboard reachability — catching issues a one-pass scan misses. Takes longer.
+            </span>
+          </span>
+        </label>
 
         {/* Scanning progress */}
         {isScanning && (

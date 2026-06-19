@@ -106,6 +106,7 @@ export async function executeScanPipeline(
         pageTitle: rawResults.pageTitle,
         browserEngine: "chromium",
         axeCoreVersion: "4.x",
+        ...(rawResults.deepScan && { deepScan: rawResults.deepScan }),
       },
     };
 

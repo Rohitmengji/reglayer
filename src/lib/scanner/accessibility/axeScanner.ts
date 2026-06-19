@@ -46,6 +46,7 @@ import type { ScanOptions } from "@/lib/types";
 import { SCAN_DEFAULTS } from "@/lib/constants";
 import { launchBrowser, isServerless, getViewport } from "@/lib/scanner/browser/launch";
 import { applyAuthToContext } from "@/lib/scanner/auth";
+import { runDeepPasses, type DeepScanReport, type AxeViolationLike, type EvaluablePage } from "./deepScan";
 import fs from "fs";
 import path from "path";
 
@@ -112,6 +113,12 @@ export interface AxeScanResult {
    * which matters for multi-hundred-page crawls.
    */
   screenshot?: string;
+  /**
+   * Deep Scan report — present only when options.deep was set. Revealed-state
+   * axe violations are already merged into `violations`; this block carries the
+   * extra context (states revealed, keyboard heuristics, coverage notes).
+   */
+  deepScan?: DeepScanReport;
 }
 
 export interface AxeViolation {
@@ -336,6 +343,45 @@ export async function runAccessibilityScan(
       }
     }
 
+    /**
+     * Deep Scan (opt-in): drive the live page to reveal interactive states and
+     * probe keyboard reachability — surfacing what a single static axe pass
+     * misses. axe is already injected on `window`, so the reveal re-scan just
+     * calls axe.run() again. Best-effort: a deep-pass failure never fails the
+     * scan (standard results are still returned).
+     */
+    let deepScan: DeepScanReport | undefined;
+    if (options?.deep) {
+      try {
+        const runAxe = async (): Promise<AxeViolationLike[]> => {
+          const r = await page.evaluate((opts) => {
+            return (window as unknown as { axe: { run: (o: unknown) => Promise<{ violations: unknown[] }> } }).axe.run(opts);
+          }, axeOptions) as { violations: AxeViolationLike[] };
+          return r.violations;
+        };
+
+        const { report, extraViolations } = await runDeepPasses(
+          page as unknown as EvaluablePage,
+          runAxe,
+          results.violations as AxeViolationLike[],
+        );
+        deepScan = report;
+        // Merge revealed-state axe violations into the result set so they are
+        // normalized, scored, and persisted as first-class findings.
+        if (extraViolations.length > 0) {
+          (results.violations as AxeViolationLike[]).push(...extraViolations);
+        }
+      } catch {
+        deepScan = {
+          ran: false,
+          statesRevealed: 0,
+          revealedViolationCount: 0,
+          keyboardFindings: [],
+          notes: ["Deep scan could not complete; standard scan results were returned."],
+        };
+      }
+    }
+
     return {
       violations: results.violations.map((v) => ({
         id: v.id,
@@ -358,6 +404,7 @@ export async function runAccessibilityScan(
       pageTitle,
       ...(authResult && { authResult }),
       ...(screenshot && { screenshot }),
+      ...(deepScan && { deepScan }),
     };
   } finally {
     if (browser) {

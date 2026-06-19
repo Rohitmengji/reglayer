@@ -31,6 +31,12 @@ export interface ScanOptions {
   tags?: string[];
   /** Authentication config for scanning behind-login pages */
   auth?: import("@/lib/validations/auth").AuthConfig;
+  /**
+   * Deep Scan: after the initial static-DOM pass, reveal interactive states and
+   * re-run axe, plus run keyboard-reachability heuristics. Surfaces violations a
+   * one-shot scan can't see. Slower — gate behind a paid plan.
+   */
+  deep?: boolean;
 }
 
 export interface ScanResult {
@@ -78,6 +84,8 @@ export interface ScanMetadata {
   pageTitle: string;
   browserEngine: string;
   axeCoreVersion: string;
+  /** Deep Scan report (states revealed, keyboard heuristics). Present when deep scan ran. */
+  deepScan?: import("@/lib/scanner/accessibility/deepScan").DeepScanReport;
 }
 
 export interface ComplianceRule {
