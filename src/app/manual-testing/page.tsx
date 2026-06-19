@@ -112,9 +112,21 @@ export default function ManualTestingPage() {
 
   useEffect(() => {
     let cancelled = false;
-    loadAudits().then(() => { if (cancelled) return; });
-    return () => { cancelled = true; };
-  }, [loadAudits]);
+    const controller = new AbortController();
+    fetch("/api/audits", { signal: controller.signal })
+      .then((res) => {
+        if (cancelled) return;
+        if (!res.ok) throw new Error(res.status === 401 ? "Please sign in to access manual testing." : "Unable to load your test audits. Please try again.");
+        return res.json();
+      })
+      .then((data) => { if (!cancelled && data) { setAudits(data.audits ?? []); } })
+      .catch((err) => {
+        if (cancelled || (err instanceof DOMException && err.name === "AbortError")) return;
+        setError(err instanceof TypeError ? "Network error. Please check your connection and try again." : (err instanceof Error ? err.message : "Unable to load audits."));
+      })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; controller.abort(); };
+  }, []);
 
   const loadPlan = useCallback(async (auditId: string) => {
     setPlanLoading(true);
