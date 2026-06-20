@@ -235,11 +235,11 @@ function ComplianceContent() {
                 <CardTitle className="text-sm">{group.principle}</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                   {group.entries.map((entry) => (
                     <div
                       key={entry.criterion}
-                      className={`flex items-center gap-3 rounded-lg border p-3 ${
+                      className={`flex items-center gap-2 sm:gap-3 rounded-lg border p-2 sm:p-3 ${
                         entry.status === "pass"
                           ? "border-green-100 dark:border-green-800 bg-green-50 dark:bg-green-950"
                           : entry.status === "fail"
