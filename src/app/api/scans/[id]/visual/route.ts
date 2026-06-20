@@ -15,7 +15,7 @@ import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
 import { assertScanAccess } from "@/lib/auth/access";
 import { applyRateLimit } from "@/lib/rate-limit-middleware";
-import { PLAN_LIMITS, type PlanType } from "@/lib/credits/plan-limits";
+import { hasFeature } from "@/lib/features/feature-access";
 import { captureScreenshot } from "@/lib/scanner/browser/screenshot";
 import { analyzeScreenshotForA11y } from "@/lib/ai/visualScan";
 
@@ -43,12 +43,11 @@ export async function POST(
       return NextResponse.json({ error: access.error }, { status: access.status });
     }
 
-    // Plan gate — visual review is part of the advanced (Deep Scan) tier.
-    const planRow = access.workspaceId
-      ? await prisma.workspace.findUnique({ where: { id: access.workspaceId }, select: { plan: true } })
-      : null;
-    const plan = (planRow?.plan ?? "FREE") as PlanType;
-    if (!PLAN_LIMITS[plan]?.features?.deepScan) {
+    // Feature gate — canonical feature system; master admin bypasses, overrides honored.
+    const featureOk =
+      access.isMasterAdmin ||
+      (access.workspaceId ? (await hasFeature(access.workspaceId, "visualScan")).enabled : false);
+    if (!featureOk) {
       return NextResponse.json(
         { error: "AI Visual Review requires a PRO or Enterprise plan", upgradeRequired: true },
         { status: 403 }

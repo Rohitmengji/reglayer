@@ -9,7 +9,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
 import { applyRateLimit } from "@/lib/rate-limit-middleware";
-import { PLAN_LIMITS, type PlanType } from "@/lib/credits/plan-limits";
+import { hasFeature } from "@/lib/features/feature-access";
 import { generateGuidance } from "@/lib/ai/manualTestGuidance";
 import type { ManualTestPlan } from "@/lib/testing/manualTestPlan";
 
@@ -39,7 +39,7 @@ export async function GET(
     // Load user and audit request
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
-      select: { id: true, memberships: { select: { workspaceId: true } } },
+      select: { id: true, isMasterAdmin: true, memberships: { select: { workspaceId: true } } },
     });
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 401 });
@@ -63,20 +63,15 @@ export async function GET(
       return NextResponse.json({ error: "Audit not found" }, { status: 404 });
     }
 
-    // IDOR guard — verify workspace membership
+    // IDOR guard — verify workspace membership (master admin has global access)
     const workspaceIds = user.memberships.map((m) => m.workspaceId);
-    if (!workspaceIds.includes(audit.workspaceId)) {
+    if (!user.isMasterAdmin && !workspaceIds.includes(audit.workspaceId)) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
-    // Plan gate — manualTesting feature required
-    const workspace = await prisma.workspace.findUnique({
-      where: { id: audit.workspaceId },
-      select: { plan: true },
-    });
-    const planType = (workspace?.plan ?? "FREE") as PlanType;
-    const features = PLAN_LIMITS[planType]?.features;
-    if (!features || !("manualTesting" in features) || !features.manualTesting) {
+    // Feature gate — canonical feature system; master admin bypasses, overrides honored.
+    const featureOk = user.isMasterAdmin || (await hasFeature(audit.workspaceId, "manualTesting")).enabled;
+    if (!featureOk) {
       return NextResponse.json(
         { error: "Manual testing requires a PRO or Enterprise plan", upgradeRequired: true },
         { status: 403 }
