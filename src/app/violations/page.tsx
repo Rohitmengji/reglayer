@@ -307,7 +307,7 @@ export default function ViolationsPage() {
 
         {/* Bulk Actions (shown when items selected) */}
         {selectedIds.size > 0 && (
-          <div className="flex items-center gap-3 rounded-xl bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 px-4 py-3">
+          <div className="flex flex-wrap items-center gap-3 rounded-xl bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 px-4 py-3">
             <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
               {selectedIds.size} selected
             </span>

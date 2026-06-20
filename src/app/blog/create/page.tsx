@@ -221,7 +221,7 @@ export default function CreateArticlePage() {
                   placeholder="Topic: e.g., 'WCAG 3.0 Silver timeline and what it means'"
                   className="w-full rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-3 py-2 text-sm text-neutral-900 dark:text-white placeholder-neutral-400 outline-none focus:ring-1 focus:ring-violet-500"
                 />
-                <div className="flex items-center gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                   <ModernSelect
               options={CATEGORIES.map((c) => ({ value: c, label: c }))}
               value={aiCategory}
@@ -235,7 +235,7 @@ export default function CreateArticlePage() {
                   <button
                     onClick={generateWithAI}
                     disabled={generating || !aiTopic.trim()}
-                    className="ml-auto flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-violet-700 transition-colors disabled:opacity-50"
+                    className="w-full sm:w-auto sm:ml-auto flex items-center justify-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-violet-700 transition-colors disabled:opacity-50"
                   >
                     {generating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
                     Generate

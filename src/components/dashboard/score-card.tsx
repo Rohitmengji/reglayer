@@ -117,7 +117,10 @@ function SeverityCount({
 }
 
 function getScoreColor(score: number): string {
-  if (score >= 90) return "#16a34a";
-  if (score >= 70) return "#ca8a04";
-  return "#dc2626";
+  // Modern band palette: 70–89 is a positive green (not warning amber); amber is
+  // reserved for 50–69 "needs work". Kept in sync with report/[id] + scans list.
+  if (score >= 90) return "#059669"; // emerald — excellent
+  if (score >= 70) return "#22c55e"; // green — good
+  if (score >= 50) return "#f59e0b"; // amber — needs work
+  return "#ef4444"; // red — poor
 }

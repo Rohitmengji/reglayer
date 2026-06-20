@@ -696,16 +696,17 @@ export default function CrawlPage() {
           )}
         </div>
 
-        {/* Step bar */}
-        <div className="flex items-center gap-2">
+        {/* Step bar — shrink connectors/padding on mobile and allow horizontal
+            scroll so 4 steps never widen the page (was overflowing at ≤400px). */}
+        <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto pb-1 -mx-1 px-1">
           {(["mode", "config", "running", "done"] as const).map((s, i) => {
             const labels = ["Scope", "Configure", "Scanning", "Results"];
             const isCurrent = step === s;
             const isPast = ["mode", "config", "running", "done"].indexOf(step) > i;
             return (
-              <div key={s} className="flex items-center">
-                {i > 0 && <div className={`w-8 h-px mx-1 ${isPast ? "bg-blue-400" : "bg-neutral-200 dark:bg-neutral-700"}`} />}
-                <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all ${
+              <div key={s} className="flex items-center shrink-0">
+                {i > 0 && <div className={`w-4 sm:w-8 h-px mx-1 ${isPast ? "bg-blue-400" : "bg-neutral-200 dark:bg-neutral-700"}`} />}
+                <div className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full text-xs font-medium transition-all ${
                   isCurrent ? "bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 ring-2 ring-blue-200 dark:ring-blue-800"
                   : isPast ? "bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300"
                   : "bg-neutral-100 dark:bg-neutral-800 text-neutral-400"
@@ -884,9 +885,9 @@ export default function CrawlPage() {
                     <ArrowRight className="h-4 w-4 ml-2" />
                   </Button>
                 </div>
-                <div className="flex items-center justify-between text-xs text-neutral-400 px-1">
+                <div className="flex flex-col gap-1 text-xs text-neutral-400 px-1 sm:flex-row sm:items-center sm:justify-between">
                   <span className="flex items-center gap-1.5">
-                    <Timer className="h-3.5 w-3.5" /> Estimated time: <strong className="text-neutral-600 dark:text-neutral-300">{getTimeEstimate()}</strong>
+                    <Timer className="h-3.5 w-3.5 shrink-0" /> Estimated time: <strong className="text-neutral-600 dark:text-neutral-300">{getTimeEstimate()}</strong>
                   </span>
                   <span>up to {Number(maxPages) || 0} pages · depth {Number(maxDepth) || 0} · {concurrency} parallel</span>
                 </div>
@@ -1422,8 +1423,8 @@ function LitigationSurfaceCard({ surface }: { surface: LitigationSurface }) {
         <p className="text-xs text-neutral-500">{surface.summary}</p>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Headline metrics */}
-        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+        {/* Headline metrics — stack on mobile so the "$500,000+" exposure doesn't overflow a 3-col row */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
           <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 p-3">
             <p className="text-[10px] uppercase tracking-wide text-neutral-400 font-medium">Risk score</p>
             <p className="text-2xl font-black text-neutral-900 dark:text-white">{surface.score}<span className="text-sm font-medium text-neutral-400">/100</span></p>

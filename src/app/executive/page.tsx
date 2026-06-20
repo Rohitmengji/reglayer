@@ -153,15 +153,15 @@ export default function ExecutiveDashboardPage() {
   return (
     <AppShell>
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
+        {/* Header — stack on mobile so the title doesn't crowd the export button */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{t("nav.executive")}</h1>
             <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
               Portfolio-level accessibility compliance overview
             </p>
           </div>
-          <Button variant="outline" size="sm" onClick={handleExport}>
+          <Button variant="outline" size="sm" onClick={handleExport} className="shrink-0 self-start sm:self-auto">
             <Download className="h-3.5 w-3.5 mr-1.5" />
             Export All
           </Button>
