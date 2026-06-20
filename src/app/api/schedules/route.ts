@@ -86,8 +86,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
-  // Feature gate: scheduled scans not available on FREE plan
-  const userPlan = user.plan as PlanType;
+  // Resolve plan from workspace (billing truth) → fallback to user.plan
+  const membership = await prisma.workspaceMember.findFirst({
+    where: { userId: user.id },
+    select: { workspace: { select: { plan: true } } },
+    orderBy: { joinedAt: "asc" },
+  });
+  const userPlan = (membership?.workspace?.plan as PlanType) ?? (user.plan as PlanType) ?? "FREE";
   if (!user.isMasterAdmin && !PLAN_LIMITS[userPlan].features.scheduledScans) {
     return NextResponse.json(
       { error: "Scheduled scans are not available on the Free plan. Upgrade to Pro or Enterprise.", upgradeRequired: true },
