@@ -143,18 +143,22 @@ export function ModernSelect({
         type="button"
         onClick={() => setOpen(!open)}
         onKeyDown={handleKeyDown}
-        className="inline-flex w-full items-center justify-between gap-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm text-neutral-900 dark:text-white hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-all"
+        className={cn(
+          "inline-flex w-full items-center justify-between gap-2 rounded-xl border bg-white dark:bg-neutral-900 px-3.5 py-2.5 text-sm shadow-sm transition-all",
+          "hover:bg-neutral-50 dark:hover:bg-neutral-800/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:border-accent",
+          open ? "border-accent ring-2 ring-accent/30" : "border-neutral-200 dark:border-neutral-700"
+        )}
         role="combobox"
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={listboxId}
         aria-activedescendant={open && focusedIndex >= 0 ? optionId(focusedIndex) : undefined}
       >
-        <span className={activeOption ? "" : "text-neutral-400"}>
+        <span className={cn("truncate", activeOption ? "font-medium text-neutral-900 dark:text-white" : "text-neutral-400")}>
           {activeOption?.label ?? placeholder}
         </span>
         <ChevronDown
-          className={`h-3.5 w-3.5 text-neutral-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+          className={`h-4 w-4 shrink-0 text-neutral-400 transition-transform duration-200 ${open ? "rotate-180 text-accent" : ""}`}
         />
       </button>
       {open && (
@@ -163,7 +167,7 @@ export function ModernSelect({
           id={listboxId}
           role="listbox"
           aria-label={label ?? placeholder}
-          className="absolute left-0 top-full mt-1.5 w-full min-w-0 sm:min-w-40 max-h-60 overflow-y-auto rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-lg shadow-neutral-200/50 dark:shadow-neutral-900/50 py-1.5 z-50"
+          className="absolute left-0 top-full mt-2 w-full min-w-0 sm:min-w-40 max-h-72 overflow-y-auto rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-1.5 shadow-xl shadow-neutral-300/40 dark:shadow-black/60 ring-1 ring-black/5 dark:ring-white/10 z-50"
         >
           {options.map((opt, i) => {
             const isSelected = value === opt.value;
@@ -176,15 +180,18 @@ export function ModernSelect({
                 aria-selected={isSelected}
                 onClick={() => selectIndex(i)}
                 onMouseEnter={() => setFocusedIndex(i)}
-                className={`flex w-full cursor-pointer items-center gap-2.5 px-3 py-2 text-sm transition-colors ${
+                className={cn(
+                  "flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors",
                   isSelected
-                    ? "bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white font-medium"
-                    : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
-                } ${isFocused ? "bg-neutral-50 dark:bg-neutral-800/70" : ""}`}
+                    ? "bg-accent/10 text-accent font-medium"
+                    : isFocused
+                      ? "bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white"
+                      : "text-neutral-600 dark:text-neutral-400"
+                )}
               >
-                <span className="flex-1 text-left">{opt.label}</span>
+                <span className="flex-1 text-left truncate">{opt.label}</span>
                 {isSelected && (
-                  <Check className="h-3.5 w-3.5 text-green-600 shrink-0" />
+                  <Check className="h-4 w-4 text-accent shrink-0" />
                 )}
               </div>
             );
