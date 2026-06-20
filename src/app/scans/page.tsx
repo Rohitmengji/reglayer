@@ -438,12 +438,12 @@ export default function ScansPage() {
                     <span
                       className={`text-2xl font-bold ${
                         (scan.score ?? 0) >= 90
-                          ? "text-green-600"
+                          ? "text-emerald-600"
                           : (scan.score ?? 0) >= 70
-                          ? "text-yellow-600"
+                          ? "text-green-600"
                           : (scan.score ?? 0) >= 50
-                          ? "text-orange-600"
-                          : "text-red-600"
+                          ? "text-amber-500"
+                          : "text-red-500"
                       }`}
                     >
                       {scan.score !== null ? Math.round(scan.score) : "—"}

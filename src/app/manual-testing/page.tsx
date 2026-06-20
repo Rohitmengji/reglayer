@@ -232,9 +232,9 @@ export default function ManualTestingPage() {
     <AppShell>
       <div className="space-y-8">
         <header className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-linear-to-br from-violet-500 to-indigo-600 flex items-center justify-center" aria-hidden="true">
+          {/* <div className="h-10 w-10 rounded-xl bg-linear-to-br from-violet-500 to-indigo-600 flex items-center justify-center" aria-hidden="true">
             <ClipboardCheck className="h-5 w-5 text-white" />
-          </div>
+          </div> */}
           <div>
             <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Manual Testing</h1>
             <p className="text-sm text-neutral-500 dark:text-neutral-400">AI-guided human verification for criteria automation cannot determine</p>
@@ -314,13 +314,15 @@ export default function ManualTestingPage() {
                 <form onSubmit={handleCreate} className="space-y-2" noValidate>
                   <div>
                     <label htmlFor="scan-id-input" className="sr-only">Scan ID</label>
-                    <div className="flex gap-2">
+                    {/* Stack on mobile so the input can shrink (min-w-0) and the
+                        button isn't pushed off-screen; side-by-side from sm up. */}
+                    <div className="flex flex-col sm:flex-row gap-2">
                       <input id="scan-id-input" type="text" value={scanId} onChange={(e) => { setScanId(e.target.value); setScanIdError(null); }}
                         placeholder="Scan ID (e.g., scan_abc123)"
-                        className={`flex-1 rounded-lg border bg-white dark:bg-neutral-900 px-3 py-2 text-sm font-mono transition-colors ${scanIdError ? "border-red-300 dark:border-red-700 focus:ring-red-500" : "border-neutral-200 dark:border-neutral-700 focus:ring-violet-500"} focus:outline-none focus:ring-2 focus:ring-offset-1`}
+                        className={`w-full min-w-0 flex-1 rounded-lg border bg-white dark:bg-neutral-900 px-3 py-2 text-sm font-mono transition-colors ${scanIdError ? "border-red-300 dark:border-red-700 focus:ring-red-500" : "border-neutral-200 dark:border-neutral-700 focus:ring-violet-500"} focus:outline-none focus:ring-2 focus:ring-offset-1`}
                         aria-invalid={!!scanIdError} aria-describedby={scanIdError ? "scan-id-error" : undefined}
                         autoComplete="off" spellCheck={false} maxLength={100} />
-                      <Button type="submit" disabled={creating || !scanId.trim()} aria-busy={creating}>
+                      <Button type="submit" disabled={creating || !scanId.trim()} aria-busy={creating} className="w-full sm:w-auto shrink-0">
                         {creating ? <Loader2 className="h-4 w-4 animate-spin mr-2" aria-hidden="true" /> : <ArrowRight className="h-4 w-4 mr-2" aria-hidden="true" />}
                         Generate Plan
                       </Button>

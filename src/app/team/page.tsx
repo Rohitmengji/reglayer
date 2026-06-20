@@ -281,7 +281,7 @@ export default function TeamPage() {
                   const displayLabel = member.isMasterAdmin ? "MASTER ADMIN" : member.role;
                   const RoleIcon = member.isMasterAdmin ? Crown : (roleIcons[member.role] || Users);
                   return (
-                    <div key={member.id} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
+                    <div key={member.id} className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between">
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="h-9 w-9 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center shrink-0">
                           <span className="text-sm font-semibold text-neutral-600 dark:text-neutral-300">
@@ -296,7 +296,7 @@ export default function TeamPage() {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex flex-wrap items-center gap-2 pl-12 sm:pl-0 sm:shrink-0">
                         <span className="text-[10px] text-neutral-500 dark:text-neutral-500 hidden sm:block">
                           {new Date(member.joinedAt).toLocaleDateString()}
                         </span>

@@ -31,10 +31,12 @@ export default async function PublicReportPage({ params }: ReportPageProps) {
   // Canonical score recomputed from violations (shared with public report, badge,
   // and certificate) so one scan shows one number everywhere.
   const score = scoreFromStoredViolations(scan.violations);
+  // Modern score palette: a good score (70–89) reads as positive GREEN, not a
+  // warning amber. Amber is reserved for the genuine "needs work" band (50–69).
   const scoreColor =
-    score >= 90 ? "text-green-600" : score >= 70 ? "text-yellow-600" : score >= 50 ? "text-orange-600" : "text-red-600";
+    score >= 90 ? "text-emerald-600" : score >= 70 ? "text-green-600" : score >= 50 ? "text-amber-500" : "text-red-500";
   const ringColor =
-    score >= 90 ? "#16a34a" : score >= 70 ? "#ca8a04" : score >= 50 ? "#ea580c" : "#dc2626";
+    score >= 90 ? "#059669" : score >= 70 ? "#22c55e" : score >= 50 ? "#f59e0b" : "#ef4444";
   const scoreLabel =
     score >= 90 ? "Excellent" : score >= 70 ? "Good" : score >= 50 ? "Needs Work" : "Poor";
 

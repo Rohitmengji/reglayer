@@ -132,28 +132,28 @@ export default function ScanDetailPage({
   return (
     <AppShell>
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-start justify-between">
-          <div>
+        {/* Header — stack on mobile so the title/URL don't shove the export button */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
             <Link href="/scans">
               <Button variant="ghost" size="sm" className="mb-2">
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 {t("scanDetail.backToScans")}
               </Button>
             </Link>
-            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">
+            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white wrap-break-word">
               {scan.metadata.pageTitle || t("scanDetail.results")}
             </h1>
-            <p className="mt-1 text-sm text-neutral-500">{scan.url}</p>
+            <p className="mt-1 text-sm text-neutral-500 break-all">{scan.url}</p>
           </div>
-          <Button variant="outline" size="sm" onClick={handleExportPdf}>
+          <Button variant="outline" size="sm" onClick={handleExportPdf} className="shrink-0 self-start">
             <Download className="mr-2 h-4 w-4" />
             {t("scanDetail.exportPdf")}
           </Button>
         </div>
 
         {/* Metadata */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <MetaCard icon={Globe} label={t("scanDetail.url")} value={scan.url} />
           <MetaCard
             icon={Clock}
@@ -232,6 +232,51 @@ export default function ScanDetailPage({
             </CardContent>
           </Card>
         )}
+
+        {/* AI Visual Review — vision model looks at the page for issues axe can't see */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Cpu className="h-4 w-4" />
+              AI Visual Review
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-neutral-600 dark:text-neutral-300">
+              A vision model reviews a screenshot of the page for issues automated scanning can&apos;t see —
+              text baked into images, color-only meaning, apparent low contrast, missing focus indicators.
+              <span className="block text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                AI-suggested — verify manually. Not part of the automated score.
+              </span>
+            </p>
+
+            {visualFindings === null && (
+              <Button variant="outline" size="sm" onClick={runVisualReview} disabled={visualLoading} className="w-full sm:w-auto">
+                {visualLoading ? "Reviewing…" : "Run AI visual review"}
+              </Button>
+            )}
+
+            {visualMsg && (
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">{visualMsg}</p>
+            )}
+
+            {visualFindings && visualFindings.length > 0 && (
+              <ul className="space-y-1.5">
+                {visualFindings.map((f, i) => (
+                  <li
+                    key={`${f.category}-${i}`}
+                    className="rounded-md border border-neutral-100 dark:border-neutral-700 px-2.5 py-1.5"
+                  >
+                    <span className="text-xs font-medium uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+                      {f.severity} · {f.category} · {Math.round(f.confidence * 100)}%
+                    </span>
+                    <span className="block text-sm text-neutral-700 dark:text-neutral-300 mt-0.5">{f.issue}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Compliance Rules */}
         {compliance && (
