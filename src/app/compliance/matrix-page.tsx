@@ -247,19 +247,19 @@ function ComplianceContent() {
                           : "border-neutral-100 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800"
                       }`}
                     >
-                      {entry.status === "pass" && <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />}
-                      {entry.status === "fail" && <XCircle className="h-4 w-4 text-red-600 shrink-0" />}
-                      {entry.status === "not-tested" && <Minus className="h-4 w-4 text-neutral-500 dark:text-neutral-400 shrink-0" />}
+                      {entry.status === "pass" && <CheckCircle2 className="h-3.5 w-3.5 text-green-600 shrink-0" />}
+                      {entry.status === "fail" && <XCircle className="h-3.5 w-3.5 text-red-600 shrink-0" />}
+                      {entry.status === "not-tested" && <Minus className="h-3.5 w-3.5 text-neutral-500 dark:text-neutral-400 shrink-0" />}
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-bold text-neutral-700 dark:text-neutral-200">{entry.criterion}</span>
-                          <Badge variant="secondary" className="text-[9px] px-1 py-0">
+                        <div className="flex items-center gap-1">
+                          <span className="text-[11px] font-bold text-neutral-700 dark:text-neutral-200">{entry.criterion}</span>
+                          <Badge variant="secondary" className="text-[8px] px-1 py-0">
                             {entry.level}
                           </Badge>
                         </div>
-                        <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate">{entry.title}</p>
+                        <p className="text-[10px] text-neutral-500 dark:text-neutral-400 truncate">{entry.title}</p>
                         {entry.violations.length > 0 && (
-                          <p className="text-[10px] text-red-600 mt-0.5 truncate">
+                          <p className="text-[9px] text-red-600 mt-0.5 truncate">
                             {entry.violations.join(", ")}
                           </p>
                         )}
