@@ -91,6 +91,27 @@ export const FEATURE_CATALOG: FeatureDefinition[] = [
     category: "compliance",
     plans: ["PRO", "ENTERPRISE"],
   },
+  {
+    id: "deepScan",
+    name: "Deep Scan",
+    description: "Reveal interactive states + keyboard / focus-trap audit beyond a static scan",
+    category: "compliance",
+    plans: ["PRO", "ENTERPRISE"],
+  },
+  {
+    id: "manualTesting",
+    name: "AI-Guided Manual Testing",
+    description: "Human-in-the-loop verification of the WCAG criteria automation can't determine",
+    category: "compliance",
+    plans: ["PRO", "ENTERPRISE"],
+  },
+  {
+    id: "visualScan",
+    name: "AI Visual Review",
+    description: "Vision-model review of a page screenshot for visually-apparent issues",
+    category: "compliance",
+    plans: ["PRO", "ENTERPRISE"],
+  },
 
   // ─── Automation (Enterprise) ──────────────────
   {

@@ -47,6 +47,12 @@ vi.mock("@/lib/validations/ssrf", () => ({
   validateScanUrl: vi.fn(() => null),
 }));
 
+// Deep-scan feature gate — mocked so the route's import graph doesn't pull in the
+// real prisma/env chain (the deep-scan gate logic itself is covered elsewhere).
+vi.mock("@/lib/features/require-feature", () => ({
+  requireFeature: vi.fn(async () => ({ allowed: true, userId: "u", workspaceId: "w", isMasterAdmin: false })),
+}));
+
 import { getServerSession } from "next-auth";
 import { performScan } from "@/services/scanService";
 import { getPlanContext, getMonthlyScansCount } from "@/lib/credits/plan-context";

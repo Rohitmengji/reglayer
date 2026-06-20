@@ -11,7 +11,7 @@ import { prisma } from "@/lib/database/prisma";
 import { assertScanAccess } from "@/lib/auth/access";
 import { buildTestPlan } from "@/lib/testing/manualTestPlan";
 import { mapTagsToWcag } from "@/lib/scanner/accessibility/wcagMapper";
-import { PLAN_LIMITS, type PlanType } from "@/lib/credits/plan-limits";
+import { hasFeature } from "@/lib/features/feature-access";
 import { applyRateLimit } from "@/lib/rate-limit-middleware";
 import { z } from "zod";
 
@@ -47,14 +47,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: access.error }, { status: access.status });
     }
 
-    // Plan gate — manualTesting feature required
-    const workspace = access.workspaceId
-      ? await prisma.workspace.findUnique({ where: { id: access.workspaceId }, select: { plan: true } })
-      : null;
-    const plan = (workspace?.plan ?? "FREE") as PlanType;
-    const features = PLAN_LIMITS[plan]?.features;
-
-    if (!features || !("manualTesting" in features) || !features.manualTesting) {
+    // Feature gate — gated on the scan's WORKSPACE plan via the canonical feature
+    // system; master admin bypasses, and admin feature-overrides are honored.
+    const featureOk =
+      access.isMasterAdmin ||
+      (access.workspaceId ? (await hasFeature(access.workspaceId, "manualTesting")).enabled : false);
+    if (!featureOk) {
       return NextResponse.json(
         { error: "Manual testing requires a PRO or Enterprise plan", upgradeRequired: true },
         { status: 403 }
