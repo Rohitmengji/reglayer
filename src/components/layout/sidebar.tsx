@@ -33,7 +33,7 @@ import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { cn } from "@/lib/utils/cn";
 import { useTheme } from "@/components/theme-provider";
-import { Shield, LayoutDashboard, Scan, Globe, Grid3X3, Moon, Sun, Languages, Crown, ChevronDown, Settings, BarChart3, Zap, Plug, LogOut, AlertTriangle, TrendingUp, Building2, PieChart, ChevronsUpDown, Check, BookOpen, ClipboardCheck, Search, HelpCircle } from "lucide-react";
+import { Shield, LayoutDashboard, Scan, Globe, Grid3X3, Moon, Sun, Crown, ChevronDown, Settings, BarChart3, Zap, Plug, LogOut, AlertTriangle, TrendingUp, Building2, PieChart, ChevronsUpDown, Check, BookOpen, ClipboardCheck, Search, HelpCircle } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 import { SUPPORTED_LOCALES } from "@/lib/i18n/translations";
 import { useState, useEffect, useRef } from "react";
