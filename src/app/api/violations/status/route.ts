@@ -131,8 +131,16 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
+    // Non-disclosure: a non-member (or read-only role) gets the SAME 404 as a
+    // nonexistent violation, so this endpoint can't be used as an existence
+    // oracle for violation ids.
     const perm = await requireWorkspacePermission("scans.run", { workspaceId: wsId });
-    if (!perm.ok) return perm.response;
+    if (!perm.ok) {
+      return NextResponse.json(
+        { error: "NOT_FOUND", message: "Violation not found" },
+        { status: 404 }
+      );
+    }
 
     // Delegate to business logic
     const result = await updateViolationStatus({

@@ -107,12 +107,12 @@ export default async function ArticlePage({ params }: PageProps) {
               <h2 className="text-lg font-bold text-neutral-900 dark:text-white mb-3">
                 {section.title}
               </h2>
-              {section.paragraphs.map((para, i) => (
+              {(section.paragraphs ?? []).map((para, i) => (
                 <p key={i} className="text-sm text-neutral-700 dark:text-neutral-300 leading-relaxed mb-3">
-                  {para}
+                  {typeof para === "string" ? para : String(para ?? "")}
                 </p>
               ))}
-              {section.stats && (
+              {Array.isArray(section.stats) && (
                 <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {section.stats.map((stat, i) => (
                     <div key={i} className={`rounded-lg ${stat.bg} border ${stat.border} p-3 text-center`}>
@@ -122,7 +122,7 @@ export default async function ArticlePage({ params }: PageProps) {
                   ))}
                 </div>
               )}
-              {section.list && (
+              {Array.isArray(section.list) && (
                 section.ordered ? (
                   <ol className="mt-3 space-y-1.5 text-sm text-neutral-700 dark:text-neutral-300">
                     {section.list.map((item, i) => (
@@ -209,7 +209,7 @@ export default async function ArticlePage({ params }: PageProps) {
                   )}
                 </figure>
               )}
-              {section.table && section.table.headers.length > 0 && (
+              {section.table && Array.isArray(section.table.headers) && section.table.headers.length > 0 && Array.isArray(section.table.rows) && (
                 <div className="mt-4 overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-700">
                   <table className="w-full min-w-md border-collapse text-sm">
                     <thead>
@@ -235,7 +235,7 @@ export default async function ArticlePage({ params }: PageProps) {
                   </table>
                 </div>
               )}
-              {section.accordion && section.accordion.length > 0 && (
+              {Array.isArray(section.accordion) && section.accordion.length > 0 && (
                 <div className="mt-4 space-y-2">
                   {section.accordion.map((item, i) => (
                     <details key={i} className="group rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-900/40">

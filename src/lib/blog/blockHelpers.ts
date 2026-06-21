@@ -62,29 +62,55 @@ export const BLOCK_TYPES: BlockTypeMeta[] = [
 export function safeUrl(url: string): string {
   const u = (url ?? "").trim();
   if (!u) return "";
-  if (/^(https?:\/\/|mailto:|\/|#)/i.test(u)) return u;
+  // Explicit safe schemes + in-page anchors.
+  if (/^(https?:\/\/|mailto:|#)/i.test(u)) return u;
+  // Root-relative path: a single leading "/" NOT followed by another "/"
+  // (so protocol-relative "//evil.com" — an off-site navigation — is rejected).
+  if (/^\/(?!\/)/.test(u)) return u;
   // Bare domain like "example.com/path" → assume https.
   if (/^[a-z0-9-]+(\.[a-z0-9-]+)+(\/|$|\?|#)/i.test(u)) return `https://${u}`;
   return "";
 }
 
+const YT_ID = /^[a-zA-Z0-9_-]{6,15}$/;
+const VIMEO_ID = /^\d{6,12}$/;
+
 /**
  * Turn a client-pasted YouTube/Vimeo URL into a safe, privacy-friendly EMBED
- * URL — or return "" for anything else. Only these two providers are allowed,
- * so a client can never inject an arbitrary iframe src. Regex-based (no `new
- * URL`) so it stays pure and never throws.
+ * URL — or return "" for anything else. The provider is matched by the URL's
+ * HOST (not a substring), so a deceptive URL like "https://evil.com/youtu.be/X"
+ * or "https://youtube.com.evil.com/..." can never produce an embed. Wrapped in
+ * try/catch so it stays pure and never throws.
  */
 export function safeVideoEmbed(url: string): string {
   const u = (url ?? "").trim();
   if (!u) return "";
-  // YouTube: watch?v=ID, youtu.be/ID, /embed/ID, /shorts/ID
-  const yt = u.match(
-    /(?:youtube(?:-nocookie)?\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{6,15})/i
-  );
-  if (yt?.[1]) return `https://www.youtube-nocookie.com/embed/${yt[1]}`;
-  // Vimeo: vimeo.com/ID or player.vimeo.com/video/ID
-  const vimeo = u.match(/(?:player\.)?vimeo\.com\/(?:video\/)?(\d{6,12})/i);
-  if (vimeo?.[1]) return `https://player.vimeo.com/video/${vimeo[1]}`;
+  let parsed: URL;
+  try {
+    parsed = new URL(u);
+  } catch {
+    return "";
+  }
+  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return "";
+  const host = parsed.hostname.toLowerCase().replace(/^www\./, "");
+
+  if (host === "youtube.com" || host === "m.youtube.com" || host === "youtube-nocookie.com") {
+    const v = parsed.searchParams.get("v");
+    if (v && YT_ID.test(v)) return `https://www.youtube-nocookie.com/embed/${v}`;
+    const m = parsed.pathname.match(/^\/(?:embed|shorts)\/([a-zA-Z0-9_-]{6,15})/);
+    if (m) return `https://www.youtube-nocookie.com/embed/${m[1]}`;
+    return "";
+  }
+  if (host === "youtu.be") {
+    const id = parsed.pathname.replace(/^\//, "").split("/")[0];
+    if (YT_ID.test(id)) return `https://www.youtube-nocookie.com/embed/${id}`;
+    return "";
+  }
+  if (host === "vimeo.com" || host === "player.vimeo.com") {
+    const m = parsed.pathname.match(/(\d{6,12})/);
+    if (m && VIMEO_ID.test(m[1])) return `https://player.vimeo.com/video/${m[1]}`;
+    return "";
+  }
   return "";
 }
 
@@ -196,6 +222,63 @@ export function validateArticleContent(
       return { ok: false, error: "each section needs string id + title" };
     }
     if (!Array.isArray(sec.paragraphs)) return { ok: false, error: "section.paragraphs must be an array" };
+    // Deep-check every block kind the public renderer will .map / read, so a
+    // malformed-but-truthy field (e.g. table:{}, list:"x", a non-string paragraph)
+    // can never reach — and crash — the server-component renderer.
+    const blockErr = validateBlockShapes(sec);
+    if (blockErr) return { ok: false, error: blockErr };
   }
   return { ok: true, sections: sections as ArticleSection[] };
+}
+
+const isStringArray = (v: unknown): v is string[] => Array.isArray(v) && v.every((x) => typeof x === "string");
+
+/** Returns an error string if any present block field is the wrong shape, else null. */
+function validateBlockShapes(sec: Record<string, unknown>): string | null {
+  if (!isStringArray(sec.paragraphs)) return "section.paragraphs must be an array of strings";
+  if (sec.list !== undefined && !isStringArray(sec.list)) return "section.list must be an array of strings";
+  if (sec.code !== undefined && typeof sec.code !== "string") return "section.code must be a string";
+  if (sec.divider !== undefined && typeof sec.divider !== "boolean") return "section.divider must be a boolean";
+  if (sec.ordered !== undefined && typeof sec.ordered !== "boolean") return "section.ordered must be a boolean";
+
+  if (sec.image !== undefined) {
+    const im = sec.image as Record<string, unknown>;
+    if (!im || typeof im.url !== "string" || typeof im.alt !== "string") return "section.image must be { url, alt } strings";
+  }
+  if (sec.video !== undefined) {
+    const v = sec.video as Record<string, unknown>;
+    if (!v || typeof v.url !== "string" || (v.title !== undefined && typeof v.title !== "string")) return "section.video must be { url, title? }";
+  }
+  if (sec.quote !== undefined) {
+    const q = sec.quote as Record<string, unknown>;
+    if (!q || typeof q.text !== "string" || (q.attribution !== undefined && typeof q.attribution !== "string")) return "section.quote must be { text, attribution? }";
+  }
+  if (sec.button !== undefined) {
+    const b = sec.button as Record<string, unknown>;
+    if (!b || typeof b.label !== "string" || typeof b.url !== "string") return "section.button must be { label, url } strings";
+  }
+  if (sec.callout !== undefined) {
+    const c = sec.callout as Record<string, unknown>;
+    if (!c || typeof c.title !== "string" || typeof c.body !== "string") return "section.callout must be { title, body } strings";
+  }
+  if (sec.stats !== undefined) {
+    if (!Array.isArray(sec.stats)) return "section.stats must be an array";
+    for (const st of sec.stats as unknown[]) {
+      const o = st as Record<string, unknown>;
+      if (!o || typeof o.value !== "string" || typeof o.label !== "string") return "each stat must have string value + label";
+    }
+  }
+  if (sec.accordion !== undefined) {
+    if (!Array.isArray(sec.accordion)) return "section.accordion must be an array";
+    for (const it of sec.accordion as unknown[]) {
+      const o = it as Record<string, unknown>;
+      if (!o || typeof o.q !== "string" || typeof o.a !== "string") return "each FAQ item must have string q + a";
+    }
+  }
+  if (sec.table !== undefined) {
+    const t = sec.table as Record<string, unknown>;
+    if (!t || !isStringArray(t.headers)) return "section.table.headers must be an array of strings";
+    if (!Array.isArray(t.rows) || !(t.rows as unknown[]).every(isStringArray)) return "section.table.rows must be an array of string arrays";
+  }
+  return null;
 }

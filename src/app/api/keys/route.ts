@@ -63,7 +63,10 @@ export async function POST(request: NextRequest) {
     update: {},
     create: { email: session.user.email, name: session.user.name || null },
   });
-  const workspaceId = await getOrCreateWorkspace(user.id, user.email);
+  // Bind the key to the workspace apiKeys.manage was VERIFIED in — not a
+  // separately-resolved one (which could differ for a multi-workspace user and
+  // mint a credential scoped to a workspace they don't administer).
+  const workspaceId = perm.ctx.workspaceId ?? (await getOrCreateWorkspace(user.id, user.email));
 
   let body: { name?: string };
   try {

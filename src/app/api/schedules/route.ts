@@ -106,7 +106,10 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const workspaceId = await getOrCreateWorkspace(user.id, user.email);
+  // Operate ONLY in the workspace the schedules.manage permission was verified
+  // in — using a separately-resolved workspace could let a permission checked in
+  // one workspace toggle/delete schedules in another.
+  const workspaceId = perm.ctx.workspaceId ?? (await getOrCreateWorkspace(user.id, user.email));
 
   try {
     const body = await request.json();
@@ -120,9 +123,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ schedule });
     }
 
-    // Delete schedule
+    // Delete schedule (workspace-scoped — a foreign id is a no-op → 404)
     if (body.action === "delete" && body.id) {
-      await deleteScheduleFromDB(body.id, workspaceId);
+      const deleted = await deleteScheduleFromDB(body.id, workspaceId);
+      if (!deleted) {
+        return NextResponse.json({ error: "Schedule not found" }, { status: 404 });
+      }
       return NextResponse.json({ message: "Deleted" });
     }
 

@@ -76,7 +76,10 @@ export async function POST(request: NextRequest) {
     create: { email: session.user.email, name: (session.user as { name?: string }).name || null },
   });
 
-  const workspaceId = await getOrCreateWorkspace(user.id, user.email);
+  // Write to the workspace the integrations.manage permission was VERIFIED in —
+  // never a separately-resolved one (which could differ for a multi-workspace
+  // user and escalate a write into a workspace they don't administer).
+  const workspaceId = perm.ctx.workspaceId ?? (await getOrCreateWorkspace(user.id, user.email));
   const body = await request.json();
   const { provider, webhookUrl, config, name } = body;
 

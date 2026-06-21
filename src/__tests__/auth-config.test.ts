@@ -627,6 +627,7 @@ vi.mock("@/lib/crypto", async (importOriginal) => {
 
 import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/database/prisma";
+import { requireWorkspacePermission } from "@/lib/auth/api-guard";
 import { POST as createConfig, GET as listConfigs } from "@/app/api/auth-configs/route";
 
 describe("POST /api/auth-configs", () => {
@@ -659,9 +660,11 @@ describe("POST /api/auth-configs", () => {
   });
 
   it("returns 404 when user has no workspace", async () => {
-    vi.mocked(prisma.user.findUnique).mockResolvedValue({
-      id: "user_1",
-      memberships: [],
+    // The POST now derives the target workspace from the RBAC guard's ctx; a
+    // caller with no resolved workspace → ctx.workspaceId null → 404.
+    vi.mocked(requireWorkspacePermission).mockResolvedValueOnce({
+      ok: true,
+      ctx: { userId: "user-1", email: "test@example.com", isMasterAdmin: false, systemRole: "USER", workspaceId: null, workspaceRole: null },
     } as any);
 
     const req = makeRequest({ name: "test", config: { method: "basic", username: "a", password: "b" } });

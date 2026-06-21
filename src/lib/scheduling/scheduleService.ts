@@ -252,10 +252,14 @@ export async function toggleScheduleInDB(scheduleId: string, workspaceId: string
 }
 
 /**
- * Delete a schedule.
+ * Delete a schedule. Returns true if a schedule was deleted, false if no schedule
+ * with that id exists IN this workspace.
  */
-export async function deleteScheduleFromDB(scheduleId: string, workspaceId: string) {
-  await prisma.schedule.delete({ where: { id: scheduleId } });
+export async function deleteScheduleFromDB(scheduleId: string, workspaceId: string): Promise<boolean> {
+  // Workspace-scoped delete (IDOR guard, mirroring toggleScheduleInDB): a foreign
+  // id matches nothing and is a no-op — never delete another workspace's schedule.
+  const res = await prisma.schedule.deleteMany({ where: { id: scheduleId, workspaceId } });
+  if (res.count === 0) return false;
 
   await prisma.auditLog.create({
     data: {
@@ -264,6 +268,7 @@ export async function deleteScheduleFromDB(scheduleId: string, workspaceId: stri
       workspaceId,
     },
   });
+  return true;
 }
 
 /**

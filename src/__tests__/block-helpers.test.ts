@@ -28,6 +28,12 @@ describe("safeUrl", () => {
     expect(safeUrl("  ")).toBe("");
     expect(safeUrl("")).toBe("");
   });
+
+  it("rejects protocol-relative //host (off-site navigation) but keeps root-relative", () => {
+    expect(safeUrl("//evil.com/x")).toBe("");
+    expect(safeUrl("//evil.com")).toBe("");
+    expect(safeUrl("/pricing")).toBe("/pricing"); // single-slash root-relative still allowed
+  });
 });
 
 describe("safeVideoEmbed", () => {
@@ -50,6 +56,17 @@ describe("safeVideoEmbed", () => {
     expect(safeVideoEmbed("https://youtube.com.evil.com/watch?v=abcdef")).toBe("");
     expect(safeVideoEmbed("")).toBe("");
     expect(safeVideoEmbed("  ")).toBe("");
+  });
+
+  it("matches the provider by HOST, not substring — deceptive URLs are rejected", () => {
+    // These all embed the provider name as a path/query substring on a foreign host.
+    expect(safeVideoEmbed("https://evil.com/youtube.com/embed/ABCDEF")).toBe("");
+    expect(safeVideoEmbed("https://evil.com/?x=youtu.be/ABCDEF")).toBe("");
+    expect(safeVideoEmbed("https://notyoutube.com/embed/ABCDEFG")).toBe("");
+    expect(safeVideoEmbed("https://myvimeo.com/123456")).toBe("");
+    expect(safeVideoEmbed("data:text/html,youtu.be/ABCDEFG")).toBe("");
+    // …while the real hosts still resolve.
+    expect(safeVideoEmbed("https://m.youtube.com/watch?v=dQw4w9WgXcQ")).toBe("https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ");
   });
 });
 
@@ -125,5 +142,28 @@ describe("validateArticleContent", () => {
   it("rejects an absurd number of sections", () => {
     const many = { sections: Array.from({ length: 201 }, (_, i) => ({ id: `${i}`, title: "T", paragraphs: [] })) };
     expect(validateArticleContent(many).ok).toBe(false);
+  });
+
+  it("deep-rejects malformed block shapes that would crash the renderer", () => {
+    const bad = (extra: Record<string, unknown>) => ({ sections: [{ id: "a", title: "T", paragraphs: [], ...extra }] });
+    expect(validateArticleContent(bad({ paragraphs: [1, 2] })).ok).toBe(false); // non-string paragraph
+    expect(validateArticleContent(bad({ list: "nope" })).ok).toBe(false);
+    expect(validateArticleContent(bad({ table: {} })).ok).toBe(false); // headers not an array
+    expect(validateArticleContent(bad({ table: { headers: ["A"], rows: "x" } })).ok).toBe(false);
+    expect(validateArticleContent(bad({ stats: [{ label: "x" }] })).ok).toBe(false); // missing value
+    expect(validateArticleContent(bad({ accordion: [{ q: "x" }] })).ok).toBe(false); // missing a
+    expect(validateArticleContent(bad({ image: { url: "u" } })).ok).toBe(false); // missing alt
+  });
+
+  it("accepts well-formed new block shapes", () => {
+    const good = {
+      sections: [
+        { id: "a", title: "T", paragraphs: ["p"], list: ["x"], ordered: true },
+        { id: "b", title: "T", paragraphs: [], table: { headers: ["A", "B"], rows: [["1", "2"]] } },
+        { id: "c", title: "T", paragraphs: [], accordion: [{ q: "Q", a: "A" }] },
+        { id: "d", title: "T", paragraphs: [], video: { url: "https://youtu.be/x", title: "v" } },
+      ],
+    };
+    expect(validateArticleContent(good).ok).toBe(true);
   });
 });

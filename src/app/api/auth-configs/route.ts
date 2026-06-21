@@ -40,16 +40,15 @@ export async function POST(request: NextRequest) {
   const perm = await requireWorkspacePermission("settings.manage");
   if (!perm.ok) return perm.response;
 
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-    select: { id: true, memberships: { select: { workspaceId: true }, take: 1 } },
-  });
-
-  if (!user || !user.memberships[0]) {
+  // Store the credentials in the workspace settings.manage was VERIFIED in, and
+  // attribute to the verified user — both come from the guard, which resolved the
+  // role IN that exact workspace (a separate unordered take:1 lookup could pick a
+  // different workspace the caller is only read-only in).
+  const workspaceId = perm.ctx.workspaceId;
+  const userId = perm.ctx.userId;
+  if (!workspaceId) {
     return NextResponse.json({ error: "User or workspace not found" }, { status: 404 });
   }
-
-  const workspaceId = user.memberships[0].workspaceId;
 
   let body: unknown;
   try {
@@ -78,7 +77,7 @@ export async function POST(request: NextRequest) {
         domain: domain ?? null,
         method: config.method,
         encryptedData,
-        userId: user.id,
+        userId,
         workspaceId,
       },
       select: { id: true, name: true, domain: true, method: true, createdAt: true },
@@ -106,9 +105,12 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // Resolve the caller's PRIMARY workspace deterministically (earliest-joined),
+  // matching how POST + the RBAC guard define it — an unordered take:1 could list
+  // a different workspace's configs for a multi-workspace user.
   const user = await prisma.user.findUnique({
     where: { email: session.user.email },
-    select: { id: true, memberships: { select: { workspaceId: true }, take: 1 } },
+    select: { id: true, memberships: { select: { workspaceId: true }, orderBy: { joinedAt: "asc" }, take: 1 } },
   });
 
   if (!user || !user.memberships[0]) {

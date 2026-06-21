@@ -66,8 +66,15 @@ export async function POST(
       );
     }
 
+    // Non-disclosure: deny with the SAME 404 as a nonexistent violation so this
+    // endpoint can't confirm a foreign violation id exists.
     const perm = await requireWorkspacePermission("scans.run", { workspaceId: wsId });
-    if (!perm.ok) return perm.response;
+    if (!perm.ok) {
+      return NextResponse.json(
+        { error: "NOT_FOUND", message: "Violation not found" },
+        { status: 404 }
+      );
+    }
 
     // Run verification
     const result = await verifyViolationFix(violationId);

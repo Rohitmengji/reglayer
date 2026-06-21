@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
 import { isContentEditor } from "@/lib/auth/roles";
+import { validateArticleContent } from "@/lib/blog/blockHelpers";
 
 /**
  * GET /api/blog — List articles (public: published only, admin: all)
@@ -49,6 +50,16 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
   if (!body?.title || !body?.slug) {
     return NextResponse.json({ error: "title and slug required" }, { status: 400 });
+  }
+
+  // Validate content shape before persisting — mirrors PATCH so a published
+  // article can NEVER hold a shape the public renderer can't handle (the AI-
+  // generate flow funnels through here, so this is the key ingest gate).
+  if (body.content !== undefined) {
+    const check = validateArticleContent(body.content);
+    if (!check.ok) {
+      return NextResponse.json({ error: `Invalid content: ${check.error}` }, { status: 400 });
+    }
   }
 
   // Check slug uniqueness

@@ -15,9 +15,14 @@ import { prisma } from "@/lib/database/prisma";
  * Returns the workspaceId or null if user has no workspace.
  */
 export async function getOrCreateWorkspace(userId: string, email: string): Promise<string> {
-  // Check if user already has a workspace membership
+  // Check if user already has a workspace membership. ORDER BY joinedAt asc so
+  // "primary workspace" is defined IDENTICALLY here and in the RBAC guard
+  // (requireWorkspacePermission) — an unordered findFirst can return a different
+  // row than the guard, letting a permission verified in workspace A authorize a
+  // write into workspace B (cross-workspace privilege divergence).
   const membership = await prisma.workspaceMember.findFirst({
     where: { userId },
+    orderBy: { joinedAt: "asc" },
     select: { workspaceId: true },
   });
 
