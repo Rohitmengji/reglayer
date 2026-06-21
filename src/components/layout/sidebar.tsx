@@ -33,7 +33,7 @@ import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { cn } from "@/lib/utils/cn";
 import { useTheme } from "@/components/theme-provider";
-import { Shield, LayoutDashboard, Scan, Globe, Grid3X3, Moon, Sun, Languages, Crown, ChevronDown, Settings, BarChart3, Zap, Plug, LogOut, AlertTriangle, TrendingUp, Building2, PieChart, ChevronsUpDown, Check, BookOpen, ClipboardCheck } from "lucide-react";
+import { Shield, LayoutDashboard, Scan, Globe, Grid3X3, Moon, Sun, Languages, Crown, ChevronDown, Settings, BarChart3, Zap, Plug, LogOut, AlertTriangle, TrendingUp, Building2, PieChart, ChevronsUpDown, Check, BookOpen, ClipboardCheck, Search, HelpCircle } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 import { SUPPORTED_LOCALES } from "@/lib/i18n/translations";
 import { useState, useEffect, useRef } from "react";
@@ -260,6 +260,26 @@ export function Sidebar({ onNavigate }: SidebarProps) {
 
       {/* Bottom Area */}
       <div className="border-t border-neutral-200/60 dark:border-neutral-800 p-3 space-y-1">
+        {/* Search (command palette) — make the ⌘K shortcut discoverable */}
+        <button
+          onClick={() => window.dispatchEvent(new Event("reglayer:open-command-palette"))}
+          className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200/60 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-white transition-colors"
+        >
+          <Search className="h-4 w-4 shrink-0" />
+          <span className="flex-1 text-left">{t("nav.search")}</span>
+          <kbd className="rounded border border-neutral-300 dark:border-neutral-600 px-1.5 py-0.5 text-[10px] font-medium text-neutral-400 dark:text-neutral-500">⌘K</kbd>
+        </button>
+
+        {/* Help & docs — a way out when a user is stuck */}
+        <Link
+          href="/docs"
+          onClick={onNavigate}
+          className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200/60 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-white transition-colors"
+        >
+          <HelpCircle className="h-4 w-4 shrink-0" />
+          <span className="flex-1 text-left">{t("nav.help")}</span>
+        </Link>
+
         {/* Notifications */}
         {session?.user && <NotificationBell />}
 

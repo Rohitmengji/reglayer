@@ -27,6 +27,13 @@ export const de = {
   "nav.team": "Team",
   "nav.auditLog": "Audit-Protokoll",
   "nav.notifications": "Benachrichtigungen",
+  "nav.search": "Suche",
+  "nav.help": "Hilfe & Doku",
+  "nextSteps.title": "Wie geht's weiter?",
+  "nextSteps.fix": "Probleme beheben",
+  "nextSteps.autoFix": "Automatisch beheben",
+  "nextSteps.manualTest": "Manuell testen",
+  "nextSteps.monitor": "Seite überwachen",
   "nav.integrations": "Integrationen",
   "nav.blog": "Blog",
   "nav.automation": "Automatisierung",
@@ -748,6 +755,7 @@ export const de = {
 
   // Onboarding
   "onboarding.welcome": "Willkommen{name}!",
+  "onboarding.skipForNow": "Später",
   "onboarding.roleTitle": "Sagen Sie uns Ihre Rolle, damit wir Ihre Erfahrung personalisieren können. Sie können dies später in den Einstellungen ändern.",
   "onboarding.developer": "Entwickler",
   "onboarding.developerDesc": "Ich baue und repariere Webanwendungen",

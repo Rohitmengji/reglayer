@@ -27,6 +27,13 @@ export const en = {
   "nav.team": "Team",
   "nav.auditLog": "Audit Log",
   "nav.notifications": "Notifications",
+  "nav.search": "Search",
+  "nav.help": "Help & docs",
+  "nextSteps.title": "What's next?",
+  "nextSteps.fix": "Fix these issues",
+  "nextSteps.autoFix": "Auto-fix what we can",
+  "nextSteps.manualTest": "Manual-test the rest",
+  "nextSteps.monitor": "Monitor this page",
   "nav.integrations": "Integrations",
   "nav.blog": "Blog",
   "nav.automation": "Automation",
@@ -790,6 +797,7 @@ export const en = {
 
   // Onboarding
   "onboarding.welcome": "Welcome{name}! 🎉",
+  "onboarding.skipForNow": "Skip for now",
   "onboarding.roleTitle": "Tell us your role so we can personalize your experience. You can always change this later in settings.",
   "onboarding.developer": "Developer",
   "onboarding.developerDesc": "I build and fix web applications",

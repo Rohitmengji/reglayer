@@ -80,6 +80,22 @@ export function ScanForm({ onScanComplete }: ScanFormProps) {
     };
   }, []);
 
+  // Pick up a URL the user typed in the onboarding flow (the dashboard stashes it
+  // in sessionStorage and fires "onboarding-scan"). Previously this was dropped,
+  // so a new user had to retype the URL — friction at the most important moment.
+  useEffect(() => {
+    function pickUpOnboardingUrl() {
+      const u = sessionStorage.getItem("reglayer_onboarding_url");
+      if (u) {
+        setUrl(u);
+        sessionStorage.removeItem("reglayer_onboarding_url");
+      }
+    }
+    pickUpOnboardingUrl();
+    window.addEventListener("onboarding-scan", pickUpOnboardingUrl);
+    return () => window.removeEventListener("onboarding-scan", pickUpOnboardingUrl);
+  }, []);
+
   function normalizeUrl(input: string): string {
     const trimmed = input.trim();
     if (!trimmed) return trimmed;

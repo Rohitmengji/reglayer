@@ -17,7 +17,7 @@ import { ViolationCard } from "@/components/scanner/violation-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Download, Clock, Globe, Cpu } from "lucide-react";
+import { ArrowLeft, Download, Clock, Globe, Cpu, ListChecks, Wand2, ClipboardCheck, Activity, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { useI18n } from "@/components/i18n-provider";
 
@@ -177,6 +177,9 @@ export default function ScanDetailPage({
         {/* Score */}
         <ScoreCard summary={scan.summary} />
 
+        {/* What's next — turn results into action so the user isn't left at a dead end */}
+        <NextSteps hasViolations={scan.violations.length > 0} />
+
         {/* Deep Scan report — only when a deep scan ran */}
         {scan.metadata.deepScan?.ran && (
           <Card>
@@ -332,6 +335,44 @@ export default function ScanDetailPage({
         )}
       </div>
     </AppShell>
+  );
+}
+
+// Turns a finished scan into the next valuable action instead of a dead end.
+// Fix/auto-fix/manual-test only make sense when there are issues; monitoring
+// always does.
+function NextSteps({ hasViolations }: { hasViolations: boolean }) {
+  const { t } = useI18n();
+  const steps: Array<{ href: string; label: string; Icon: typeof ListChecks; show: boolean }> = [
+    { href: "/violations", label: t("nextSteps.fix"), Icon: ListChecks, show: hasViolations },
+    { href: "/automation?tab=remediation", label: t("nextSteps.autoFix"), Icon: Wand2, show: hasViolations },
+    { href: "/manual-testing", label: t("nextSteps.manualTest"), Icon: ClipboardCheck, show: hasViolations },
+    { href: "/monitoring", label: t("nextSteps.monitor"), Icon: Activity, show: true },
+  ].filter((s) => s.show);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-sm font-medium">{t("nextSteps.title")}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {steps.map(({ href, label, Icon }) => (
+            <Link
+              key={href}
+              href={href}
+              className="group flex items-center gap-3 rounded-lg border border-neutral-200 dark:border-neutral-700 p-3 transition-colors hover:border-accent/50 hover:bg-accent/5"
+            >
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent">
+                <Icon className="h-4 w-4" />
+              </span>
+              <span className="flex-1 text-sm font-medium text-neutral-800 dark:text-neutral-200">{label}</span>
+              <ArrowRight className="h-4 w-4 text-neutral-300 dark:text-neutral-600 transition-transform group-hover:translate-x-0.5 group-hover:text-accent" />
+            </Link>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
