@@ -177,7 +177,7 @@ export default function WebhooksPage() {
               Copy this secret now — it won&apos;t be shown again. Use it to verify webhook signatures.
             </p>
             <div className="flex items-center gap-2">
-              <code className="flex-1 rounded bg-white dark:bg-neutral-900 px-3 py-2 text-xs font-mono border border-green-200 dark:border-green-800">
+              <code className="flex-1 min-w-0 break-all rounded bg-white dark:bg-neutral-900 px-3 py-2 text-xs font-mono border border-green-200 dark:border-green-800">
                 {showSecret ? newSecret : "•".repeat(40)}
               </code>
               <Button variant="ghost" size="sm" onClick={() => setShowSecret(!showSecret)}>

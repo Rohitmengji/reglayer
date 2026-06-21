@@ -40,13 +40,13 @@ export default function ConversionsPage() {
 
   return (
     <AppShell>
-      <div className="p-6 max-w-5xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
+      <div className="max-w-5xl mx-auto space-y-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
             <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{t("admin.conversions.title")}</h1>
             <p className="text-sm text-neutral-500 mt-1">{t("admin.conversions.subtitle")}</p>
           </div>
-          <div className="flex gap-1 rounded-lg border border-neutral-200 dark:border-neutral-700 p-1">
+          <div className="flex gap-1 shrink-0 rounded-lg border border-neutral-200 dark:border-neutral-700 p-1">
             {[7, 30, 90].map((d) => (
               <button
                 key={d}
