@@ -334,9 +334,9 @@ export default function ManualTestingPage() {
             </Card>
 
             {loading ? (
-              <div className="flex items-center justify-center py-12" role="status" aria-label="Loading audits">
-                <Loader2 className="h-6 w-6 text-neutral-400 animate-spin" aria-hidden="true" />
-                <span className="ml-3 text-sm text-neutral-500">Loading your audits...</span>
+              <div className="flex flex-col items-center justify-center min-h-[30vh" role="status" aria-label="Loading audits">
+                <Loader2 className="h-7 w-7 text-neutral-400 animate-spin" aria-hidden="true" />
+                <span className="mt-3 text-sm text-neutral-500">Loading your audits...</span>
               </div>
             ) : audits.length > 0 ? (
               <Card>
@@ -390,9 +390,9 @@ export default function ManualTestingPage() {
         )}
 
         {planLoading && (
-          <div className="flex items-center justify-center py-12" role="status" aria-label="Loading test plan">
-            <Loader2 className="h-6 w-6 text-violet-500 animate-spin" aria-hidden="true" />
-            <span className="ml-3 text-sm text-neutral-500">Loading test plan...</span>
+          <div className="flex flex-col items-center justify-center min-h-[50vh]" role="status" aria-label="Loading test plan">
+            <Loader2 className="h-7 w-7 text-violet-500 animate-spin" aria-hidden="true" />
+            <span className="mt-3 text-sm text-neutral-500">Loading test plan...</span>
           </div>
         )}
 

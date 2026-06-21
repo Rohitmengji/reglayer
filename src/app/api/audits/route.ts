@@ -71,6 +71,7 @@ export async function POST(request: NextRequest) {
       where: { id: scanId },
       select: {
         id: true,
+        url: true,
         score: true,
         siteId: true,
         workspaceId: true,
@@ -84,6 +85,41 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Scan not found" }, { status: 404 });
     }
 
+    // AuditRequest.siteId is a REQUIRED foreign key, but an ad-hoc URL scan has
+    // no Site (scan.siteId is nullable). Resolve a real Site to attach the audit
+    // to: prefer the scan's own Site, else get-or-create one for the scan's URL in
+    // its workspace. (Previously this passed siteId: "" → audit_requests_siteId_fkey
+    // foreign-key violation.)
+    const workspaceId = access.workspaceId ?? scan.workspaceId;
+    if (!workspaceId) {
+      return NextResponse.json(
+        { error: "This scan isn't associated with a workspace, so a manual-test audit can't be created for it." },
+        { status: 400 }
+      );
+    }
+    let siteId = scan.siteId;
+    if (!siteId) {
+      const existingSite = await prisma.site.findFirst({
+        where: { url: scan.url, workspaceId },
+        select: { id: true },
+      });
+      if (existingSite) {
+        siteId = existingSite.id;
+      } else {
+        let siteName = scan.url;
+        try {
+          siteName = new URL(scan.url).hostname;
+        } catch {
+          /* keep raw url as the name if it isn't parseable */
+        }
+        const createdSite = await prisma.site.create({
+          data: { url: scan.url, name: siteName, workspaceId },
+          select: { id: true },
+        });
+        siteId = createdSite.id;
+      }
+    }
+
     // Compute automation coverage from violation tags
     const allTags = scan.violations.flatMap((v) => v.tags);
     const wcagMappings = mapTagsToWcag(allTags);
@@ -95,8 +131,8 @@ export async function POST(request: NextRequest) {
     // Create AuditRequest with plan in findings
     const auditRequest = await prisma.auditRequest.create({
       data: {
-        workspaceId: access.workspaceId ?? "",
-        siteId: scan.siteId ?? "",
+        workspaceId,
+        siteId,
         type: "manual-test",
         status: "in-progress",
         scope: `Manual testing for scan ${scanId}`,
