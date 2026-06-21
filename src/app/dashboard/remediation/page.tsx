@@ -30,6 +30,7 @@ import {
   MousePointerClick, ArrowDownUp, Contrast, ShieldCheck, Info, Stethoscope, UserCog,
 } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
+import type { TranslationKey } from "@/lib/i18n/translations";
 import { analyzeFixability, type FixabilitySummary } from "@/lib/remediation/fixability";
 
 // ── Engine fix-category catalog ─────────────────────────────────────────────
@@ -39,9 +40,9 @@ import { analyzeFixability, type FixabilitySummary } from "@/lib/remediation/fix
 interface FixCatalogEntry {
   configKey: string;       // RemediationConfig flag
   category: string;        // FixRecord.category emitted by the engine
-  label: string;
+  labelKey: TranslationKey;
   wcag: string;
-  description: string;
+  descKey: TranslationKey;
   Icon: typeof Wand2;
   risky?: boolean;
   /** Engine can apply the markup, but the VALUE still needs human review. */
@@ -49,14 +50,14 @@ interface FixCatalogEntry {
 }
 
 const FIX_CATALOG: FixCatalogEntry[] = [
-  { configKey: "enableLangAttr", category: "lang-attribute", label: "Page language", wcag: "WCAG 3.1.1", description: "Set the document <html lang> so screen readers use the right voice.", Icon: Languages },
-  { configKey: "enableSkipLinks", category: "skip-links", label: "Skip-to-content link", wcag: "WCAG 2.4.1", description: "Add a keyboard skip link so users can bypass repeated navigation.", Icon: SkipForward },
-  { configKey: "enableLandmarks", category: "landmarks", label: "Landmark roles", wcag: "WCAG 1.3.1", description: "Label nav/main/footer regions so assistive tech can jump between them.", Icon: LayoutTemplate },
-  { configKey: "enableAltText", category: "alt-text", label: "Image alt text", wcag: "WCAG 1.1.1", description: "Add alt attributes derived from filename/context.", Icon: ImageIcon, needsReview: true },
-  { configKey: "enableFormLabels", category: "form-labels", label: "Form labels", wcag: "WCAG 1.3.1 / 3.3.2", description: "Associate labels with inputs using placeholder/name as a starting point.", Icon: FormInput, needsReview: true },
-  { configKey: "enableButtonLabels", category: "button-labels", label: "Button names", wcag: "WCAG 4.1.2", description: "Give icon-only buttons an accessible name.", Icon: MousePointerClick, needsReview: true },
-  { configKey: "enableFocusOrder", category: "focus-order", label: "Focus order", wcag: "WCAG 2.4.3", description: "Remove positive tabindex values that break logical focus order.", Icon: ArrowDownUp },
-  { configKey: "enableContrastFixes", category: "contrast", label: "Color contrast", wcag: "WCAG 1.4.3", description: "Nudge low-contrast colors toward the 4.5:1 ratio. May alter your design — review carefully.", Icon: Contrast, risky: true },
+  { configKey: "enableLangAttr", category: "lang-attribute", labelKey: "remediation.catLangLabel", wcag: "WCAG 3.1.1", descKey: "remediation.catLangDesc", Icon: Languages },
+  { configKey: "enableSkipLinks", category: "skip-links", labelKey: "remediation.catSkipLabel", wcag: "WCAG 2.4.1", descKey: "remediation.catSkipDesc", Icon: SkipForward },
+  { configKey: "enableLandmarks", category: "landmarks", labelKey: "remediation.catLandmarksLabel", wcag: "WCAG 1.3.1", descKey: "remediation.catLandmarksDesc", Icon: LayoutTemplate },
+  { configKey: "enableAltText", category: "alt-text", labelKey: "remediation.catAltLabel", wcag: "WCAG 1.1.1", descKey: "remediation.catAltDesc", Icon: ImageIcon, needsReview: true },
+  { configKey: "enableFormLabels", category: "form-labels", labelKey: "remediation.catFormLabel", wcag: "WCAG 1.3.1 / 3.3.2", descKey: "remediation.catFormDesc", Icon: FormInput, needsReview: true },
+  { configKey: "enableButtonLabels", category: "button-labels", labelKey: "remediation.catButtonLabel", wcag: "WCAG 4.1.2", descKey: "remediation.catButtonDesc", Icon: MousePointerClick, needsReview: true },
+  { configKey: "enableFocusOrder", category: "focus-order", labelKey: "remediation.catFocusLabel", wcag: "WCAG 2.4.3", descKey: "remediation.catFocusDesc", Icon: ArrowDownUp },
+  { configKey: "enableContrastFixes", category: "contrast", labelKey: "remediation.catContrastLabel", wcag: "WCAG 1.4.3", descKey: "remediation.catContrastDesc", Icon: Contrast, risky: true },
 ];
 
 type RemediationConfigState = Record<string, boolean>;
@@ -148,7 +149,7 @@ export default function RemediationPage() {
     try {
       const res = await fetch(`/api/scans/${scanId}`);
       if (!res.ok) {
-        toast.error("Could not load that scan");
+        toast.error(t("remediation.toastCouldNotLoadScan"));
         return;
       }
       const data = await res.json();
@@ -157,7 +158,7 @@ export default function RemediationPage() {
       const scanUrl = data?.scan?.url;
       if (typeof scanUrl === "string" && scanUrl) setUrl(scanUrl);
     } catch {
-      toast.error("Could not analyze that scan");
+      toast.error(t("remediation.toastCouldNotAnalyzeScan"));
     } finally {
       setAnalyzing(false);
     }
@@ -183,10 +184,10 @@ export default function RemediationPage() {
       if (res.ok) {
         setResult(data as RemediationResult);
       } else {
-        toast.error(data.error || "Remediation failed");
+        toast.error(data.error || t("remediation.toastRemediationFailed"));
       }
     } catch {
-      toast.error("Could not reach the remediation service");
+      toast.error(t("remediation.toastCouldNotReachService"));
     } finally {
       setLoading(false);
     }
@@ -202,7 +203,7 @@ export default function RemediationPage() {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        toast.error(err.error || "Could not generate the fixed HTML");
+        toast.error(err.error || t("remediation.toastCouldNotGenerateHtml"));
         return;
       }
       const html = await res.text();
@@ -215,9 +216,9 @@ export default function RemediationPage() {
       a.click();
       a.remove();
       URL.revokeObjectURL(href);
-      toast.success("Downloaded the remediated HTML");
+      toast.success(t("remediation.toastDownloaded"));
     } catch {
-      toast.error("Download failed");
+      toast.error(t("remediation.toastDownloadFailed"));
     } finally {
       setDownloading(false);
     }
@@ -250,30 +251,30 @@ export default function RemediationPage() {
           <CardContent className="pt-6">
             <div className="flex flex-wrap items-center gap-2 mb-1">
               <Stethoscope className="h-5 w-5 text-accent" />
-              <h3 className="font-semibold text-neutral-900 dark:text-white">How much of a scan can we auto-fix?</h3>
+              <h3 className="font-semibold text-neutral-900 dark:text-white">{t("remediation.fixabilityCardTitle")}</h3>
             </div>
             <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">
-              Pick a scan you&apos;ve already run. We map each violation to the remediation engine and show what&apos;s auto-fixable versus what needs a developer.
+              {t("remediation.fixabilityCardSubtitle")}
             </p>
             {scans.length === 0 ? (
               <p className="text-sm text-neutral-400 dark:text-neutral-500">
-                No completed scans yet — run a scan first, then come back to see its fixability.
+                {t("remediation.fixabilityNoScans")}
               </p>
             ) : (
               <ModernSelect
                 value={selectedScanId}
                 onChange={analyzeScan}
-                placeholder="Select a scan…"
+                placeholder={t("remediation.selectScanPlaceholder")}
                 options={scans.map((s) => ({
                   value: s.id,
-                  label: `${hostOf(s.url)} · ${s.totalViolations} ${s.totalViolations === 1 ? "issue" : "issues"}${s.createdAt ? ` · ${new Date(s.createdAt).toLocaleDateString()}` : ""}`,
+                  label: `${hostOf(s.url)} · ${s.totalViolations} ${s.totalViolations === 1 ? t("remediation.issueSingular") : t("remediation.issuePlural")}${s.createdAt ? ` · ${new Date(s.createdAt).toLocaleDateString()}` : ""}`,
                 }))}
               />
             )}
 
             {analyzing && (
               <div className="mt-4 flex items-center gap-2 text-sm text-neutral-500 dark:text-neutral-400">
-                <Loader2 className="h-4 w-4 animate-spin" /> Analyzing violations…
+                <Loader2 className="h-4 w-4 animate-spin" /> {t("remediation.analyzingViolations")}
               </div>
             )}
 
@@ -292,17 +293,17 @@ export default function RemediationPage() {
           <CardContent className="pt-6">
             <div className="flex flex-wrap items-center gap-2 mb-1">
               <Globe className="h-5 w-5 text-accent" />
-              <h3 className="font-semibold text-neutral-900 dark:text-white">Remediate a URL</h3>
+              <h3 className="font-semibold text-neutral-900 dark:text-white">{t("remediation.urlCardTitle")}</h3>
               <Badge variant="secondary">Pro</Badge>
             </div>
             <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">
-              Fetch a page, apply the fixes you select below, and review every change with a before→after diff.
+              {t("remediation.urlCardSubtitle")}
             </p>
 
             {/* Fix configuration */}
             <fieldset className="mb-4">
               <legend className="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-2">
-                Fixes to apply ({enabledCount}/{FIX_CATALOG.length})
+                {t("remediation.fixesToApplyLegend")} ({enabledCount}/{FIX_CATALOG.length})
               </legend>
               <div className="grid gap-2 sm:grid-cols-2">
                 {FIX_CATALOG.map((f) => {
@@ -323,15 +324,15 @@ export default function RemediationPage() {
                       <f.Icon className={`mt-0.5 h-4 w-4 shrink-0 ${on ? "text-accent" : "text-neutral-400"}`} />
                       <span className="min-w-0 flex-1">
                         <span className="flex flex-wrap items-center gap-1.5">
-                          <span className="text-sm font-medium text-neutral-900 dark:text-white">{f.label}</span>
+                          <span className="text-sm font-medium text-neutral-900 dark:text-white">{t(f.labelKey)}</span>
                           <span className="rounded bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 text-[10px] font-medium text-neutral-500 dark:text-neutral-400">{f.wcag}</span>
                           {f.risky && (
                             <span className="flex items-center gap-0.5 rounded bg-amber-100 dark:bg-amber-900/30 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-300">
-                              <AlertTriangle className="h-2.5 w-2.5" /> alters design
+                              <AlertTriangle className="h-2.5 w-2.5" /> {t("remediation.altersDesignBadge")}
                             </span>
                           )}
                         </span>
-                        <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">{f.description}</span>
+                        <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">{t(f.descKey)}</span>
                       </span>
                       {/* Switch track */}
                       <span
@@ -353,12 +354,12 @@ export default function RemediationPage() {
                 onChange={(e) => setUrl(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && runRemediation()}
                 placeholder="https://example.com"
-                aria-label="URL to remediate"
+                aria-label={t("remediation.urlInputAriaLabel")}
                 className="flex-1 min-w-0 rounded-md border border-neutral-200 dark:border-neutral-700 px-3 py-2 text-sm bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent"
               />
               <Button onClick={() => runRemediation()} disabled={!canRun} size="sm" className="w-full sm:w-auto shrink-0">
                 {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Wand2 className="h-4 w-4 mr-2" />}
-                {loading ? "Fixing…" : "Remediate"}
+                {loading ? t("remediation.fixingButton") : t("remediation.remediateButton")}
               </Button>
             </div>
           </CardContent>
@@ -370,7 +371,7 @@ export default function RemediationPage() {
             <CardContent className="pt-6">
               <div className="flex items-center gap-3 text-sm text-neutral-500 dark:text-neutral-400">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Fetching {hostOf(url)} and applying fixes…
+                {t("remediation.fetchingApplyingFixes", { host: hostOf(url) })}
               </div>
             </CardContent>
           </Card>
@@ -383,15 +384,15 @@ export default function RemediationPage() {
           <CardContent className="pt-6">
             <div className="flex flex-wrap items-center gap-2 mb-1">
               <Code className="h-5 w-5 text-accent" />
-              <h3 className="font-semibold text-neutral-900 dark:text-white">Drop-in script</h3>
-              <Badge>Instant · client-side</Badge>
+              <h3 className="font-semibold text-neutral-900 dark:text-white">{t("remediation.scriptCardTitle")}</h3>
+              <Badge>{t("remediation.scriptBadge")}</Badge>
             </div>
             <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">
-              Add one script tag. It applies the structural fixes below on every page load — no build step.
+              {t("remediation.scriptCardSubtitle")}
             </p>
             <div className="relative overflow-x-auto rounded-lg bg-neutral-900 dark:bg-neutral-800 p-4 font-mono text-sm">
               <code className="break-all text-neutral-100">{`<script src="${typeof window !== "undefined" ? window.location.origin : ""}/api/remediate/script"></script>`}</code>
-              <Button size="sm" variant="ghost" className="absolute top-2 right-2 text-neutral-300 hover:text-white" onClick={copyScript} aria-label="Copy script tag">
+              <Button size="sm" variant="ghost" className="absolute top-2 right-2 text-neutral-300 hover:text-white" onClick={copyScript} aria-label={t("remediation.copyScriptAriaLabel")}>
                 {copied ? <Check className="h-4 w-4 text-green-400" /> : <Copy className="h-4 w-4" />}
               </Button>
             </div>
@@ -401,7 +402,7 @@ export default function RemediationPage() {
               {FIX_CATALOG.filter((f) => !f.risky).map((f) => (
                 <div key={f.configKey} className="flex items-center gap-2 text-xs text-neutral-600 dark:text-neutral-300">
                   <f.Icon className="h-3.5 w-3.5 shrink-0 text-accent" />
-                  <span className="min-w-0 truncate">{f.label}</span>
+                  <span className="min-w-0 truncate">{t(f.labelKey)}</span>
                   <span className="ml-auto shrink-0 rounded bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 text-[10px] font-medium text-neutral-500 dark:text-neutral-400">{f.wcag}</span>
                 </div>
               ))}
@@ -416,7 +417,7 @@ export default function RemediationPage() {
 
             {!scriptSnippet ? (
               <Button variant="outline" size="sm" className="mt-3" onClick={loadScript}>
-                View full script
+                {t("remediation.viewFullScript")}
               </Button>
             ) : (
               <pre className="mt-3 max-h-48 overflow-auto rounded-lg bg-neutral-900 dark:bg-neutral-800 p-4 text-xs text-neutral-100">
@@ -432,6 +433,7 @@ export default function RemediationPage() {
 
 // ── Results view ─────────────────────────────────────────────────────────────
 function ResultsView({ result, onDownload, downloading }: { result: RemediationResult; onDownload: () => void; downloading: boolean }) {
+  const { t } = useI18n();
   const categoryKeys = Object.keys(result.categories);
   const reviewCount = result.fixes.filter((f) => catalogFor(f.category)?.needsReview).length;
 
@@ -444,7 +446,7 @@ function ResultsView({ result, onDownload, downloading }: { result: RemediationR
             <div className="flex items-baseline gap-2">
               <span className="text-3xl font-bold text-neutral-900 dark:text-white">{result.totalFixes}</span>
               <span className="text-sm text-neutral-500 dark:text-neutral-400">
-                {result.totalFixes === 1 ? "fix applied" : "fixes applied"} across {categoryKeys.length} {categoryKeys.length === 1 ? "category" : "categories"}
+                {result.totalFixes === 1 ? t("remediation.fixAppliedSingular") : t("remediation.fixesAppliedPlural")} · {categoryKeys.length} {categoryKeys.length === 1 ? t("remediation.categorySingular") : t("remediation.categoryPlural")}
               </span>
             </div>
             <p className="mt-1 text-xs text-neutral-400 dark:text-neutral-500 wrap-break-word">{result.url}</p>
@@ -452,7 +454,7 @@ function ResultsView({ result, onDownload, downloading }: { result: RemediationR
           {result.totalFixes > 0 && (
             <Button onClick={onDownload} disabled={downloading} size="sm" variant="outline" className="w-full sm:w-auto shrink-0">
               {downloading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
-              Download fixed HTML
+              {t("remediation.downloadFixedHtml")}
             </Button>
           )}
         </div>
@@ -460,7 +462,7 @@ function ResultsView({ result, onDownload, downloading }: { result: RemediationR
         {result.totalFixes === 0 ? (
           <div className="mt-4 flex items-center gap-2 rounded-lg border border-neutral-200 dark:border-neutral-700 p-4 text-sm text-neutral-500 dark:text-neutral-400">
             <ShieldCheck className="h-4 w-4 text-green-500 shrink-0" />
-            No auto-fixable issues found on this page for the selected fixes.
+            {t("remediation.noAutoFixable")}
           </div>
         ) : (
           <>
@@ -472,7 +474,7 @@ function ResultsView({ result, onDownload, downloading }: { result: RemediationR
                 return (
                   <span key={cat} className="flex items-center gap-1.5 rounded-full border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900 px-2.5 py-1 text-xs">
                     <Icon className="h-3.5 w-3.5 text-accent" />
-                    <span className="font-medium text-neutral-700 dark:text-neutral-200">{meta?.label ?? cat}</span>
+                    <span className="font-medium text-neutral-700 dark:text-neutral-200">{meta ? t(meta.labelKey) : cat}</span>
                     <span className="rounded-full bg-accent/10 px-1.5 text-[11px] font-semibold text-accent">{result.categories[cat]}</span>
                   </span>
                 );
@@ -491,7 +493,7 @@ function ResultsView({ result, onDownload, downloading }: { result: RemediationR
               <div className="mt-4 flex items-start gap-2 rounded-lg border border-amber-100 dark:border-amber-900/40 bg-amber-50 dark:bg-amber-950/30 p-3 text-xs text-amber-700 dark:text-amber-300">
                 <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
                 <span>
-                  {reviewCount} of these fixes add markup automatically, but the VALUE still needs a human check — auto-derived alt text, labels, and button names should be reviewed for accuracy before you ship.
+                  {reviewCount} {t("remediation.reviewNoteSuffix")}
                 </span>
               </div>
             )}
@@ -504,6 +506,7 @@ function ResultsView({ result, onDownload, downloading }: { result: RemediationR
 
 // ── Single fix: selector + WCAG + before→after diff ──────────────────────────
 function FixItem({ fix }: { fix: FixRecord }) {
+  const { t } = useI18n();
   const meta = catalogFor(fix.category);
   const Icon = meta?.Icon ?? Wand2;
   return (
@@ -515,7 +518,7 @@ function FixItem({ fix }: { fix: FixRecord }) {
           <span className="rounded bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 text-[10px] font-medium text-neutral-500 dark:text-neutral-400">{fix.wcagCriteria}</span>
         )}
         {meta?.needsReview && (
-          <span className="rounded bg-amber-100 dark:bg-amber-900/30 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-300">review</span>
+          <span className="rounded bg-amber-100 dark:bg-amber-900/30 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-300">{t("remediation.reviewBadge")}</span>
         )}
       </div>
       {fix.selector && (
@@ -551,6 +554,7 @@ function FixabilityView({
   onRemediate: () => void;
   canRemediate: boolean;
 }) {
+  const { t } = useI18n();
   const { total, autoFixable, needsReview, needsDeveloper, byCategory, needsDeveloperRules } = fixability;
   const pct = total > 0 ? Math.round((autoFixable / total) * 100) : 0;
 
@@ -558,7 +562,7 @@ function FixabilityView({
     return (
       <div className="mt-4 flex items-center gap-2 rounded-lg border border-neutral-200 dark:border-neutral-700 p-4 text-sm text-neutral-500 dark:text-neutral-400">
         <ShieldCheck className="h-4 w-4 shrink-0 text-green-500" />
-        This scan has no recorded violations — nothing to remediate.
+        {t("remediation.noViolations")}
       </div>
     );
   }
@@ -569,7 +573,7 @@ function FixabilityView({
       <div>
         <div className="flex items-baseline justify-between gap-2">
           <p className="text-sm text-neutral-500 dark:text-neutral-400">
-            <span className="text-2xl font-bold text-neutral-900 dark:text-white">{autoFixable}</span> of {total} {total === 1 ? "issue" : "issues"} are auto-fixable
+            <span className="text-2xl font-bold text-neutral-900 dark:text-white">{autoFixable}</span> {t("remediation.ofWord")} {total} {total === 1 ? t("remediation.issueSingular") : t("remediation.issuePlural")} {t("remediation.autoFixableSuffix")}
           </p>
           <span className="text-sm font-semibold text-accent">{pct}%</span>
         </div>
@@ -582,19 +586,19 @@ function FixabilityView({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="rounded-lg border border-green-200 dark:border-green-800/40 bg-green-50 dark:bg-green-950/30 p-3">
           <div className="flex items-center gap-1.5 text-xs font-semibold text-green-700 dark:text-green-300">
-            <Wand2 className="h-3.5 w-3.5" /> Auto-fixable
+            <Wand2 className="h-3.5 w-3.5" /> {t("remediation.autoFixableTile")}
           </div>
           <p className="mt-1 text-2xl font-bold text-neutral-900 dark:text-white">{autoFixable}</p>
           {needsReview > 0 && (
-            <p className="mt-0.5 text-[11px] text-neutral-500 dark:text-neutral-400">{needsReview} need a quick human review of the auto-added value</p>
+            <p className="mt-0.5 text-[11px] text-neutral-500 dark:text-neutral-400">{needsReview} {t("remediation.needsReviewNote")}</p>
           )}
         </div>
         <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 p-3">
           <div className="flex items-center gap-1.5 text-xs font-semibold text-neutral-600 dark:text-neutral-300">
-            <UserCog className="h-3.5 w-3.5" /> Needs a developer
+            <UserCog className="h-3.5 w-3.5" /> {t("remediation.needsDeveloperTile")}
           </div>
           <p className="mt-1 text-2xl font-bold text-neutral-900 dark:text-white">{needsDeveloper}</p>
-          <p className="mt-0.5 text-[11px] text-neutral-500 dark:text-neutral-400">complex issues automated tools can&apos;t safely fix</p>
+          <p className="mt-0.5 text-[11px] text-neutral-500 dark:text-neutral-400">{t("remediation.needsDeveloperNote")}</p>
         </div>
       </div>
 
@@ -607,9 +611,9 @@ function FixabilityView({
             return (
               <span key={category} className="flex items-center gap-1.5 rounded-full border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900 px-2.5 py-1 text-xs">
                 <Icon className="h-3.5 w-3.5 text-accent" />
-                <span className="font-medium text-neutral-700 dark:text-neutral-200">{meta?.label ?? category}</span>
+                <span className="font-medium text-neutral-700 dark:text-neutral-200">{meta ? t(meta.labelKey) : category}</span>
                 <span className="rounded-full bg-accent/10 px-1.5 text-[11px] font-semibold text-accent">{count}</span>
-                {risky && <AlertTriangle className="h-3 w-3 text-amber-500" aria-label="alters design" />}
+                {risky && <AlertTriangle className="h-3 w-3 text-amber-500" aria-label={t("remediation.altersDesignBadge")} />}
               </span>
             );
           })}
@@ -619,7 +623,7 @@ function FixabilityView({
       {/* Top rules that need a developer (honest) */}
       {needsDeveloperRules.length > 0 && (
         <div>
-          <p className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">Needs a developer</p>
+          <p className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">{t("remediation.needsDeveloperTile")}</p>
           <div className="flex flex-wrap gap-1.5">
             {needsDeveloperRules.slice(0, 10).map((r) => (
               <span key={r.ruleId} className="flex items-center gap-1.5 rounded-md border border-neutral-200 dark:border-neutral-700 px-2 py-1 text-[11px] text-neutral-600 dark:text-neutral-300">
@@ -629,7 +633,7 @@ function FixabilityView({
               </span>
             ))}
             {needsDeveloperRules.length > 10 && (
-              <span className="px-2 py-1 text-[11px] text-neutral-400">+{needsDeveloperRules.length - 10} more</span>
+              <span className="px-2 py-1 text-[11px] text-neutral-400">+{needsDeveloperRules.length - 10} {t("remediation.moreSuffix")}</span>
             )}
           </div>
         </div>
@@ -637,7 +641,7 @@ function FixabilityView({
 
       {autoFixable > 0 && (
         <Button onClick={onRemediate} disabled={!canRemediate} size="sm" className="w-full sm:w-auto">
-          <Wand2 className="h-4 w-4 mr-2" /> Auto-fix this page now
+          <Wand2 className="h-4 w-4 mr-2" /> {t("remediation.autoFixNow")}
         </Button>
       )}
     </div>
