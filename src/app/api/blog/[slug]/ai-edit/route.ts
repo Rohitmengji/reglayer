@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
+import { isContentEditor } from "@/lib/auth/roles";
 import OpenAI from "openai";
 
 interface RouteParams {
@@ -25,8 +26,7 @@ function getOpenAI() {
 export async function POST(request: Request, { params }: RouteParams) {
   const { slug } = await params;
   const session = await getServerSession(authOptions);
-  const isAdmin = session?.user?.isMasterAdmin || session?.user?.role === "admin" || session?.user?.role === "owner";
-  if (!isAdmin) {
+  if (!isContentEditor(session)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

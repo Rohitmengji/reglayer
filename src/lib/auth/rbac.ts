@@ -50,10 +50,12 @@ export type Permission =
   | "members.changeRole"
   | "scans.run"
   | "scans.view"
+  | "scans.delete"
   | "schedules.manage"
   | "integrations.manage"
   | "apiKeys.manage"
   | "settings.manage"
+  | "content.edit"
   | "admin.allWorkspaces"
   | "admin.managePlans"
   | "admin.manageOwners";
@@ -67,10 +69,12 @@ const ROLE_PERMISSIONS: Record<WorkspaceRole, Permission[]> = {
     "members.changeRole",
     "scans.run",
     "scans.view",
+    "scans.delete",
     "schedules.manage",
     "integrations.manage",
     "apiKeys.manage",
     "settings.manage",
+    "content.edit",
   ],
   ADMIN: [
     "workspace.manage",
@@ -78,10 +82,12 @@ const ROLE_PERMISSIONS: Record<WorkspaceRole, Permission[]> = {
     "members.remove",
     "scans.run",
     "scans.view",
+    "scans.delete",
     "schedules.manage",
     "integrations.manage",
     "apiKeys.manage",
     "settings.manage",
+    "content.edit",
   ],
   MEMBER: ["scans.run", "scans.view"],
   VIEWER: ["scans.view"],
@@ -99,10 +105,12 @@ const MASTER_ADMIN_PERMISSIONS: Permission[] = [
   "members.changeRole",
   "scans.run",
   "scans.view",
+  "scans.delete",
   "schedules.manage",
   "integrations.manage",
   "apiKeys.manage",
   "settings.manage",
+  "content.edit",
 ];
 
 // Roles that each role can assign to others

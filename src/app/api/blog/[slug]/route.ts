@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
 import { validateArticleContent } from "@/lib/blog/blockHelpers";
+import { isContentEditor } from "@/lib/auth/roles";
 
 interface RouteParams {
   params: Promise<{ slug: string }>;
@@ -14,7 +15,7 @@ interface RouteParams {
 export async function GET(request: Request, { params }: RouteParams) {
   const { slug } = await params;
   const session = await getServerSession(authOptions);
-  const isAdmin = session?.user?.isMasterAdmin || session?.user?.role === "admin" || session?.user?.role === "owner";
+  const isAdmin = isContentEditor(session);
 
   const article = await prisma.article.findUnique({
     where: { slug },
@@ -46,8 +47,7 @@ export async function GET(request: Request, { params }: RouteParams) {
 export async function PATCH(request: Request, { params }: RouteParams) {
   const { slug } = await params;
   const session = await getServerSession(authOptions);
-  const isAdmin = session?.user?.isMasterAdmin || session?.user?.role === "admin" || session?.user?.role === "owner";
-  if (!isAdmin) {
+  if (!isContentEditor(session)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -111,8 +111,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 export async function DELETE(request: Request, { params }: RouteParams) {
   const { slug } = await params;
   const session = await getServerSession(authOptions);
-  const isAdmin = session?.user?.isMasterAdmin || session?.user?.role === "admin" || session?.user?.role === "owner";
-  if (!isAdmin) {
+  if (!isContentEditor(session)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

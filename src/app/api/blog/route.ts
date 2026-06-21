@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
+import { isContentEditor } from "@/lib/auth/roles";
 
 /**
  * GET /api/blog — List articles (public: published only, admin: all)
@@ -11,7 +12,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const includeAll = searchParams.get("all") === "true";
 
-  const isAdmin = session?.user?.isMasterAdmin || session?.user?.role === "admin" || session?.user?.role === "owner";
+  const isAdmin = isContentEditor(session);
 
   const where = isAdmin && includeAll
     ? {}
@@ -41,8 +42,7 @@ export async function GET(request: Request) {
  */
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
-  const isAdmin = session?.user?.isMasterAdmin || session?.user?.role === "admin" || session?.user?.role === "owner";
-  if (!isAdmin) {
+  if (!isContentEditor(session)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
