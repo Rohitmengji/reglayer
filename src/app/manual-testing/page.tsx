@@ -543,15 +543,15 @@ function TestItemCard({ item, onVerdict }: {
             <>
               <button onClick={() => handleVerdict("pass")} aria-pressed={item.verdict === "pass"} aria-label="Pass" disabled={saving}
                 className={`p-1.5 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 ${item.verdict === "pass" ? "bg-green-100 dark:bg-green-900/50 text-green-600" : "text-neutral-400 hover:bg-green-50 dark:hover:bg-green-950/50 hover:text-green-600"}`}>
-                <CheckCircle2 className="h-4 w-4" />
+                <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
               </button>
               <button onClick={() => handleVerdict("fail")} aria-pressed={item.verdict === "fail"} aria-label="Fail" disabled={saving}
                 className={`p-1.5 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 ${item.verdict === "fail" ? "bg-red-100 dark:bg-red-900/50 text-red-600" : "text-neutral-400 hover:bg-red-50 dark:hover:bg-red-950/50 hover:text-red-600"}`}>
-                <XCircle className="h-4 w-4" />
+                <XCircle className="h-4 w-4" aria-hidden="true" />
               </button>
               <button onClick={() => handleVerdict("na")} aria-pressed={item.verdict === "na"} aria-label="Not Applicable" disabled={saving}
                 className={`p-1.5 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-neutral-500 ${item.verdict === "na" ? "bg-neutral-200 dark:bg-neutral-700 text-neutral-600" : "text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-600"}`}>
-                <MinusCircle className="h-4 w-4" />
+                <MinusCircle className="h-4 w-4" aria-hidden="true" />
               </button>
             </>
           )}

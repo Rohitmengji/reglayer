@@ -29,7 +29,11 @@ export function TabNav({ tabs, basePath, className }: TabNavProps) {
   const activeTab = searchParams.get("tab") || tabs[0]?.id;
 
   return (
-    <div
+    // Route-based tabs are navigation: a labeled <nav> landmark + aria-current on
+    // the active link is the correct, screen-reader-friendly pattern (not an
+    // in-page tablist, which would imply arrow-key panel switching).
+    <nav
+      aria-label="Section tabs"
       className={cn(
         "grid sm:flex sm:gap-1 border-b border-neutral-200 dark:border-neutral-700 pb-px",
         className
@@ -43,6 +47,10 @@ export function TabNav({ tabs, basePath, className }: TabNavProps) {
             key={tab.id}
             href={`${basePath}?tab=${tab.id}`}
             replace
+            aria-current={isActive ? "page" : undefined}
+            // The label is `hidden sm:inline`, so on mobile the link is icon-only
+            // with no accessible name — aria-label gives it one at every width.
+            aria-label={tab.label}
             className={cn(
               "flex items-center justify-center sm:justify-start gap-2 px-2 py-3 sm:px-4 sm:py-2.5 text-sm font-medium transition-colors relative",
               isActive
@@ -51,11 +59,11 @@ export function TabNav({ tabs, basePath, className }: TabNavProps) {
             )}
             title={tab.label}
           >
-            {tab.icon && <tab.icon className="h-4 w-4" />}
+            {tab.icon && <tab.icon className="h-4 w-4" aria-hidden="true" />}
             <span className="hidden sm:inline">{tab.label}</span>
           </Link>
         );
       })}
-    </div>
+    </nav>
   );
 }
