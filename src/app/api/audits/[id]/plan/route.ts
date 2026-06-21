@@ -9,7 +9,6 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
 import { applyRateLimit } from "@/lib/rate-limit-middleware";
-import { hasFeature } from "@/lib/features/feature-access";
 import { generateGuidance } from "@/lib/ai/manualTestGuidance";
 import type { ManualTestPlan } from "@/lib/testing/manualTestPlan";
 
@@ -69,13 +68,19 @@ export async function GET(
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
-    // Feature gate — canonical feature system; master admin bypasses, overrides honored.
-    const featureOk = user.isMasterAdmin || (await hasFeature(audit.workspaceId, "manualTesting")).enabled;
-    if (!featureOk) {
-      return NextResponse.json(
-        { error: "Manual testing requires a PRO or Enterprise plan", upgradeRequired: true },
-        { status: 403 }
-      );
+    // Feature gate — check plan directly (avoids stale feature overrides)
+    if (!user.isMasterAdmin) {
+      const workspace = await prisma.workspace.findUnique({
+        where: { id: audit.workspaceId },
+        select: { plan: true },
+      });
+      const { isPlanFeature } = await import("@/lib/features/feature-catalog");
+      if (!isPlanFeature("manualTesting", (workspace?.plan ?? "FREE") as "FREE" | "PRO" | "ENTERPRISE")) {
+        return NextResponse.json(
+          { error: "Manual testing requires a PRO or Enterprise plan", upgradeRequired: true },
+          { status: 403 }
+        );
+      }
     }
 
     if (audit.type !== "manual-test") {
