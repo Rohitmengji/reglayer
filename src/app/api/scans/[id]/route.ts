@@ -90,12 +90,15 @@ export async function DELETE(
     return NextResponse.json({ error: "Scan not found" }, { status: 404 });
   }
 
-  // Permission: deletion is OWNER/ADMIN (or master) only — a MEMBER who can run
-  // scans still cannot delete them, and a VIEWER certainly cannot.
-  const guard = await requireWorkspacePermission("scans.delete", {
-    workspaceId: scan.workspaceId ?? undefined,
-  });
-  if (!guard.ok) return guard.response;
+  // Permission: for a workspace scan, deletion is OWNER/ADMIN (or master) only —
+  // checked IN THE SCAN'S workspace (a MEMBER who can run scans still cannot
+  // delete them; a VIEWER certainly cannot). A legacy workspace-less scan has no
+  // workspace to govern it, so ownership (established above) is sufficient —
+  // don't evaluate scans.delete against an unrelated primary workspace.
+  if (scan.workspaceId) {
+    const guard = await requireWorkspacePermission("scans.delete", { workspaceId: scan.workspaceId });
+    if (!guard.ok) return guard.response;
+  }
 
   // Delete violations first, then the scan
   await prisma.violation.deleteMany({ where: { scanId: id } });

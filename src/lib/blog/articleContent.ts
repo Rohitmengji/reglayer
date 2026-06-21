@@ -51,9 +51,19 @@ export interface DbArticleLike {
 /** Map a DB article row to the display `ArticleContent` shape used by the renderer. */
 export function dbArticleToContent(db: DbArticleLike): ArticleContent {
   const raw = db.content as { sections?: unknown } | null;
-  const sections: ArticleSection[] = Array.isArray(raw?.sections)
-    ? (raw!.sections as ArticleSection[])
-    : [];
+  const rawSections = Array.isArray(raw?.sections) ? (raw!.sections as unknown[]) : [];
+  // Coerce each section so the public server-component renderer can never throw
+  // on DB content that skipped validation (e.g. AI-generated sections with no
+  // `paragraphs` array, or a non-string paragraph). The renderer also guards
+  // defensively, but normalize at the boundary too.
+  const sections: ArticleSection[] = rawSections
+    .filter((s): s is Record<string, unknown> => !!s && typeof s === "object")
+    .map((s) => ({
+      ...s,
+      id: typeof s.id === "string" ? s.id : "",
+      title: typeof s.title === "string" ? s.title : "",
+      paragraphs: Array.isArray(s.paragraphs) ? (s.paragraphs as unknown[]).map((p) => String(p ?? "")) : [],
+    } as ArticleSection));
   return {
     title: db.title,
     excerpt: db.excerpt,

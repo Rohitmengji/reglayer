@@ -76,12 +76,9 @@ export async function POST(request: NextRequest) {
   const perm = await requireWorkspacePermission("schedules.manage");
   if (!perm.ok) return perm.response;
 
-  // Scope to user's workspace
-  const member = await prisma.workspaceMember.findFirst({
-    where: { user: { email: session.user.email } },
-  });
-
-  if (!member) {
+  // Scope to the workspace the schedules.manage permission was verified in.
+  const workspaceId = perm.ctx.workspaceId;
+  if (!workspaceId) {
     return NextResponse.json({ error: "No workspace found" }, { status: 403 });
   }
 
@@ -103,10 +100,10 @@ export async function POST(request: NextRequest) {
   const { name, url, condition, threshold, notifyVia, webhookUrl, enabled } = parsed.data;
 
   // Create or find site (scoped to this workspace)
-  let site = await prisma.site.findFirst({ where: { url, workspaceId: member.workspaceId } });
+  let site = await prisma.site.findFirst({ where: { url, workspaceId: workspaceId } });
   if (!site) {
     site = await prisma.site.create({
-      data: { url, name: new URL(url).hostname, workspaceId: member.workspaceId },
+      data: { url, name: new URL(url).hostname, workspaceId: workspaceId },
     });
   }
 
@@ -116,7 +113,7 @@ export async function POST(request: NextRequest) {
       name,
       cron: "0 */6 * * *", // every 6 hours by default
       enabled,
-      workspaceId: member.workspaceId,
+      workspaceId: workspaceId,
       siteId: site.id,
     },
   });
@@ -131,7 +128,7 @@ export async function POST(request: NextRequest) {
       notifyVia,
       webhookUrl,
       enabled,
-      workspaceId: member.workspaceId,
+      workspaceId: workspaceId,
       siteId: site.id,
     },
   });

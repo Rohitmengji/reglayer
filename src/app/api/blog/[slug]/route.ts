@@ -66,6 +66,13 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     }
   }
 
+  // Validate status against the enum before any DB write — an unknown value
+  // would otherwise throw an unhandled Prisma error (500) instead of a clean 400,
+  // and would also create an orphan version snapshot below.
+  if (body.status !== undefined && !["DRAFT", "PUBLISHED", "ARCHIVED"].includes(body.status)) {
+    return NextResponse.json({ error: "Invalid status (must be DRAFT, PUBLISHED, or ARCHIVED)" }, { status: 400 });
+  }
+
   let article = await prisma.article.findUnique({ where: { slug } });
   if (!article) {
     // First edit of a SEEDED static article (no DB row yet): create the row from
