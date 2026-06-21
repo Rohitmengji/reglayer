@@ -165,18 +165,18 @@ export default function GuardPage() {
                   : "border-neutral-100 bg-neutral-50 opacity-60 dark:border-neutral-800 dark:bg-neutral-900"
               }`}
             >
-              <div className="flex items-start justify-between">
-                <div>
-                  <div className="flex items-center gap-2">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 min-w-0">
                     {policy.enabled ? (
-                      <ShieldCheck className="h-4 w-4 text-green-600" />
+                      <ShieldCheck className="h-4 w-4 shrink-0 text-green-600" />
                     ) : (
-                      <ShieldAlert className="h-4 w-4 text-neutral-500 dark:text-neutral-400" />
+                      <ShieldAlert className="h-4 w-4 shrink-0 text-neutral-500 dark:text-neutral-400" />
                     )}
-                    <h3 className="font-semibold text-neutral-900 dark:text-white">
+                    <h3 className="font-semibold text-neutral-900 dark:text-white truncate">
                       {policy.name}
                     </h3>
-                    <span className="text-sm text-neutral-500 dark:text-neutral-400">
+                    <span className="text-sm text-neutral-500 dark:text-neutral-400 truncate">
                       {policy.site.name || new URL(policy.site.url).hostname}
                     </span>
                   </div>
@@ -212,7 +212,7 @@ export default function GuardPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                   <button
                     onClick={() => togglePolicy(policy.id, !policy.enabled)}
                     className="rounded-md border border-neutral-200 p-1.5 text-neutral-500 hover:bg-neutral-50 dark:border-neutral-600 dark:hover:bg-neutral-700"

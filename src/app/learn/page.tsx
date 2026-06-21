@@ -231,8 +231,8 @@ export default function LearnPage() {
                     </div>
                   </div>
                   {/* Reason tag */}
-                  <div className="mt-3 ml-15">
-                    <p className="text-[11px] text-neutral-500 dark:text-neutral-400 italic pl-15">{path.reason}</p>
+                  <div className="mt-3">
+                    <p className="text-[11px] text-neutral-500 dark:text-neutral-400 italic">{path.reason}</p>
                   </div>
                 </div>
 

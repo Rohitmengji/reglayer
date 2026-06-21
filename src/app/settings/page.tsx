@@ -741,7 +741,7 @@ function ApiKeysTab() {
             {t("settings.newKeyMessage")}
           </p>
           <div className="flex items-center gap-2">
-            <code className="flex-1 rounded bg-white dark:bg-neutral-900 px-3 py-2 text-sm text-neutral-900 dark:text-white border border-green-200 dark:border-green-800 font-mono">
+            <code className="flex-1 min-w-0 break-all rounded bg-white dark:bg-neutral-900 px-3 py-2 text-sm text-neutral-900 dark:text-white border border-green-200 dark:border-green-800 font-mono">
               {showKey ? newKey : "••••••••••••••••••••••••••••••••"}
             </code>
             <Button variant="ghost" size="icon" onClick={() => setShowKey(!showKey)}>

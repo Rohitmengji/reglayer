@@ -372,7 +372,11 @@ function RadarChart({ dimensions }: { dimensions: AISResult["dimensions"] }) {
   const rings = [0.25, 0.5, 0.75, 1.0];
 
   return (
-    <svg width={size} height={size} className="overflow-visible">
+    <svg
+      viewBox={`-30 -10 ${size + 60} ${size + 20}`}
+      preserveAspectRatio="xMidYMid meet"
+      className="w-full max-w-75 h-auto"
+    >
       {/* Grid rings */}
       {rings.map((r) => (
         <polygon

@@ -408,7 +408,7 @@ export default function AdminPage() {
               <CardContent className="p-0">
                 <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
                   {pendingRequests.map((req) => (
-                    <div key={req.id} className="flex items-center justify-between px-4 py-3">
+                    <div key={req.id} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-4 py-3">
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="h-8 w-8 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-xs font-bold text-orange-600 dark:text-orange-300 shrink-0">
                           {(req.user.name || req.user.email)[0].toUpperCase()}
@@ -425,7 +425,7 @@ export default function AdminPage() {
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap shrink-0 pl-11 sm:pl-0">
                         <ModernSelect
                           options={(data?.workspaces || []).map((ws) => ({ value: ws.id, label: ws.name }))}
                           value={wsSelections[req.id] || data?.workspaces[0]?.id || ""}
@@ -750,19 +750,19 @@ export default function AdminPage() {
               <Card key={ws.id}>
                 <CardContent className="p-4">
                   {/* Workspace header */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div>
-                        <p className="text-sm font-semibold text-neutral-900 dark:text-white">{ws.name}</p>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-neutral-900 dark:text-white truncate">{ws.name}</p>
                         <p className="text-xs text-neutral-500 dark:text-neutral-400">
                           {ws._count.sites} {t("admin.sites")} · {ws._count.scans} {t("admin.scans")} · {ws._count.schedules} {t("admin.schedulesLabel")}
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       {/* Plan switcher */}
                       {changingPlan === ws.id ? (
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1 flex-wrap">
                           {["FREE", "PRO", "ENTERPRISE"].map((plan) => (
                             <Button
                               key={plan}
@@ -817,22 +817,23 @@ export default function AdminPage() {
 
                       {/* Add User Form */}
                       {showAddUser === ws.id && (
-                        <div className="flex items-center gap-2 mb-3 p-2 rounded-lg bg-neutral-50 dark:bg-neutral-800/50">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-3 p-2 rounded-lg bg-neutral-50 dark:bg-neutral-800/50">
                           <input
                             type="email"
                             placeholder="user@email.com"
                             value={addUserEmail}
                             onChange={(e) => setAddUserEmail(e.target.value)}
-                            className="flex-1 rounded border border-neutral-200 dark:border-neutral-700 px-2 py-1.5 text-xs dark:bg-neutral-800 dark:text-neutral-100"
+                            className="w-full min-w-0 flex-1 rounded border border-neutral-200 dark:border-neutral-700 px-2 py-1.5 text-xs dark:bg-neutral-800 dark:text-neutral-100"
                           />
                           <ModernSelect
+              className="w-full sm:w-auto"
               options={[{ value: "OWNER", label: "Owner" }, { value: "ADMIN", label: "Admin" }, { value: "MEMBER", label: "Member" }, { value: "VIEWER", label: "Viewer" }]}
               value={addUserRole}
               onChange={setAddUserRole}
             />
                           <Button
                             size="sm"
-                            className="text-xs"
+                            className="w-full sm:w-auto shrink-0 text-xs"
                             onClick={() => handleAddUserToWorkspace(ws.id)}
                             disabled={actionLoading || !addUserEmail}
                           >
@@ -842,17 +843,17 @@ export default function AdminPage() {
                       )}
                       <div className="space-y-2">
                         {ws.members.map((member) => (
-                          <div key={member.id} className="flex items-center justify-between py-1.5">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm text-neutral-700 dark:text-neutral-200">
+                          <div key={member.id} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between py-1.5">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="text-sm text-neutral-700 dark:text-neutral-200 truncate">
                                 {member.user.name || member.user.email}
                               </span>
-                              <Badge className={`text-xs ${roleColors[member.role]}`}>{member.role}</Badge>
+                              <Badge className={`text-xs shrink-0 ${roleColors[member.role]}`}>{member.role}</Badge>
                               {member.user.isMasterAdmin && (
-                                <Crown className="h-3 w-3 text-amber-500" />
+                                <Crown className="h-3 w-3 shrink-0 text-amber-500" />
                               )}
                             </div>
-                            <div className="flex items-center gap-1">
+                            <div className="flex items-center gap-1 shrink-0">
                               <ModernSelect
                                 options={[
                                   { value: "OWNER", label: "Owner" },

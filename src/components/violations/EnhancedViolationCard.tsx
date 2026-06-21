@@ -263,7 +263,7 @@ export function EnhancedViolationCard({ violation, onStatusChange }: EnhancedVio
         )}
 
         {/* Action Bar */}
-        <div className="flex items-center justify-between pt-2 border-t border-neutral-100 dark:border-neutral-800">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between pt-2 border-t border-neutral-100 dark:border-neutral-800">
           <div className="flex items-center gap-2">
             {/* Status Dropdown */}
             <div className="relative">
