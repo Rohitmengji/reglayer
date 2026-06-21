@@ -1,11 +1,20 @@
 "use client";
 
 /**
- * RegLayer — Remediation Dashboard Page
+ * RegLayer — Remediation Workspace
  *
- * WHY: Teams need to track remediation progress and get AI-powered fix suggestions.
- * WHAT: Shows violations with AI-generated code fixes, remediation status tracking.
- * HOW: Fetches violations, calls /api/remediate for fix suggestions, tracks status changes.
+ * WHY: Teams want to actually FIX accessibility issues, not just see them. This
+ *      surfaces the full power of the remediation engine: choose which fixes to
+ *      apply, run them against a live URL, and see exactly what changed —
+ *      before→after, mapped to the WCAG criterion each fix satisfies — then
+ *      deploy the drop-in script or download the corrected HTML.
+ * WHAT: Two real, engine-backed paths — a client-side drop-in script, and
+ *       server-side remediation with a per-category config + rich diff results.
+ * HOW: POST /api/remediate (config honored by the engine; returns FixRecords with
+ *      before/after/selector/wcagCriteria + a category breakdown). Download uses
+ *      returnFormat:"html". Everything shown maps to a real applied transform —
+ *      no cosmetic claims; meaningful-content fixes are explicitly flagged as
+ *      needing human review.
  */
 
 import { useState } from "react";
@@ -14,45 +23,150 @@ import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Wand2, Code, Globe, Copy, Check } from "lucide-react";
+import {
+  Wand2, Code, Globe, Copy, Check, Download, Loader2, AlertTriangle,
+  Languages, SkipForward, LayoutTemplate, Image as ImageIcon, FormInput,
+  MousePointerClick, ArrowDownUp, Contrast, ShieldCheck, Info,
+} from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
+
+// ── Engine fix-category catalog ─────────────────────────────────────────────
+// Each entry maps a RemediationConfig flag (sent to /api/remediate) to the fix
+// `category` the engine emits, plus the WCAG criterion it satisfies. `risky`
+// fixes alter visual design and are off by default.
+interface FixCatalogEntry {
+  configKey: string;       // RemediationConfig flag
+  category: string;        // FixRecord.category emitted by the engine
+  label: string;
+  wcag: string;
+  description: string;
+  Icon: typeof Wand2;
+  risky?: boolean;
+  /** Engine can apply the markup, but the VALUE still needs human review. */
+  needsReview?: boolean;
+}
+
+const FIX_CATALOG: FixCatalogEntry[] = [
+  { configKey: "enableLangAttr", category: "lang-attribute", label: "Page language", wcag: "WCAG 3.1.1", description: "Set the document <html lang> so screen readers use the right voice.", Icon: Languages },
+  { configKey: "enableSkipLinks", category: "skip-links", label: "Skip-to-content link", wcag: "WCAG 2.4.1", description: "Add a keyboard skip link so users can bypass repeated navigation.", Icon: SkipForward },
+  { configKey: "enableLandmarks", category: "landmarks", label: "Landmark roles", wcag: "WCAG 1.3.1", description: "Label nav/main/footer regions so assistive tech can jump between them.", Icon: LayoutTemplate },
+  { configKey: "enableAltText", category: "alt-text", label: "Image alt text", wcag: "WCAG 1.1.1", description: "Add alt attributes derived from filename/context.", Icon: ImageIcon, needsReview: true },
+  { configKey: "enableFormLabels", category: "form-labels", label: "Form labels", wcag: "WCAG 1.3.1 / 3.3.2", description: "Associate labels with inputs using placeholder/name as a starting point.", Icon: FormInput, needsReview: true },
+  { configKey: "enableButtonLabels", category: "button-labels", label: "Button names", wcag: "WCAG 4.1.2", description: "Give icon-only buttons an accessible name.", Icon: MousePointerClick, needsReview: true },
+  { configKey: "enableFocusOrder", category: "focus-order", label: "Focus order", wcag: "WCAG 2.4.3", description: "Remove positive tabindex values that break logical focus order.", Icon: ArrowDownUp },
+  { configKey: "enableContrastFixes", category: "contrast", label: "Color contrast", wcag: "WCAG 1.4.3", description: "Nudge low-contrast colors toward the 4.5:1 ratio. May alter your design — review carefully.", Icon: Contrast, risky: true },
+];
+
+type RemediationConfigState = Record<string, boolean>;
+
+const DEFAULT_CONFIG: RemediationConfigState = Object.fromEntries(
+  FIX_CATALOG.map((f) => [f.configKey, !f.risky]) // all on except risky (contrast)
+);
+
+interface FixRecord {
+  category: string;
+  element: string;
+  selector: string;
+  before: string;
+  after: string;
+  wcagCriteria: string;
+  description: string;
+}
+interface RemediationResult {
+  url: string;
+  totalFixes: number;
+  categories: Record<string, number>;
+  fixes: FixRecord[];
+  timestamp: string;
+}
+
+const catalogFor = (category: string) => FIX_CATALOG.find((f) => f.category === category);
+function truncate(s: string, n = 240): string {
+  const t = (s ?? "").trim();
+  return t.length > n ? `${t.slice(0, n)}…` : t;
+}
+function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return "page";
+  }
+}
 
 export default function RemediationPage() {
   const { t } = useI18n();
   const [loading, setLoading] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [url, setUrl] = useState("https://");
-  const [result, setResult] = useState<{ url: string; totalFixes: number; fixes: Array<{ category: string; description: string; element?: string }> } | null>(null);
+  const [config, setConfig] = useState<RemediationConfigState>(DEFAULT_CONFIG);
+  const [result, setResult] = useState<RemediationResult | null>(null);
   const [copied, setCopied] = useState(false);
   const [scriptSnippet, setScriptSnippet] = useState("");
 
+  const enabledCount = Object.values(config).filter(Boolean).length;
+  const canRun = !loading && /^https?:\/\/.+\..+/.test(url) && enabledCount > 0;
+
+  function toggle(key: string) {
+    setConfig((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
+
   async function runRemediation() {
+    if (!canRun) return;
     setLoading(true);
+    setResult(null);
     try {
       const res = await fetch("/api/remediate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          url,
-          fixes: ["lang", "skip-links", "landmarks", "alt-text", "form-labels", "button-labels", "focus-order"],
-        }),
+        body: JSON.stringify({ url, config }),
       });
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
-        setResult(await res.json());
+        setResult(data as RemediationResult);
       } else {
-        const err = await res.json();
-        toast.error(err.error || "Remediation failed");
+        toast.error(data.error || "Remediation failed");
       }
+    } catch {
+      toast.error("Could not reach the remediation service");
     } finally {
       setLoading(false);
     }
   }
 
+  async function downloadFixedHtml() {
+    setDownloading(true);
+    try {
+      const res = await fetch("/api/remediate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url, config, returnFormat: "html" }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || "Could not generate the fixed HTML");
+        return;
+      }
+      const html = await res.text();
+      const blob = new Blob([html], { type: "text/html" });
+      const href = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = href;
+      a.download = `remediated-${hostOf(url)}.html`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(href);
+      toast.success("Downloaded the remediated HTML");
+    } catch {
+      toast.error("Download failed");
+    } finally {
+      setDownloading(false);
+    }
+  }
+
   async function loadScript() {
     const res = await fetch("/api/remediate/script");
-    if (res.ok) {
-      const text = await res.text();
-      setScriptSnippet(text);
-    }
+    if (res.ok) setScriptSnippet(await res.text());
   }
 
   function copyScript() {
@@ -66,119 +180,262 @@ export default function RemediationPage() {
     <AppShell>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold">{t("remediation.title")}</h1>
-          <p className="text-muted-foreground">
-            Automatically fix accessibility issues. Deploy a script tag or run server-side remediation.
+          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{t("remediation.title")}</h1>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
+            Apply real accessibility fixes — deploy a drop-in script, or remediate a live URL and see exactly what changed.
           </p>
         </div>
 
-        {/* Drop-in Script */}
+        {/* ── Server-side remediation ───────────────────────────────────── */}
         <Card>
           <CardContent className="pt-6">
-            <div className="flex items-center gap-2 mb-3">
-              <Code className="h-5 w-5" />
-              <h3 className="font-semibold">Drop-in Script (Client-Side)</h3>
-              <Badge>Instant Fix</Badge>
-            </div>
-            <p className="text-sm text-muted-foreground mb-4">
-              Add this single script tag to your site. It automatically fixes common accessibility issues on page load — no build step needed.
-            </p>
-            <div className="bg-muted rounded-lg p-4 font-mono text-sm relative overflow-x-auto">
-              <code className="break-all">{`<script src="${typeof window !== "undefined" ? window.location.origin : ""}/api/remediate/script"></script>`}</code>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="absolute top-2 right-2"
-                onClick={copyScript}
-              >
-                {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-              </Button>
-            </div>
-            <div className="mt-3 text-xs text-muted-foreground">
-              <p className="font-medium mb-1">Fixes applied:</p>
-              <ul className="list-disc pl-4 space-y-0.5">
-                <li>Missing lang attribute</li>
-                <li>Skip navigation link</li>
-                <li>Image alt text (derived from filename/context)</li>
-                <li>Form input labels (from placeholder/name)</li>
-                <li>Button labels (from icon/class)</li>
-                <li>Positive tabindex removal</li>
-                <li>Navigation landmark labels</li>
-              </ul>
-            </div>
-            {!scriptSnippet && (
-              <Button variant="outline" size="sm" className="mt-3" onClick={loadScript}>
-                View Full Script
-              </Button>
-            )}
-            {scriptSnippet && (
-              <pre className="mt-3 bg-muted rounded-lg p-4 text-xs overflow-x-auto max-h-48 overflow-y-auto">
-                {scriptSnippet}
-              </pre>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Server-Side Remediation */}
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2 mb-3">
-              <Globe className="h-5 w-5" />
-              <h3 className="font-semibold">Server-Side Remediation</h3>
+            <div className="flex flex-wrap items-center gap-2 mb-1">
+              <Globe className="h-5 w-5 text-accent" />
+              <h3 className="font-semibold text-neutral-900 dark:text-white">Remediate a URL</h3>
               <Badge variant="secondary">Pro</Badge>
             </div>
-            <p className="text-sm text-muted-foreground mb-4">
-              Fetch a URL and apply server-side DOM transforms. Returns the fixed HTML.
+            <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">
+              Fetch a page, apply the fixes you select below, and review every change with a before→after diff.
             </p>
+
+            {/* Fix configuration */}
+            <fieldset className="mb-4">
+              <legend className="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-2">
+                Fixes to apply ({enabledCount}/{FIX_CATALOG.length})
+              </legend>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {FIX_CATALOG.map((f) => {
+                  const on = !!config[f.configKey];
+                  return (
+                    <button
+                      key={f.configKey}
+                      type="button"
+                      role="switch"
+                      aria-checked={on}
+                      onClick={() => toggle(f.configKey)}
+                      className={`flex items-start gap-3 rounded-lg border p-3 text-left transition-colors ${
+                        on
+                          ? "border-accent/40 bg-accent/5"
+                          : "border-neutral-200 dark:border-neutral-700 hover:border-neutral-300 dark:hover:border-neutral-600"
+                      }`}
+                    >
+                      <f.Icon className={`mt-0.5 h-4 w-4 shrink-0 ${on ? "text-accent" : "text-neutral-400"}`} />
+                      <span className="min-w-0 flex-1">
+                        <span className="flex flex-wrap items-center gap-1.5">
+                          <span className="text-sm font-medium text-neutral-900 dark:text-white">{f.label}</span>
+                          <span className="rounded bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 text-[10px] font-medium text-neutral-500 dark:text-neutral-400">{f.wcag}</span>
+                          {f.risky && (
+                            <span className="flex items-center gap-0.5 rounded bg-amber-100 dark:bg-amber-900/30 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-300">
+                              <AlertTriangle className="h-2.5 w-2.5" /> alters design
+                            </span>
+                          )}
+                        </span>
+                        <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">{f.description}</span>
+                      </span>
+                      {/* Switch track */}
+                      <span
+                        aria-hidden
+                        className={`mt-0.5 flex h-5 w-9 shrink-0 items-center rounded-full p-0.5 transition-colors ${on ? "bg-accent" : "bg-neutral-300 dark:bg-neutral-600"}`}
+                      >
+                        <span className={`h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${on ? "translate-x-4" : ""}`} />
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </fieldset>
+
             <div className="flex flex-col sm:flex-row gap-3">
               <input
                 type="url"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && runRemediation()}
                 placeholder="https://example.com"
-                className="flex-1 min-w-0 rounded-md border px-3 py-2 text-sm bg-background"
+                aria-label="URL to remediate"
+                className="flex-1 min-w-0 rounded-md border border-neutral-200 dark:border-neutral-700 px-3 py-2 text-sm bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent"
               />
-              <Button onClick={runRemediation} disabled={loading || !url.startsWith("http")} size="sm" className="shrink-0 sm:size-default">
-                <Wand2 className="h-4 w-4 mr-2" />
-                {loading ? "Fixing..." : "Remediate"}
+              <Button onClick={runRemediation} disabled={!canRun} size="sm" className="w-full sm:w-auto shrink-0">
+                {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Wand2 className="h-4 w-4 mr-2" />}
+                {loading ? "Fixing…" : "Remediate"}
               </Button>
             </div>
           </CardContent>
         </Card>
 
-        {/* Results */}
-        {result && (
+        {/* ── Results ───────────────────────────────────────────────────── */}
+        {loading && (
           <Card>
             <CardContent className="pt-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold">Remediation Results</h3>
-                <Badge variant={result.totalFixes > 0 ? "default" : "secondary"}>
-                  {result.totalFixes} fixes applied
-                </Badge>
+              <div className="flex items-center gap-3 text-sm text-neutral-500 dark:text-neutral-400">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Fetching {hostOf(url)} and applying fixes…
               </div>
-              {result.totalFixes === 0 ? (
-                <p className="text-muted-foreground text-sm">
-                  No issues found to fix on this page. The site may already be well-structured.
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {result.fixes.map((fix, i) => (
-                    <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-                      <Wand2 className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
-                      <div>
-                        <p className="text-sm font-medium">{fix.description}</p>
-                        {fix.element && (
-                          <code className="text-xs text-muted-foreground mt-1 block">{fix.element}</code>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
             </CardContent>
           </Card>
         )}
+
+        {result && !loading && <ResultsView result={result} onDownload={downloadFixedHtml} downloading={downloading} />}
+
+        {/* ── Drop-in script ────────────────────────────────────────────── */}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex flex-wrap items-center gap-2 mb-1">
+              <Code className="h-5 w-5 text-accent" />
+              <h3 className="font-semibold text-neutral-900 dark:text-white">Drop-in script</h3>
+              <Badge>Instant · client-side</Badge>
+            </div>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">
+              Add one script tag. It applies the structural fixes below on every page load — no build step.
+            </p>
+            <div className="relative overflow-x-auto rounded-lg bg-neutral-900 dark:bg-neutral-800 p-4 font-mono text-sm">
+              <code className="break-all text-neutral-100">{`<script src="${typeof window !== "undefined" ? window.location.origin : ""}/api/remediate/script"></script>`}</code>
+              <Button size="sm" variant="ghost" className="absolute top-2 right-2 text-neutral-300 hover:text-white" onClick={copyScript} aria-label="Copy script tag">
+                {copied ? <Check className="h-4 w-4 text-green-400" /> : <Copy className="h-4 w-4" />}
+              </Button>
+            </div>
+
+            {/* What it fixes, mapped to WCAG */}
+            <div className="mt-4 grid gap-1.5 sm:grid-cols-2">
+              {FIX_CATALOG.filter((f) => !f.risky).map((f) => (
+                <div key={f.configKey} className="flex items-center gap-2 text-xs text-neutral-600 dark:text-neutral-300">
+                  <f.Icon className="h-3.5 w-3.5 shrink-0 text-accent" />
+                  <span className="min-w-0 truncate">{f.label}</span>
+                  <span className="ml-auto shrink-0 rounded bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 text-[10px] font-medium text-neutral-500 dark:text-neutral-400">{f.wcag}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-4 flex items-start gap-2 rounded-lg border border-blue-100 dark:border-blue-900/40 bg-blue-50 dark:bg-blue-950/30 p-3 text-xs text-blue-700 dark:text-blue-300">
+              <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+              <span>
+                Add <code className="font-mono">?key=YOUR_API_KEY</code> to the script URL to attribute applied-fix counts to your workspace (create a key in Settings → API). The script fixes structure and attributes; meaningful alt text and complex ARIA still need human review.
+              </span>
+            </div>
+
+            {!scriptSnippet ? (
+              <Button variant="outline" size="sm" className="mt-3" onClick={loadScript}>
+                View full script
+              </Button>
+            ) : (
+              <pre className="mt-3 max-h-48 overflow-auto rounded-lg bg-neutral-900 dark:bg-neutral-800 p-4 text-xs text-neutral-100">
+                {scriptSnippet}
+              </pre>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </AppShell>
+  );
+}
+
+// ── Results view ─────────────────────────────────────────────────────────────
+function ResultsView({ result, onDownload, downloading }: { result: RemediationResult; onDownload: () => void; downloading: boolean }) {
+  const categoryKeys = Object.keys(result.categories);
+  const reviewCount = result.fixes.filter((f) => catalogFor(f.category)?.needsReview).length;
+
+  return (
+    <Card>
+      <CardContent className="pt-6">
+        {/* Impact header */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl font-bold text-neutral-900 dark:text-white">{result.totalFixes}</span>
+              <span className="text-sm text-neutral-500 dark:text-neutral-400">
+                {result.totalFixes === 1 ? "fix applied" : "fixes applied"} across {categoryKeys.length} {categoryKeys.length === 1 ? "category" : "categories"}
+              </span>
+            </div>
+            <p className="mt-1 text-xs text-neutral-400 dark:text-neutral-500 wrap-break-word">{result.url}</p>
+          </div>
+          {result.totalFixes > 0 && (
+            <Button onClick={onDownload} disabled={downloading} size="sm" variant="outline" className="w-full sm:w-auto shrink-0">
+              {downloading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+              Download fixed HTML
+            </Button>
+          )}
+        </div>
+
+        {result.totalFixes === 0 ? (
+          <div className="mt-4 flex items-center gap-2 rounded-lg border border-neutral-200 dark:border-neutral-700 p-4 text-sm text-neutral-500 dark:text-neutral-400">
+            <ShieldCheck className="h-4 w-4 text-green-500 shrink-0" />
+            No auto-fixable issues found on this page for the selected fixes.
+          </div>
+        ) : (
+          <>
+            {/* Category breakdown */}
+            <div className="mt-4 flex flex-wrap gap-2">
+              {categoryKeys.map((cat) => {
+                const meta = catalogFor(cat);
+                const Icon = meta?.Icon ?? Wand2;
+                return (
+                  <span key={cat} className="flex items-center gap-1.5 rounded-full border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900 px-2.5 py-1 text-xs">
+                    <Icon className="h-3.5 w-3.5 text-accent" />
+                    <span className="font-medium text-neutral-700 dark:text-neutral-200">{meta?.label ?? cat}</span>
+                    <span className="rounded-full bg-accent/10 px-1.5 text-[11px] font-semibold text-accent">{result.categories[cat]}</span>
+                  </span>
+                );
+              })}
+            </div>
+
+            {/* Per-fix before→after */}
+            <div className="mt-4 space-y-2">
+              {result.fixes.map((fix, i) => (
+                <FixItem key={i} fix={fix} />
+              ))}
+            </div>
+
+            {/* Honest framing */}
+            {reviewCount > 0 && (
+              <div className="mt-4 flex items-start gap-2 rounded-lg border border-amber-100 dark:border-amber-900/40 bg-amber-50 dark:bg-amber-950/30 p-3 text-xs text-amber-700 dark:text-amber-300">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                <span>
+                  {reviewCount} of these fixes add markup automatically, but the VALUE still needs a human check — auto-derived alt text, labels, and button names should be reviewed for accuracy before you ship.
+                </span>
+              </div>
+            )}
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ── Single fix: selector + WCAG + before→after diff ──────────────────────────
+function FixItem({ fix }: { fix: FixRecord }) {
+  const meta = catalogFor(fix.category);
+  const Icon = meta?.Icon ?? Wand2;
+  return (
+    <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <Icon className="h-4 w-4 shrink-0 text-accent" />
+        <span className="text-sm font-medium text-neutral-900 dark:text-white">{fix.description}</span>
+        {fix.wcagCriteria && (
+          <span className="rounded bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 text-[10px] font-medium text-neutral-500 dark:text-neutral-400">{fix.wcagCriteria}</span>
+        )}
+        {meta?.needsReview && (
+          <span className="rounded bg-amber-100 dark:bg-amber-900/30 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-300">review</span>
+        )}
+      </div>
+      {fix.selector && (
+        <code className="mt-1.5 block break-all text-[11px] text-neutral-400 dark:text-neutral-500">{fix.selector}</code>
+      )}
+      {(fix.before || fix.after) && (
+        <div className="mt-2 space-y-1 font-mono text-[11px]">
+          {fix.before && (
+            <div className="overflow-x-auto rounded bg-red-50 dark:bg-red-950/30 px-2 py-1 text-red-700 dark:text-red-300">
+              <span className="select-none opacity-60">- </span>
+              <span className="break-all">{truncate(fix.before)}</span>
+            </div>
+          )}
+          {fix.after && (
+            <div className="overflow-x-auto rounded bg-green-50 dark:bg-green-950/30 px-2 py-1 text-green-700 dark:text-green-300">
+              <span className="select-none opacity-60">+ </span>
+              <span className="break-all">{truncate(fix.after)}</span>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
