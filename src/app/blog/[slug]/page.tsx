@@ -1,12 +1,31 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { cache } from "react";
 import Link from "next/link";
 import { ArrowLeft, Clock, Calendar, Info, Lightbulb, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { articles } from "./content";
-import type { CalloutVariant } from "./content";
+import type { CalloutVariant, ArticleContent } from "./content";
 import { ArticleEditorWrapper } from "./editor-wrapper";
 import { ArticleActions } from "@/components/blog/article-actions";
 import { safeUrl, safeVideoEmbed } from "@/lib/blog/blockHelpers";
+import { prisma } from "@/lib/database/prisma";
+import { dbArticleToContent } from "@/lib/blog/articleContent";
+
+/**
+ * Resolve an article for public display: a PUBLISHED DB article wins (so CMS
+ * edits + newly-created articles actually appear), otherwise the seeded static
+ * article is the fallback, otherwise null → 404. cache() dedupes the DB hit
+ * between generateMetadata and the page render. DB failure falls back to static.
+ */
+const getArticleForDisplay = cache(async (slug: string): Promise<ArticleContent | null> => {
+  try {
+    const db = await prisma.article.findUnique({ where: { slug } });
+    if (db && db.status === "PUBLISHED") return dbArticleToContent(db);
+  } catch {
+    // DB unavailable — fall through to the static fallback.
+  }
+  return articles[slug] ?? null;
+});
 
 /** Color + icon per callout tone. "note" (and undefined) keep the brand accent. */
 const CALLOUT_STYLES: Record<CalloutVariant, { box: string; title: string; Icon: typeof Info }> = {
@@ -23,7 +42,7 @@ interface PageProps {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const article = articles[slug];
+  const article = await getArticleForDisplay(slug);
   if (!article) return { title: "Article Not Found — RegLayer Blog" };
   return {
     title: `${article.title} — RegLayer Blog`,
@@ -33,7 +52,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function ArticlePage({ params }: PageProps) {
   const { slug } = await params;
-  const article = articles[slug];
+  const article = await getArticleForDisplay(slug);
   if (!article) notFound();
   return (
     <div className="space-y-6">
