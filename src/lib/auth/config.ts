@@ -189,22 +189,31 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.role = user.role;
       }
-      // Cache isMasterAdmin in Redis (60s TTL) to avoid DB hit on every request
+      // Cache the auth context (isMasterAdmin + primary workspace role) in Redis
+      // (60s TTL) to avoid a DB hit on every request. workspaceRole is the user's
+      // REAL WorkspaceMember role — the canonical RBAC signal for the client UI
+      // (the legacy `role` string was only ever set for seeded accounts).
       if (token.email) {
-        const cacheKey = `auth:admin:${token.email}`;
-        const cached = await cacheGet<boolean>(cacheKey);
-        if (cached !== null) {
-          token.isMasterAdmin = cached;
+        const cacheKey = `auth:ctx:${token.email}`;
+        const cached = await cacheGet<{ isMasterAdmin: boolean; workspaceRole: string | null }>(cacheKey);
+        if (cached) {
+          token.isMasterAdmin = cached.isMasterAdmin;
+          token.workspaceRole = cached.workspaceRole;
         } else {
           try {
             const dbUser = await prisma.user.findUnique({
               where: { email: token.email },
-              select: { isMasterAdmin: true },
+              select: {
+                isMasterAdmin: true,
+                memberships: { select: { role: true }, orderBy: { joinedAt: "asc" }, take: 1 },
+              },
             });
             token.isMasterAdmin = dbUser?.isMasterAdmin ?? false;
-            await cacheSet(cacheKey, token.isMasterAdmin, 60);
+            token.workspaceRole = dbUser?.memberships?.[0]?.role ?? null;
+            await cacheSet(cacheKey, { isMasterAdmin: token.isMasterAdmin, workspaceRole: token.workspaceRole }, 60);
           } catch {
             token.isMasterAdmin = token.isMasterAdmin ?? false;
+            token.workspaceRole = token.workspaceRole ?? null;
           }
         }
       }
@@ -214,6 +223,7 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         session.user.role = token.role;
         session.user.isMasterAdmin = token.isMasterAdmin ?? false;
+        session.user.workspaceRole = (token.workspaceRole as string | null) ?? null;
       }
       return session;
     },
