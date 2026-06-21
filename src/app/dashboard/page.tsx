@@ -93,7 +93,7 @@ export default function DashboardPage() {
         // Show role picker ONLY if:
         // - User has no persona set (server-side)
         // - User has fewer than 3 scans (genuinely new, not a veteran on a new browser)
-        if (!onboarding.persona && onboarding.totalScans < 3) {
+        if (!onboarding.persona && onboarding.totalScans < 3 && !localStorage.getItem("reglayer_persona_skipped")) {
           setShowRoleOnboarding(true);
           // Sync localStorage for fast subsequent loads
           localStorage.removeItem("reglayer_persona");
@@ -202,6 +202,10 @@ export default function DashboardPage() {
           <RoleOnboarding
             userName={session?.user?.name}
             onComplete={() => setShowRoleOnboarding(false)}
+            onSkip={() => {
+              localStorage.setItem("reglayer_persona_skipped", "1");
+              setShowRoleOnboarding(false);
+            }}
           />
         )}
 
@@ -242,39 +246,6 @@ export default function DashboardPage() {
               value={stats.sitesMonitored.toString()}
               icon={<Globe className="h-4 w-4 text-purple-500" />}
             />
-          </div>
-        )}
-
-        {/* Onboarding: First-time user guide */}
-        {!statsLoading && stats && stats.totalScans === 0 && !scanResult && (
-          <div className="rounded-xl border border-blue-100 dark:border-blue-900 bg-blue-50/50 dark:bg-blue-950/30 p-6">
-            <h2 className="text-lg font-semibold text-neutral-900 dark:text-white mb-2">Welcome to RegLayer</h2>
-            <p className="text-sm text-neutral-600 dark:text-neutral-300 mb-4">
-              Get started with your first accessibility scan. Here&apos;s what you can do:
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="rounded-lg bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900 text-xs font-bold text-blue-700 dark:text-blue-300">1</span>
-                  <p className="text-sm font-medium text-neutral-900 dark:text-white">Scan a URL</p>
-                </div>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400">Enter any URL above to run an accessibility audit powered by axe-core.</p>
-              </div>
-              <div className="rounded-lg bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900 text-xs font-bold text-blue-700 dark:text-blue-300">2</span>
-                  <p className="text-sm font-medium text-neutral-900 dark:text-white">Review Results</p>
-                </div>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400">Get a compliance score, violation details, and WCAG criteria mapping.</p>
-              </div>
-              <div className="rounded-lg bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900 text-xs font-bold text-blue-700 dark:text-blue-300">3</span>
-                  <p className="text-sm font-medium text-neutral-900 dark:text-white">Set Up Monitoring</p>
-                </div>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400">Schedule recurring scans to catch regressions automatically.</p>
-              </div>
-            </div>
           </div>
         )}
 

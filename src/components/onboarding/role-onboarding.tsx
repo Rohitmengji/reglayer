@@ -81,9 +81,11 @@ const personas: PersonaOption[] = [
 interface RoleOnboardingProps {
   userName?: string | null;
   onComplete: (persona: UserPersona) => void;
+  /** Dismiss without choosing — the role picker must never block the first scan. */
+  onSkip?: () => void;
 }
 
-export function RoleOnboarding({ userName, onComplete }: RoleOnboardingProps) {
+export function RoleOnboarding({ userName, onComplete, onSkip }: RoleOnboardingProps) {
   const { t } = useI18n();
   const [selected, setSelected] = useState<UserPersona | null>(null);
   const [step, setStep] = useState<"role" | "confirm">("role");
@@ -109,6 +111,14 @@ export function RoleOnboarding({ userName, onComplete }: RoleOnboardingProps) {
 
   return (
     <div className="fixed inset-0 z-9999 flex items-center justify-center bg-white dark:bg-neutral-950 overflow-y-auto">
+      {onSkip && (
+        <button
+          onClick={onSkip}
+          className="absolute top-4 right-4 sm:top-6 sm:right-6 rounded-lg px-3 py-1.5 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-white transition-colors"
+        >
+          {t("onboarding.skipForNow")}
+        </button>
+      )}
       <div className="w-full max-w-2xl px-4 sm:px-6 py-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
         {step === "role" ? (
           <>

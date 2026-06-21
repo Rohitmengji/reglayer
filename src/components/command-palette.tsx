@@ -105,8 +105,17 @@ export function CommandPalette() {
         setOpen(false);
       }
     }
+    // Lets a visible UI affordance (e.g. the sidebar "Search ⌘K" button) open the
+    // palette — otherwise it's keyboard-only and undiscoverable.
+    function onOpenRequest() {
+      setOpen(true);
+    }
     document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
+    window.addEventListener("reglayer:open-command-palette", onOpenRequest);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("reglayer:open-command-palette", onOpenRequest);
+    };
   }, [open]);
 
   // Focus input when opened
