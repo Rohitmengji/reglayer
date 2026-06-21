@@ -12,6 +12,7 @@ import { PageLoading } from "@/components/ui/page-loading";
 import { PageError } from "@/components/ui/page-error";
 import { useEffect, useState, useMemo } from "react";
 import { useSession } from "next-auth/react";
+import { isWorkspaceAdmin } from "@/lib/auth/roles";
 import { AppShell } from "@/components/layout/app-shell";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -82,7 +83,8 @@ export default function ScansPage() {
   const [dateFilter, setDateFilter] = useUrlState<string>("date", "all");
   const { data: session } = useSession();
   const { t } = useI18n();
-  const isAdmin = session?.user?.role === "admin";
+  // Scan deletion is OWNER/ADMIN-or-master (scans.delete) — gate the button to match.
+  const isAdmin = isWorkspaceAdmin(session);
 
   useEffect(() => {
     const controller = new AbortController();

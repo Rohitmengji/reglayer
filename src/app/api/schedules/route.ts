@@ -27,6 +27,7 @@ import { getOrCreateWorkspace } from "@/lib/database/workspace";
 import { prisma } from "@/lib/database/prisma";
 import { PLAN_LIMITS, type PlanType } from "@/lib/credits/plan-limits";
 import { logger } from "@/lib/telemetry/logger";
+import { requireWorkspacePermission } from "@/lib/auth/api-guard";
 
 const createScheduleSchema = z.object({
   name: z.string().min(1).max(100),
@@ -80,6 +81,11 @@ export async function POST(request: NextRequest) {
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // Authorization — managing schedules is an OWNER/ADMIN capability. MEMBERs run
+  // scans but don't configure recurring schedules; VIEWERs are read-only.
+  const perm = await requireWorkspacePermission("schedules.manage");
+  if (!perm.ok) return perm.response;
 
   const user = await prisma.user.findUnique({ where: { email: session.user.email } });
   if (!user) {

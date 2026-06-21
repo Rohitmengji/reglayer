@@ -52,6 +52,14 @@ vi.mock("@/lib/validations/ssrf", () => ({
 vi.mock("@/lib/features/require-feature", () => ({
   requireFeature: vi.fn(async () => ({ allowed: true, userId: "u", workspaceId: "w", isMasterAdmin: false })),
 }));
+// api-guard imports prisma (→ env validation); mock it so the route's RBAC gate
+// resolves to "allowed" without a DB. VIEWER-blocking is covered in rbac.test.ts.
+vi.mock("@/lib/auth/api-guard", () => ({
+  requireWorkspacePermission: vi.fn(async () => ({
+    ok: true,
+    ctx: { userId: "u", email: "test@example.com", isMasterAdmin: false, systemRole: "USER", workspaceId: "w", workspaceRole: "OWNER" },
+  })),
+}));
 
 import { getServerSession } from "next-auth";
 import { performScan } from "@/services/scanService";

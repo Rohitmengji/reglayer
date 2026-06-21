@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
+import { isContentEditor } from "@/lib/auth/roles";
 import OpenAI from "openai";
 
 // Lazy: `new OpenAI()` reads OPENAI_API_KEY and throws if absent. At module
@@ -18,8 +19,7 @@ function getOpenAI() {
  */
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
-  const isAdmin = session?.user?.isMasterAdmin || session?.user?.role === "admin" || session?.user?.role === "owner";
-  if (!isAdmin) {
+  if (!isContentEditor(session)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

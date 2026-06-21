@@ -11,6 +11,7 @@ import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
 import { mapPrismaScanToResult } from "@/lib/scanner/scanResultMapper";
 import { evaluateCompliance } from "@/lib/compliance/policyEvaluator";
+import { requireWorkspacePermission } from "@/lib/auth/api-guard";
 
 export async function GET(
   _request: NextRequest,
@@ -64,31 +65,37 @@ export async function DELETE(
     return NextResponse.json({ error: "Authentication required" }, { status: 401 });
   }
 
-  const role = session.user?.role;
-  const isMasterAdmin = session.user?.isMasterAdmin;
-
-  if (role !== "admin" && !isMasterAdmin) {
-    return NextResponse.json(
-      { error: "Forbidden: only admins can delete scans" },
-      { status: 403 }
-    );
-  }
-
   const { id } = await params;
 
-  // Verify scan belongs to user's workspace
-  const member = await prisma.workspaceMember.findFirst({
-    where: { user: { email: session.user.email } },
-  });
+  // Resolve the caller's primary membership and the target scan together.
+  const [member, scan] = await Promise.all([
+    prisma.workspaceMember.findFirst({
+      where: { user: { email: session.user.email } },
+      select: { userId: true, workspaceId: true },
+    }),
+    prisma.scan.findUnique({ where: { id }, select: { id: true, workspaceId: true, userId: true } }),
+  ]);
 
-  const scan = await prisma.scan.findUnique({ where: { id } });
+  const isMasterAdmin = !!session.user?.isMasterAdmin;
+
   if (!scan) {
     return NextResponse.json({ error: "Scan not found" }, { status: 404 });
   }
 
-  if (!isMasterAdmin && scan.workspaceId !== member?.workspaceId) {
+  // Non-disclosure: a scan outside the caller's workspace is reported as 404,
+  // never 403 — never confirm a resource exists to someone who can't see it.
+  const ownsScan =
+    isMasterAdmin || scan.workspaceId === member?.workspaceId || scan.userId === member?.userId;
+  if (!ownsScan) {
     return NextResponse.json({ error: "Scan not found" }, { status: 404 });
   }
+
+  // Permission: deletion is OWNER/ADMIN (or master) only — a MEMBER who can run
+  // scans still cannot delete them, and a VIEWER certainly cannot.
+  const guard = await requireWorkspacePermission("scans.delete", {
+    workspaceId: scan.workspaceId ?? undefined,
+  });
+  if (!guard.ok) return guard.response;
 
   // Delete violations first, then the scan
   await prisma.violation.deleteMany({ where: { scanId: id } });

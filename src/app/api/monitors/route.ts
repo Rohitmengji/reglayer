@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
+import { requireWorkspacePermission } from "@/lib/auth/api-guard";
 import { z } from "zod";
 
 const alertRuleSchema = z.object({
@@ -69,6 +70,11 @@ export async function POST(request: NextRequest) {
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // Authorization — a monitor creates a Site + recurring Schedule, so it's an
+  // OWNER/ADMIN configuration capability (same tier as schedules.manage).
+  const perm = await requireWorkspacePermission("schedules.manage");
+  if (!perm.ok) return perm.response;
 
   // Scope to user's workspace
   const member = await prisma.workspaceMember.findFirst({

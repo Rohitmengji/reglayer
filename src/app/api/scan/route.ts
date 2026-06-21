@@ -31,6 +31,7 @@ import { requireFeature } from "@/lib/features/require-feature";
 import { rateLimit, RATE_LIMITS, rateLimitHeaders } from "@/lib/rate-limit";
 import { AuthenticationError } from "@/lib/scanner/auth";
 import { cacheSetNX, cacheDel } from "@/lib/cache/redis";
+import { requireWorkspacePermission } from "@/lib/auth/api-guard";
 
 // Allow up to 90 seconds for scan execution (browser launch + navigation + axe analysis)
 export const maxDuration = 90;
@@ -43,6 +44,11 @@ export async function POST(request: NextRequest) {
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Authentication required" }, { status: 401 });
   }
+
+  // Authorization — running a scan requires scans.run (MEMBER and above).
+  // A VIEWER has read-only access and cannot trigger scans.
+  const perm = await requireWorkspacePermission("scans.run");
+  if (!perm.ok) return perm.response;
 
   // Rate limit by IP
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";

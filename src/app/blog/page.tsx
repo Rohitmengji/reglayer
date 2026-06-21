@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { BookOpen, Scale, Shield, FileText, Gavel, Globe, ArrowRight, Clock, Calendar, Plus } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
+import { isContentEditor } from "@/lib/auth/roles";
 
 interface Article {
   slug: string;
@@ -117,7 +118,7 @@ function formatDate(dateStr: string) {
 export default function BlogPage() {
   const { t } = useI18n();
   const { data: session } = useSession();
-  const isAdmin = session?.user?.isMasterAdmin || session?.user?.role === "admin" || session?.user?.role === "owner";
+  const isAdmin = isContentEditor(session);
   const featured = articles.filter((a) => a.featured);
   const rest = articles.filter((a) => !a.featured);
 

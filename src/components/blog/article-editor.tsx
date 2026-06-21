@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import type { ArticleSection } from "@/app/blog/[slug]/content";
 import { BLOCK_TYPES, createBlock, genBlockId, blockKindLabel, type BlockType } from "@/lib/blog/blockHelpers";
+import { isContentEditor } from "@/lib/auth/roles";
 
 type Section = ArticleSection;
 
@@ -65,8 +66,7 @@ export function ArticleEditor({ article, onUpdate, onEditingChange }: ArticleEdi
     (article.content?.sections ?? []) as Section[]
   );
 
-  const isAdmin = session?.user?.isMasterAdmin || session?.user?.role === "admin" || session?.user?.role === "owner";
-  if (!isAdmin) return null;
+  if (!isContentEditor(session)) return null;
 
   function startEditing() {
     setEditing(true);

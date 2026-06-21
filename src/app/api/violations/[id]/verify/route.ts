@@ -15,9 +15,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
+import { requireWorkspacePermission } from "@/lib/auth/api-guard";
 import {
   verifyViolationFix,
-  userOwnsViolation,
   StatusValidationError,
 } from "@/lib/violations/status";
 
@@ -51,27 +51,23 @@ export async function POST(
       );
     }
 
-    // Get user
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      select: { id: true },
+    // Resolve the violation's workspace, then enforce scans.run there — this
+    // confirms membership AND blocks read-only VIEWERs (re-scanning to verify a
+    // fix is operational work — MEMBER and above).
+    const violation = await prisma.violation.findUnique({
+      where: { id: violationId },
+      select: { scan: { select: { workspaceId: true } } },
     });
-
-    if (!user) {
+    const wsId = violation?.scan?.workspaceId;
+    if (!wsId) {
       return NextResponse.json(
-        { error: "USER_NOT_FOUND", message: "User not found" },
-        { status: 401 }
+        { error: "NOT_FOUND", message: "Violation not found" },
+        { status: 404 }
       );
     }
 
-    // Workspace ownership check
-    const hasAccess = await userOwnsViolation(violationId, user.id);
-    if (!hasAccess) {
-      return NextResponse.json(
-        { error: "FORBIDDEN", message: "You don't have access to this violation" },
-        { status: 403 }
-      );
-    }
+    const perm = await requireWorkspacePermission("scans.run", { workspaceId: wsId });
+    if (!perm.ok) return perm.response;
 
     // Run verification
     const result = await verifyViolationFix(violationId);
@@ -81,7 +77,7 @@ export async function POST(
       await prisma.auditLog.create({
         data: {
           action: "violation.verified",
-          actor: user.id,
+          actor: perm.ctx.userId,
           target: violationId,
           metadata: { verifiedAt: result.verifiedAt },
         },

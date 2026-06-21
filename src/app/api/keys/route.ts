@@ -12,6 +12,7 @@ import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
 import { randomBytes, createHash } from "crypto";
 import { getOrCreateWorkspace } from "@/lib/database/workspace";
+import { requireWorkspacePermission } from "@/lib/auth/api-guard";
 
 /**
  * API Key Management
@@ -51,6 +52,11 @@ export async function POST(request: NextRequest) {
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // Authorization — API keys grant programmatic access, so issuing them is an
+  // OWNER/ADMIN capability. MEMBERs and VIEWERs cannot mint keys.
+  const perm = await requireWorkspacePermission("apiKeys.manage");
+  if (!perm.ok) return perm.response;
 
   const user = await prisma.user.upsert({
     where: { email: session.user.email },
@@ -94,6 +100,10 @@ export async function DELETE(request: NextRequest) {
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // Authorization — revoking keys is an OWNER/ADMIN capability.
+  const perm = await requireWorkspacePermission("apiKeys.manage");
+  if (!perm.ok) return perm.response;
 
   let body: { id?: string };
   try {
