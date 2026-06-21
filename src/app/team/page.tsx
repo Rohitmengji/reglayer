@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Users, UserPlus, Shield, Crown, Trash2, ChevronDown, KeyRound, X, AlertTriangle, RotateCcw } from "lucide-react";
+import { Users, UserPlus, Shield, Crown, Trash2, KeyRound, X, AlertTriangle, RotateCcw } from "lucide-react";
 import { handleUpgradeResponse } from "@/lib/upgrade-prompt";
 import { useI18n } from "@/components/i18n-provider";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
