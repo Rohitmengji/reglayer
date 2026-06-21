@@ -235,7 +235,7 @@ export default function ScansPage() {
             )}
             <Link
               href="/crawl"
-              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 px-4 py-2 text-sm font-medium text-white transition-colors"
+              className="inline-flex items-center gap-2 rounded-lg bg-accent hover:bg-accent/90 px-4 py-2 text-sm font-medium text-white transition-colors"
             >
               <FileSearch className="h-4 w-4" />
               Run Site Audit
