@@ -10,6 +10,7 @@ import {
 import Link from "next/link";
 import { ModernSelect } from "@/components/ui/modern-select";
 import { useI18n } from "@/components/i18n-provider";
+import { isContentEditor } from "@/lib/auth/roles";
 
 const CATEGORIES = ["WCAG", "EAA", "Legal", "Technical", "Section 508", "Business", "Design"];
 
@@ -42,7 +43,7 @@ export default function CreateArticlePage() {
     sections: Array<{ id: string; title: string; paragraphs: string[]; code?: string; list?: string[] }>;
   } | null>(null);
 
-  const isAdmin = session?.user?.isMasterAdmin || session?.user?.role === "admin" || session?.user?.role === "owner";
+  const isAdmin = isContentEditor(session);
 
   function generateSlug(text: string) {
     return text

@@ -24,6 +24,7 @@ import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
 import { encryptJson } from "@/lib/crypto";
 import { savedAuthConfigSchema } from "@/lib/validations/auth";
+import { requireWorkspacePermission } from "@/lib/auth/api-guard";
 
 /**
  * POST /api/auth-configs — Save a new encrypted auth config
@@ -33,6 +34,11 @@ export async function POST(request: NextRequest) {
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // Authorization — stored auth configs hold scan login CREDENTIALS, so creating
+  // them is an OWNER/ADMIN settings capability.
+  const perm = await requireWorkspacePermission("settings.manage");
+  if (!perm.ok) return perm.response;
 
   const user = await prisma.user.findUnique({
     where: { email: session.user.email },

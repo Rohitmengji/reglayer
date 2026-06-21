@@ -9,6 +9,7 @@ import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
 import { issueProof, listProofs } from "@/lib/vault/proofEngine";
 import { assertScanAccess, assertSiteAccess } from "@/lib/auth/access";
+import { requireWorkspacePermission } from "@/lib/auth/api-guard";
 import type { ProofType } from "@/generated/prisma/client";
 
 export async function GET(request: NextRequest) {
@@ -64,13 +65,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify membership with at least Member role
-    const member = await prisma.workspaceMember.findFirst({
-      where: { workspaceId, user: { email: session.user.email } },
-    });
-    if (!member) {
-      return NextResponse.json({ error: "Access denied" }, { status: 403 });
-    }
+    // Authorization — issuing a proof is an operational output from a passing
+    // scan, so it requires scans.run (MEMBER and above) in the target workspace.
+    // (Revoking a proof, by contrast, stays OWNER/ADMIN.) This also enforces
+    // membership: a non-member resolves to no role and is rejected.
+    const perm = await requireWorkspacePermission("scans.run", { workspaceId });
+    if (!perm.ok) return perm.response;
 
     // Verify the caller owns the scan being attested, and that the scan is bound
     // to the workspace the proof claims to attest (no cross-tenant proof forgery).

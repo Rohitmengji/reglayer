@@ -13,6 +13,7 @@ import { buildTestPlan } from "@/lib/testing/manualTestPlan";
 import { mapTagsToWcag } from "@/lib/scanner/accessibility/wcagMapper";
 import { hasFeature } from "@/lib/features/feature-access";
 import { applyRateLimit } from "@/lib/rate-limit-middleware";
+import { requireWorkspacePermission } from "@/lib/auth/api-guard";
 import { z } from "zod";
 
 // ── POST /api/audits — Create a manual-test audit from a scan ─────────────────
@@ -46,6 +47,12 @@ export async function POST(request: NextRequest) {
     if (!access.ok) {
       return NextResponse.json({ error: access.error }, { status: access.status });
     }
+
+    // Authorization — manual testing is operational QA work, so creating a test
+    // plan requires scans.run (MEMBER and above) in the scan's workspace. VIEWERs
+    // can view results but cannot start a manual audit.
+    const perm = await requireWorkspacePermission("scans.run", { workspaceId: access.workspaceId });
+    if (!perm.ok) return perm.response;
 
     // Feature gate — gated on the scan's WORKSPACE plan via the canonical feature
     // system; master admin bypasses, and admin feature-overrides are honored.

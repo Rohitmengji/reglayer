@@ -16,13 +16,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { assertScanAccess } from "@/lib/auth/access";
+import { requireWorkspacePermission } from "@/lib/auth/api-guard";
 import { prisma } from "@/lib/database/prisma";
 import { ViolationStatus } from "@/generated/prisma/client";
 import { z } from "zod";
 import {
   updateViolationStatus,
   getStatusSummary,
-  userOwnsViolation,
   StatusValidationError,
 } from "@/lib/violations/status";
 
@@ -116,34 +116,30 @@ export async function PATCH(request: NextRequest) {
 
     const { violationId, status, note } = parsed.data;
 
-    // Get user ID from session
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      select: { id: true },
+    // Resolve the violation's workspace, then enforce scans.run there. This both
+    // confirms membership AND blocks read-only VIEWERs from changing remediation
+    // status (triage is operational work — MEMBER and above).
+    const violation = await prisma.violation.findUnique({
+      where: { id: violationId },
+      select: { scan: { select: { workspaceId: true } } },
     });
-
-    if (!user) {
+    const wsId = violation?.scan?.workspaceId;
+    if (!wsId) {
       return NextResponse.json(
-        { error: "USER_NOT_FOUND", message: "User not found" },
-        { status: 401 }
+        { error: "NOT_FOUND", message: "Violation not found" },
+        { status: 404 }
       );
     }
 
-    // Workspace ownership check
-    const hasAccess = await userOwnsViolation(violationId, user.id);
-    if (!hasAccess) {
-      return NextResponse.json(
-        { error: "FORBIDDEN", message: "You don't have access to this violation's workspace" },
-        { status: 403 }
-      );
-    }
+    const perm = await requireWorkspacePermission("scans.run", { workspaceId: wsId });
+    if (!perm.ok) return perm.response;
 
     // Delegate to business logic
     const result = await updateViolationStatus({
       violationId,
       status,
       note,
-      userId: user.id,
+      userId: perm.ctx.userId,
     });
 
     // Audit trail

@@ -11,6 +11,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { assertScanAccess } from "@/lib/auth/access";
+import { requireWorkspacePermission } from "@/lib/auth/api-guard";
 import { z } from "zod";
 import { createBatchIssue, createIssueFromViolation } from "@/lib/integrations/github";
 import { prisma } from "@/lib/database/prisma";
@@ -59,6 +60,12 @@ export async function POST(request: NextRequest) {
   if (!access.ok) {
     return NextResponse.json({ error: access.error }, { status: access.status });
   }
+
+  // Authorization — filing issues is part of the remediation workflow, so it
+  // requires scans.run (MEMBER and above) in the scan's workspace. VIEWERs are
+  // read-only and cannot push issues to an external repo.
+  const perm = await requireWorkspacePermission("scans.run", { workspaceId: access.workspaceId });
+  if (!perm.ok) return perm.response;
 
   const config = { token, owner, repo };
   const reportUrl = `${request.nextUrl.origin}/report/${scanId}`;

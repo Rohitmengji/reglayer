@@ -16,10 +16,23 @@ interface SessionLike {
 }
 
 /**
- * Content (blog / CMS) editing rights = master admin OR workspace OWNER/ADMIN.
- * Mirrors the `content.edit` permission in rbac.ts.
+ * Workspace administrator = master admin OR workspace OWNER/ADMIN.
+ *
+ * This is the role set behind every OWNER/ADMIN-tier permission (content.edit,
+ * scans.delete, schedules/integrations/apiKeys/settings.manage). Use it to gate
+ * UI affordances whose server route requires one of those permissions, so the
+ * client never offers an action the server will 403.
  */
-export function isContentEditor(session: SessionLike | null | undefined): boolean {
+export function isWorkspaceAdmin(session: SessionLike | null | undefined): boolean {
   const role = session?.user?.workspaceRole;
   return Boolean(session?.user?.isMasterAdmin) || role === "OWNER" || role === "ADMIN";
+}
+
+/**
+ * Content (blog / CMS) editing rights. Mirrors the `content.edit` permission —
+ * same OWNER/ADMIN-or-master role set; named separately so call sites read
+ * intuitively.
+ */
+export function isContentEditor(session: SessionLike | null | undefined): boolean {
+  return isWorkspaceAdmin(session);
 }

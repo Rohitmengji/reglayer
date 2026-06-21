@@ -10,6 +10,7 @@ import { authOptions } from "@/lib/auth/config";
 import { jobManager } from "@/lib/scanner/crawler/job-manager";
 import { prisma } from "@/lib/database/prisma";
 import { assertCrawlJobAccess } from "@/lib/auth/access";
+import { requireWorkspacePermission } from "@/lib/auth/api-guard";
 
 export async function GET(
   _request: NextRequest,
@@ -124,6 +125,11 @@ export async function DELETE(
   if (!access.ok) {
     return NextResponse.json({ error: access.error }, { status: access.status });
   }
+
+  // Authorization — cancelling a crawl needs the same capability as starting one
+  // (scans.run, MEMBER and above). A VIEWER cannot cancel audits.
+  const perm = await requireWorkspacePermission("scans.run", { workspaceId: access.workspaceId });
+  if (!perm.ok) return perm.response;
 
   // Cancel the in-memory job IF this lambda is the one running it.
   const cancelledInMemory = jobManager.cancelJob(jobId);

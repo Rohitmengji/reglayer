@@ -11,6 +11,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
 import { getOrCreateWorkspace } from "@/lib/database/workspace";
+import { requireWorkspacePermission } from "@/lib/auth/api-guard";
 import { encryptToken } from "@/lib/crypto";
 
 // Only providers the event dispatcher actually delivers to (lib/integrations/dispatcher.ts).
@@ -63,6 +64,11 @@ export async function POST(request: NextRequest) {
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // Authorization — connecting external tools (and storing their tokens) is an
+  // OWNER/ADMIN capability.
+  const perm = await requireWorkspacePermission("integrations.manage");
+  if (!perm.ok) return perm.response;
 
   const user = await prisma.user.upsert({
     where: { email: session.user.email },
@@ -167,25 +173,17 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "Integration ID required" }, { status: 400 });
   }
 
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-    include: { memberships: true },
-  });
-
-  if (!user) {
-    return NextResponse.json({ error: "User not found" }, { status: 404 });
-  }
-
-  // Verify ownership
+  // Verify the integration exists, then enforce integrations.manage IN ITS
+  // workspace — this both checks membership and blocks MEMBER/VIEWER roles.
   const integration = await prisma.integration.findUnique({ where: { id } });
   if (!integration) {
     return NextResponse.json({ error: "Integration not found" }, { status: 404 });
   }
 
-  const hasAccess = user.memberships.some((m) => m.workspaceId === integration.workspaceId);
-  if (!hasAccess) {
-    return NextResponse.json({ error: "Access denied" }, { status: 403 });
-  }
+  const perm = await requireWorkspacePermission("integrations.manage", {
+    workspaceId: integration.workspaceId,
+  });
+  if (!perm.ok) return perm.response;
 
   const updateData: Record<string, unknown> = {};
   if (typeof enabled === "boolean") updateData.enabled = enabled;
@@ -220,24 +218,17 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: "Integration ID required" }, { status: 400 });
   }
 
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-    include: { memberships: true },
-  });
-
-  if (!user) {
-    return NextResponse.json({ error: "User not found" }, { status: 404 });
-  }
-
+  // Verify the integration exists, then enforce integrations.manage IN ITS
+  // workspace — this both checks membership and blocks MEMBER/VIEWER roles.
   const integration = await prisma.integration.findUnique({ where: { id } });
   if (!integration) {
     return NextResponse.json({ error: "Integration not found" }, { status: 404 });
   }
 
-  const hasAccess = user.memberships.some((m) => m.workspaceId === integration.workspaceId);
-  if (!hasAccess) {
-    return NextResponse.json({ error: "Access denied" }, { status: 403 });
-  }
+  const perm = await requireWorkspacePermission("integrations.manage", {
+    workspaceId: integration.workspaceId,
+  });
+  if (!perm.ok) return perm.response;
 
   await prisma.integration.delete({ where: { id } });
   return NextResponse.json({ success: true });

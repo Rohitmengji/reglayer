@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { FileText, ArrowLeft, Plus } from "lucide-react";
+import { isContentEditor } from "@/lib/auth/roles";
 
 export default function BlogNotFound() {
   const { data: session } = useSession();
-  const isAdmin = session?.user?.isMasterAdmin || session?.user?.role === "admin" || session?.user?.role === "owner";
+  const isAdmin = isContentEditor(session);
 
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center">

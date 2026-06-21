@@ -13,6 +13,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
+import { requireWorkspacePermission } from "@/lib/auth/api-guard";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -28,6 +29,11 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // Authorization — deleting stored credentials is an OWNER/ADMIN settings
+  // capability (mirrors the create gate).
+  const perm = await requireWorkspacePermission("settings.manage");
+  if (!perm.ok) return perm.response;
 
   const user = await prisma.user.findUnique({
     where: { email: session.user.email },

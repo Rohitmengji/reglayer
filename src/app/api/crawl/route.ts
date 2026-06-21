@@ -19,6 +19,7 @@ import { authConfigSchema } from "@/lib/validations/auth";
 import { logger } from "@/lib/telemetry/logger";
 import { prisma } from "@/lib/database/prisma";
 import { getOrCreateWorkspace } from "@/lib/database/workspace";
+import { requireWorkspacePermission } from "@/lib/auth/api-guard";
 import { decryptJson } from "@/lib/crypto";
 import type { AuthConfig } from "@/lib/validations/auth";
 import { Prisma } from "@/generated/prisma/client";
@@ -53,6 +54,11 @@ export async function POST(request: NextRequest) {
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // Authorization — a crawl is a (multi-page) scan: requires scans.run
+  // (MEMBER and above). VIEWERs are read-only.
+  const perm = await requireWorkspacePermission("scans.run");
+  if (!perm.ok) return perm.response;
 
   let body: unknown;
   try {

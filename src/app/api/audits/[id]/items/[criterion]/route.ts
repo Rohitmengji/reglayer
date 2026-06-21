@@ -11,6 +11,7 @@ import { prisma } from "@/lib/database/prisma";
 import { applyRateLimit } from "@/lib/rate-limit-middleware";
 import { rollupManualScore, combineScores } from "@/lib/testing/manualScore";
 import { hasFeature } from "@/lib/features/feature-access";
+import { requireWorkspacePermission } from "@/lib/auth/api-guard";
 import type { ManualTestPlan, ManualVerdict } from "@/lib/testing/manualTestPlan";
 import { WCAG_CRITERIA } from "@/lib/wcag/criteria";
 import { z } from "zod";
@@ -78,6 +79,12 @@ export async function PATCH(
     if (!user.isMasterAdmin && !workspaceIds.includes(audit.workspaceId)) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
+
+    // Authorization — recording a manual verdict is operational QA work, so it
+    // requires scans.run (MEMBER and above) in the audit's workspace. VIEWERs
+    // can view the plan but cannot record verdicts.
+    const perm = await requireWorkspacePermission("scans.run", { workspaceId: audit.workspaceId });
+    if (!perm.ok) return perm.response;
 
     // Feature gate — canonical feature system; master admin bypasses, overrides honored.
     const featureOk = user.isMasterAdmin || (await hasFeature(audit.workspaceId, "manualTesting")).enabled;
