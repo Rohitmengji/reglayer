@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
 import { validateArticleContent } from "@/lib/blog/blockHelpers";
 import { isContentEditor } from "@/lib/auth/roles";
+import { articles as staticArticles } from "@/app/blog/[slug]/content";
 
 interface RouteParams {
   params: Promise<{ slug: string }>;
@@ -65,9 +66,29 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     }
   }
 
-  const article = await prisma.article.findUnique({ where: { slug } });
+  let article = await prisma.article.findUnique({ where: { slug } });
   if (!article) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    // First edit of a SEEDED static article (no DB row yet): create the row from
+    // the static content so the edit persists — and stays public (it's already a
+    // published article). Unknown slugs still 404. The snapshot+update below then
+    // records the static state as the prior version and applies the edit.
+    const seed = staticArticles[slug];
+    if (!seed) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    article = await prisma.article.create({
+      data: {
+        slug,
+        title: seed.title,
+        excerpt: seed.excerpt,
+        category: seed.category,
+        content: { sections: seed.sections } as object,
+        readTime: seed.readTime,
+        status: "PUBLISHED",
+        publishedAt: new Date(),
+        authorId: session.user.id ?? null,
+      },
+    });
   }
 
   // ALWAYS snapshot current state before updating (append-only versioning)

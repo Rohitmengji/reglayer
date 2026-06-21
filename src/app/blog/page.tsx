@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { BookOpen, Scale, Shield, FileText, Gavel, Globe, ArrowRight, Clock, Calendar, Plus } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
@@ -16,7 +17,7 @@ interface Article {
   featured?: boolean;
 }
 
-const articles: Article[] = [
+const staticArticles: Article[] = [
   {
     slug: "wcag-2-2-whats-new",
     title: "WCAG 2.2: What Changed and Why It Matters",
@@ -119,6 +120,36 @@ export default function BlogPage() {
   const { t } = useI18n();
   const { data: session } = useSession();
   const isAdmin = isContentEditor(session);
+
+  // Merge published DB articles (created/edited via the CMS) over the seeded
+  // static list so they actually appear here. DB wins on slug collisions; if the
+  // fetch fails we keep showing the static list (fail-soft).
+  const [articles, setArticles] = useState<Article[]>(staticArticles);
+  useEffect(() => {
+    let active = true;
+    fetch("/api/blog")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!active || !data?.articles) return;
+        const dbItems: Article[] = (data.articles as Array<Record<string, unknown>>).map((a) => ({
+          slug: String(a.slug),
+          title: String(a.title),
+          excerpt: String(a.excerpt ?? ""),
+          category: String(a.category ?? ""),
+          readTime: String(a.readTime ?? "5 min"),
+          date: a.publishedAt ? String(a.publishedAt) : (a.updatedAt ? String(a.updatedAt) : ""),
+        }));
+        const bySlug = new Map<string, Article>();
+        for (const a of staticArticles) bySlug.set(a.slug, a);
+        for (const a of dbItems) bySlug.set(a.slug, { ...bySlug.get(a.slug), ...a });
+        setArticles(Array.from(bySlug.values()));
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const featured = articles.filter((a) => a.featured);
   const rest = articles.filter((a) => !a.featured);
 
