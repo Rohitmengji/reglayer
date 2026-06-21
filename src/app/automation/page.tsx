@@ -23,19 +23,21 @@ const RumPage = lazy(() => import("@/app/dashboard/rum/page"));
 const DesignSystemPage = lazy(() => import("@/app/dashboard/design-system/page"));
 const SchedulesPage = lazy(() => import("@/app/automation/schedules-page"));
 
-const tabs: Tab[] = [
-  { id: "remediation", label: "Remediation", icon: Wand2 },
-  { id: "revenue", label: "Revenue Impact", icon: DollarSign },
-  { id: "journey", label: "Journey Scan", icon: Route },
-  { id: "rum", label: "RUM", icon: Activity },
-  { id: "design-system", label: "Design System", icon: Component },
-  { id: "schedules", label: "Schedules", icon: Clock },
-];
-
 function AutomationContent() {
   const { t } = useI18n();
   const searchParams = useSearchParams();
   const activeTab = searchParams.get("tab") || "remediation";
+
+  // Built inside the component so labels go through t() (a module-level array
+  // can't translate).
+  const tabs: Tab[] = [
+    { id: "remediation", label: t("automation.tabRemediation"), icon: Wand2 },
+    { id: "revenue", label: t("automation.tabRevenue"), icon: DollarSign },
+    { id: "journey", label: t("automation.tabJourney"), icon: Route },
+    { id: "rum", label: t("automation.tabRum"), icon: Activity },
+    { id: "design-system", label: t("automation.tabDesignSystem"), icon: Component },
+    { id: "schedules", label: t("automation.tabSchedules"), icon: Clock },
+  ];
 
   return (
     <AppShell>
@@ -43,7 +45,7 @@ function AutomationContent() {
         <div>
           <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{t("nav.automation")}</h1>
           <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-            Automated scanning, monitoring, and remediation tools
+            {t("automation.subtitle")}
           </p>
         </div>
 
