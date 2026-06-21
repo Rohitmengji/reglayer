@@ -17,18 +17,20 @@
  *      needing human review.
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ModernSelect } from "@/components/ui/modern-select";
 import {
   Wand2, Code, Globe, Copy, Check, Download, Loader2, AlertTriangle,
   Languages, SkipForward, LayoutTemplate, Image as ImageIcon, FormInput,
-  MousePointerClick, ArrowDownUp, Contrast, ShieldCheck, Info,
+  MousePointerClick, ArrowDownUp, Contrast, ShieldCheck, Info, Stethoscope, UserCog,
 } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
+import { analyzeFixability, type FixabilitySummary } from "@/lib/remediation/fixability";
 
 // ── Engine fix-category catalog ─────────────────────────────────────────────
 // Each entry maps a RemediationConfig flag (sent to /api/remediate) to the fix
@@ -79,6 +81,12 @@ interface RemediationResult {
   fixes: FixRecord[];
   timestamp: string;
 }
+interface ScanOption {
+  id: string;
+  url: string;
+  totalViolations: number;
+  createdAt: string;
+}
 
 const catalogFor = (category: string) => FIX_CATALOG.find((f) => f.category === category);
 function truncate(s: string, n = 240): string {
@@ -103,22 +111,73 @@ export default function RemediationPage() {
   const [copied, setCopied] = useState(false);
   const [scriptSnippet, setScriptSnippet] = useState("");
 
+  // "Fixability from a scan" — pick a past scan, see how much is auto-fixable.
+  const [scans, setScans] = useState<ScanOption[]>([]);
+  const [selectedScanId, setSelectedScanId] = useState("");
+  const [analyzing, setAnalyzing] = useState(false);
+  const [fixability, setFixability] = useState<FixabilitySummary | null>(null);
+
   const enabledCount = Object.values(config).filter(Boolean).length;
-  const canRun = !loading && /^https?:\/\/.+\..+/.test(url) && enabledCount > 0;
+  const isValidUrl = (s: string) => /^https?:\/\/.+\..+/.test(s.trim());
+  const canRun = !loading && isValidUrl(url) && enabledCount > 0;
+
+  // Load the user's recent completed scans for the fixability picker.
+  useEffect(() => {
+    let active = true;
+    fetch("/api/scans?limit=25")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!active || !Array.isArray(data?.scans)) return;
+        setScans(
+          (data.scans as Array<Record<string, unknown>>)
+            .filter((s) => (s.status ?? "COMPLETED") === "COMPLETED")
+            .map((s) => ({ id: String(s.id), url: String(s.url ?? ""), totalViolations: Number(s.totalViolations ?? 0), createdAt: String(s.createdAt ?? "") }))
+        );
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  async function analyzeScan(scanId: string) {
+    setSelectedScanId(scanId);
+    setFixability(null);
+    if (!scanId) return;
+    setAnalyzing(true);
+    try {
+      const res = await fetch(`/api/scans/${scanId}`);
+      if (!res.ok) {
+        toast.error("Could not load that scan");
+        return;
+      }
+      const data = await res.json();
+      const violations = (data?.scan?.violations ?? []) as Array<{ id?: string; impact?: string }>;
+      setFixability(analyzeFixability(violations));
+      const scanUrl = data?.scan?.url;
+      if (typeof scanUrl === "string" && scanUrl) setUrl(scanUrl);
+    } catch {
+      toast.error("Could not analyze that scan");
+    } finally {
+      setAnalyzing(false);
+    }
+  }
 
   function toggle(key: string) {
     setConfig((prev) => ({ ...prev, [key]: !prev[key] }));
   }
 
-  async function runRemediation() {
-    if (!canRun) return;
+  async function runRemediation(targetUrl?: string) {
+    const target = (targetUrl ?? url).trim();
+    if (loading || !isValidUrl(target) || enabledCount === 0) return;
+    if (target !== url) setUrl(target);
     setLoading(true);
     setResult(null);
     try {
       const res = await fetch("/api/remediate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url, config }),
+        body: JSON.stringify({ url: target, config }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
@@ -185,6 +244,48 @@ export default function RemediationPage() {
             Apply real accessibility fixes — deploy a drop-in script, or remediate a live URL and see exactly what changed.
           </p>
         </div>
+
+        {/* ── Fixability from a scan ─────────────────────────────────────── */}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex flex-wrap items-center gap-2 mb-1">
+              <Stethoscope className="h-5 w-5 text-accent" />
+              <h3 className="font-semibold text-neutral-900 dark:text-white">How much of a scan can we auto-fix?</h3>
+            </div>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">
+              Pick a scan you&apos;ve already run. We map each violation to the remediation engine and show what&apos;s auto-fixable versus what needs a developer.
+            </p>
+            {scans.length === 0 ? (
+              <p className="text-sm text-neutral-400 dark:text-neutral-500">
+                No completed scans yet — run a scan first, then come back to see its fixability.
+              </p>
+            ) : (
+              <ModernSelect
+                value={selectedScanId}
+                onChange={analyzeScan}
+                placeholder="Select a scan…"
+                options={scans.map((s) => ({
+                  value: s.id,
+                  label: `${hostOf(s.url)} · ${s.totalViolations} ${s.totalViolations === 1 ? "issue" : "issues"}${s.createdAt ? ` · ${new Date(s.createdAt).toLocaleDateString()}` : ""}`,
+                }))}
+              />
+            )}
+
+            {analyzing && (
+              <div className="mt-4 flex items-center gap-2 text-sm text-neutral-500 dark:text-neutral-400">
+                <Loader2 className="h-4 w-4 animate-spin" /> Analyzing violations…
+              </div>
+            )}
+
+            {fixability && !analyzing && (
+              <FixabilityView
+                fixability={fixability}
+                onRemediate={() => runRemediation(url)}
+                canRemediate={isValidUrl(url) && !loading}
+              />
+            )}
+          </CardContent>
+        </Card>
 
         {/* ── Server-side remediation ───────────────────────────────────── */}
         <Card>
@@ -255,7 +356,7 @@ export default function RemediationPage() {
                 aria-label="URL to remediate"
                 className="flex-1 min-w-0 rounded-md border border-neutral-200 dark:border-neutral-700 px-3 py-2 text-sm bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent"
               />
-              <Button onClick={runRemediation} disabled={!canRun} size="sm" className="w-full sm:w-auto shrink-0">
+              <Button onClick={() => runRemediation()} disabled={!canRun} size="sm" className="w-full sm:w-auto shrink-0">
                 {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Wand2 className="h-4 w-4 mr-2" />}
                 {loading ? "Fixing…" : "Remediate"}
               </Button>
@@ -435,6 +536,109 @@ function FixItem({ fix }: { fix: FixRecord }) {
             </div>
           )}
         </div>
+      )}
+    </div>
+  );
+}
+
+// ── Fixability breakdown for a selected scan ─────────────────────────────────
+function FixabilityView({
+  fixability,
+  onRemediate,
+  canRemediate,
+}: {
+  fixability: FixabilitySummary;
+  onRemediate: () => void;
+  canRemediate: boolean;
+}) {
+  const { total, autoFixable, needsReview, needsDeveloper, byCategory, needsDeveloperRules } = fixability;
+  const pct = total > 0 ? Math.round((autoFixable / total) * 100) : 0;
+
+  if (total === 0) {
+    return (
+      <div className="mt-4 flex items-center gap-2 rounded-lg border border-neutral-200 dark:border-neutral-700 p-4 text-sm text-neutral-500 dark:text-neutral-400">
+        <ShieldCheck className="h-4 w-4 shrink-0 text-green-500" />
+        This scan has no recorded violations — nothing to remediate.
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-4 space-y-4">
+      {/* Headline + coverage bar */}
+      <div>
+        <div className="flex items-baseline justify-between gap-2">
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">
+            <span className="text-2xl font-bold text-neutral-900 dark:text-white">{autoFixable}</span> of {total} {total === 1 ? "issue" : "issues"} are auto-fixable
+          </p>
+          <span className="text-sm font-semibold text-accent">{pct}%</span>
+        </div>
+        <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-700">
+          <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${pct}%` }} />
+        </div>
+      </div>
+
+      {/* Auto-fixable vs needs-developer tiles */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="rounded-lg border border-green-200 dark:border-green-800/40 bg-green-50 dark:bg-green-950/30 p-3">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-green-700 dark:text-green-300">
+            <Wand2 className="h-3.5 w-3.5" /> Auto-fixable
+          </div>
+          <p className="mt-1 text-2xl font-bold text-neutral-900 dark:text-white">{autoFixable}</p>
+          {needsReview > 0 && (
+            <p className="mt-0.5 text-[11px] text-neutral-500 dark:text-neutral-400">{needsReview} need a quick human review of the auto-added value</p>
+          )}
+        </div>
+        <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 p-3">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-neutral-600 dark:text-neutral-300">
+            <UserCog className="h-3.5 w-3.5" /> Needs a developer
+          </div>
+          <p className="mt-1 text-2xl font-bold text-neutral-900 dark:text-white">{needsDeveloper}</p>
+          <p className="mt-0.5 text-[11px] text-neutral-500 dark:text-neutral-400">complex issues automated tools can&apos;t safely fix</p>
+        </div>
+      </div>
+
+      {/* Auto-fixable category breakdown */}
+      {byCategory.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {byCategory.map(({ category, count, risky }) => {
+            const meta = catalogFor(category);
+            const Icon = meta?.Icon ?? Wand2;
+            return (
+              <span key={category} className="flex items-center gap-1.5 rounded-full border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900 px-2.5 py-1 text-xs">
+                <Icon className="h-3.5 w-3.5 text-accent" />
+                <span className="font-medium text-neutral-700 dark:text-neutral-200">{meta?.label ?? category}</span>
+                <span className="rounded-full bg-accent/10 px-1.5 text-[11px] font-semibold text-accent">{count}</span>
+                {risky && <AlertTriangle className="h-3 w-3 text-amber-500" aria-label="alters design" />}
+              </span>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Top rules that need a developer (honest) */}
+      {needsDeveloperRules.length > 0 && (
+        <div>
+          <p className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">Needs a developer</p>
+          <div className="flex flex-wrap gap-1.5">
+            {needsDeveloperRules.slice(0, 10).map((r) => (
+              <span key={r.ruleId} className="flex items-center gap-1.5 rounded-md border border-neutral-200 dark:border-neutral-700 px-2 py-1 text-[11px] text-neutral-600 dark:text-neutral-300">
+                <UserCog className="h-3 w-3 text-neutral-400" />
+                <span className="font-mono">{r.ruleId}</span>
+                {r.count > 1 && <span className="text-neutral-400">×{r.count}</span>}
+              </span>
+            ))}
+            {needsDeveloperRules.length > 10 && (
+              <span className="px-2 py-1 text-[11px] text-neutral-400">+{needsDeveloperRules.length - 10} more</span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {autoFixable > 0 && (
+        <Button onClick={onRemediate} disabled={!canRemediate} size="sm" className="w-full sm:w-auto">
+          <Wand2 className="h-4 w-4 mr-2" /> Auto-fix this page now
+        </Button>
       )}
     </div>
   );

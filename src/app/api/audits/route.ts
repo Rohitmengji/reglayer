@@ -125,20 +125,24 @@ export async function GET() {
 
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
-      select: { memberships: { select: { workspaceId: true } } },
+      select: { id: true, isMasterAdmin: true, memberships: { select: { workspaceId: true } } },
     });
 
-    if (!user || user.memberships.length === 0) {
+    if (!user) {
       return NextResponse.json({ audits: [] });
     }
 
-    const workspaceIds = user.memberships.map((m) => m.workspaceId);
+    // Master admins see all audits; regular users see their workspace's audits only
+    const where = user.isMasterAdmin
+      ? { type: "manual-test" as const }
+      : { workspaceId: { in: user.memberships.map((m) => m.workspaceId) }, type: "manual-test" as const };
+
+    if (!user.isMasterAdmin && user.memberships.length === 0) {
+      return NextResponse.json({ audits: [] });
+    }
 
     const audits = await prisma.auditRequest.findMany({
-      where: {
-        workspaceId: { in: workspaceIds },
-        type: "manual-test",
-      },
+      where,
       orderBy: { createdAt: "desc" },
       select: {
         id: true,
