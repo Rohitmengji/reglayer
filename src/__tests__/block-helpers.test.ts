@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { safeUrl, createBlock, validateArticleContent, BLOCK_TYPES } from "@/lib/blog/blockHelpers";
+import { safeUrl, safeVideoEmbed, createBlock, validateArticleContent, blockKindLabel, BLOCK_TYPES } from "@/lib/blog/blockHelpers";
 
 describe("safeUrl", () => {
   it("allows http(s), mailto, root-relative, and anchors", () => {
@@ -30,16 +30,46 @@ describe("safeUrl", () => {
   });
 });
 
+describe("safeVideoEmbed", () => {
+  it("converts YouTube watch / short / embed / youtu.be URLs to a nocookie embed", () => {
+    expect(safeVideoEmbed("https://www.youtube.com/watch?v=dQw4w9WgXcQ")).toBe("https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ");
+    expect(safeVideoEmbed("https://youtu.be/dQw4w9WgXcQ")).toBe("https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ");
+    expect(safeVideoEmbed("https://www.youtube.com/embed/dQw4w9WgXcQ")).toBe("https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ");
+    expect(safeVideoEmbed("https://youtube.com/shorts/dQw4w9WgXcQ")).toBe("https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ");
+    expect(safeVideoEmbed("https://www.youtube.com/watch?list=x&v=dQw4w9WgXcQ")).toBe("https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ");
+  });
+
+  it("converts Vimeo URLs to a player embed", () => {
+    expect(safeVideoEmbed("https://vimeo.com/123456789")).toBe("https://player.vimeo.com/video/123456789");
+    expect(safeVideoEmbed("https://player.vimeo.com/video/123456789")).toBe("https://player.vimeo.com/video/123456789");
+  });
+
+  it("rejects non-YouTube/Vimeo and dangerous URLs (no arbitrary iframe src)", () => {
+    expect(safeVideoEmbed("https://evil.com/embed/x")).toBe("");
+    expect(safeVideoEmbed("javascript:alert(1)")).toBe("");
+    expect(safeVideoEmbed("https://youtube.com.evil.com/watch?v=abcdef")).toBe("");
+    expect(safeVideoEmbed("")).toBe("");
+    expect(safeVideoEmbed("  ")).toBe("");
+  });
+});
+
 describe("createBlock", () => {
   it("creates each block type with its primary field and the given id", () => {
     expect(createBlock("text", "x").paragraphs.length).toBeGreaterThan(0);
     expect(createBlock("list", "x").list).toBeDefined();
+    expect(createBlock("numbered", "x").ordered).toBe(true);
+    expect(createBlock("numbered", "x").list?.length).toBeGreaterThan(0);
     expect(createBlock("image", "x").image).toEqual({ url: "", alt: "" });
     expect(createBlock("quote", "x").quote).toBeDefined();
-    expect(createBlock("callout", "x").callout).toBeDefined();
+    expect(createBlock("callout", "x").callout?.variant).toBe("note");
     expect(createBlock("code", "x").code).toBe("");
     expect(createBlock("button", "x").button?.label).toBeTruthy();
     expect(createBlock("divider", "x").divider).toBe(true);
+    expect(createBlock("video", "x").video).toEqual({ url: "", title: "" });
+    expect(createBlock("table", "x").table?.headers.length).toBe(2);
+    expect(createBlock("table", "x").table?.rows.length).toBe(2);
+    expect(createBlock("accordion", "x").accordion?.length).toBeGreaterThan(0);
+    expect(createBlock("stats", "x").stats?.length).toBe(3);
     expect(createBlock("image", "abc").id).toBe("abc");
   });
 
@@ -50,6 +80,24 @@ describe("createBlock", () => {
       expect(typeof block.title).toBe("string");
       expect(Array.isArray(block.paragraphs)).toBe(true);
     }
+  });
+
+  it("every catalog block type has a known group", () => {
+    for (const b of BLOCK_TYPES) {
+      expect(["Text", "Media", "Data", "Layout"]).toContain(b.group);
+    }
+  });
+});
+
+describe("blockKindLabel", () => {
+  it("labels the new block kinds", () => {
+    expect(blockKindLabel(createBlock("numbered", "x"))).toBe("Numbered list");
+    expect(blockKindLabel(createBlock("list", "x"))).toBe("List");
+    expect(blockKindLabel(createBlock("video", "x"))).toBe("Video");
+    expect(blockKindLabel(createBlock("table", "x"))).toBe("Table");
+    expect(blockKindLabel(createBlock("accordion", "x"))).toBe("FAQ");
+    expect(blockKindLabel(createBlock("stats", "x"))).toBe("Stats");
+    expect(blockKindLabel(createBlock("code", "x"))).toBe("Code");
   });
 });
 

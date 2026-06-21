@@ -3,13 +3,18 @@
  * Once articles are saved to DB via the admin editor, DB takes priority.
  */
 
+/** Callout tone — drives the box color + icon. Omitted/"note" = the brand accent. */
+export type CalloutVariant = "note" | "info" | "tip" | "warning" | "success";
+
 export interface ArticleSection {
   id: string;
   title: string;
   paragraphs: string[];
   code?: string;
   list?: string[];
-  callout?: { title: string; body: string };
+  /** When true, `list` renders as a numbered (ordered) list instead of bullets. */
+  ordered?: boolean;
+  callout?: { title: string; body: string; variant?: CalloutVariant };
   stats?: Array<{ value: string; label: string; color: string; labelColor: string; bg: string; border: string }>;
   // Client-friendly blocks (added via the block editor). All optional so existing
   // articles stay valid; the public renderer renders whichever are present.
@@ -17,6 +22,12 @@ export interface ArticleSection {
   quote?: { text: string; attribution?: string };
   button?: { label: string; url: string };
   divider?: boolean;
+  /** A YouTube/Vimeo video embed. `url` is the share/watch URL the client pastes. */
+  video?: { url: string; title?: string };
+  /** A simple data table: one header row + N body rows (rows are ragged-safe). */
+  table?: { headers: string[]; rows: string[][] };
+  /** A collapsible FAQ / accordion: each item is a question + answer. */
+  accordion?: Array<{ q: string; a: string }>;
 }
 
 export interface ArticleContent {
