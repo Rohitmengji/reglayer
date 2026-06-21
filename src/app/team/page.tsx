@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Users, UserPlus, Shield, Crown, Trash2, ChevronDown, KeyRound, X } from "lucide-react";
+import { Users, UserPlus, Shield, Crown, Trash2, KeyRound, X, AlertTriangle, RotateCcw } from "lucide-react";
 import { handleUpgradeResponse } from "@/lib/upgrade-prompt";
 import { useI18n } from "@/components/i18n-provider";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -58,6 +58,7 @@ export default function TeamPage() {
   const [currentUserRole, setCurrentUserRole] = useState<string>("");
   const [isMasterAdmin, setIsMasterAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("MEMBER");
   const [showInvite, setShowInvite] = useState(false);
@@ -67,6 +68,12 @@ export default function TeamPage() {
   const [resetPwValue, setResetPwValue] = useState("");
   const { t } = useI18n();
 
+  const [reloadKey, setReloadKey] = useState(0);
+  function retryLoad() {
+    setLoading(true);
+    setLoadError(false);
+    setReloadKey((k) => k + 1);
+  }
   useEffect(() => {
     let cancelled = false;
     fetch("/api/team")
@@ -81,10 +88,12 @@ export default function TeamPage() {
         setCurrentUserRole(data.currentUserRole || "");
         setIsMasterAdmin(data.currentUserIsMasterAdmin || false);
       })
-      .catch(() => {})
+      // Don't swallow the failure: surface it so an empty list reads as "couldn't
+      // load" (with a retry), never as "you have no team".
+      .catch(() => { if (!cancelled) setLoadError(true); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, []);
+  }, [reloadKey]);
 
   async function handleInvite(e: React.FormEvent) {
     e.preventDefault();
@@ -268,6 +277,18 @@ export default function TeamPage() {
           <CardContent>
             {loading ? (
               <p className="text-sm text-neutral-500 py-8 text-center">{t("team.loading")}</p>
+            ) : loadError ? (
+              <div className="text-center py-8">
+                <AlertTriangle className="h-10 w-10 text-amber-500 mx-auto mb-3" />
+                <p className="text-sm text-neutral-700 dark:text-neutral-200">{t("common.loadErrorTitle")}</p>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1 mb-3">{t("common.loadErrorBody")}</p>
+                <button
+                  onClick={retryLoad}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" /> {t("common.retry")}
+                </button>
+              </div>
             ) : members.length === 0 ? (
               <div className="text-center py-8">
                 <Users className="h-10 w-10 text-neutral-300 dark:text-neutral-600 mx-auto mb-3" />

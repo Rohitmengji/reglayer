@@ -11,6 +11,7 @@
 import { use, useEffect, useState } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageLoading } from "@/components/ui/page-loading";
+import { PageError } from "@/components/ui/page-error";
 import { useScanStore } from "@/stores/scanStore";
 import { ScoreCard } from "@/components/dashboard/score-card";
 import { ViolationCard } from "@/components/scanner/violation-card";
@@ -32,6 +33,8 @@ export default function ScanDetailPage({
   const storeEntry = getScanById(id);
   const [entry, setEntry] = useState(storeEntry || null);
   const [loading, setLoading] = useState(!storeEntry);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [visualLoading, setVisualLoading] = useState(false);
   const [visualFindings, setVisualFindings] = useState<
     Array<{ category: string; issue: string; severity: string; confidence: number }> | null
@@ -40,25 +43,45 @@ export default function ScanDetailPage({
 
   useEffect(() => {
     if (storeEntry || entry) return;
-    // Fallback: fetch from API/DB
+    let cancelled = false;
+    // Fallback: fetch from API/DB. Distinguish a genuine 404 (scan doesn't exist
+    // → "not found") from a load failure (network/500 → error + retry), so a
+    // hiccup never masquerades as a deleted scan.
     fetch(`/api/scans/${id}`)
       .then((r) => {
-        if (!r.ok) throw new Error("Not found");
+        if (r.status === 404) return { notFound: true };
+        if (!r.ok) throw new Error("load");
         return r.json();
       })
       .then((data) => {
+        if (cancelled || data?.notFound) return;
         if (data.scan) {
           setEntry({ scan: data.scan, compliance: data.compliance || null });
         }
       })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [id, storeEntry, entry]);
+      .catch(() => { if (!cancelled) setLoadFailed(true); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [id, storeEntry, entry, reloadKey]);
 
   if (loading) {
     return (
       <AppShell>
         <PageLoading message="Loading scan details..." />
+      </AppShell>
+    );
+  }
+
+  if (loadFailed) {
+    return (
+      <AppShell>
+        <PageError
+          title={t("common.loadErrorTitle")}
+          message={t("common.loadErrorBody")}
+          onRetry={() => { setLoading(true); setLoadFailed(false); setReloadKey((k) => k + 1); }}
+          fallbackHref="/scans"
+          fallbackLabel={t("scanDetail.backToScans")}
+        />
       </AppShell>
     );
   }
