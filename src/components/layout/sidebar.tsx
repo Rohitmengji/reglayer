@@ -216,7 +216,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto px-3 pt-3 pb-3 space-y-5">
+      <nav aria-label="Main" className="flex-1 overflow-y-auto px-3 pt-3 pb-3 space-y-5">
         {/* Main */}
         <div className="space-y-0.5">
           {visibleNav.map((item) => (
