@@ -39,7 +39,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useScanStore } from "@/stores/scanStore";
 import { useI18n } from "@/components/i18n-provider";
-import { Download, Activity, Target, AlertTriangle, Globe, TrendingUp, TrendingDown, Sparkles, Zap } from "lucide-react";
+import { Download, Activity, Target, AlertTriangle, Globe, TrendingUp, TrendingDown, Sparkles, Zap, RotateCcw } from "lucide-react";
 import Link from "next/link";
 import type { ScanResult, ComplianceReport } from "@/lib/types";
 
@@ -75,6 +75,8 @@ export default function DashboardPage() {
   const [scanResult, setScanResult] = useState<ScanResponse | null>(null);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
+  const [statsError, setStatsError] = useState(false);
+  const [statsReloadKey, setStatsReloadKey] = useState(0);
   const [credits, setCredits] = useState<{ used: number; limit: number; totalAvailable: number; remaining: number; daysUntilReset: number; unlimited: boolean } | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showRoleOnboarding, setShowRoleOnboarding] = useState(false);
@@ -116,7 +118,9 @@ export default function DashboardPage() {
           setShowOnboarding(true);
         }
       })
-      .catch(() => {})
+      // Surface a load failure (with retry) instead of silently showing nothing —
+      // the scan form above stays usable regardless.
+      .catch(() => { if (!controller.signal.aborted) setStatsError(true); })
       .finally(() => {
         if (!controller.signal.aborted) setStatsLoading(false);
       });
@@ -127,7 +131,7 @@ export default function DashboardPage() {
       .catch(() => {});
 
     return () => controller.abort();
-  }, []);
+  }, [statsReloadKey]);
 
   function handleScanComplete(result: unknown) {
     const data = result as ScanResponse;
@@ -221,6 +225,20 @@ export default function DashboardPage() {
                 <div className="h-7 w-12 bg-neutral-200 dark:bg-neutral-700 rounded" />
               </div>
             ))}
+          </div>
+        )}
+        {!statsLoading && statsError && (
+          <div className="flex flex-col gap-2 rounded-xl border border-amber-200 dark:border-amber-900/40 bg-amber-50 dark:bg-amber-950/30 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2 text-sm text-amber-800 dark:text-amber-300">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              {t("common.loadErrorBody")}
+            </div>
+            <button
+              onClick={() => { setStatsLoading(true); setStatsError(false); setStatsReloadKey((k) => k + 1); }}
+              className="inline-flex shrink-0 items-center gap-1.5 self-start rounded-lg border border-amber-300 dark:border-amber-800 bg-white/60 dark:bg-neutral-900/40 px-3 py-1.5 text-sm font-medium text-amber-800 dark:text-amber-300 hover:bg-white dark:hover:bg-neutral-900 transition-colors sm:self-auto"
+            >
+              <RotateCcw className="h-3.5 w-3.5" /> {t("common.retry")}
+            </button>
           </div>
         )}
         {!statsLoading && stats && stats.totalScans > 0 && (
