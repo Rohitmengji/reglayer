@@ -22,8 +22,14 @@ interface SessionLike {
  * scans.delete, schedules/integrations/apiKeys/settings.manage). Use it to gate
  * UI affordances whose server route requires one of those permissions, so the
  * client never offers an action the server will 403.
+ *
+ * Typed as a type guard: passing it (or surviving a `!` early-return) narrows
+ * `session` to non-null with a present `user`, so server routes can then read
+ * `session.user.id` without an extra null check.
  */
-export function isWorkspaceAdmin(session: SessionLike | null | undefined): boolean {
+export function isWorkspaceAdmin<T extends SessionLike>(
+  session: T | null | undefined
+): session is T & { user: NonNullable<T["user"]> } {
   const role = session?.user?.workspaceRole;
   return Boolean(session?.user?.isMasterAdmin) || role === "OWNER" || role === "ADMIN";
 }
@@ -33,6 +39,8 @@ export function isWorkspaceAdmin(session: SessionLike | null | undefined): boole
  * same OWNER/ADMIN-or-master role set; named separately so call sites read
  * intuitively.
  */
-export function isContentEditor(session: SessionLike | null | undefined): boolean {
+export function isContentEditor<T extends SessionLike>(
+  session: T | null | undefined
+): session is T & { user: NonNullable<T["user"]> } {
   return isWorkspaceAdmin(session);
 }

@@ -61,6 +61,40 @@ describe("RBAC - hasPermission", () => {
     expect(hasPermission("USER", "VIEWER", "scans.run")).toBe(false);
     expect(hasPermission("USER", "VIEWER", "workspace.manage")).toBe(false);
   });
+
+  it("scans.delete is OWNER/ADMIN/master only — not MEMBER or VIEWER", () => {
+    expect(hasPermission("MASTER_ADMIN", null, "scans.delete")).toBe(true);
+    expect(hasPermission("USER", "OWNER", "scans.delete")).toBe(true);
+    expect(hasPermission("USER", "ADMIN", "scans.delete")).toBe(true);
+    expect(hasPermission("USER", "MEMBER", "scans.delete")).toBe(false);
+    expect(hasPermission("USER", "VIEWER", "scans.delete")).toBe(false);
+  });
+
+  it("content.edit is OWNER/ADMIN/master only — not MEMBER or VIEWER", () => {
+    expect(hasPermission("MASTER_ADMIN", null, "content.edit")).toBe(true);
+    expect(hasPermission("USER", "OWNER", "content.edit")).toBe(true);
+    expect(hasPermission("USER", "ADMIN", "content.edit")).toBe(true);
+    expect(hasPermission("USER", "MEMBER", "content.edit")).toBe(false);
+    expect(hasPermission("USER", "VIEWER", "content.edit")).toBe(false);
+  });
+
+  it("VIEWER holds no mutating permission (read-only across the board)", () => {
+    const mutating = [
+      "scans.run",
+      "scans.delete",
+      "schedules.manage",
+      "integrations.manage",
+      "apiKeys.manage",
+      "settings.manage",
+      "content.edit",
+      "members.invite",
+    ] as const;
+    for (const p of mutating) {
+      expect(hasPermission("USER", "VIEWER", p)).toBe(false);
+    }
+    // ...but can still read.
+    expect(hasPermission("USER", "VIEWER", "scans.view")).toBe(true);
+  });
 });
 
 describe("RBAC - getPermissions", () => {

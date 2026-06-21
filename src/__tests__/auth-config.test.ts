@@ -606,6 +606,16 @@ vi.mock("@/lib/database/prisma", () => ({
   },
 }));
 
+// The POST route gates on settings.manage via requireWorkspacePermission; mock it
+// to "allowed" so these tests exercise auth-config behavior. RBAC is covered in
+// rbac.test.ts.
+vi.mock("@/lib/auth/api-guard", () => ({
+  requireWorkspacePermission: vi.fn(async () => ({
+    ok: true,
+    ctx: { userId: "user-1", email: "test@example.com", isMasterAdmin: false, systemRole: "USER", workspaceId: "ws-1", workspaceRole: "OWNER" },
+  })),
+}));
+
 vi.mock("@/lib/crypto", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/crypto")>();
   return {

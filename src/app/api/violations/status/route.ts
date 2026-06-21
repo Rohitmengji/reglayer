@@ -146,7 +146,7 @@ export async function PATCH(request: NextRequest) {
     await prisma.auditLog.create({
       data: {
         action: "violation.status_updated",
-        actor: user.id,
+        actor: perm.ctx.userId,
         target: violationId,
         metadata: { status, note: note ?? null, previousStatus: result.previousStatus },
       },
