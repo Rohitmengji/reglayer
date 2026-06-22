@@ -1328,6 +1328,7 @@ export const fr = {
   "delta.keepScanning": "Continuez à scanner pour construire une série",
   "violationChart.noData": "Pas assez de données pour les tendances",
   "violationChart.total": "Total :",
+  "charts.issuesAxis": "Problèmes",
   "charts.violationsByCategory": "Violations par catégorie",
   "charts.groupedBySeverity": "Groupées par sévérité",
   "charts.total": "total",

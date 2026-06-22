@@ -66,8 +66,8 @@ export function ViolationsChart({ data }: { data: ViolationData[] }) {
     <div className="rounded-xl border border-border bg-card p-5">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="text-sm font-semibold text-foreground">Violations by Category</h3>
-          <p className="text-xs text-muted mt-0.5">Grouped by severity</p>
+          <h3 className="text-sm font-semibold text-foreground">{t("charts.violationsByCategory")}</h3>
+          <p className="text-xs text-muted mt-0.5">{t("charts.groupedBySeverity")}</p>
         </div>
         <span className="text-lg font-bold tabular-nums text-foreground">
           {data.reduce((sum, d) => sum + d.critical + d.serious + d.moderate + d.minor, 0)}
@@ -81,7 +81,13 @@ export function ViolationsChart({ data }: { data: ViolationData[] }) {
         <BarChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }} barGap={2}>
           <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} vertical={false} />
           <XAxis dataKey="category" tick={{ fontSize: 10, fill: chartTheme.text }} axisLine={false} tickLine={false} />
-          <YAxis tick={{ fontSize: 10, fill: chartTheme.text }} axisLine={false} tickLine={false} />
+          <YAxis
+            tick={{ fontSize: 10, fill: chartTheme.text }}
+            axisLine={false}
+            tickLine={false}
+            allowDecimals={false}
+            label={{ value: t("charts.issuesAxis"), angle: -90, position: "insideLeft", style: { fontSize: 10, fill: chartTheme.text } }}
+          />
           <Tooltip content={<CustomTooltip />} />
           <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: "10px", paddingTop: "8px" }} />
           <Bar dataKey="critical" name="Critical" fill={chartTheme.danger} radius={[3, 3, 0, 0]} />
