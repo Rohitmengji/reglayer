@@ -124,7 +124,6 @@ export const de = {
   "nav.risk": "Risikowert",
   "nav.vault": "Beweisspeicher",
   "nav.regulations": "Vorschriften",
-  "nav.testing": "Manuelles Testen",
   "nav.guard": "CI/CD-Schutz",
   "nav.signOut": "Abmelden",
   "nav.adminPanel": "Admin-Bereich",
@@ -832,9 +831,6 @@ export const de = {
   "agency.addClient": "Kunde hinzufügen",
 
   // Human Testing
-  "testing.title": "Manuelles Testen",
-  "testing.subtitle": "Validierung durch echte Nutzer mit Behinderungen",
-  "testing.requestTest": "Test anfordern",
 
   // Onboarding
   "onboarding.welcome": "Willkommen{name}!",
@@ -1645,16 +1641,6 @@ export const de = {
   "agency.clientName": "Kundenname",
   "agency.contactEmail": "Kontakt-E-Mail",
   "agency.usage": "{used} / {max} Kunden verwendet",
-  "testing.activeRequests": "Aktive Anfragen",
-  "testing.completed": "Abgeschlossene Tests",
-  "testing.validators": "Validatoren",
-  "testing.budget": "Budget",
-  "testing.turnaround": "Bearbeitungszeit",
-  "testing.findings": "Befunde",
-  "testing.severity": "Schweregrad",
-  "testing.blocker": "Blocker",
-  "testing.major": "Schwerwiegend",
-  "testing.minor": "Gering",
   "onboarding.addSiteDesc": "Domain zur Überwachung registrieren",
   "onboarding.runScanDesc": "Eine URL auf Barrierefreiheitsprobleme scannen",
   "onboarding.inviteTeamDesc": "Zusammenarbeit macht Compliance einfacher",

@@ -12,8 +12,6 @@
  * HOW: Mirrors the Manage hub — lazy-imports the existing pages inside an
  *      EmbeddedProvider (so each child's own <AppShell> collapses to a passthrough).
  *      Tab state lives in ?tab=.
- *      NOTE: this route is /test — deliberately distinct from the legacy /testing
- *      (the Human Testing Network), which is an unrelated page.
  */
 
 import { Suspense, lazy } from "react";

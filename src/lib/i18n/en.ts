@@ -124,7 +124,6 @@ export const en = {
   "nav.risk": "Risk Score",
   "nav.vault": "Proof Vault",
   "nav.regulations": "Regulations",
-  "nav.testing": "Human Testing",
   "nav.guard": "CI/CD Guard",
   "nav.signOut": "Sign Out",
   "nav.adminPanel": "Admin Panel",
@@ -864,19 +863,6 @@ export const en = {
   "agency.usage": "{used} / {max} clients used",
 
   // Human Testing
-  "testing.title": "Human Testing Network",
-  "testing.subtitle": "Real users with disabilities validate your accessibility",
-  "testing.requestTest": "Request Human Test",
-  "testing.activeRequests": "Active Requests",
-  "testing.completed": "Completed Tests",
-  "testing.validators": "Validators",
-  "testing.budget": "Budget",
-  "testing.turnaround": "Turnaround",
-  "testing.findings": "Findings",
-  "testing.severity": "Severity",
-  "testing.blocker": "Blocker",
-  "testing.major": "Major",
-  "testing.minor": "Minor",
 
   // Onboarding
   "onboarding.welcome": "Welcome{name}! 🎉",
