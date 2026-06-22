@@ -13,16 +13,18 @@ import { useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { TabNav, type Tab } from "@/components/ui/tab-nav";
 import { EmbeddedProvider } from "@/components/layout/embedded-context";
-import { Grid3X3, FileText, ClipboardCheck } from "lucide-react";
+import { Grid3X3, FileText, ClipboardCheck, Globe } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 import { FeatureGate } from "@/components/ui/feature-gate";
 
 const MatrixPage = lazy(() => import("@/app/compliance/matrix-page"));
 const VpatPage = lazy(() => import("@/app/compliance/vpat/page"));
 const StatementPage = lazy(() => import("@/app/statement/page"));
+const JurisdictionsPage = lazy(() => import("@/app/compliance/jurisdictions-page"));
 
 const tabs: Tab[] = [
   { id: "matrix", label: "WCAG Matrix", icon: Grid3X3 },
+  { id: "jurisdictions", label: "Jurisdictions", icon: Globe },
   { id: "vpat", label: "VPAT / ACR", icon: ClipboardCheck },
   { id: "statement", label: "Statement", icon: FileText },
 ];
@@ -53,6 +55,7 @@ function ComplianceHub() {
             }
           >
             {activeTab === "matrix" && <MatrixPage />}
+            {activeTab === "jurisdictions" && <JurisdictionsPage />}
             {activeTab === "vpat" && <VpatPage />}
             {activeTab === "statement" && <StatementPage />}
           </Suspense>
