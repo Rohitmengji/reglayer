@@ -21,6 +21,7 @@ import { useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { TabNav, type Tab } from "@/components/ui/tab-nav";
 import { EmbeddedProvider } from "@/components/layout/embedded-context";
+import { UpgradeGate } from "@/components/ui/upgrade-gate";
 import { Scan, Globe, ClipboardCheck } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 import { useFeatures } from "@/hooks/use-features";
@@ -72,15 +73,20 @@ function TestHubContent() {
           <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">{t("testHub.subtitle")}</p>
         </div>
 
-        {tabs.length > 0 && <TabNav tabs={tabs} basePath="/test" />}
-
-        <EmbeddedProvider>
-          <Suspense fallback={<HubSpinner />}>
-            {activeTab === "scans" && <ScansPage />}
-            {activeTab === "crawl" && <CrawlPage />}
-            {activeTab === "manual" && <ManualTestingPage />}
-          </Suspense>
-        </EmbeddedProvider>
+        {tabs.length === 0 ? (
+          <UpgradeGate featureName={t("testHub.title")} requiredPlan="PRO" />
+        ) : (
+          <>
+            <TabNav tabs={tabs} basePath="/test" />
+            <EmbeddedProvider>
+              <Suspense fallback={<HubSpinner />}>
+                {activeTab === "scans" && <ScansPage />}
+                {activeTab === "crawl" && <CrawlPage />}
+                {activeTab === "manual" && <ManualTestingPage />}
+              </Suspense>
+            </EmbeddedProvider>
+          </>
+        )}
       </div>
     </AppShell>
   );
