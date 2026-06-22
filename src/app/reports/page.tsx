@@ -17,6 +17,7 @@ import { useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { TabNav, type Tab } from "@/components/ui/tab-nav";
 import { EmbeddedProvider } from "@/components/layout/embedded-context";
+import { UpgradeGate } from "@/components/ui/upgrade-gate";
 import { TrendingUp, PieChart } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 import { useFeatures } from "@/hooks/use-features";
@@ -66,14 +67,19 @@ function ReportsHubContent() {
           <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">{t("reports.subtitle")}</p>
         </div>
 
-        {tabs.length > 0 && <TabNav tabs={tabs} basePath="/reports" />}
-
-        <EmbeddedProvider>
-          <Suspense fallback={<HubSpinner />}>
-            {activeTab === "trends" && <TrendsPage />}
-            {activeTab === "executive" && <ExecutivePage />}
-          </Suspense>
-        </EmbeddedProvider>
+        {tabs.length === 0 ? (
+          <UpgradeGate featureName={t("reports.title")} requiredPlan="PRO" />
+        ) : (
+          <>
+            <TabNav tabs={tabs} basePath="/reports" />
+            <EmbeddedProvider>
+              <Suspense fallback={<HubSpinner />}>
+                {activeTab === "trends" && <TrendsPage />}
+                {activeTab === "executive" && <ExecutivePage />}
+              </Suspense>
+            </EmbeddedProvider>
+          </>
+        )}
       </div>
     </AppShell>
   );
