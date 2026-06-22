@@ -11,6 +11,7 @@ import { authOptions } from "@/lib/auth/config";
 import { assertScanAccess } from "@/lib/auth/access";
 import { prisma } from "@/lib/database/prisma";
 import { WCAG_CRITERIA } from "@/lib/wcag/criteria";
+import { loadManualVerdicts, type ManualVerdictValue } from "@/lib/testing/manualVerdicts";
 
 /**
  * GET /api/scans/:id/wcag-matrix
@@ -44,8 +45,12 @@ export async function GET(
     return NextResponse.json({ error: "Scan not found" }, { status: 404 });
   }
 
+  // Overlay human-attested verdicts from the latest manual test for this site (if any).
+  const verdicts = await loadManualVerdicts(scan.siteId);
+  const humanVerdicts = new Map<string, ManualVerdictValue>((verdicts ?? []).map((v) => [v.criterion, v.verdict]));
+
   // Build matrix from WCAG 2.1 criteria
-  const matrix = buildWcagMatrix(scan.violations);
+  const matrix = buildWcagMatrix(scan.violations, humanVerdicts);
 
   return NextResponse.json({
     scanId: id,
@@ -57,6 +62,12 @@ export async function GET(
       passed: matrix.filter((c) => c.status === "pass").length,
       failed: matrix.filter((c) => c.status === "fail").length,
       notTested: matrix.filter((c) => c.status === "not-tested").length,
+      humanVerified: {
+        total: humanVerdicts.size,
+        pass: [...humanVerdicts.values()].filter((v) => v === "pass").length,
+        fail: [...humanVerdicts.values()].filter((v) => v === "fail").length,
+        na: [...humanVerdicts.values()].filter((v) => v === "na").length,
+      },
     },
   });
 }
@@ -77,9 +88,11 @@ interface MatrixEntry {
   status: "pass" | "fail" | "not-tested";
   violations: string[];
   impact: string | null;
+  /** Human attestation from the latest manual test, if a tester judged this criterion. */
+  humanVerdict: ManualVerdictValue | null;
 }
 
-function buildWcagMatrix(violations: ViolationRow[]): MatrixEntry[] {
+function buildWcagMatrix(violations: ViolationRow[], humanVerdicts: Map<string, ManualVerdictValue>): MatrixEntry[] {
   // Map violations to criteria
   const failedCriteria = new Map<string, { rules: string[]; impact: string }>();
 
@@ -138,6 +151,7 @@ function buildWcagMatrix(violations: ViolationRow[]): MatrixEntry[] {
       status,
       violations: failed?.rules || [],
       impact: failed?.impact || null,
+      humanVerdict: humanVerdicts.get(c.criterion) ?? null,
     };
   });
 }
