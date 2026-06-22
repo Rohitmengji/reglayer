@@ -17,10 +17,13 @@ import { consumeCredits } from "@/lib/credits";
 import { prisma } from "@/lib/database/prisma";
 import { captureNarration } from "@/lib/screen-reader/narration-engine";
 import { launchBrowser, isServerless } from "@/lib/scanner/browser/launch";
+import { requireFeature } from "@/lib/features/require-feature";
 import type { Page } from "playwright-core";
 
 export async function POST(request: NextRequest) {
   try {
+    const guard = await requireFeature("analysis");
+    if (!guard.allowed) return guard.response;
     // Auth
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {

@@ -23,6 +23,7 @@ import { requireWorkspacePermission } from "@/lib/auth/api-guard";
 import { decryptJson } from "@/lib/crypto";
 import type { AuthConfig } from "@/lib/validations/auth";
 import { Prisma } from "@/generated/prisma/client";
+import { requireFeature } from "@/lib/features/require-feature";
 
 // The crawl launches headless Chromium and can run for a while; give it the
 // Node runtime and the maximum duration (the matching vercel.json entry also
@@ -47,6 +48,9 @@ const crawlSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  const guard = await requireFeature("crawl");
+  if (!guard.allowed) return guard.response;
+
   const blocked = await applyRateLimit(request, "crawl");
   if (blocked) return blocked;
 

@@ -17,6 +17,7 @@ import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
 import { ViolationStatus } from "@/generated/prisma/client";
 import { getFilteredViolations, getStatusSummary } from "@/lib/violations/status";
+import { requireFeature } from "@/lib/features/require-feature";
 
 /**
  * GET /api/violations
@@ -32,6 +33,8 @@ import { getFilteredViolations, getStatusSummary } from "@/lib/violations/status
  */
 export async function GET(request: NextRequest) {
   try {
+    const guard = await requireFeature("violations");
+    if (!guard.allowed) return guard.response;
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
       return NextResponse.json(

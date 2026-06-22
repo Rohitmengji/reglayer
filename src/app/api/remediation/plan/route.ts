@@ -7,9 +7,12 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { assertScanAccess } from "@/lib/auth/access";
 import { generateRemediationPlan } from "@/lib/remediation/smartPipeline";
+import { requireFeature } from "@/lib/features/require-feature";
 
 export async function GET(request: NextRequest) {
   try {
+    const guard = await requireFeature("automation");
+    if (!guard.allowed) return guard.response;
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
