@@ -189,16 +189,16 @@ function CompareContent() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="rounded-xl border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950 p-4 text-center">
             <CheckCircle2 className="h-5 w-5 text-green-600 mx-auto mb-1" />
-            <p className="text-2xl font-bold text-green-700">{summary.totalFixed}</p>
+            <p className="text-2xl font-bold tabular-nums text-green-700">{summary.totalFixed}</p>
             <p className="text-xs text-green-600">{t("compare.fixed")}</p>
           </div>
           <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950 p-4 text-center">
             <AlertTriangle className="h-5 w-5 text-red-600 mx-auto mb-1" />
-            <p className="text-2xl font-bold text-red-700">{summary.totalIntroduced}</p>
+            <p className="text-2xl font-bold tabular-nums text-red-700">{summary.totalIntroduced}</p>
             <p className="text-xs text-red-600">{t("compare.newRegressions")}</p>
           </div>
           <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 p-4 text-center">
-            <p className="text-2xl font-bold text-neutral-700 dark:text-neutral-200 mt-6">{summary.totalPersistent}</p>
+            <p className="text-2xl font-bold tabular-nums text-neutral-700 dark:text-neutral-200 mt-6">{summary.totalPersistent}</p>
             <p className="text-xs text-neutral-500 dark:text-neutral-400">{t("compare.unchanged")}</p>
           </div>
         </div>

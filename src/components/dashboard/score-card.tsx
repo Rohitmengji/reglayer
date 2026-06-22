@@ -56,7 +56,7 @@ export function ScoreCard({ summary }: ScoreCardProps) {
               />
             </svg>
             <span
-              className="absolute text-2xl font-bold"
+              className="absolute text-2xl font-bold tabular-nums"
               style={{ color: scoreColor }}
             >
               {summary.score}
@@ -111,7 +111,7 @@ function SeverityCount({
     <div className="flex items-center gap-2">
       <Icon className={`h-4 w-4 ${color}`} />
       <div>
-        <p className="text-lg font-semibold text-neutral-900 dark:text-white">{count}</p>
+        <p className="text-lg font-semibold tabular-nums text-neutral-900 dark:text-white">{count}</p>
         <p className="text-xs text-neutral-500 dark:text-neutral-400">{label}</p>
       </div>
     </div>

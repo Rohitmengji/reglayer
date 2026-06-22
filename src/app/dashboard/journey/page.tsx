@@ -164,34 +164,34 @@ export default function JourneyPage() {
               <Card className={result.result.overallScore >= 70 ? "border-green-200 dark:border-green-900" : "border-red-200 dark:border-red-900"}>
                 <CardContent className="pt-6 text-center">
                   <Gauge className="h-6 w-6 mx-auto mb-1" />
-                  <p className="text-3xl font-bold">{result.result.overallScore}</p>
+                  <p className="text-3xl font-bold tabular-nums">{result.result.overallScore}</p>
                   <p className="text-xs text-muted-foreground">Score</p>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="pt-6 text-center">
                   <Eye className="h-6 w-6 mx-auto mb-1 text-orange-500" />
-                  <p className="text-3xl font-bold">{result.result.summary.focusIssues}</p>
+                  <p className="text-3xl font-bold tabular-nums">{result.result.summary.focusIssues}</p>
                   <p className="text-xs text-muted-foreground">Focus Issues</p>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="pt-6 text-center">
                   <Keyboard className="h-6 w-6 mx-auto mb-1 text-red-500" />
-                  <p className="text-3xl font-bold">{result.result.summary.keyboardTraps}</p>
+                  <p className="text-3xl font-bold tabular-nums">{result.result.summary.keyboardTraps}</p>
                   <p className="text-xs text-muted-foreground">Keyboard Traps</p>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="pt-6 text-center">
                   <Volume2 className="h-6 w-6 mx-auto mb-1 text-blue-500" />
-                  <p className="text-3xl font-bold">{result.result.summary.missingAnnouncements}</p>
+                  <p className="text-3xl font-bold tabular-nums">{result.result.summary.missingAnnouncements}</p>
                   <p className="text-xs text-muted-foreground">Missing Announcements</p>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="pt-6 text-center">
-                  <p className="text-3xl font-bold">{result.result.passedSteps}/{result.result.totalSteps}</p>
+                  <p className="text-3xl font-bold tabular-nums">{result.result.passedSteps}/{result.result.totalSteps}</p>
                   <p className="text-xs text-muted-foreground">Steps Passed</p>
                 </CardContent>
               </Card>

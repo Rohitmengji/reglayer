@@ -23,7 +23,10 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils/cn";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-neutral-950 disabled:pointer-events-none disabled:opacity-50 dark:focus-visible:ring-neutral-300",
+  // active:scale gives an instant tactile "press" (no transition → fires even under
+  // prefers-reduced-motion, which only zeroes animation/transition durations).
+  // disabled:cursor-not-allowed makes the disabled state legible on hover.
+  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-neutral-950 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 disabled:cursor-not-allowed dark:focus-visible:ring-neutral-300",
   {
     variants: {
       variant: {

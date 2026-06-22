@@ -438,7 +438,7 @@ export default function ScansPage() {
                   {/* Score */}
                   <div className="flex items-center gap-2">
                     <span
-                      className={`text-2xl font-bold ${
+                      className={`text-2xl font-bold tabular-nums ${
                         (scan.score ?? 0) >= 90
                           ? "text-emerald-600"
                           : (scan.score ?? 0) >= 70
@@ -543,7 +543,7 @@ function SummaryCard({
         {icon}
         <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">{label}</p>
       </div>
-      <p className="mt-2 text-2xl font-bold text-neutral-900 dark:text-white">{value}</p>
+      <p className="mt-2 text-2xl font-bold tabular-nums text-neutral-900 dark:text-white">{value}</p>
     </div>
   );
 }

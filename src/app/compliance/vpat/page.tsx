@@ -214,19 +214,19 @@ export default function VPATPage() {
               <Card className="border-green-200 dark:border-green-900">
                 <CardContent className="pt-6 text-center">
                   <p className="text-sm text-muted-foreground">Supported</p>
-                  <p className="text-3xl font-bold text-green-600">{result.summary.supportedCriteria}</p>
+                  <p className="text-3xl font-bold tabular-nums text-green-600">{result.summary.supportedCriteria}</p>
                 </CardContent>
               </Card>
               <Card className="border-yellow-200 dark:border-yellow-900">
                 <CardContent className="pt-6 text-center">
                   <p className="text-sm text-muted-foreground">Partial</p>
-                  <p className="text-3xl font-bold text-yellow-600">{result.summary.partiallySupportedCriteria}</p>
+                  <p className="text-3xl font-bold tabular-nums text-yellow-600">{result.summary.partiallySupportedCriteria}</p>
                 </CardContent>
               </Card>
               <Card className="border-red-200 dark:border-red-900">
                 <CardContent className="pt-6 text-center">
                   <p className="text-sm text-muted-foreground">Not Supported</p>
-                  <p className="text-3xl font-bold text-red-600">{result.summary.notSupportedCriteria}</p>
+                  <p className="text-3xl font-bold tabular-nums text-red-600">{result.summary.notSupportedCriteria}</p>
                 </CardContent>
               </Card>
             </div>
