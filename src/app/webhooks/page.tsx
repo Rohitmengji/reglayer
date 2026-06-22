@@ -1,5 +1,6 @@
 "use client";
 
+import { FeatureGate } from "@/components/ui/feature-gate";
 /**
  * RegLayer — Webhooks Page
  *
@@ -60,7 +61,7 @@ const ALL_EVENTS = [
   { value: "crawl.completed", label: "Crawl Completed", description: "When a site crawl finishes" },
 ];
 
-export default function WebhooksPage() {
+function WebhooksPageInner() {
   const [webhooks, setWebhooks] = useState<WebhookEntry[]>([]);
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [loading, setLoading] = useState(true);
@@ -439,4 +440,8 @@ const valid = crypto.timingSafeEqual(
       />
     </AppShell>
   );
+}
+
+export default function WebhooksPage() {
+  return <FeatureGate feature="manage"><WebhooksPageInner /></FeatureGate>;
 }

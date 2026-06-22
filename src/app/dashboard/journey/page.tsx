@@ -1,5 +1,6 @@
 "use client";
 
+import { FeatureGate } from "@/components/ui/feature-gate";
 /**
  * RegLayer — User Journey Page
  *
@@ -65,7 +66,7 @@ interface Preset {
   stepCount: number;
 }
 
-export default function JourneyPage() {
+function JourneyPageInner() {
   const { t } = useI18n();
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<JourneyResult | null>(null);
@@ -294,4 +295,8 @@ export default function JourneyPage() {
       </div>
     </AppShell>
   );
+}
+
+export default function JourneyPage() {
+  return <FeatureGate feature="automation"><JourneyPageInner /></FeatureGate>;
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { FeatureGate } from "@/components/ui/feature-gate";
 /**
  * RegLayer — Analytics Page
  *
@@ -70,7 +71,7 @@ interface AnalyticsData {
   }>;
 }
 
-export default function AnalyticsPage() {
+function AnalyticsPageInner() {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -481,4 +482,8 @@ function TrendChart({
       </div>
     </div>
   );
+}
+
+export default function AnalyticsPage() {
+  return <FeatureGate feature="analysis"><AnalyticsPageInner /></FeatureGate>;
 }

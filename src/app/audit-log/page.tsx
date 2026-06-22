@@ -1,5 +1,6 @@
 "use client";
 
+import { FeatureGate } from "@/components/ui/feature-gate";
 /**
  * RegLayer — Audit Log Page
  *
@@ -60,7 +61,7 @@ const actionLabels: Record<string, string> = {
   "crawl.started": "Site crawl started",
 };
 
-export default function AuditLogPage() {
+function AuditLogPageInner() {
   const [logs, setLogs] = useState<AuditEntry[]>([]);
   const [pagination, setPagination] = useState<Pagination>({ page: 1, limit: 50, total: 0, pages: 0 });
   const [loading, setLoading] = useState(true);
@@ -176,4 +177,8 @@ export default function AuditLogPage() {
       </div>
     </AppShell>
   );
+}
+
+export default function AuditLogPage() {
+  return <FeatureGate feature="manage"><AuditLogPageInner /></FeatureGate>;
 }

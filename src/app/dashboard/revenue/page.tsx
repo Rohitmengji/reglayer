@@ -1,5 +1,6 @@
 "use client";
 
+import { FeatureGate } from "@/components/ui/feature-gate";
 /**
  * RegLayer — Revenue Impact Page
  *
@@ -29,7 +30,7 @@ interface RevenueResult {
   accessibility: { score: number; totalViolations: number; critical: number; serious: number; moderate: number; minor: number };
 }
 
-export default function RevenueImpactPage() {
+function RevenueImpactPageInner() {
   const { t } = useI18n();
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<RevenueResult | null>(null);
@@ -247,4 +248,8 @@ export default function RevenueImpactPage() {
       </div>
     </AppShell>
   );
+}
+
+export default function RevenueImpactPage() {
+  return <FeatureGate feature="automation"><RevenueImpactPageInner /></FeatureGate>;
 }

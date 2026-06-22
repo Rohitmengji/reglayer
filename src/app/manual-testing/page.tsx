@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FeatureGate } from "@/components/ui/feature-gate";
+import { useI18n } from "@/components/i18n-provider";
 import {
   ClipboardCheck,
   Loader2,
@@ -70,6 +71,7 @@ interface ManualTestPlan {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 function ManualTestingPageInner() {
+  const { t } = useI18n();
   const [audits, setAudits] = useState<AuditSummary[]>([]);
   const [selectedAudit, setSelectedAudit] = useState<string | null>(null);
   const [plan, setPlan] = useState<ManualTestPlan | null>(null);
@@ -94,22 +96,22 @@ function ManualTestingPageInner() {
     try {
       const res = await fetch("/api/audits");
       if (!res.ok) {
-        if (res.status === 401) throw new Error("Please sign in to access manual testing.");
-        throw new Error("Unable to load your test audits. Please try again.");
+        if (res.status === 401) throw new Error(t("manualTesting.errSignIn"));
+        throw new Error(t("manualTesting.errLoadAudits"));
       }
       const data = await res.json();
       setAudits(data.audits ?? []);
       setError(null);
     } catch (err) {
       if (err instanceof TypeError) {
-        setError("Network error. Please check your connection and try again.");
+        setError(t("manualTesting.errNetwork"));
       } else {
-        setError(err instanceof Error ? err.message : "Unable to load audits. Please try again.");
+        setError(err instanceof Error ? err.message : t("manualTesting.errLoadAudits"));
       }
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     let cancelled = false;
@@ -128,34 +130,34 @@ function ManualTestingPageInner() {
       const res = await fetch(`/api/audits/${encodeURIComponent(auditId)}/plan?enrich=true`);
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        if (res.status === 403) throw new Error("You don't have access to this audit.");
-        if (res.status === 404) throw new Error("This audit was not found or has been deleted.");
-        throw new Error(data.error || "Unable to load the test plan. Please try again.");
+        if (res.status === 403) throw new Error(t("manualTesting.errNoAuditAccess"));
+        if (res.status === 404) throw new Error(t("manualTesting.errAuditNotFound"));
+        throw new Error(data.error || t("manualTesting.errLoadPlan"));
       }
       const data = await res.json();
       if (!data.plan?.items?.length) {
-        throw new Error("This audit has no test items. It may have been created incorrectly.");
+        throw new Error(t("manualTesting.errNoItems"));
       }
       setPlan(data.plan);
       setScores(data.scores);
       setSelectedAudit(auditId);
     } catch (err) {
       if (err instanceof TypeError) {
-        setError("Network error. Please check your connection and try again.");
+        setError(t("manualTesting.errNetwork"));
       } else {
-        setError(err instanceof Error ? err.message : "Unable to load plan. Please try again.");
+        setError(err instanceof Error ? err.message : t("manualTesting.errLoadPlan"));
       }
     } finally {
       setPlanLoading(false);
     }
-  }, []);
+  }, [t]);
 
   function validateScanId(value: string): string | null {
     const trimmed = value.trim();
-    if (!trimmed) return "Scan ID is required.";
-    if (trimmed.length < 5) return "Scan ID appears too short. Check and try again.";
-    if (!/^[a-zA-Z0-9_-]+$/.test(trimmed)) return "Scan ID contains invalid characters. Only letters, numbers, hyphens, and underscores are allowed.";
-    if (trimmed.length > 100) return "Scan ID is too long.";
+    if (!trimmed) return t("manualTesting.errScanIdRequired");
+    if (trimmed.length < 5) return t("manualTesting.errScanIdShort");
+    if (!/^[a-zA-Z0-9_-]+$/.test(trimmed)) return t("manualTesting.errScanIdInvalid");
+    if (trimmed.length > 100) return t("manualTesting.errScanIdLong");
     return null;
   }
 
@@ -181,19 +183,19 @@ function ManualTestingPageInner() {
       const data = await res.json();
       if (!res.ok) {
         if (data.upgradeRequired) { setUpgradeRequired(true); throw new Error(data.error); }
-        if (res.status === 404) throw new Error("Scan not found. Please verify the scan ID and try again.");
-        if (res.status === 403) throw new Error(data.error || "You don't have permission to create an audit for this scan.");
-        if (res.status === 429) throw new Error("Too many requests. Please wait a moment and try again.");
-        throw new Error(data.error || "Unable to generate the test plan. Please try again.");
+        if (res.status === 404) throw new Error(t("manualTesting.errScanNotFound"));
+        if (res.status === 403) throw new Error(data.error || t("manualTesting.errNoCreatePerm"));
+        if (res.status === 429) throw new Error(t("manualTesting.errRateLimit"));
+        throw new Error(data.error || t("manualTesting.errGenPlan"));
       }
-      setSuccessMsg("Manual test plan generated successfully.");
+      setSuccessMsg(t("manualTesting.successGenerated"));
       setScanId("");
       await loadAudits();
       await loadPlan(data.id);
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") return;
-      if (err instanceof TypeError) { setError("Network error. Please check your connection and try again."); }
-      else { setError(err instanceof Error ? err.message : "Unable to create audit. Please try again."); }
+      if (err instanceof TypeError) { setError(t("manualTesting.errNetwork")); }
+      else { setError(err instanceof Error ? err.message : t("manualTesting.errCreate")); }
     } finally {
       setCreating(false);
     }
@@ -210,9 +212,9 @@ function ManualTestingPageInner() {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        if (res.status === 400 && data.details?.fieldErrors?.note) throw new Error("A note is required when marking a criterion as failed.");
+        if (res.status === 400 && data.details?.fieldErrors?.note) throw new Error(t("manualTesting.errNoteRequired"));
         if (res.status === 429) throw new Error("Too many requests. Please wait a moment.");
-        throw new Error(data.error || "Unable to save verdict. Please try again.");
+        throw new Error(data.error || t("manualTesting.errSaveVerdict"));
       }
       const data = await res.json();
       if (plan) {
@@ -222,10 +224,10 @@ function ManualTestingPageInner() {
         setPlan({ ...plan, items: updatedItems });
         setScores((prev) => prev ? { ...prev, manual: data.scores.manual, combined: data.scores.combined } : prev);
       }
-      setSuccessMsg(`WCAG ${criterion} marked as ${verdict}.`);
+      setSuccessMsg(t("manualTesting.successVerdict", { criterion, verdict }));
     } catch (err) {
       if (err instanceof TypeError) { setError("Network error. Please check your connection."); }
-      else { setError(err instanceof Error ? err.message : "Unable to save verdict. Please try again."); }
+      else { setError(err instanceof Error ? err.message : t("manualTesting.errSaveVerdict")); }
     }
   }
 
@@ -237,8 +239,8 @@ function ManualTestingPageInner() {
             <ClipboardCheck className="h-5 w-5 text-white" />
           </div> */}
           <div>
-            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Manual Testing</h1>
-            <p className="text-sm text-neutral-500 dark:text-neutral-400">AI-guided human verification for criteria automation cannot determine</p>
+            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{t("nav.manualTesting")}</h1>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">{t("manualTesting.subtitle")}</p>
           </div>
         </header>
 
@@ -249,22 +251,22 @@ function ManualTestingPageInner() {
               <div className="h-9 w-9 rounded-lg bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center mb-3">
                 <Eye className="h-4 w-4 text-violet-600 dark:text-violet-400" />
               </div>
-              <p className="text-sm font-medium text-neutral-900 dark:text-white">Human Verification</p>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1 flex-1">Test focus order, keyboard access, and semantic meaning that automated scanners cannot determine.</p>
+              <p className="text-sm font-medium text-neutral-900 dark:text-white">{t("manualTesting.vp1Title")}</p>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1 flex-1">{t("manualTesting.vp1Desc")}</p>
             </div>
             <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 flex flex-col hover:border-neutral-300 dark:hover:border-neutral-700 hover:shadow-sm transition-all">
               <div className="h-9 w-9 rounded-lg bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center mb-3">
                 <Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-400" />
               </div>
-              <p className="text-sm font-medium text-neutral-900 dark:text-white">AI-Guided Steps</p>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1 flex-1">Get specific testing instructions for each WCAG criterion with real accessibility tree evidence.</p>
+              <p className="text-sm font-medium text-neutral-900 dark:text-white">{t("manualTesting.vp2Title")}</p>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1 flex-1">{t("manualTesting.vp2Desc")}</p>
             </div>
             <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 flex flex-col hover:border-neutral-300 dark:hover:border-neutral-700 hover:shadow-sm transition-all">
               <div className="h-9 w-9 rounded-lg bg-green-100 dark:bg-green-900/40 flex items-center justify-center mb-3">
                 <Shield className="h-4 w-4 text-green-600 dark:text-green-400" />
               </div>
-              <p className="text-sm font-medium text-neutral-900 dark:text-white">Legal-Ready Record</p>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1 flex-1">Attested verdicts feed into VPAT and Defense File for procurement officers and litigation defense.</p>
+              <p className="text-sm font-medium text-neutral-900 dark:text-white">{t("manualTesting.vp3Title")}</p>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1 flex-1">{t("manualTesting.vp3Desc")}</p>
             </div>
           </div>
         )}
@@ -283,7 +285,7 @@ function ManualTestingPageInner() {
             <XCircle className="h-4 w-4 text-red-500 shrink-0" aria-hidden="true" />
             <p className="text-sm text-red-700 dark:text-red-300 flex-1">{error}</p>
             <Button variant="outline" size="sm" onClick={() => { setError(null); loadAudits(); }} className="shrink-0 text-xs">
-              <RefreshCw className="h-3 w-3 mr-1" aria-hidden="true" /> Retry
+              <RefreshCw className="h-3 w-3 mr-1" aria-hidden="true" /> {t("common.retry")}
             </Button>
           </div>
         )}
@@ -293,10 +295,10 @@ function ManualTestingPageInner() {
             <CardContent className="p-4 flex items-center gap-3">
               <Lock className="h-5 w-5 text-amber-600 shrink-0" aria-hidden="true" />
               <div className="flex-1">
-                <p className="text-sm font-medium text-amber-800 dark:text-amber-200">PRO plan required</p>
-                <p className="text-xs text-amber-700 dark:text-amber-300">Manual testing is available on PRO and Enterprise plans. Upgrade to access AI-guided WCAG verification.</p>
+                <p className="text-sm font-medium text-amber-800 dark:text-amber-200">{t("manualTesting.upgradeTitle")}</p>
+                <p className="text-xs text-amber-700 dark:text-amber-300">{t("manualTesting.upgradeDesc")}</p>
               </div>
-              <a href="/settings?tab=billing" className="inline-flex items-center justify-center rounded-md bg-neutral-900 dark:bg-white px-3 py-1.5 text-xs font-medium text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors shrink-0">Upgrade</a>
+              <a href="/settings?tab=billing" className="inline-flex items-center justify-center rounded-md bg-neutral-900 dark:bg-white px-3 py-1.5 text-xs font-medium text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors shrink-0">{t("manualTesting.upgrade")}</a>
             </CardContent>
           </Card>
         )}
@@ -307,25 +309,25 @@ function ManualTestingPageInner() {
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <FileSearch className="h-4 w-4 text-violet-500" aria-hidden="true" />
-                  Generate Manual Test Plan
+                  {t("manualTesting.generateTitle")}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-xs text-neutral-500 mb-3">Enter a completed scan ID to generate a structured manual test plan covering WCAG criteria that automation cannot fully determine.</p>
+                <p className="text-xs text-neutral-500 mb-3">{t("manualTesting.generateDesc")}</p>
                 <form onSubmit={handleCreate} className="space-y-2" noValidate>
                   <div>
-                    <label htmlFor="scan-id-input" className="sr-only">Scan ID</label>
+                    <label htmlFor="scan-id-input" className="sr-only">{t("manualTesting.scanIdLabel")}</label>
                     {/* Stack on mobile so the input can shrink (min-w-0) and the
                         button isn't pushed off-screen; side-by-side from sm up. */}
                     <div className="flex flex-col sm:flex-row gap-2">
                       <input id="scan-id-input" type="text" value={scanId} onChange={(e) => { setScanId(e.target.value); setScanIdError(null); }}
-                        placeholder="Scan ID (e.g., scan_abc123)"
+                        placeholder={t("manualTesting.scanIdPlaceholder")}
                         className={`w-full min-w-0 flex-1 rounded-lg border bg-white dark:bg-neutral-900 px-3 py-2 text-sm font-mono transition-colors ${scanIdError ? "border-red-300 dark:border-red-700 focus:ring-red-500" : "border-neutral-200 dark:border-neutral-700 focus:ring-violet-500"} focus:outline-none focus:ring-2 focus:ring-offset-1`}
                         aria-invalid={!!scanIdError} aria-describedby={scanIdError ? "scan-id-error" : undefined}
                         autoComplete="off" spellCheck={false} maxLength={100} />
                       <Button type="submit" disabled={creating || !scanId.trim()} aria-busy={creating} className="w-full sm:w-auto shrink-0">
                         {creating ? <Loader2 className="h-4 w-4 animate-spin mr-2" aria-hidden="true" /> : <ArrowRight className="h-4 w-4 mr-2" aria-hidden="true" />}
-                        Generate Plan
+                        {t("manualTesting.generatePlan")}
                       </Button>
                     </div>
                     {scanIdError && <p id="scan-id-error" className="text-xs text-red-600 dark:text-red-400 mt-1" role="alert">{scanIdError}</p>}
@@ -337,11 +339,11 @@ function ManualTestingPageInner() {
             {loading ? (
               <div className="flex flex-col items-center justify-center min-h-[30vh" role="status" aria-label="Loading audits">
                 <Loader2 className="h-7 w-7 text-neutral-400 animate-spin" aria-hidden="true" />
-                <span className="mt-3 text-sm text-neutral-500">Loading your audits...</span>
+                <span className="mt-3 text-sm text-neutral-500">{t("manualTesting.loadingAudits")}</span>
               </div>
             ) : audits.length > 0 ? (
               <Card>
-                <CardHeader className="pb-3"><CardTitle className="text-sm">Previous Audits ({audits.length})</CardTitle></CardHeader>
+                <CardHeader className="pb-3"><CardTitle className="text-sm">{t("manualTesting.previousAudits", { count: audits.length })}</CardTitle></CardHeader>
                 <CardContent className="space-y-2" role="list" aria-label="Previous manual test audits">
                   {audits.map((audit) => (
                     <button key={audit.id} onClick={() => loadPlan(audit.id)} role="listitem"
@@ -364,19 +366,19 @@ function ManualTestingPageInner() {
                 <CardContent className="py-12 px-6">
                   <div className="flex flex-col items-center text-center max-w-lg mx-auto">
                     <ClipboardCheck className="h-10 w-10 text-neutral-300 dark:text-neutral-600 mb-4" aria-hidden="true" />
-                    <h3 className="text-base font-semibold text-neutral-800 dark:text-neutral-200">No manual test audits yet</h3>
-                    <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-2">Generate your first manual test plan from a completed scan to start verifying WCAG criteria that require human judgment.</p>
+                    <h3 className="text-base font-semibold text-neutral-800 dark:text-neutral-200">{t("manualTesting.emptyTitle")}</h3>
+                    <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-2">{t("manualTesting.emptyDesc")}</p>
                   </div>
                   <div className="border-t border-neutral-100 dark:border-neutral-800 pt-6 mt-8">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-4 text-center">How it works</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mb-4 text-center">{t("manualTesting.howItWorks")}</p>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                       <div className="flex flex-col items-center text-center gap-2">
                         <span className="flex h-7 w-7 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-900/40 text-xs font-bold text-violet-600">1</span>
-                        <p className="text-xs text-neutral-600 dark:text-neutral-400">Run a scan on any page, then paste the scan ID above</p>
+                        <p className="text-xs text-neutral-600 dark:text-neutral-400">{t("manualTesting.step1")}</p>
                       </div>
                       <div className="flex flex-col items-center text-center gap-2">
                         <span className="flex h-7 w-7 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-900/40 text-xs font-bold text-violet-600">2</span>
-                        <p className="text-xs text-neutral-600 dark:text-neutral-400">We generate a structured checklist of criteria needing human verification</p>
+                        <p className="text-xs text-neutral-600 dark:text-neutral-400">{t("manualTesting.step2")}</p>
                       </div>
                       <div className="flex flex-col items-center text-center gap-2">
                         <span className="flex h-7 w-7 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-900/40 text-xs font-bold text-violet-600">3</span>

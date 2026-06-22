@@ -1,5 +1,6 @@
 "use client";
 
+import { FeatureGate } from "@/components/ui/feature-gate";
 /**
  * RegLayer — Remediation Workspace
  *
@@ -102,7 +103,7 @@ function hostOf(url: string): string {
   }
 }
 
-export default function RemediationPage() {
+function RemediationPageInner() {
   const { t } = useI18n();
   const [loading, setLoading] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -646,4 +647,8 @@ function FixabilityView({
       )}
     </div>
   );
+}
+
+export default function RemediationPage() {
+  return <FeatureGate feature="automation"><RemediationPageInner /></FeatureGate>;
 }

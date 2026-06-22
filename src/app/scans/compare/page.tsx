@@ -1,5 +1,6 @@
 "use client";
 
+import { FeatureGate } from "@/components/ui/feature-gate";
 /**
  * RegLayer — Scan Compare Page
  *
@@ -40,7 +41,7 @@ interface ComparisonData {
   };
 }
 
-export default function ComparePage() {
+function ComparePageInner() {
   return (
     <Suspense
       fallback={
@@ -272,4 +273,8 @@ function CompareContent() {
       </div>
     </AppShell>
   );
+}
+
+export default function ComparePage() {
+  return <FeatureGate feature="analysis"><ComparePageInner /></FeatureGate>;
 }
