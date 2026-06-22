@@ -167,7 +167,7 @@ export function ModernSelect({
           id={listboxId}
           role="listbox"
           aria-label={label ?? placeholder}
-          className="absolute left-0 top-full mt-2 w-full min-w-0 sm:min-w-40 max-h-72 overflow-y-auto rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-1.5 shadow-xl shadow-neutral-300/40 dark:shadow-black/60 ring-1 ring-black/5 dark:ring-white/10 z-50"
+          className="absolute left-0 top-full mt-1 w-full min-w-0 sm:min-w-40 max-h-60 overflow-y-auto rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-1.5 shadow-xl shadow-neutral-300/40 dark:shadow-black/60 ring-1 ring-black/5 dark:ring-white/10 z-50 overscroll-contain"
         >
           {options.map((opt, i) => {
             const isSelected = value === opt.value;
