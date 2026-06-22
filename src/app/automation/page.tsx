@@ -14,6 +14,7 @@ import { useI18n } from "@/components/i18n-provider";
 import { AppShell } from "@/components/layout/app-shell";
 import { TabNav, type Tab } from "@/components/ui/tab-nav";
 import { EmbeddedProvider } from "@/components/layout/embedded-context";
+import { FeatureGate } from "@/components/ui/feature-gate";
 import { Wand2, DollarSign, Route, Activity, Component, Clock } from "lucide-react";
 
 const RemediationPage = lazy(() => import("@/app/dashboard/remediation/page"));
@@ -74,8 +75,10 @@ function AutomationContent() {
 
 export default function AutomationHub() {
   return (
-    <Suspense>
-      <AutomationContent />
-    </Suspense>
+    <FeatureGate feature="automation">
+      <Suspense>
+        <AutomationContent />
+      </Suspense>
+    </FeatureGate>
   );
 }

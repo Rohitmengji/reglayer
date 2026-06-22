@@ -14,6 +14,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { FeatureGate } from "@/components/ui/feature-gate";
 import {
   ClipboardCheck,
   Loader2,
@@ -68,7 +69,7 @@ interface ManualTestPlan {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
-export default function ManualTestingPage() {
+function ManualTestingPageInner() {
   const [audits, setAudits] = useState<AuditSummary[]>([]);
   const [selectedAudit, setSelectedAudit] = useState<string | null>(null);
   const [plan, setPlan] = useState<ManualTestPlan | null>(null);
@@ -558,5 +559,15 @@ function TestItemCard({ item, onVerdict }: {
         </div>
       </div>
     </article>
+  );
+}
+
+// ── Default Export (feature-gated) ──────────────────────────────────────────────
+
+export default function ManualTestingPage() {
+  return (
+    <FeatureGate feature="manualTesting">
+      <ManualTestingPageInner />
+    </FeatureGate>
   );
 }

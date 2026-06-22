@@ -21,6 +21,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useI18n } from "@/components/i18n-provider";
 import { useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
+import { FeatureGate } from "@/components/ui/feature-gate";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DeltaCards } from "@/components/trends/DeltaCards";
@@ -61,7 +62,7 @@ interface TrendsApiResponse {
   summary: TrendSummary | null;
 }
 
-export default function TrendsPage() {
+function TrendsPageInner() {
   const { t } = useI18n();
   const searchParams = useSearchParams();
   const url = searchParams.get("url") ?? "";
@@ -378,5 +379,13 @@ export default function TrendsPage() {
         )}
       </div>
     </AppShell>
+  );
+}
+
+export default function TrendsPage() {
+  return (
+    <FeatureGate feature="trends">
+      <TrendsPageInner />
+    </FeatureGate>
   );
 }

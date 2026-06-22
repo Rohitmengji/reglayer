@@ -15,6 +15,7 @@ import { TabNav, type Tab } from "@/components/ui/tab-nav";
 import { EmbeddedProvider } from "@/components/layout/embedded-context";
 import { Grid3X3, FileText, ClipboardCheck } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
+import { FeatureGate } from "@/components/ui/feature-gate";
 
 const MatrixPage = lazy(() => import("@/app/compliance/matrix-page"));
 const VpatPage = lazy(() => import("@/app/compliance/vpat/page"));
@@ -63,8 +64,10 @@ function ComplianceHub() {
 
 export default function CompliancePage() {
   return (
-    <Suspense>
-      <ComplianceHub />
-    </Suspense>
+    <FeatureGate feature="compliance">
+      <Suspense>
+        <ComplianceHub />
+      </Suspense>
+    </FeatureGate>
   );
 }

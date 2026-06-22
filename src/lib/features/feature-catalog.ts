@@ -161,6 +161,21 @@ export function isPlanFeature(featureId: string, plan: "FREE" | "PRO" | "ENTERPR
   return feature ? feature.plans.includes(plan) : false;
 }
 
+const PLAN_RANK: Record<"FREE" | "PRO" | "ENTERPRISE", number> = { FREE: 0, PRO: 1, ENTERPRISE: 2 };
+
+/**
+ * For a gated feature, the human name + the LOWEST plan that unlocks it — used by
+ * the client-side UpgradeGate so a locked screen says "X is a Pro/Enterprise feature".
+ * Gated features are PRO or ENTERPRISE; FREE-inclusive ids fall back to PRO.
+ */
+export function gateInfoForFeature(featureId: string): { name: string; requiredPlan: "PRO" | "ENTERPRISE" } {
+  const feature = FEATURE_CATALOG.find((f) => f.id === featureId);
+  const name = feature?.name ?? featureId;
+  const plans = feature?.plans ?? ["PRO"];
+  const lowest = [...plans].sort((a, b) => PLAN_RANK[a] - PLAN_RANK[b])[0];
+  return { name, requiredPlan: lowest === "ENTERPRISE" ? "ENTERPRISE" : "PRO" };
+}
+
 /**
  * Map of sidebar items to feature IDs.
  * Only items with a feature gate are listed — unlisted items are always shown.

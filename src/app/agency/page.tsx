@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { PageLoading } from "@/components/ui/page-loading";
 import { PageError } from "@/components/ui/page-error";
+import { FeatureGate } from "@/components/ui/feature-gate";
 import { Building2, Palette, Users, Key, Plus, Trash2, Copy } from "lucide-react";
 
 interface Agency {
@@ -57,7 +58,7 @@ interface AgencyApiKeyDisplay {
   createdAt: string;
 }
 
-export default function AgencyDashboard() {
+function AgencyDashboardInner() {
   const { t } = useI18n();
   const { data: session } = useSession();
   const [agency, setAgency] = useState<Agency | null>(null);
@@ -657,5 +658,13 @@ export default function AgencyDashboard() {
         onCancel={() => setConfirmAction(null)}
       />
     </AppShell>
+  );
+}
+
+export default function AgencyDashboard() {
+  return (
+    <FeatureGate feature="agency">
+      <AgencyDashboardInner />
+    </FeatureGate>
   );
 }

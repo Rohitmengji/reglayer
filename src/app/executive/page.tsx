@@ -14,6 +14,7 @@ import { useState, useEffect } from "react";
 import { useI18n } from "@/components/i18n-provider";
 import { useSession } from "next-auth/react";
 import { AppShell } from "@/components/layout/app-shell";
+import { FeatureGate } from "@/components/ui/feature-gate";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -72,7 +73,7 @@ interface ExecutiveData {
   impactDistribution: Record<string, number>;
 }
 
-export default function ExecutiveDashboardPage() {
+function ExecutiveDashboardPageInner() {
   const { t } = useI18n();
   const { data: session } = useSession();
   const [data, setData] = useState<ExecutiveData | null>(null);
@@ -479,5 +480,13 @@ export default function ExecutiveDashboardPage() {
         </Card>
       </div>
     </AppShell>
+  );
+}
+
+export default function ExecutiveDashboardPage() {
+  return (
+    <FeatureGate feature="executive">
+      <ExecutiveDashboardPageInner />
+    </FeatureGate>
   );
 }
