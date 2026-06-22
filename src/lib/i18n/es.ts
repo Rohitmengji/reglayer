@@ -1140,6 +1140,8 @@ export const es = {
   // Accessibility viewing preferences
   "a11y.title": "Accesibilidad",
   "a11y.close": "Cerrar",
+  "a11y.navigation": "Navegación",
+  "a11y.toggleNavigation": "Alternar el menú de navegación",
   "a11y.highContrast": "Alto contraste",
   "a11y.reducedMotion": "Reducir movimiento",
   "a11y.largerText": "Texto más grande",
