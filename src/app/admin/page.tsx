@@ -469,8 +469,8 @@ export default function AdminPage() {
                   <h3 className="text-base font-semibold text-neutral-900 dark:text-white flex items-center gap-2">
                     <Coins className="h-4 w-4 text-amber-500" /> Grant AI Credits
                   </h3>
-                  <button onClick={() => { setGrantCreditsUser(null); setGrantCreditsAmount(""); setGrantCreditsReason(""); }} className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200">
-                    <X className="h-4 w-4" />
+                  <button aria-label={t("a11y.close")} onClick={() => { setGrantCreditsUser(null); setGrantCreditsAmount(""); setGrantCreditsReason(""); }} className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200">
+                    <X className="h-4 w-4" aria-hidden="true" />
                   </button>
                 </div>
                 <div className="text-sm text-neutral-600 dark:text-neutral-300">

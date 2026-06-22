@@ -143,12 +143,13 @@ export function AppShell({ children, bare }: { children: React.ReactNode; bare?:
 
       {/* Mobile drawer */}
       <div
+        id="mobile-nav-drawer"
         className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-200 ease-in-out lg:hidden ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
         role="dialog"
         aria-modal={mobileOpen}
-        aria-label="Navigation"
+        aria-label={t("a11y.navigation")}
       >
         <Sidebar onNavigate={() => setMobileOpen(false)} />
       </div>
@@ -159,9 +160,12 @@ export function AppShell({ children, bare }: { children: React.ReactNode; bare?:
         <div className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-4 lg:hidden">
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
+            aria-label={t("a11y.toggleNavigation")}
+            aria-expanded={mobileOpen}
+            aria-controls="mobile-nav-drawer"
             className="rounded-md p-1.5 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800"
           >
-            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            {mobileOpen ? <X className="h-5 w-5" aria-hidden="true" /> : <Menu className="h-5 w-5" aria-hidden="true" />}
           </button>
           <Image src="/assests/reglayer-logo-light.svg" alt="RegLayer" width={120} height={28} style={{ height: "1.75rem", width: "auto" }} className="dark:hidden" />
           <Image src="/assests/reglayer-logo-dark.svg" alt="RegLayer" width={120} height={28} style={{ height: "1.75rem", width: "auto" }} className="hidden dark:block" />

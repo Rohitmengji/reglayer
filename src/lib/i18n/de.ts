@@ -1505,6 +1505,8 @@ export const de = {
   // Accessibility viewing preferences
   "a11y.title": "Barrierefreiheit",
   "a11y.close": "Schließen",
+  "a11y.navigation": "Navigation",
+  "a11y.toggleNavigation": "Navigationsmenü umschalten",
   "a11y.highContrast": "Hoher Kontrast",
   "a11y.reducedMotion": "Bewegung reduzieren",
   "a11y.largerText": "Größerer Text",

@@ -1712,6 +1712,8 @@ export const en = {
   // Accessibility viewing preferences
   "a11y.title": "Accessibility",
   "a11y.close": "Close",
+  "a11y.navigation": "Navigation",
+  "a11y.toggleNavigation": "Toggle navigation menu",
   "a11y.highContrast": "High contrast",
   "a11y.reducedMotion": "Reduce motion",
   "a11y.largerText": "Larger text",

@@ -1129,6 +1129,8 @@ export const nl = {
   // Accessibility viewing preferences
   "a11y.title": "Toegankelijkheid",
   "a11y.close": "Sluiten",
+  "a11y.navigation": "Navigatie",
+  "a11y.toggleNavigation": "Navigatiemenu in-/uitschakelen",
   "a11y.highContrast": "Hoog contrast",
   "a11y.reducedMotion": "Beweging verminderen",
   "a11y.largerText": "Grotere tekst",

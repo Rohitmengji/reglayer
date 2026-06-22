@@ -1129,6 +1129,8 @@ export const it = {
   // Accessibility viewing preferences
   "a11y.title": "Accessibilità",
   "a11y.close": "Chiudi",
+  "a11y.navigation": "Navigazione",
+  "a11y.toggleNavigation": "Attiva/disattiva il menu di navigazione",
   "a11y.highContrast": "Contrasto elevato",
   "a11y.reducedMotion": "Riduci animazioni",
   "a11y.largerText": "Testo più grande",
