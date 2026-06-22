@@ -102,46 +102,61 @@ export default function JurisdictionsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Generate button */}
+      {/* Generate section */}
       {!evaluation && !loading && (
-        <Card className="border-dashed">
-          <CardContent className="py-8 flex flex-col items-center text-center">
-            <Globe className="h-10 w-10 text-blue-500 mb-4" />
-            <h3 className="text-base font-semibold text-neutral-900 dark:text-white">Multi-Jurisdiction Compliance Report</h3>
-            <p className="text-sm text-neutral-500 mt-2 max-w-lg">
-              Evaluate this scan against ADA, EAA (European Accessibility Act), Section 508, and AODA simultaneously.
-            </p>
-
-            {/* Scan selector */}
-            <div className="mt-4 w-full max-w-md">
-              <label htmlFor="jurisdiction-scan-select" className="sr-only">Select scan</label>
+        <div className="space-y-5">
+          {/* Scan selector row */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            <div className="flex-1 w-full">
+              <label htmlFor="jurisdiction-scan-select" className="text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1 block">Evaluate scan</label>
               <select
                 id="jurisdiction-scan-select"
                 value={selectedScanId ?? ""}
                 onChange={(e) => setSelectedScanId(e.target.value)}
-                className="w-full rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
               >
                 {scans.map((s) => (
                   <option key={s.id} value={s.id}>
-                    {s.url} — Score: {s.score ?? "N/A"} — {new Date(s.createdAt).toLocaleDateString()}
+                    {new URL(s.url).hostname} — {s.score ?? "N/A"}% — {new Date(s.createdAt).toLocaleDateString()}
                   </option>
                 ))}
               </select>
             </div>
-
-            <Button onClick={handleGenerate} className="mt-4" size="lg" disabled={!selectedScanId}>
+            <Button onClick={handleGenerate} disabled={!selectedScanId} className="sm:mt-5 w-full sm:w-auto">
               <Shield className="h-4 w-4 mr-2" />
               Generate Report
             </Button>
-          </CardContent>
-        </Card>
+          </div>
+
+          {/* Jurisdiction preview cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {JURISDICTION_IDS.map((jId) => {
+              const j = JURISDICTIONS[jId];
+              return (
+                <div key={jId} className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 hover:border-neutral-300 dark:hover:border-neutral-700 transition-colors">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className={`h-2 w-2 rounded-full ${jId === "EAA" ? "bg-blue-500" : jId === "ADA" ? "bg-indigo-500" : jId === "SECTION508" ? "bg-violet-500" : "bg-emerald-500"}`} />
+                    <span className="text-xs font-semibold text-neutral-900 dark:text-white">{j.name}</span>
+                  </div>
+                  <p className="text-[10px] text-neutral-500 dark:text-neutral-400 leading-relaxed">{j.region}</p>
+                  <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-1">{j.baseStandard} {j.baseStandardVersion}</p>
+                </div>
+              );
+            })}
+          </div>
+
+          <p className="text-[11px] text-neutral-400 text-center">Evaluates {JURISDICTION_IDS.length} jurisdictions simultaneously with confidence scoring and cross-jurisdiction risk detection</p>
+        </div>
       )}
 
       {/* Loading */}
       {loading && (
-        <div className="flex items-center justify-center py-16">
-          <Loader2 className="h-6 w-6 animate-spin text-blue-500 mr-3" />
-          <span className="text-sm text-neutral-500">Evaluating across 4 jurisdictions...</span>
+        <div className="flex flex-col items-center justify-center py-12">
+          <div className="relative">
+            <div className="h-10 w-10 animate-spin rounded-full border-[3px] border-neutral-200 border-t-blue-500 dark:border-neutral-700 dark:border-t-blue-400" />
+          </div>
+          <p className="text-sm text-neutral-500 mt-4">Evaluating across 4 jurisdictions...</p>
+          <p className="text-xs text-neutral-400 mt-1">Mapping violations to ADA, EAA, Section 508, AODA</p>
         </div>
       )}
 
