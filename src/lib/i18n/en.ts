@@ -736,6 +736,8 @@ export const en = {
 
   // Score Card
   "scoreCard.title": "Compliance Score",
+  "scoreCard.bandsLabel": "What this score means",
+  "scoreCard.bandsExplain": "90+ excellent, 70-89 good, 50-69 needs work, below 50 poor. Higher is better — fewer and less-severe accessibility issues.",
   "scoreCard.critical": "Critical",
   "scoreCard.serious": "Serious",
   "scoreCard.moderate": "Moderate",

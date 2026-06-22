@@ -736,6 +736,8 @@ export const es = {
 
   // Score Card
   "scoreCard.title": "Puntuación de conformidad",
+  "scoreCard.bandsLabel": "Qué significa esta puntuación",
+  "scoreCard.bandsExplain": "90+ excelente, 70-89 bueno, 50-69 mejorable, menos de 50 deficiente. Cuanto más alto, mejor: menos problemas y menos graves.",
   "scoreCard.critical": "Crítico",
   "scoreCard.serious": "Grave",
   "scoreCard.moderate": "Moderado",
