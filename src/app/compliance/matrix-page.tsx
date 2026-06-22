@@ -14,7 +14,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ModernSelect } from "@/components/ui/modern-select";
-import { CheckCircle2, XCircle, Minus, Loader2, Grid3X3, ChevronDown } from "lucide-react";
+import { CheckCircle2, XCircle, Minus, Loader2, Grid3X3, UserCheck } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 
 interface MatrixEntry {
@@ -25,6 +25,7 @@ interface MatrixEntry {
   status: "pass" | "fail" | "not-tested";
   violations: string[];
   impact: string | null;
+  humanVerdict?: "pass" | "fail" | "na" | null;
 }
 
 interface MatrixData {
@@ -32,7 +33,13 @@ interface MatrixData {
   url: string;
   score: number;
   matrix: MatrixEntry[];
-  summary: { total: number; passed: number; failed: number; notTested: number };
+  summary: {
+    total: number;
+    passed: number;
+    failed: number;
+    notTested: number;
+    humanVerified?: { total: number; pass: number; fail: number; na: number };
+  };
 }
 
 interface ScanOption {
@@ -195,6 +202,16 @@ function ComplianceContent() {
           </div>
         </div>
 
+        {data.summary.humanVerified && data.summary.humanVerified.total > 0 && (
+          <div className="flex items-start gap-2 rounded-xl border border-accent/20 bg-accent/5 px-4 py-2.5 text-[12px] text-neutral-700 dark:text-neutral-200">
+            <UserCheck className="mt-0.5 h-4 w-4 shrink-0 text-accent" aria-hidden="true" />
+            <div>
+              <p>{t("compliance.humanVerifiedSummary", { count: data.summary.humanVerified.total, total: data.summary.total })}</p>
+              <p className="mt-0.5 text-[11px] text-neutral-500 dark:text-neutral-400">{t("compliance.humanVerifiedNote")}</p>
+            </div>
+          </div>
+        )}
+
         {/* Summary */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <button
@@ -256,6 +273,24 @@ function ComplianceContent() {
                           <Badge variant="secondary" className="text-[8px] px-1 py-0">
                             {entry.level}
                           </Badge>
+                          {entry.humanVerdict && (() => {
+                            // Verdict carried by icon + text + color (not color alone — SC 1.4.1),
+                            // and labeled "Tester: …" so a human verdict that differs from the
+                            // automated cell reads as an attestation, not a bug.
+                            const v = entry.humanVerdict;
+                            const VIcon = v === "pass" ? CheckCircle2 : v === "fail" ? XCircle : Minus;
+                            const label = v === "pass" ? t("compliance.humanPass") : v === "fail" ? t("compliance.humanFail") : t("compliance.humanNa");
+                            return (
+                              <Badge
+                                variant={v === "pass" ? "success" : v === "fail" ? "critical" : "secondary"}
+                                className="text-[8px] px-1 py-0 inline-flex items-center gap-0.5"
+                                title={label}
+                              >
+                                <VIcon className="h-2.5 w-2.5" aria-hidden="true" />
+                                {label}
+                              </Badge>
+                            );
+                          })()}
                         </div>
                         <p className="text-[10px] text-neutral-500 dark:text-neutral-400 truncate">{entry.title}</p>
                         {entry.violations.length > 0 && (

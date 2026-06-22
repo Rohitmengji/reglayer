@@ -31,6 +31,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Scan, Loader2, RotateCcw, Clock } from "lucide-react";
 import { handleUpgradeResponse } from "@/lib/upgrade-prompt";
 import { useI18n } from "@/components/i18n-provider";
+import { useFeatures } from "@/hooks/use-features";
 import { toast } from "sonner";
 import { ScanAuthSection } from "@/components/scanner/scan-auth-section";
 import type { AuthConfig } from "@/lib/validations/auth";
@@ -67,6 +68,8 @@ export function ScanForm({ onScanComplete }: ScanFormProps) {
   const stageTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const abortRef = useRef<AbortController | null>(null);
   const { t } = useI18n();
+  const { hasFeature } = useFeatures();
+  const deepScanEnabled = hasFeature("deepScan");
 
   const handleAuthChange = useCallback((config: AuthConfig | undefined) => {
     setAuthConfig(config);
@@ -134,7 +137,7 @@ export function ScanForm({ onScanComplete }: ScanFormProps) {
       const scanBody: Record<string, unknown> = { url: targetUrl };
       const options: Record<string, unknown> = {};
       if (authConfig && authConfig.method !== "none") options.auth = authConfig;
-      if (deep) options.deep = true;
+      if (deep && deepScanEnabled) options.deep = true;
       if (Object.keys(options).length > 0) scanBody.options = options;
 
       const res = await fetch("/api/scan", {
@@ -231,8 +234,8 @@ export function ScanForm({ onScanComplete }: ScanFormProps) {
         {/* Authentication Section */}
         <ScanAuthSection onAuthChange={handleAuthChange} scanUrl={normalizeUrl(url)} />
 
-        {/* Deep Scan toggle — goes beyond a single static pass: reveals interactive
-            states (menus/dialogs/accordions) and probes keyboard reachability. */}
+        {/* Deep Scan toggle — only visible when the deepScan feature is enabled for this workspace */}
+        {deepScanEnabled && (
         <label className="flex items-start gap-2.5 rounded-lg border border-neutral-200 dark:border-neutral-800 px-3 py-2.5 cursor-pointer">
           <input
             type="checkbox"
@@ -251,6 +254,7 @@ export function ScanForm({ onScanComplete }: ScanFormProps) {
             </span>
           </span>
         </label>
+        )}
 
         {/* Scanning progress */}
         {isScanning && (

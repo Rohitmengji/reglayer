@@ -22,6 +22,16 @@ import { ArrowLeft, Download, Clock, Globe, Cpu, ListChecks, Wand2, ClipboardChe
 import Link from "next/link";
 import { useI18n } from "@/components/i18n-provider";
 
+interface ManualSummary {
+  auditId: string;
+  status: string;
+  automatedScore: number | null;
+  manualScore: number | null;
+  combinedScore: number | null;
+  completedAt: string | null;
+  counts: { pass: number; fail: number; na: number; untested: number; total: number };
+}
+
 export default function ScanDetailPage({
   params,
 }: {
@@ -40,6 +50,18 @@ export default function ScanDetailPage({
     Array<{ category: string; issue: string; severity: string; confidence: number }> | null
   >(null);
   const [visualMsg, setVisualMsg] = useState<string | null>(null);
+  const [manualSummary, setManualSummary] = useState<ManualSummary | null>(null);
+
+  // Human-verified card — fetched independently of the scan payload so it shows
+  // whether the detail loaded from the store cache or the API.
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/scans/${id}/manual-summary`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (!cancelled && d?.manualSummary) setManualSummary(d.manualSummary); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [id]);
 
   useEffect(() => {
     if (storeEntry || entry) return;
@@ -199,6 +221,42 @@ export default function ScanDetailPage({
 
         {/* Score */}
         <ScoreCard summary={scan.summary} />
+
+        {/* Human-verified — what manual testing contributed (criteria automation can't judge) */}
+        {manualSummary && (manualSummary.counts.pass + manualSummary.counts.fail + manualSummary.counts.na) > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <ClipboardCheck className="h-4 w-4 text-accent" aria-hidden="true" />
+                {t("scanDetail.humanVerifiedTitle")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+                {manualSummary.combinedScore !== null && (
+                  <div className="shrink-0">
+                    <p className="text-2xl font-bold tabular-nums text-neutral-900 dark:text-white">{Math.round(manualSummary.combinedScore)}</p>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400">{t("scanDetail.combinedScore")}</p>
+                  </div>
+                )}
+                <p className="text-sm text-neutral-600 dark:text-neutral-300">
+                  {t("scanDetail.humanVerifiedCounts", {
+                    pass: manualSummary.counts.pass,
+                    fail: manualSummary.counts.fail,
+                    na: manualSummary.counts.na,
+                    total: manualSummary.counts.total,
+                  })}
+                </p>
+                <Link
+                  href="/manual-testing"
+                  className="ml-auto inline-flex items-center gap-1 text-sm font-medium text-accent hover:underline"
+                >
+                  {t("scanDetail.viewManualTest")} <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* What's next — turn results into action so the user isn't left at a dead end */}
         <NextSteps hasViolations={scan.violations.length > 0} />
