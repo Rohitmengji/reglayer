@@ -444,7 +444,7 @@ function ResultsView({ result, onDownload, downloading }: { result: RemediationR
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-bold text-neutral-900 dark:text-white">{result.totalFixes}</span>
+              <span className="text-3xl font-bold tabular-nums text-neutral-900 dark:text-white">{result.totalFixes}</span>
               <span className="text-sm text-neutral-500 dark:text-neutral-400">
                 {result.totalFixes === 1 ? t("remediation.fixAppliedSingular") : t("remediation.fixesAppliedPlural")} · {categoryKeys.length} {categoryKeys.length === 1 ? t("remediation.categorySingular") : t("remediation.categoryPlural")}
               </span>

@@ -178,7 +178,7 @@ function ComplianceContent() {
                 {data.summary.passed} of {data.summary.passed + data.summary.failed} testable criteria passing
               </p>
             </div>
-            <div className={`text-3xl font-bold ${passRate >= 80 ? "text-green-600" : passRate >= 50 ? "text-amber-600" : "text-red-600"}`}>
+            <div className={`text-3xl font-bold tabular-nums ${passRate >= 80 ? "text-green-600" : passRate >= 50 ? "text-amber-600" : "text-red-600"}`}>
               {passRate}%
             </div>
           </div>
@@ -201,28 +201,28 @@ function ComplianceContent() {
             onClick={() => setFilter("all")}
             className={`rounded-xl border p-3 text-center transition-colors ${filter === "all" ? "border-neutral-900 bg-neutral-900 text-white" : "border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900"}`}
           >
-            <p className="text-xl font-bold">{data.summary.total}</p>
+            <p className="text-xl font-bold tabular-nums">{data.summary.total}</p>
             <p className="text-xs">Total</p>
           </button>
           <button
             onClick={() => setFilter("pass")}
             className={`rounded-xl border p-3 text-center transition-colors ${filter === "pass" ? "border-green-600 bg-green-600 text-white" : "border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900"}`}
           >
-            <p className="text-xl font-bold">{data.summary.passed}</p>
+            <p className="text-xl font-bold tabular-nums">{data.summary.passed}</p>
             <p className="text-xs">Passed</p>
           </button>
           <button
             onClick={() => setFilter("fail")}
             className={`rounded-xl border p-3 text-center transition-colors ${filter === "fail" ? "border-red-600 bg-red-600 text-white" : "border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900"}`}
           >
-            <p className="text-xl font-bold">{data.summary.failed}</p>
+            <p className="text-xl font-bold tabular-nums">{data.summary.failed}</p>
             <p className="text-xs">Failed</p>
           </button>
           <button
             onClick={() => setFilter("not-tested")}
             className={`rounded-xl border p-3 text-center transition-colors ${filter === "not-tested" ? "border-neutral-500 bg-neutral-500 text-white" : "border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900"}`}
           >
-            <p className="text-xl font-bold">{data.summary.notTested}</p>
+            <p className="text-xl font-bold tabular-nums">{data.summary.notTested}</p>
             <p className="text-xs">Not Tested</p>
           </button>
         </div>

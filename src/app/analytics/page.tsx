@@ -220,16 +220,16 @@ export default function AnalyticsPage() {
               <div className="space-y-3">
                 <div>
                   <p className="text-xs text-neutral-500 dark:text-neutral-400">Next Week</p>
-                  <p className="text-2xl font-bold text-neutral-900 dark:text-white">{data.forecast.nextWeekScore}</p>
+                  <p className="text-2xl font-bold tabular-nums text-neutral-900 dark:text-white">{data.forecast.nextWeekScore}</p>
                 </div>
                 <div>
                   <p className="text-xs text-neutral-500 dark:text-neutral-400">Next Month</p>
-                  <p className="text-2xl font-bold text-neutral-900 dark:text-white">{data.forecast.nextMonthScore}</p>
+                  <p className="text-2xl font-bold tabular-nums text-neutral-900 dark:text-white">{data.forecast.nextMonthScore}</p>
                 </div>
                 {data.forecast.weeksTo90 && (
                   <div>
                     <p className="text-xs text-neutral-500 dark:text-neutral-400">Weeks to Score 90</p>
-                    <p className="text-2xl font-bold text-green-700">{data.forecast.weeksTo90}</p>
+                    <p className="text-2xl font-bold tabular-nums text-green-700">{data.forecast.weeksTo90}</p>
                   </div>
                 )}
                 <p className="text-xs text-neutral-500 dark:text-neutral-400">
@@ -249,13 +249,13 @@ export default function AnalyticsPage() {
               <div className="space-y-3">
                 <div>
                   <p className="text-xs text-neutral-500 dark:text-neutral-400">Scans / Day</p>
-                  <p className="text-2xl font-bold text-neutral-900 dark:text-white">
+                  <p className="text-2xl font-bold tabular-nums text-neutral-900 dark:text-white">
                     {data.velocityMetrics.scansPerDay}
                   </p>
                 </div>
                 <div>
                   <p className="text-xs text-neutral-500 dark:text-neutral-400">Violations Found / Week</p>
-                  <p className="text-2xl font-bold text-orange-600">
+                  <p className="text-2xl font-bold tabular-nums text-orange-600">
                     {data.velocityMetrics.newViolationsPerWeek}
                   </p>
                 </div>
@@ -330,7 +330,7 @@ export default function AnalyticsPage() {
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-lg font-bold text-neutral-900 dark:text-white">{v.count}</p>
+                      <p className="text-lg font-bold tabular-nums text-neutral-900 dark:text-white">{v.count}</p>
                       <p className="text-xs text-neutral-500 dark:text-neutral-400">occurrences</p>
                     </div>
                   </div>
@@ -363,7 +363,7 @@ export default function AnalyticsPage() {
                       {u.trend === "improving" && <TrendingUp className="h-4 w-4 text-green-500" />}
                       {u.trend === "declining" && <TrendingDown className="h-4 w-4 text-red-500" />}
                       <span
-                        className={`text-lg font-bold ${
+                        className={`text-lg font-bold tabular-nums ${
                           u.latestScore >= 90
                             ? "text-green-600"
                             : u.latestScore >= 70
@@ -402,7 +402,7 @@ function MetricCard({
         {icon}
         <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">{label}</p>
       </div>
-      <p className="text-2xl font-bold text-neutral-900 dark:text-white">{value}</p>
+      <p className="text-2xl font-bold tabular-nums text-neutral-900 dark:text-white">{value}</p>
       {subtitle && <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">{subtitle}</p>}
     </div>
   );

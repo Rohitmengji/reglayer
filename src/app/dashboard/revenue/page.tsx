@@ -131,7 +131,7 @@ export default function RevenueImpactPage() {
                     <DollarSign className="h-5 w-5 text-red-500" />
                     <span className="text-sm text-muted-foreground">Est. Monthly Loss</span>
                   </div>
-                  <p className="text-3xl font-bold text-red-600">
+                  <p className="text-3xl font-bold tabular-nums text-red-600">
                     ${result.estimatedMonthlyLoss.toLocaleString()}
                   </p>
                 </CardContent>
@@ -142,7 +142,7 @@ export default function RevenueImpactPage() {
                     <TrendingDown className="h-5 w-5 text-red-500" />
                     <span className="text-sm text-muted-foreground">Est. Annual Loss</span>
                   </div>
-                  <p className="text-3xl font-bold text-red-600">
+                  <p className="text-3xl font-bold tabular-nums text-red-600">
                     ${result.estimatedAnnualLoss.toLocaleString()}
                   </p>
                 </CardContent>
@@ -153,7 +153,7 @@ export default function RevenueImpactPage() {
                     <Users className="h-5 w-5 text-orange-500" />
                     <span className="text-sm text-muted-foreground">Unreachable Users/mo</span>
                   </div>
-                  <p className="text-3xl font-bold">
+                  <p className="text-3xl font-bold tabular-nums">
                     {result.unreachableVisitorsMonthly.toLocaleString()}
                   </p>
                 </CardContent>
@@ -164,7 +164,7 @@ export default function RevenueImpactPage() {
                     <BarChart3 className="h-5 w-5 text-blue-500" />
                     <span className="text-sm text-muted-foreground">Score vs. Baseline</span>
                   </div>
-                  <p className="text-3xl font-bold">
+                  <p className="text-3xl font-bold tabular-nums">
                     {result.industryComparison.yourScore}
                     <span className="text-base font-normal text-muted-foreground"> / {result.industryComparison.avgScore} avg</span>
                   </p>

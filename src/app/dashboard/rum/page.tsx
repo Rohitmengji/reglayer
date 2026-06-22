@@ -161,17 +161,17 @@ export default function RumPage() {
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <Card className="p-4 text-center">
               <AlertTriangle className="h-5 w-5 mx-auto text-red-500 mb-1" />
-              <p className="text-2xl font-bold">{agg.impactScore}</p>
+              <p className="text-2xl font-bold tabular-nums">{agg.impactScore}</p>
               <p className="text-xs text-muted-foreground">Impact Score</p>
             </Card>
             <Card className="p-4 text-center">
               <Activity className="h-5 w-5 mx-auto text-blue-500 mb-1" />
-              <p className="text-2xl font-bold">{agg.totalEvents}</p>
+              <p className="text-2xl font-bold tabular-nums">{agg.totalEvents}</p>
               <p className="text-xs text-muted-foreground">Barriers Detected</p>
             </Card>
             <Card className="p-4 text-center">
               <Eye className="h-5 w-5 mx-auto text-green-500 mb-1" />
-              <p className="text-2xl font-bold">{agg.totalSessions}</p>
+              <p className="text-2xl font-bold tabular-nums">{agg.totalSessions}</p>
               <p className="text-xs text-muted-foreground">Sessions</p>
             </Card>
             <Card className="p-4 text-center">
@@ -180,14 +180,14 @@ export default function RumPage() {
                 <Smartphone className="h-4 w-4" />
                 <Tablet className="h-4 w-4" />
               </div>
-              <p className="text-2xl font-bold">
+              <p className="text-2xl font-bold tabular-nums">
                 {agg.deviceBreakdown.desktop + agg.deviceBreakdown.mobile + agg.deviceBreakdown.tablet}
               </p>
               <p className="text-xs text-muted-foreground">Device Events</p>
             </Card>
             <Card className="p-4 text-center">
               <Eye className="h-5 w-5 mx-auto text-purple-500 mb-1" />
-              <p className="text-2xl font-bold">{agg.assistiveTechUsers}</p>
+              <p className="text-2xl font-bold tabular-nums">{agg.assistiveTechUsers}</p>
               <p className="text-xs text-muted-foreground">AT Users</p>
             </Card>
           </div>
