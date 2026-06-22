@@ -736,6 +736,8 @@ export const nl = {
 
   // Score Card
   "scoreCard.title": "Nalevingsscore",
+  "scoreCard.bandsLabel": "Wat deze score betekent",
+  "scoreCard.bandsExplain": "90+ uitstekend, 70-89 goed, 50-69 kan beter, onder 50 slecht. Hoger is beter: minder en minder ernstige problemen.",
   "scoreCard.critical": "Kritiek",
   "scoreCard.serious": "Ernstig",
   "scoreCard.moderate": "Matig",

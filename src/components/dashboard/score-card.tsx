@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { ScanSummary } from "@/lib/types";
 import { ShieldAlert, AlertTriangle, Info } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
+import { InfoHint } from "@/components/ui/info-hint";
 
 interface ScoreCardProps {
   summary: ScanSummary;
@@ -24,8 +25,9 @@ export function ScoreCard({ summary }: ScoreCardProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-sm font-medium text-neutral-600 dark:text-neutral-400">
+        <CardTitle className="flex items-center gap-1.5 text-sm font-medium text-neutral-600 dark:text-neutral-400">
           {t("scoreCard.title")}
+          <InfoHint label={t("scoreCard.bandsLabel")} content={t("scoreCard.bandsExplain")} side="bottom" />
         </CardTitle>
       </CardHeader>
       <CardContent>
