@@ -1,5 +1,6 @@
 "use client";
 
+import { FeatureGate } from "@/components/ui/feature-gate";
 /**
  * RegLayer — Fix Priorities Page
  *
@@ -51,7 +52,7 @@ interface PriorityReport {
   allFixes: PrioritizedFix[];
 }
 
-export default function PrioritiesPage() {
+function PrioritiesPageInner() {
   return (
     <Suspense
       fallback={
@@ -319,4 +320,8 @@ function FixCard({ fix, variant }: { fix: PrioritizedFix; variant: "quickwin" | 
       </div>
     </div>
   );
+}
+
+export default function PrioritiesPage() {
+  return <FeatureGate feature="analysis"><PrioritiesPageInner /></FeatureGate>;
 }

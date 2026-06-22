@@ -1,5 +1,6 @@
 "use client";
 
+import { FeatureGate } from "@/components/ui/feature-gate";
 /**
  * RegLayer — Team Management Page
  *
@@ -52,7 +53,7 @@ const roleIcons: Record<string, typeof Shield> = {
   VIEWER: Users,
 };
 
-export default function TeamPage() {
+function TeamPageInner() {
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [workspace, setWorkspace] = useState<WorkspaceInfo | null>(null);
   const [currentUserRole, setCurrentUserRole] = useState<string>("");
@@ -443,4 +444,8 @@ export default function TeamPage() {
       />
     </AppShell>
   );
+}
+
+export default function TeamPage() {
+  return <FeatureGate feature="manage"><TeamPageInner /></FeatureGate>;
 }

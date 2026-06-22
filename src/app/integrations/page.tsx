@@ -1,5 +1,6 @@
 "use client";
 
+import { FeatureGate } from "@/components/ui/feature-gate";
 /**
  * RegLayer — Integrations Page
  *
@@ -133,7 +134,7 @@ const integrationDefs: IntegrationDef[] = [
   },
 ];
 
-export default function IntegrationsPage() {
+function IntegrationsPageInner() {
   const [connected, setConnected] = useState<ConnectedIntegration[]>([]);
   const [loading, setLoading] = useState(true);
   const [configuring, setConfiguring] = useState<string | null>(null);
@@ -397,4 +398,8 @@ export default function IntegrationsPage() {
       />
     </AppShell>
   );
+}
+
+export default function IntegrationsPage() {
+  return <FeatureGate feature="manage"><IntegrationsPageInner /></FeatureGate>;
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { FeatureGate } from "@/components/ui/feature-gate";
 /**
  * RegLayer — Screen Reader Simulation Page
  *
@@ -55,7 +56,7 @@ interface ScreenReaderSnapshot {
   capturedAt: string;
 }
 
-export default function ScreenReaderPage() {
+function ScreenReaderPageInner() {
   const { t } = useI18n();
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
@@ -517,4 +518,8 @@ export default function ScreenReaderPage() {
       </div>
     </AppShell>
   );
+}
+
+export default function ScreenReaderPage() {
+  return <FeatureGate feature="analysis"><ScreenReaderPageInner /></FeatureGate>;
 }

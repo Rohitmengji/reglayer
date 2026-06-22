@@ -1,5 +1,6 @@
 "use client";
 
+import { FeatureGate } from "@/components/ui/feature-gate";
 /**
  * RegLayer — AI Insights Page
  *
@@ -71,7 +72,7 @@ interface InsightsData {
   insights: InsightEntry[];
 }
 
-export default function InsightsPage() {
+function InsightsPageInner() {
   return (
     <Suspense
       fallback={
@@ -260,4 +261,8 @@ function InsightsContent() {
       </div>
     </AppShell>
   );
+}
+
+export default function InsightsPage() {
+  return <FeatureGate feature="analysis"><InsightsPageInner /></FeatureGate>;
 }

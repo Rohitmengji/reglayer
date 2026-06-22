@@ -1,5 +1,6 @@
 "use client";
 
+import { FeatureGate } from "@/components/ui/feature-gate";
 /**
  * RegLayer — Management Hub Page
  *
@@ -67,10 +68,14 @@ function ManageContent() {
   );
 }
 
-export default function ManageHub() {
+function ManageHubInner() {
   return (
     <Suspense>
       <ManageContent />
     </Suspense>
   );
+}
+
+export default function ManageHub() {
+  return <FeatureGate feature="manage"><ManageHubInner /></FeatureGate>;
 }
