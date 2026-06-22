@@ -49,7 +49,10 @@ export function useFeatures() {
   const loading = features === null;
 
   const hasFeature = useCallback(
-    (featureId: string): boolean => loading || features!.includes(featureId),
+    (featureId: string): boolean => {
+      if (loading) return false; // Don't show gated features until we know the plan
+      return features!.includes(featureId);
+    },
     [features, loading]
   );
 

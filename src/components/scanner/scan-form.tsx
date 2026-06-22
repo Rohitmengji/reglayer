@@ -137,7 +137,7 @@ export function ScanForm({ onScanComplete }: ScanFormProps) {
       const scanBody: Record<string, unknown> = { url: targetUrl };
       const options: Record<string, unknown> = {};
       if (authConfig && authConfig.method !== "none") options.auth = authConfig;
-      if (deep) options.deep = true;
+      if (deep && deepScanEnabled) options.deep = true;
       if (Object.keys(options).length > 0) scanBody.options = options;
 
       const res = await fetch("/api/scan", {
