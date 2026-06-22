@@ -107,7 +107,7 @@ export default function JurisdictionsPage() {
       {!evaluation && !loading && (
         <div className="space-y-5">
           {/* Scan selector row */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-end gap-3">
+          <div className="flex flex-col sm:flex-row items-start sm:items-end gap-3 relative z-10 min-h-[72px]">
             <div className="w-full sm:w-auto sm:min-w-[320px] sm:max-w-[420px]">
               <ModernSelect
                 label="Evaluate scan"
@@ -126,8 +126,8 @@ export default function JurisdictionsPage() {
             </Button>
           </div>
 
-          {/* Jurisdiction preview cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {/* Jurisdiction preview cards — isolated from select dropdown positioning */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 relative">
             {JURISDICTION_IDS.map((jId) => {
               const j = JURISDICTIONS[jId];
               return (
