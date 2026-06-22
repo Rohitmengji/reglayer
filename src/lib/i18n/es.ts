@@ -1583,6 +1583,7 @@ export const es = {
   "violationChart.minor": "Menor",
   "violationChart.noData": "No hay datos suficientes para mostrar las tendencias de violaciones",
   "violationChart.total": "Total:",
+  "charts.issuesAxis": "Problemas",
   "charts.violationsByCategory": "Violaciones por categoría",
   "charts.groupedBySeverity": "Agrupadas por severidad",
   "charts.total": "total",

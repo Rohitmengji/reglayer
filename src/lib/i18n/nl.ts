@@ -1582,6 +1582,7 @@ export const nl = {
   "violationChart.minor": "Gering",
   "violationChart.noData": "Onvoldoende gegevens om overtredingstrends te tonen",
   "violationChart.total": "Totaal:",
+  "charts.issuesAxis": "Problemen",
   "charts.violationsByCategory": "Overtredingen per categorie",
   "charts.groupedBySeverity": "Gegroepeerd op ernst",
   "charts.total": "totaal",

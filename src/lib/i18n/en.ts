@@ -1623,6 +1623,7 @@ export const en = {
   "violationChart.total": "Total:",
 
   // Dashboard Charts
+  "charts.issuesAxis": "Issues",
   "charts.violationsByCategory": "Violations by Category",
   "charts.groupedBySeverity": "Grouped by severity",
   "charts.total": "total",

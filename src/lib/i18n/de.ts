@@ -1434,6 +1434,7 @@ export const de = {
   "delta.keepScanning": "Weiter scannen um eine Serie aufzubauen",
   "violationChart.noData": "Nicht genügend Daten für Verstoßtrends",
   "violationChart.total": "Gesamt:",
+  "charts.issuesAxis": "Probleme",
   "charts.violationsByCategory": "Verstöße nach Kategorie",
   "charts.groupedBySeverity": "Gruppiert nach Schweregrad",
   "charts.total": "gesamt",
