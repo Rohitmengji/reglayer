@@ -12,6 +12,7 @@ import { prisma } from "@/lib/database/prisma";
 import { generateVPAT, vpatToMarkdown, vpatToHTML } from "@/lib/compliance/vpat-generator";
 import type { VPATViolation, VPATInput } from "@/lib/compliance/vpat-generator";
 import { assertScanAccess } from "@/lib/auth/access";
+import { requireFeature } from "@/lib/features/require-feature";
 import { z } from "zod";
 
 /**
@@ -37,22 +38,11 @@ const vpatSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  const guard = await requireFeature("compliance");
+  if (!guard.allowed) return guard.response;
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-  }
-
-  // Plan check — VPAT is enterprise feature
-  const member = await prisma.workspaceMember.findFirst({
-    where: { user: { email: session.user.email } },
-    include: { workspace: true },
-  });
-
-  if (!member || !["PRO", "ENTERPRISE"].includes(member.workspace.plan)) {
-    return NextResponse.json(
-      { error: "VPAT/ACR generation requires a Pro or Enterprise plan" },
-      { status: 403 }
-    );
   }
 
   let body: unknown;
@@ -143,6 +133,8 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
+  const guard = await requireFeature("compliance");
+  if (!guard.allowed) return guard.response;
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Authentication required" }, { status: 401 });

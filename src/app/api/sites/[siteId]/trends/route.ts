@@ -15,6 +15,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
+import { requireFeature } from "@/lib/features/require-feature";
 import {
   getSiteScoreTrend,
   getViolationTrend,
@@ -37,6 +38,9 @@ export async function GET(
   { params }: { params: Promise<{ siteId: string }> }
 ) {
   try {
+    const guard = await requireFeature("trends");
+    if (!guard.allowed) return guard.response;
+
     const { siteId } = await params;
 
     const session = await getServerSession(authOptions);

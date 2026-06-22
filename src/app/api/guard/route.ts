@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
+import { requireFeature } from "@/lib/features/require-feature";
 import { z } from "zod";
 
 const createSchema = z.object({
@@ -23,6 +24,8 @@ const createSchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
+    const guard = await requireFeature("automation");
+    if (!guard.allowed) return guard.response;
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
@@ -59,6 +62,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const guard = await requireFeature("automation");
+    if (!guard.allowed) return guard.response;
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
