@@ -20,6 +20,7 @@ import { useI18n } from "@/components/i18n-provider";
 import { useSearchParams } from "next/navigation";
 import { useUrlState } from "@/hooks/use-url-state";
 import { AppShell } from "@/components/layout/app-shell";
+import { FeatureGate } from "@/components/ui/feature-gate";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageLoading } from "@/components/ui/page-loading";
 import { PageError } from "@/components/ui/page-error";
@@ -60,7 +61,7 @@ const STATUS_TABS: Array<{ key: string; label: string; icon: typeof AlertTriangl
 
 // ─────────────── Page Component ───────────────
 
-export default function ViolationsPage() {
+function ViolationsPageInner() {
   const { t } = useI18n();
   const searchParams = useSearchParams();
   const scanIdParam = searchParams.get("scanId") ?? "";
@@ -484,5 +485,15 @@ function SummaryCard({
       </div>
       <p className="mt-2 text-2xl font-bold text-neutral-900 dark:text-white">{value}</p>
     </button>
+  );
+}
+
+// ─────────────── Default Export (feature-gated) ───────────────
+
+export default function ViolationsPage() {
+  return (
+    <FeatureGate feature="violations">
+      <ViolationsPageInner />
+    </FeatureGate>
   );
 }

@@ -57,6 +57,7 @@ import { CrawlTheater } from "@/components/crawl/CrawlTheater";
 import { createInitialTheaterState, reduceTheaterEvent, type TheaterState } from "@/lib/crawl-viz/crawlTheater";
 import { normalizeTargetUrl } from "@/lib/crawl-viz/targetUrl";
 import { formatExposure } from "@/lib/risk/litigationWeights";
+import { FeatureGate } from "@/components/ui/feature-gate";
 
 // ══════════════════════════════════════════════════════════════
 // CONSTANTS
@@ -251,7 +252,7 @@ function theaterFromLive(live: LiveSnapshot | null, phase?: string): TheaterStat
 // MAIN PAGE
 // ══════════════════════════════════════════════════════════════
 
-export default function CrawlPage() {
+function CrawlPageInner() {
   const [step, setStep] = useState<"mode" | "config" | "running" | "done">("mode");
   const [mode, setMode] = useState<ScanMode | null>(null);
   const [url, setUrl] = useState("");
@@ -1591,4 +1592,12 @@ function formatDuration(ms: number): string {
   const min = Math.floor(ms / 60000);
   const sec = Math.round((ms % 60000) / 1000);
   return `${min}m ${sec}s`;
+}
+
+export default function CrawlPage() {
+  return (
+    <FeatureGate feature="crawl">
+      <CrawlPageInner />
+    </FeatureGate>
+  );
 }

@@ -15,6 +15,7 @@ import { TabNav, type Tab } from "@/components/ui/tab-nav";
 import { EmbeddedProvider } from "@/components/layout/embedded-context";
 import { Eye, Zap, Sparkles, BarChart3, GitCompare } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
+import { FeatureGate } from "@/components/ui/feature-gate";
 
 const ScreenReaderPage = lazy(() => import("@/app/screen-reader/page"));
 const PrioritiesPage = lazy(() => import("@/app/priorities/page"));
@@ -69,8 +70,10 @@ function AnalysisContent() {
 
 export default function AnalysisHub() {
   return (
-    <Suspense>
-      <AnalysisContent />
-    </Suspense>
+    <FeatureGate feature="analysis">
+      <Suspense>
+        <AnalysisContent />
+      </Suspense>
+    </FeatureGate>
   );
 }
