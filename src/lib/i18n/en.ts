@@ -734,6 +734,7 @@ export const en = {
   "violationCard.affectedElements": "Affected Elements ({count})",
   "violationCard.moreElements": "+{count} more elements",
   "violationCard.learnMore": "Learn more",
+  "violationCard.trackStatus": "Track status",
 
   // Compliance Trend
   "complianceTrend.title": "Compliance Trend",

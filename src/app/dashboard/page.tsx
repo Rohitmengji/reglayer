@@ -422,7 +422,7 @@ export default function DashboardPage() {
                   {t("dashboard.violations", { count: scanResult.scan.violations.length })}
                 </h2>
                 {scanResult.scan.violations.map((violation) => (
-                  <ViolationCard key={violation.id} violation={violation} />
+                  <ViolationCard key={violation.id} violation={violation} scanId={scanResult.scan.id} />
                 ))}
               </div>
             )}
