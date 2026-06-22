@@ -14,9 +14,10 @@
  *      tabs trigger refetch.
  */
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { toast } from "sonner";
 import { useI18n } from "@/components/i18n-provider";
+import type { TranslationKey } from "@/lib/i18n/translations";
 import { useSearchParams } from "next/navigation";
 import { useUrlState } from "@/hooks/use-url-state";
 import { AppShell } from "@/components/layout/app-shell";
@@ -50,13 +51,15 @@ interface ViolationsResponse {
 
 // ─────────────── Filter Tabs ───────────────
 
-const STATUS_TABS: Array<{ key: string; label: string; icon: typeof AlertTriangle; color: string }> = [
-  { key: "ALL", label: "All", icon: AlertTriangle, color: "text-neutral-600" },
-  { key: "OPEN", label: "Open", icon: AlertTriangle, color: "text-red-600" },
-  { key: "IN_PROGRESS", label: "In Progress", icon: Clock, color: "text-amber-600" },
-  { key: "FIXED", label: "Fixed", icon: CheckCircle2, color: "text-blue-600" },
-  { key: "VERIFIED", label: "Verified", icon: CheckCircle2, color: "text-green-600" },
-  { key: "EXCEPTIONS", label: "Exceptions", icon: Shield, color: "text-neutral-500" },
+// Tab `key` values are identifiers and must stay unchanged; labels are localized
+// inside the component (see STATUS_TABS useMemo).
+const STATUS_TAB_DEFS: Array<{ key: string; labelKey: TranslationKey; icon: typeof AlertTriangle; color: string }> = [
+  { key: "ALL", labelKey: "common.all", icon: AlertTriangle, color: "text-neutral-600" },
+  { key: "OPEN", labelKey: "violations.open", icon: AlertTriangle, color: "text-red-600" },
+  { key: "IN_PROGRESS", labelKey: "violations.inProgress", icon: Clock, color: "text-amber-600" },
+  { key: "FIXED", labelKey: "violations.fixed", icon: CheckCircle2, color: "text-blue-600" },
+  { key: "VERIFIED", labelKey: "violations.verified", icon: CheckCircle2, color: "text-green-600" },
+  { key: "EXCEPTIONS", labelKey: "violations.exceptions", icon: Shield, color: "text-neutral-500" },
 ];
 
 // ─────────────── Page Component ───────────────
@@ -78,26 +81,31 @@ function ViolationsPageInner() {
   // If no scanId provided, resolve latest scan
   const effectiveScanId = scanIdParam || resolvedScanId;
 
+  const STATUS_TABS = useMemo(
+    () => STATUS_TAB_DEFS.map((tab) => ({ ...tab, label: t(tab.labelKey) })),
+    [t]
+  );
+
   useEffect(() => {
     if (scanIdParam) return;
     fetch("/api/scans?limit=1")
       .then((resp) => {
-        if (!resp.ok) throw new Error("Failed to load latest scan.");
+        if (!resp.ok) throw new Error(t("violations.errLoadLatestScan"));
         return resp.json();
       })
       .then((json) => {
         if (json?.scans?.[0]?.id) {
           setResolvedScanId(json.scans[0].id);
         } else {
-          setError("No scans found. Run a scan first.");
+          setError(t("violations.errNoScans"));
           setLoading(false);
         }
       })
       .catch((err) => {
-        setError(err instanceof Error ? err.message : "Failed to load latest scan.");
+        setError(err instanceof Error ? err.message : t("violations.errLoadLatestScan"));
         setLoading(false);
       });
-  }, [scanIdParam]);
+  }, [scanIdParam, t]);
 
   const fetchViolations = useCallback(async () => {
     if (!effectiveScanId) {
@@ -134,11 +142,11 @@ function ViolationsPageInner() {
       const result: ViolationsResponse = await response.json();
       setData(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load violations");
+      setError(err instanceof Error ? err.message : t("violations.errLoadViolations"));
     } finally {
       setLoading(false);
     }
-  }, [effectiveScanId, activeTab, currentPage]);
+  }, [effectiveScanId, activeTab, currentPage, t]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- data fetching pattern requires setState
@@ -193,13 +201,22 @@ function ViolationsPageInner() {
       setSelectedIds(new Set());
       // Non-intrusive feedback (a full-page error would wipe the list).
       if (failed > 0) {
-        toast.error(`${failed} of ${promises.length} update${promises.length === 1 ? "" : "s"} failed — please retry.`);
+        toast.error(
+          t(promises.length === 1 ? "violations.bulkFailedSingular" : "violations.bulkFailedPlural", {
+            failed: String(failed),
+            total: String(promises.length),
+          })
+        );
       } else {
-        toast.success(`Updated ${promises.length} violation${promises.length === 1 ? "" : "s"}.`);
+        toast.success(
+          t(promises.length === 1 ? "violations.bulkSuccessSingular" : "violations.bulkSuccessPlural", {
+            total: String(promises.length),
+          })
+        );
       }
       fetchViolations(); // Refresh
     },
-    [selectedIds, fetchViolations]
+    [selectedIds, fetchViolations, t]
   );
 
   const handleStatusChange = useCallback(() => {
@@ -238,7 +255,7 @@ function ViolationsPageInner() {
           <div>
             <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{t("violations.title")}</h1>
             <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-              Track and manage accessibility issues across your scan
+              {t("violations.pageSubtitle")}
             </p>
           </div>
         </div>
@@ -246,35 +263,35 @@ function ViolationsPageInner() {
         {/* Summary Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
           <SummaryCard
-            label="Open"
+            label={t("violations.open")}
             value={totalOpen}
             icon={<AlertTriangle className="h-4 w-4 text-red-500" />}
             active={activeTab === "OPEN"}
             onClick={() => handleTabChange("OPEN")}
           />
           <SummaryCard
-            label="In Progress"
+            label={t("violations.inProgress")}
             value={totalInProgress}
             icon={<Clock className="h-4 w-4 text-amber-500" />}
             active={activeTab === "IN_PROGRESS"}
             onClick={() => handleTabChange("IN_PROGRESS")}
           />
           <SummaryCard
-            label="Fixed"
+            label={t("violations.fixed")}
             value={totalFixed}
             icon={<CheckCircle2 className="h-4 w-4 text-blue-500" />}
             active={activeTab === "FIXED"}
             onClick={() => handleTabChange("FIXED")}
           />
           <SummaryCard
-            label="Verified"
+            label={t("violations.verified")}
             value={totalVerified}
             icon={<CheckCircle2 className="h-4 w-4 text-green-500" />}
             active={activeTab === "VERIFIED"}
             onClick={() => handleTabChange("VERIFIED")}
           />
           <SummaryCard
-            label="Exceptions"
+            label={t("violations.exceptions")}
             value={totalExceptions}
             icon={<Shield className="h-4 w-4 text-neutral-500 dark:text-neutral-400" />}
             active={activeTab === "EXCEPTIONS"}
@@ -310,7 +327,7 @@ function ViolationsPageInner() {
         {selectedIds.size > 0 && (
           <div className="flex flex-wrap items-center gap-3 rounded-xl bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 px-4 py-3">
             <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
-              {selectedIds.size} selected
+              {t("violations.selectedCount", { count: String(selectedIds.size) })}
             </span>
             <Button
               variant="outline"
@@ -318,7 +335,7 @@ function ViolationsPageInner() {
               onClick={() => handleBulkAction("IN_PROGRESS" as ViolationStatus)}
               disabled={bulkUpdating}
             >
-              Mark In Progress
+              {t("violations.markInProgress")}
             </Button>
             <Button
               variant="outline"
@@ -326,7 +343,7 @@ function ViolationsPageInner() {
               onClick={() => handleBulkAction("FIXED" as ViolationStatus)}
               disabled={bulkUpdating}
             >
-              Mark Fixed
+              {t("violations.markFixed")}
             </Button>
             <Button
               variant="outline"
@@ -334,7 +351,7 @@ function ViolationsPageInner() {
               onClick={() => setSelectedIds(new Set())}
               className="ml-auto"
             >
-              Clear Selection
+              {t("violations.clearSelection")}
             </Button>
           </div>
         )}
@@ -349,14 +366,14 @@ function ViolationsPageInner() {
                 checked={selectedIds.size === data.violations.length && data.violations.length > 0}
                 onChange={() => handleSelectAll()}
                 className="h-4 w-4 rounded border-neutral-300 dark:border-neutral-600 text-neutral-900 focus:ring-neutral-500"
-                aria-label="Select all violations"
+                aria-label={t("violations.selectAllAria")}
               />
               <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
-                Select all on this page
+                {t("violations.selectAllOnPage")}
               </span>
               {data.total > 0 && (
                 <span className="ml-auto text-xs text-neutral-500 dark:text-neutral-400">
-                  {data.total} violation{data.total !== 1 ? "s" : ""}
+                  {t(data.total === 1 ? "violations.violationCountSingular" : "violations.violationCountPlural", { count: String(data.total) })}
                 </span>
               )}
             </div>
@@ -364,11 +381,11 @@ function ViolationsPageInner() {
 
           {/* Violations List */}
           {loading ? (
-            <PageLoading message="Loading violations..." />
+            <PageLoading message={t("violations.loading")} />
           ) : error ? (
             <PageError
-              title="Couldn\u2019t load violations"
-              message="We\u2019re having trouble loading your violations. Please try again."
+              title={t("violations.loadErrorTitle")}
+              message={t("violations.loadErrorBody")}
               onRetry={() => fetchViolations()}
             />
           ) : data && data.violations.length === 0 ? (
@@ -376,24 +393,24 @@ function ViolationsPageInner() {
               <EmptyState
                 icon={CheckCircle2}
                 iconColor="text-green-500"
-                title="No violations found"
-                description="Run a scan first to see accessibility violations here. You can track, prioritize, and resolve issues from this page."
-                actionLabel="Run a Scan"
+                title={t("violations.noViolations")}
+                description={t("violations.emptyDesc")}
+                actionLabel={t("violations.runScan")}
                 actionHref="/dashboard"
                 tips={[
-                  "Scan any URL from the Dashboard to detect issues",
-                  "Violations are categorized by severity (critical, serious, moderate, minor)",
-                  "Mark issues as fixed, in-progress, or won't-fix to track resolution",
+                  t("violations.tip1"),
+                  t("violations.tip2"),
+                  t("violations.tip3"),
                 ]}
               />
             ) : (
               <div className="text-center py-16 px-4">
                 <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-3" />
                 <p className="text-neutral-600 dark:text-neutral-300 font-medium">
-                  No violations in this category
+                  {t("violations.noneInCategory")}
                 </p>
                 <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-                  {activeTab === "ALL" ? "This scan has no violations. Great job!" : "Try a different filter."}
+                  {activeTab === "ALL" ? t("violations.noneAllGreat") : t("violations.tryDifferentFilter")}
                 </p>
               </div>
             )
@@ -406,7 +423,7 @@ function ViolationsPageInner() {
                     checked={selectedIds.has(violation.id)}
                     onChange={(e) => handleCheckbox(violation.id, e.target.checked)}
                     className="mt-1 h-4 w-4 rounded border-neutral-300 dark:border-neutral-600 text-neutral-900 focus:ring-neutral-500"
-                    aria-label={`Select violation: ${violation.help}`}
+                    aria-label={t("violations.selectViolationAria", { help: violation.help })}
                   />
                   <div className="flex-1 min-w-0">
                     <EnhancedViolationCard
@@ -424,7 +441,7 @@ function ViolationsPageInner() {
         {data && data.totalPages > 1 && (
           <div className="flex items-center justify-between">
             <p className="text-xs text-neutral-500">
-              Page {data.page} of {data.totalPages} ({data.total} total)
+              {t("violations.pageOf", { page: String(data.page), pages: String(data.totalPages), total: String(data.total) })}
             </p>
             <div className="flex items-center gap-2">
               <Button
@@ -435,7 +452,7 @@ function ViolationsPageInner() {
                 className="gap-1"
               >
                 <ChevronLeft className="h-3 w-3" />
-                Previous
+                {t("violations.previous")}
               </Button>
               <Button
                 variant="outline"
@@ -444,7 +461,7 @@ function ViolationsPageInner() {
                 disabled={currentPage >= data.totalPages}
                 className="gap-1"
               >
-                Next
+                {t("common.next")}
                 <ChevronRight className="h-3 w-3" />
               </Button>
             </div>
