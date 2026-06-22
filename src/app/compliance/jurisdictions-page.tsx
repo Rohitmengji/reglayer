@@ -8,7 +8,8 @@
  * HOW: Calls POST /api/compliance/report → displays per-jurisdiction cards with status + confidence.
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -25,24 +26,50 @@ import {
 import { JURISDICTIONS, JURISDICTION_IDS, type JurisdictionId } from "@/lib/compliance/jurisdictions";
 import type { EvaluatorOutput, JurisdictionResult } from "@/lib/compliance/evaluator";
 
-interface JurisdictionsPageProps {
-  scanId?: string;
+interface ScanOption {
+  id: string;
+  url: string;
+  score: number | null;
+  createdAt: string;
 }
 
-export default function JurisdictionsPage({ scanId }: JurisdictionsPageProps) {
+export default function JurisdictionsPage() {
+  const searchParams = useSearchParams();
+  const urlScanId = searchParams.get("scan");
+
+  const [scans, setScans] = useState<ScanOption[]>([]);
+  const [selectedScanId, setSelectedScanId] = useState<string | null>(urlScanId);
   const [loading, setLoading] = useState(false);
+  const [scansLoading, setScansLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [evaluation, setEvaluation] = useState<EvaluatorOutput | null>(null);
 
+  // Load available scans
+  useEffect(() => {
+    fetch("/api/scans?limit=20")
+      .then((r) => r.ok ? r.json() : Promise.reject())
+      .then((data) => {
+        const scanList = (data.scans ?? []).map((s: { id: string; url: string; score: number | null; createdAt: string }) => ({
+          id: s.id, url: s.url, score: s.score, createdAt: s.createdAt,
+        }));
+        setScans(scanList);
+        if (!selectedScanId && scanList.length > 0) {
+          setSelectedScanId(scanList[0].id);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setScansLoading(false));
+  }, []);
+
   async function handleGenerate() {
-    if (!scanId) return;
+    if (!selectedScanId) return;
     setLoading(true);
     setError(null);
     try {
       const res = await fetch("/api/compliance/report", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ scanId, jurisdictions: ["ADA", "EAA", "SECTION508", "AODA"] }),
+        body: JSON.stringify({ scanId: selectedScanId, jurisdictions: ["ADA", "EAA", "SECTION508", "AODA"] }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to generate report");
@@ -54,12 +81,21 @@ export default function JurisdictionsPage({ scanId }: JurisdictionsPageProps) {
     }
   }
 
-  if (!scanId) {
+  if (scansLoading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <Loader2 className="h-6 w-6 animate-spin text-neutral-400 mr-3" />
+        <span className="text-sm text-neutral-500">Loading scans...</span>
+      </div>
+    );
+  }
+
+  if (scans.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
         <Globe className="h-12 w-12 text-neutral-300 dark:text-neutral-600 mb-4" />
-        <h3 className="text-base font-semibold text-neutral-800 dark:text-neutral-200">Select a scan first</h3>
-        <p className="text-sm text-neutral-500 mt-1 max-w-md">Choose a completed scan from the dropdown above to evaluate multi-jurisdiction compliance.</p>
+        <h3 className="text-base font-semibold text-neutral-800 dark:text-neutral-200">No scans available</h3>
+        <p className="text-sm text-neutral-500 mt-1 max-w-md">Run an accessibility scan first, then come back to evaluate multi-jurisdiction compliance.</p>
       </div>
     );
   }
@@ -69,13 +105,31 @@ export default function JurisdictionsPage({ scanId }: JurisdictionsPageProps) {
       {/* Generate button */}
       {!evaluation && !loading && (
         <Card className="border-dashed">
-          <CardContent className="py-10 flex flex-col items-center text-center">
+          <CardContent className="py-8 flex flex-col items-center text-center">
             <Globe className="h-10 w-10 text-blue-500 mb-4" />
             <h3 className="text-base font-semibold text-neutral-900 dark:text-white">Multi-Jurisdiction Compliance Report</h3>
             <p className="text-sm text-neutral-500 mt-2 max-w-lg">
-              Evaluate this scan against ADA, EAA (European Accessibility Act), Section 508, and AODA simultaneously. Get per-jurisdiction conformance status with confidence scoring.
+              Evaluate this scan against ADA, EAA (European Accessibility Act), Section 508, and AODA simultaneously.
             </p>
-            <Button onClick={handleGenerate} className="mt-6" size="lg">
+
+            {/* Scan selector */}
+            <div className="mt-4 w-full max-w-md">
+              <label htmlFor="jurisdiction-scan-select" className="sr-only">Select scan</label>
+              <select
+                id="jurisdiction-scan-select"
+                value={selectedScanId ?? ""}
+                onChange={(e) => setSelectedScanId(e.target.value)}
+                className="w-full rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {scans.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.url} — Score: {s.score ?? "N/A"} — {new Date(s.createdAt).toLocaleDateString()}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <Button onClick={handleGenerate} className="mt-4" size="lg" disabled={!selectedScanId}>
               <Shield className="h-4 w-4 mr-2" />
               Generate Report
             </Button>
