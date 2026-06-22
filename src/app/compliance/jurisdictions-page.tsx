@@ -13,6 +13,7 @@ import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { ModernSelect } from "@/components/ui/modern-select";
 import {
   Globe,
   Shield,
@@ -106,23 +107,20 @@ export default function JurisdictionsPage() {
       {!evaluation && !loading && (
         <div className="space-y-5">
           {/* Scan selector row */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <div className="flex flex-col sm:flex-row items-start sm:items-end gap-3">
             <div className="flex-1 w-full">
-              <label htmlFor="jurisdiction-scan-select" className="text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1 block">Evaluate scan</label>
-              <select
-                id="jurisdiction-scan-select"
+              <ModernSelect
+                label="Evaluate scan"
+                options={scans.map((s) => ({
+                  value: s.id,
+                  label: `${new URL(s.url).hostname} — ${s.score ?? "N/A"}% — ${new Date(s.createdAt).toLocaleDateString()}`,
+                }))}
                 value={selectedScanId ?? ""}
-                onChange={(e) => setSelectedScanId(e.target.value)}
-                className="w-full rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-              >
-                {scans.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {new URL(s.url).hostname} — {s.score ?? "N/A"}% — {new Date(s.createdAt).toLocaleDateString()}
-                  </option>
-                ))}
-              </select>
+                onChange={(val) => setSelectedScanId(val)}
+                placeholder="Select a scan..."
+              />
             </div>
-            <Button onClick={handleGenerate} disabled={!selectedScanId} className="sm:mt-5 w-full sm:w-auto">
+            <Button onClick={handleGenerate} disabled={!selectedScanId} className="w-full sm:w-auto">
               <Shield className="h-4 w-4 mr-2" />
               Generate Report
             </Button>
