@@ -108,7 +108,7 @@ export default function JurisdictionsPage() {
         <div className="space-y-5">
           {/* Scan selector row */}
           <div className="flex flex-col sm:flex-row items-start sm:items-end gap-3">
-            <div className="flex-1 w-full">
+            <div className="w-full sm:w-auto sm:min-w-[320px] sm:max-w-[420px]">
               <ModernSelect
                 label="Evaluate scan"
                 options={scans.map((s) => ({
