@@ -162,7 +162,7 @@ export default function MonitoringPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{t("nav.notifications")}</h1>
+            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{t("nav.monitoring")}</h1>
             <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
               Schedule automated accessibility scans for your websites
             </p>

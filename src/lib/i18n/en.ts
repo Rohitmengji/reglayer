@@ -93,6 +93,7 @@ export const en = {
   "nav.team": "Team",
   "nav.auditLog": "Audit Log",
   "nav.notifications": "Notifications",
+  "nav.monitoring": "Monitoring",
   "nav.search": "Search",
   "nav.help": "Help & docs",
   "testHub.title": "Testing",

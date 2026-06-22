@@ -93,6 +93,7 @@ export const fr = {
   "nav.team": "Équipe",
   "nav.auditLog": "Journal d'audit",
   "nav.notifications": "Notifications",
+  "nav.monitoring": "Surveillance",
   "nav.search": "Recherche",
   "nav.help": "Aide & docs",
   "testHub.title": "Tests",
