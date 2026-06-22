@@ -45,6 +45,7 @@ export default function NotificationsPage() {
   const [saved, setSaved] = useState(false);
   const [testSending, setTestSending] = useState(false);
   const [testResult, setTestResult] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/notifications")
@@ -55,14 +56,20 @@ export default function NotificationsPage() {
   }, []);
 
   async function handleToggle(key: keyof NotificationPrefs) {
+    const previous = prefs;
     const updated = { ...prefs, [key]: !prefs[key] };
     setPrefs(updated);
     setSaving(true);
     setSaved(false);
+    setSaveError(null);
     try {
-      await fetch("/api/notifications", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ preferences: updated }) });
+      const res = await fetch("/api/notifications", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ preferences: updated }) });
+      if (!res.ok) throw new Error("save failed");
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
+    } catch {
+      setPrefs(previous);           // revert the optimistic flip
+      setSaveError("Couldn't save preferences. Please try again.");
     } finally { setSaving(false); }
   }
 
@@ -70,6 +77,9 @@ export default function NotificationsPage() {
     <div className="space-y-4">
       {saved && (
         <p className="text-xs text-green-600 font-medium">✓ Preferences saved</p>
+      )}
+      {saveError && (
+        <p className="text-xs text-red-600 font-medium" role="alert">{saveError}</p>
       )}
       <Card>
         <CardHeader>

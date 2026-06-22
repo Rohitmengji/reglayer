@@ -22,6 +22,7 @@ import {
   Copy,
   Check,
   Radio,
+  RefreshCw,
 } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 
@@ -80,15 +81,23 @@ export default function RumPage() {
   } | null>(null);
   const [period, setPeriod] = useState<"hour" | "day" | "week">("day");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     fetch(`/api/rum/events?period=${period}`)
-      .then((res) => res.ok ? res.json() : Promise.reject())
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error("fetch failed"))))
       .then((d) => setData(d))
-      .catch(() => { /* ignore */ })
+      .catch(() => setError(true))
       .finally(() => setLoading(false));
-  }, [period]);
+  }, [period, reloadKey]);
+
+  function retry() {
+    setError(false);
+    setLoading(true);
+    setReloadKey((k) => k + 1);
+  }
 
   function copySnippet() {
     const snippet = `<script src="${data?.snippet || `${window.location.origin}/api/rum/snippet?key=YOUR_SITE_KEY`}" async></script>`;
@@ -138,7 +147,7 @@ export default function RumPage() {
             key={p}
             variant={period === p ? "default" : "outline"}
             size="sm"
-            onClick={() => setPeriod(p)}
+            onClick={() => { setError(false); setLoading(true); setPeriod(p); }}
           >
             Last {p === "hour" ? "Hour" : p === "day" ? "24h" : "7 Days"}
           </Button>
@@ -147,6 +156,17 @@ export default function RumPage() {
 
       {loading ? (
         <div className="text-center py-12 text-muted-foreground">Loading RUM data...</div>
+      ) : error ? (
+        <Card className="p-8 text-center">
+          <AlertTriangle className="h-12 w-12 mx-auto text-red-500 mb-4" />
+          <h3 className="font-medium text-lg">Couldn&apos;t load monitoring data</h3>
+          <p className="text-muted-foreground text-sm mt-1">
+            Something went wrong fetching your RUM data. Please try again.
+          </p>
+          <Button variant="outline" size="sm" className="mt-4" onClick={retry}>
+            <RefreshCw className="h-3 w-3 mr-1" /> Retry
+          </Button>
+        </Card>
       ) : !agg || agg.totalEvents === 0 ? (
         <Card className="p-8 text-center">
           <Activity className="h-12 w-12 mx-auto text-muted-foreground mb-4" />

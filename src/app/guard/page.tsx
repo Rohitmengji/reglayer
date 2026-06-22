@@ -45,6 +45,20 @@ export default function GuardPage() {
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [sites, setSites] = useState<{ id: string; url: string; name: string | null }[]>([]);
+  const [form, setForm] = useState({
+    siteId: "",
+    name: "",
+    minScore: 80,
+    maxCritical: 0,
+    maxSerious: 3,
+    maxScoreDrop: 5,
+    maxNewViolations: 5,
+    autoPromoteBaseline: true,
+  });
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   const loadPolicies = useCallback(async () => {
     try {
@@ -63,26 +77,89 @@ export default function GuardPage() {
     }
   }, []);
 
+  const loadSites = useCallback(async () => {
+    try {
+      const res = await fetch("/api/sites");
+      if (!res.ok) return;
+      const data = await res.json();
+      setSites(data.sites ?? []);
+    } catch {
+      // ignore — the select will simply show no options
+    }
+  }, []);
+
+  const createPolicy = async () => {
+    if (!form.siteId || !form.name.trim()) {
+      setCreateError("Pick a site and enter a policy name.");
+      return;
+    }
+    setCreating(true);
+    setCreateError(null);
+    try {
+      const wsRes = await fetch("/api/workspaces/current");
+      if (!wsRes.ok) throw new Error("workspace-failed");
+      const { workspace } = await wsRes.json();
+      const res = await fetch("/api/guard", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...form, workspaceId: workspace.id }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        throw new Error(typeof err?.error === "string" ? err.error : "create-failed");
+      }
+      setShowCreate(false);
+      setForm({ siteId: "", name: "", minScore: 80, maxCritical: 0, maxSerious: 3, maxScoreDrop: 5, maxNewViolations: 5, autoPromoteBaseline: true });
+      await loadPolicies();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "";
+      setCreateError(
+        msg && msg !== "workspace-failed" && msg !== "create-failed"
+          ? msg
+          : "Couldn't create the policy. Please try again."
+      );
+    } finally {
+      setCreating(false);
+    }
+  };
+
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: kick off the initial client-side data fetch (sets loading state synchronously)
     loadPolicies();
   }, [loadPolicies]);
 
   const togglePolicy = async (policyId: string, enabled: boolean) => {
-    await fetch(`/api/guard/${policyId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ enabled }),
-    });
-    setPolicies((prev) =>
-      prev.map((p) => (p.id === policyId ? { ...p, enabled } : p))
-    );
+    setActionError(null);
+    try {
+      const res = await fetch(`/api/guard/${policyId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled }),
+      });
+      if (!res.ok) throw new Error("toggle failed");
+      setPolicies((prev) =>
+        prev.map((p) => (p.id === policyId ? { ...p, enabled } : p))
+      );
+    } catch {
+      setActionError(
+        enabled
+          ? "Couldn't enable the policy. Please try again."
+          : "Couldn't disable the policy. Please try again."
+      );
+    }
   };
 
   const deletePolicy = async (policyId: string) => {
-    await fetch(`/api/guard/${policyId}`, { method: "DELETE" });
-    setPolicies((prev) => prev.filter((p) => p.id !== policyId));
-    setDeleteTarget(null);
+    setActionError(null);
+    try {
+      const res = await fetch(`/api/guard/${policyId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("delete failed");
+      setPolicies((prev) => prev.filter((p) => p.id !== policyId));
+    } catch {
+      setActionError("Couldn't delete the policy. Please try again.");
+    } finally {
+      setDeleteTarget(null);
+    }
   };
 
   if (loading) {
@@ -114,11 +191,16 @@ export default function GuardPage() {
           </div>
         </div>
         <button
-          onClick={() => setShowCreate(!showCreate)}
+          onClick={() => {
+            const next = !showCreate;
+            setShowCreate(next);
+            setCreateError(null);
+            if (next && sites.length === 0) void loadSites();
+          }}
           className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
         >
           <Plus className="h-4 w-4" />
-          New Policy
+          {showCreate ? "Close" : "New Policy"}
         </button>
       </div>
 
@@ -142,6 +224,88 @@ export default function GuardPage() {
           </div>
         </div>
       </div>
+
+      {actionError && (
+        <div
+          className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300"
+          role="alert"
+        >
+          {actionError}
+        </div>
+      )}
+
+      {/* Create Policy form */}
+      {showCreate && (
+        <div className="rounded-lg border border-neutral-200 bg-white p-5 dark:border-neutral-700 dark:bg-neutral-800">
+          <h3 className="mb-4 text-sm font-semibold text-neutral-900 dark:text-white">
+            New Guard Policy
+          </h3>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <label className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
+              Site
+              <select
+                value={form.siteId}
+                onChange={(e) => setForm((f) => ({ ...f, siteId: e.target.value }))}
+                className="mt-1 w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 dark:border-neutral-600 dark:bg-neutral-900 dark:text-white"
+              >
+                <option value="">Select a site…</option>
+                {sites.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name || new URL(s.url).hostname}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
+              Policy name
+              <input
+                type="text"
+                value={form.name}
+                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                placeholder="e.g. Production gate"
+                className="mt-1 w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 dark:border-neutral-600 dark:bg-neutral-900 dark:text-white"
+              />
+            </label>
+            <NumberField label="Min score" value={form.minScore} min={0} max={100} onChange={(v) => setForm((f) => ({ ...f, minScore: v }))} />
+            <NumberField label="Max score drop (pts)" value={form.maxScoreDrop} min={0} max={100} onChange={(v) => setForm((f) => ({ ...f, maxScoreDrop: v }))} />
+            <NumberField label="Max critical" value={form.maxCritical} min={0} onChange={(v) => setForm((f) => ({ ...f, maxCritical: v }))} />
+            <NumberField label="Max serious" value={form.maxSerious} min={0} onChange={(v) => setForm((f) => ({ ...f, maxSerious: v }))} />
+            <NumberField label="Max new violations" value={form.maxNewViolations} min={0} onChange={(v) => setForm((f) => ({ ...f, maxNewViolations: v }))} />
+          </div>
+          <label className="mt-4 flex items-center gap-2 text-xs font-medium text-neutral-700 dark:text-neutral-300">
+            <input
+              type="checkbox"
+              checked={form.autoPromoteBaseline}
+              onChange={(e) => setForm((f) => ({ ...f, autoPromoteBaseline: e.target.checked }))}
+              className="h-4 w-4 rounded border-neutral-300 text-blue-600"
+            />
+            Auto-promote a new baseline when a scan passes
+          </label>
+          {sites.length === 0 && (
+            <p className="mt-3 text-xs text-neutral-500 dark:text-neutral-400">
+              No sites yet — run a scan first to create a site you can guard.
+            </p>
+          )}
+          {createError && (
+            <p className="mt-3 text-xs text-red-600 dark:text-red-400" role="alert">{createError}</p>
+          )}
+          <div className="mt-4 flex gap-2">
+            <button
+              onClick={createPolicy}
+              disabled={creating}
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+            >
+              {creating ? "Creating…" : "Create policy"}
+            </button>
+            <button
+              onClick={() => { setShowCreate(false); setCreateError(null); }}
+              className="rounded-lg border border-neutral-200 px-4 py-2 text-sm font-medium text-neutral-600 hover:bg-neutral-50 dark:border-neutral-600 dark:text-neutral-300 dark:hover:bg-neutral-700"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Policy List */}
       {policies.length === 0 && !showCreate ? (
@@ -273,5 +437,33 @@ export default function GuardPage() {
       />
     </div>
     </AppShell>
+  );
+}
+
+function NumberField({
+  label,
+  value,
+  onChange,
+  min = 0,
+  max,
+}: {
+  label: string;
+  value: number;
+  onChange: (v: number) => void;
+  min?: number;
+  max?: number;
+}) {
+  return (
+    <label className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
+      {label}
+      <input
+        type="number"
+        value={value}
+        min={min}
+        max={max}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="mt-1 w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 dark:border-neutral-600 dark:bg-neutral-900 dark:text-white"
+      />
+    </label>
   );
 }

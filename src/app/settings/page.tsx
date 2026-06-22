@@ -817,34 +817,9 @@ function ApiKeysTab() {
 }
 /* ─────────────── Integrations Tab ─────────────── */
 function IntegrationsTab() {
-  const [ghOwner, setGhOwner] = useState("");
-  const [ghRepo, setGhRepo] = useState("");
-  const [ghToken, setGhToken] = useState("");
-  const [saved, setSaved] = useState(false);
-
-  function handleSave() {
-    // Store in localStorage for now (production: encrypt and store in DB)
-    localStorage.setItem("reglayer_github_config", JSON.stringify({ owner: ghOwner, repo: ghRepo, token: ghToken }));
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-  }
-
-  useEffect(() => {
-    const t = setTimeout(() => {
-      const stored = localStorage.getItem("reglayer_github_config");
-      if (stored) {
-        const config = JSON.parse(stored);
-        setGhOwner(config.owner || "");
-        setGhRepo(config.repo || "");
-        setGhToken(config.token || "");
-      }
-    }, 0);
-    return () => clearTimeout(t);
-  }, []);
-
   return (
     <div className="space-y-6">
-      {/* GitHub */}
+      {/* GitHub — configured on the dedicated Integrations page (DB-backed connector) */}
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
@@ -854,15 +829,18 @@ function IntegrationsTab() {
           <CardDescription>Auto-create issues from violations and run CI checks</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          <Input placeholder="Repository Owner (e.g. octocat)" value={ghOwner} onChange={(e) => setGhOwner(e.target.value)} />
-          <Input placeholder="Repository Name (e.g. my-site)" value={ghRepo} onChange={(e) => setGhRepo(e.target.value)} />
-          <Input type="password" placeholder="Personal Access Token (repo scope)" value={ghToken} onChange={(e) => setGhToken(e.target.value)} />
-          <div className="flex items-center gap-2">
-            <Button size="sm" onClick={handleSave}>Save</Button>
-            {saved && <span className="text-xs text-green-600">Saved!</span>}
-          </div>
-          <div className="mt-4 rounded-lg bg-neutral-50 dark:bg-neutral-800 p-3 text-xs text-neutral-600 dark:text-neutral-300 space-y-1">
-            <p className="font-medium">After configuring:</p>
+          <p className="text-sm text-neutral-600 dark:text-neutral-300">
+            Connect a repository on the Integrations page. Credentials are stored securely
+            server-side, then you can open GitHub issues straight from any scan report.
+          </p>
+          <a
+            href="/integrations"
+            className="inline-flex items-center gap-2 rounded-lg bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-100"
+          >
+            Configure on Integrations
+          </a>
+          <div className="mt-2 rounded-lg bg-neutral-50 dark:bg-neutral-800 p-3 text-xs text-neutral-600 dark:text-neutral-300 space-y-1">
+            <p className="font-medium">After connecting:</p>
             <p>• Go to any scan report → click &quot;Create GitHub Issue&quot;</p>
             <p>• Download GitHub Action: <code className="bg-white dark:bg-neutral-900 px-1 rounded">/api/integrations/github/action</code></p>
           </div>

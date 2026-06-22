@@ -337,7 +337,7 @@ export default function FixFlowPage() {
             color="text-green-600"
           />
           <StatCard
-            label="Time saved"
+            label="Est. time saved"
             value={`~${completedCount * 2}min`}
             color="text-blue-600"
           />
