@@ -3,12 +3,12 @@
 /**
  * RegLayer — useFeatures hook
  *
- * Fetches workspace feature set once per session.
- * Uses useRef for cache (safe in concurrent mode, per-component instance).
+ * Fetches workspace feature set once per mount.
+ * Single source of truth for feature access — no optimistic/pessimistic split.
  * Master admins see all features without network call.
  */
 
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { FEATURE_CATALOG } from "@/lib/features/feature-catalog";
 
@@ -17,17 +17,14 @@ const ALL_FEATURE_IDS = FEATURE_CATALOG.map((f) => f.id);
 export function useFeatures() {
   const { data: session, status } = useSession();
   const [features, setFeatures] = useState<string[] | null>(null);
-  const fetchedRef = useRef(false);
 
   useEffect(() => {
     if (status === "loading") return;
     if (!session?.user) return;
-    if (fetchedRef.current) return;
-    fetchedRef.current = true;
 
-    // Master admin — no network needed
+    // Master admin — all features, no network needed
     if (session.user.isMasterAdmin) {
-      Promise.resolve().then(() => setFeatures(ALL_FEATURE_IDS));
+      setFeatures(ALL_FEATURE_IDS);
       return;
     }
 
@@ -35,9 +32,14 @@ export function useFeatures() {
 
     fetch("/api/workspace/features", { signal: controller.signal })
       .then((r) => r.ok ? r.json() : Promise.reject(new Error(`${r.status}`)))
-      .then((data) => setFeatures(data.features ?? []))
+      .then((data) => {
+        if (!controller.signal.aborted) {
+          setFeatures(data.features ?? []);
+        }
+      })
       .catch((err) => {
-        if (err.name !== "AbortError") {
+        if (!controller.signal.aborted) {
+          // Fallback: show minimal features on error
           setFeatures(["dashboard", "scans", "settings"]);
         }
       });
@@ -45,13 +47,8 @@ export function useFeatures() {
     return () => controller.abort();
   }, [session, status]);
 
-  // Derive loading from whether features have resolved
   const loading = features === null;
 
-  /**
-   * Check if a feature is enabled for the current workspace.
-   * During loading: returns false (restrictive) — use for FeatureGate/access control.
-   */
   const hasFeature = useCallback(
     (featureId: string): boolean => {
       if (loading) return false;
@@ -60,22 +57,9 @@ export function useFeatures() {
     [features, loading]
   );
 
-  /**
-   * Optimistic feature check — returns true during loading.
-   * Use ONLY for navigation/sidebar visibility (avoids flash of hidden items).
-   * NEVER use for access control or rendering paid feature content.
-   */
-  const hasFeatureOptimistic = useCallback(
-    (featureId: string): boolean => {
-      if (loading) return true; // Show nav items while loading to prevent flash
-      return features!.includes(featureId);
-    },
-    [features, loading]
-  );
-
   const resolvedFeatures = useMemo(() => features ?? [], [features]);
 
-  return { features: resolvedFeatures, loading, hasFeature, hasFeatureOptimistic };
+  return { features: resolvedFeatures, loading, hasFeature };
 }
 
 /**
