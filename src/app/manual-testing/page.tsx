@@ -213,7 +213,7 @@ function ManualTestingPageInner() {
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         if (res.status === 400 && data.details?.fieldErrors?.note) throw new Error(t("manualTesting.errNoteRequired"));
-        if (res.status === 429) throw new Error("Too many requests. Please wait a moment.");
+        if (res.status === 429) throw new Error(t("manualTesting.errRateLimit"));
         throw new Error(data.error || t("manualTesting.errSaveVerdict"));
       }
       const data = await res.json();
@@ -226,7 +226,7 @@ function ManualTestingPageInner() {
       }
       setSuccessMsg(t("manualTesting.successVerdict", { criterion, verdict }));
     } catch (err) {
-      if (err instanceof TypeError) { setError("Network error. Please check your connection."); }
+      if (err instanceof TypeError) { setError(t("manualTesting.errNetwork")); }
       else { setError(err instanceof Error ? err.message : t("manualTesting.errSaveVerdict")); }
     }
   }
@@ -337,7 +337,7 @@ function ManualTestingPageInner() {
             </Card>
 
             {loading ? (
-              <div className="flex flex-col items-center justify-center min-h-[30vh" role="status" aria-label="Loading audits">
+              <div className="flex flex-col items-center justify-center min-h-[30vh]" role="status" aria-label={t("manualTesting.loadingAudits")}>
                 <Loader2 className="h-7 w-7 text-neutral-400 animate-spin" aria-hidden="true" />
                 <span className="mt-3 text-sm text-neutral-500">{t("manualTesting.loadingAudits")}</span>
               </div>
@@ -421,31 +421,32 @@ function PlanView({ plan, scores, onVerdict, onBack }: {
   const pct = plan.items.length > 0 ? Math.round((evaluated / plan.items.length) * 100) : 0;
   const principles = ["Perceivable", "Operable", "Understandable", "Robust"] as const;
   const grouped = principles.map((p) => ({ principle: p, items: plan.items.filter((item) => item.principle === p) })).filter((g) => g.items.length > 0);
+  const { t } = useI18n();
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <Button variant="outline" size="sm" onClick={onBack}><span aria-hidden="true">←</span> Back to audits</Button>
+        <Button variant="outline" size="sm" onClick={onBack}><span aria-hidden="true">←</span> {t("manualTesting.backToAudits")}</Button>
         <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs text-neutral-500">
-          <span className="flex items-center gap-1"><BarChart3 className="h-3.5 w-3.5" aria-hidden="true" /> Automated: <strong className="text-neutral-900 dark:text-white">{Math.round(scores.automated)}%</strong></span>
-          <span className="flex items-center gap-1"><Eye className="h-3.5 w-3.5" aria-hidden="true" /> Manual: <strong className="text-neutral-900 dark:text-white">{Math.round(scores.manual)}%</strong></span>
-          <span className="flex items-center gap-1"><Shield className="h-3.5 w-3.5" aria-hidden="true" /> Combined: <strong className="text-neutral-900 dark:text-white">{Math.round(scores.combined)}%</strong></span>
+          <span className="flex items-center gap-1"><BarChart3 className="h-3.5 w-3.5" aria-hidden="true" /> {t("manualTesting.automated")}: <strong className="text-neutral-900 dark:text-white">{Math.round(scores.automated)}%</strong></span>
+          <span className="flex items-center gap-1"><Eye className="h-3.5 w-3.5" aria-hidden="true" /> {t("manualTesting.manual")}: <strong className="text-neutral-900 dark:text-white">{Math.round(scores.manual)}%</strong></span>
+          <span className="flex items-center gap-1"><Shield className="h-3.5 w-3.5" aria-hidden="true" /> {t("manualTesting.combined")}: <strong className="text-neutral-900 dark:text-white">{Math.round(scores.combined)}%</strong></span>
         </div>
       </div>
 
       <Card className="bg-linear-to-r from-violet-50 to-indigo-50 dark:from-violet-950/30 dark:to-indigo-950/30 border-violet-200 dark:border-violet-800">
         <CardContent className="p-4">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-sm font-medium text-neutral-900 dark:text-white">Manual Test Progress</p>
-            <span className="text-xs text-neutral-500">{evaluated} of {plan.items.length} evaluated ({pct}%)</span>
+            <p className="text-sm font-medium text-neutral-900 dark:text-white">{t("manualTesting.progress")}</p>
+            <span className="text-xs text-neutral-500">{t("manualTesting.progressCount", { evaluated, total: plan.items.length, pct })}</span>
           </div>
-          <div className="h-2 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Evaluation progress">
+          <div className="h-2 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={t("manualTesting.progress")}>
             <div className="h-full bg-linear-to-r from-violet-500 to-indigo-500 rounded-full transition-all duration-300" style={{ width: `${pct}%` }} />
           </div>
           <div className="flex gap-4 mt-2 text-xs">
-            <span className="text-green-600 dark:text-green-400">{passed} pass</span>
-            <span className="text-red-600 dark:text-red-400">{failed} fail</span>
-            <span className="text-neutral-400">{plan.items.length - evaluated} remaining</span>
+            <span className="text-green-600 dark:text-green-400">{t("manualTesting.passCount", { passed })}</span>
+            <span className="text-red-600 dark:text-red-400">{t("manualTesting.failCount", { failed })}</span>
+            <span className="text-neutral-400">{t("manualTesting.remainingCount", { remaining: plan.items.length - evaluated })}</span>
           </div>
         </CardContent>
       </Card>
@@ -476,13 +477,14 @@ function TestItemCard({ item, onVerdict }: {
   const [saving, setSaving] = useState(false);
   const [noteError, setNoteError] = useState<string | null>(null);
   const noteRef = useRef<HTMLTextAreaElement>(null);
+  const { t } = useI18n();
 
   async function handleVerdict(verdict: "pass" | "fail" | "na") {
     if (saving) return;
     setNoteError(null);
     if (verdict === "fail" && !note.trim()) {
       setExpanded(true);
-      setNoteError("A note explaining the failure is required.");
+      setNoteError(t("manualTesting.noteRequiredInline"));
       setTimeout(() => noteRef.current?.focus(), 50);
       return;
     }
@@ -508,14 +510,14 @@ function TestItemCard({ item, onVerdict }: {
             <span id={`crit-${cid}`} className="text-sm font-medium text-neutral-900 dark:text-white">{item.title}</span>
             <Badge variant="outline" className="text-[10px]">{item.level}</Badge>
             {item.aiGenerated ? (
-              <span className="inline-flex items-center gap-1 text-[10px] text-blue-600 dark:text-blue-400"><Sparkles className="h-3 w-3" aria-hidden="true" /> AI-guided</span>
+              <span className="inline-flex items-center gap-1 text-[10px] text-blue-600 dark:text-blue-400"><Sparkles className="h-3 w-3" aria-hidden="true" /> {t("manualTesting.aiGuided")}</span>
             ) : (
-              <span className="inline-flex items-center gap-1 text-[10px] text-neutral-400"><BookOpen className="h-3 w-3" aria-hidden="true" /> Standard guidance</span>
+              <span className="inline-flex items-center gap-1 text-[10px] text-neutral-400"><BookOpen className="h-3 w-3" aria-hidden="true" /> {t("manualTesting.standardGuidance")}</span>
             )}
           </div>
           <p className="text-xs text-neutral-500 mt-1">{item.why}</p>
           <button onClick={() => setExpanded(!expanded)} className="text-xs text-violet-600 dark:text-violet-400 hover:underline mt-1 focus:outline-none focus:ring-2 focus:ring-violet-500 rounded px-1 -ml-1" aria-expanded={expanded} aria-controls={`guide-${cid}`}>
-            {expanded ? "Hide guidance ▲" : "Show testing guidance ▼"}
+            {expanded ? `${t("manualTesting.hideGuidance")} ▲` : `${t("manualTesting.showGuidance")} ▼`}
           </button>
           {expanded && (
             <div id={`guide-${cid}`} className="mt-3 space-y-3">
@@ -524,14 +526,14 @@ function TestItemCard({ item, onVerdict }: {
               </div>
               {item.evidence.kind === "narration" && item.evidence.note && (
                 <div className="rounded-lg bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-800 p-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-violet-600 dark:text-violet-400 mb-1">Computed accessibility tree (simulation)</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-violet-600 dark:text-violet-400 mb-1">{t("manualTesting.computedTree")}</p>
                   <p className="text-xs text-violet-700 dark:text-violet-300">{item.evidence.note}</p>
                 </div>
               )}
               <div>
-                <label htmlFor={`note-${cid}`} className="text-[11px] font-medium text-neutral-600 dark:text-neutral-400 block mb-1">Notes {item.verdict === "untested" && "(required for fail)"}</label>
+                <label htmlFor={`note-${cid}`} className="text-[11px] font-medium text-neutral-600 dark:text-neutral-400 block mb-1">{t("manualTesting.notes")} {item.verdict === "untested" && t("manualTesting.notesRequiredHint")}</label>
                 <textarea id={`note-${cid}`} ref={noteRef} value={note} onChange={(e) => { setNote(e.target.value); setNoteError(null); }}
-                  placeholder="Describe what you observed..."
+                  placeholder={t("manualTesting.notePlaceholder")}
                   className={`w-full rounded-lg border bg-white dark:bg-neutral-900 px-3 py-2 text-xs resize-none h-16 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 ${noteError ? "border-red-300 dark:border-red-700 focus:ring-red-500" : "border-neutral-200 dark:border-neutral-700 focus:ring-violet-500"}`}
                   aria-invalid={!!noteError} aria-describedby={noteError ? `note-err-${cid}` : undefined} maxLength={2000} />
                 {noteError && <p id={`note-err-${cid}`} className="text-[11px] text-red-600 dark:text-red-400 mt-1" role="alert">{noteError}</p>}
@@ -541,18 +543,18 @@ function TestItemCard({ item, onVerdict }: {
         </div>
         <div className="flex gap-1 shrink-0" role="group" aria-label={`Verdict for ${item.criterion} ${item.title}`}>
           {saving ? (
-            <Loader2 className="h-4 w-4 text-neutral-400 animate-spin" aria-label="Saving..." />
+            <Loader2 className="h-4 w-4 text-neutral-400 animate-spin" aria-label={t("manualTesting.saving")} />
           ) : (
             <>
-              <button onClick={() => handleVerdict("pass")} aria-pressed={item.verdict === "pass"} aria-label="Pass" disabled={saving}
+              <button onClick={() => handleVerdict("pass")} aria-pressed={item.verdict === "pass"} aria-label={t("manualTesting.verdictPass")} disabled={saving}
                 className={`p-1.5 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 ${item.verdict === "pass" ? "bg-green-100 dark:bg-green-900/50 text-green-600" : "text-neutral-400 hover:bg-green-50 dark:hover:bg-green-950/50 hover:text-green-600"}`}>
                 <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
               </button>
-              <button onClick={() => handleVerdict("fail")} aria-pressed={item.verdict === "fail"} aria-label="Fail" disabled={saving}
+              <button onClick={() => handleVerdict("fail")} aria-pressed={item.verdict === "fail"} aria-label={t("manualTesting.verdictFail")} disabled={saving}
                 className={`p-1.5 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 ${item.verdict === "fail" ? "bg-red-100 dark:bg-red-900/50 text-red-600" : "text-neutral-400 hover:bg-red-50 dark:hover:bg-red-950/50 hover:text-red-600"}`}>
                 <XCircle className="h-4 w-4" aria-hidden="true" />
               </button>
-              <button onClick={() => handleVerdict("na")} aria-pressed={item.verdict === "na"} aria-label="Not Applicable" disabled={saving}
+              <button onClick={() => handleVerdict("na")} aria-pressed={item.verdict === "na"} aria-label={t("manualTesting.verdictNa")} disabled={saving}
                 className={`p-1.5 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-neutral-500 ${item.verdict === "na" ? "bg-neutral-200 dark:bg-neutral-700 text-neutral-600" : "text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-600"}`}>
                 <MinusCircle className="h-4 w-4" aria-hidden="true" />
               </button>

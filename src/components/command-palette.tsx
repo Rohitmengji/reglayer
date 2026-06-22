@@ -31,7 +31,7 @@ import {
   Search, LayoutDashboard, Scan, Globe, Grid3X3, Settings,
   BarChart3, Zap, Plug, AlertTriangle, TrendingUp, Building2,
   PieChart, Shield, FileText, Users, Bell, Key, Moon, Sun,
-  ArrowRight, Sparkles, Clock, Star, Keyboard, History,
+  ArrowRight, Sparkles, Clock, Star, Keyboard, History, ClipboardCheck,
 } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
 import { useI18n } from "@/components/i18n-provider";
@@ -197,6 +197,7 @@ export function CommandPalette() {
       { id: "nav-violations", label: "Violations", description: "Active accessibility issues", icon: AlertTriangle, action: () => navigate("/violations"), group: "navigation", keywords: ["issues", "errors", "bugs"] },
       { id: "nav-trends", label: "Trends", description: "Historical compliance data", icon: TrendingUp, action: () => navigate("/reports?tab=trends"), group: "navigation", keywords: ["history", "graph", "chart", "reports"] },
       { id: "nav-crawl", label: "Crawl Site", description: "Deep-scan entire domain", icon: Globe, action: () => navigate("/test?tab=crawl"), group: "navigation", keywords: ["spider", "domain", "pages", "testing"] },
+      { id: "nav-manual-test", label: "Manual Testing", description: "AI-guided WCAG verification", icon: ClipboardCheck, action: () => navigate("/test?tab=manual"), group: "navigation", keywords: ["manual", "wcag", "verify", "human", "audit"] },
       { id: "nav-compliance", label: "Compliance Matrix", description: "WCAG, EN 301 549, ADA", icon: Grid3X3, action: () => navigate("/compliance?tab=matrix"), group: "navigation", keywords: ["wcag", "ada", "standard"] },
       { id: "nav-analysis", label: "Analysis", description: "Screen reader & semantic", icon: BarChart3, action: () => navigate("/analysis?tab=screen-reader"), group: "navigation", keywords: ["screen reader", "aria"] },
       { id: "nav-automation", label: "Automation", description: "Auto-fix & scheduling", icon: Zap, action: () => navigate("/automation?tab=remediation"), group: "navigation", keywords: ["fix", "auto", "schedule"] },
