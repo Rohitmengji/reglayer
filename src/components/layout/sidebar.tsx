@@ -118,7 +118,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
   const [langOpen, setLangOpen] = useState(false);
   const langRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
-  const { hasFeature } = useFeatures();
+  const { hasFeatureOptimistic } = useFeatures();
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -194,10 +194,10 @@ export function Sidebar({ onNavigate }: SidebarProps) {
   // A nav item is visible unless gated. Hub items expose several routes, so they
   // show if ANY of their features is enabled; simple items use the route's gate.
   const isItemVisible = (item: NavLeaf) => {
-    if (item.anyFeatures) return item.anyFeatures.some((f) => hasFeature(f));
+    if (item.anyFeatures) return item.anyFeatures.some((f) => hasFeatureOptimistic(f));
     const featureId = SIDEBAR_FEATURE_MAP[item.href.split("?")[0]];
     if (!featureId) return true; // No gate = always show
-    return hasFeature(featureId);
+    return hasFeatureOptimistic(featureId);
   };
 
   const NavItem = ({ item }: { item: NavLeaf }) => {
