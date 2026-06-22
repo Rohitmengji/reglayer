@@ -48,9 +48,26 @@ export function useFeatures() {
   // Derive loading from whether features have resolved
   const loading = features === null;
 
+  /**
+   * Check if a feature is enabled for the current workspace.
+   * During loading: returns false (restrictive) — use for FeatureGate/access control.
+   */
   const hasFeature = useCallback(
     (featureId: string): boolean => {
-      if (loading) return false; // Don't show gated features until we know the plan
+      if (loading) return false;
+      return features!.includes(featureId);
+    },
+    [features, loading]
+  );
+
+  /**
+   * Optimistic feature check — returns true during loading.
+   * Use ONLY for navigation/sidebar visibility (avoids flash of hidden items).
+   * NEVER use for access control or rendering paid feature content.
+   */
+  const hasFeatureOptimistic = useCallback(
+    (featureId: string): boolean => {
+      if (loading) return true; // Show nav items while loading to prevent flash
       return features!.includes(featureId);
     },
     [features, loading]
@@ -58,7 +75,7 @@ export function useFeatures() {
 
   const resolvedFeatures = useMemo(() => features ?? [], [features]);
 
-  return { features: resolvedFeatures, loading, hasFeature };
+  return { features: resolvedFeatures, loading, hasFeature, hasFeatureOptimistic };
 }
 
 /**
