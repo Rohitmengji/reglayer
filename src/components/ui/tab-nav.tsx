@@ -26,7 +26,11 @@ interface TabNavProps {
 
 export function TabNav({ tabs, basePath, className }: TabNavProps) {
   const searchParams = useSearchParams();
-  const activeTab = searchParams.get("tab") || tabs[0]?.id;
+  // Honor the URL ?tab only when it names a tab actually present in the list
+  // (feature-gated hubs filter their tabs); otherwise fall back to the first.
+  // This keeps the highlighted tab in sync with the panel the hub renders.
+  const requested = searchParams.get("tab");
+  const activeTab = tabs.some((t) => t.id === requested) ? requested : tabs[0]?.id;
 
   return (
     // Route-based tabs are navigation: a labeled <nav> landmark + aria-current on

@@ -9,21 +9,19 @@
  * Always visible on desktop, drawer on mobile.
  *
  * WHAT:
- * - Brand logo at top
- * - Grouped nav items: Main (Dashboard, Scans, Crawl, Compliance,
- *   Analysis, Automation, Manage, Settings)
+ * - Workspace switcher at top
+ * - Nav consolidated into hubs + grouped into modern sections
+ *   (see the navSections doc comment below for the live structure)
  * - Master Admin section (only for isMasterAdmin users)
- * - User menu popup at bottom with:
- *   - Email display
- *   - Theme toggle (dark/light)
- *   - Language selector (7 EU languages)
- *   - Sign out button
+ * - Footer: ⌘K search + a user menu (Notifications, Help & docs,
+ *   theme toggle, language selector, Sign out)
  *
  * HOW:
- * - Uses usePathname() for active link highlighting
- * - NavItem component determines active state by matching path prefix
- * - i18n: nav labels use t() translation function with keys
- * - Theme/language controls in popup prevent sidebar clutter
+ * - Uses usePathname() for active highlighting (path-boundary match,
+ *   so /test never lights up on the unrelated /testing route)
+ * - i18n: nav labels use t() with compile-checked TranslationKey keys
+ * - Theme/language/help/notifications live in the user menu to keep
+ *   the nav uncluttered
  * - onNavigate callback closes mobile drawer after navigation
  * ---------------------------------------------------------
  */
@@ -33,29 +31,78 @@ import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { cn } from "@/lib/utils/cn";
 import { useTheme } from "@/components/theme-provider";
-import { Shield, LayoutDashboard, Scan, Globe, Grid3X3, Moon, Sun, Crown, ChevronDown, Settings, BarChart3, Zap, Plug, LogOut, AlertTriangle, TrendingUp, Building2, PieChart, ChevronsUpDown, Check, BookOpen, ClipboardCheck, Search, HelpCircle } from "lucide-react";
+import { Shield, LayoutDashboard, Scan, Grid3X3, Moon, Sun, Crown, ChevronDown, Settings, BarChart3, Zap, Plug, LogOut, AlertTriangle, TrendingUp, Building2, ChevronsUpDown, Check, BookOpen, Search, HelpCircle } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
-import { SUPPORTED_LOCALES } from "@/lib/i18n/translations";
+import { SUPPORTED_LOCALES, type TranslationKey } from "@/lib/i18n/translations";
 import { useState, useEffect, useRef } from "react";
 import { useFeatures, invalidateFeatureCache } from "@/hooks/use-features";
 import { SIDEBAR_FEATURE_MAP } from "@/lib/features/feature-catalog";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 
-const mainNav = [
-  { name: "Dashboard", key: "nav.dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Scans", key: "nav.scans", href: "/scans", icon: Scan },
-  { name: "Violations", key: "nav.violations", href: "/violations", icon: AlertTriangle },
-  { name: "Trends", key: "nav.trends", href: "/trends", icon: TrendingUp },
-  { name: "Crawl Site", key: "nav.crawl", href: "/crawl", icon: Globe },
-  { name: "Compliance", key: "nav.compliance", href: "/compliance?tab=matrix", icon: Grid3X3 },
-  { name: "Analysis", key: "nav.analysis", href: "/analysis?tab=screen-reader", icon: BarChart3 },
-  { name: "Manual Testing", key: "nav.manualTesting", href: "/manual-testing", icon: ClipboardCheck },
-  { name: "Blog", key: "nav.blog", href: "/blog", icon: BookOpen },
-  { name: "Automation", key: "nav.automation", href: "/automation?tab=remediation", icon: Zap },
-  { name: "Manage", key: "nav.manage", href: "/manage?tab=team", icon: Plug },
-  { name: "Executive", key: "nav.executive", href: "/executive", icon: PieChart },
-  { name: "Agency", key: "nav.agency", href: "/agency", icon: Building2 },
-  { name: "Settings", key: "nav.settings", href: "/settings", icon: Settings },
+type NavLeaf = {
+  name: string;
+  key: TranslationKey; // i18n key for the visible label (compile-checked)
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  // Hub items fold several routes into one tabbed page: visible if ANY listed
+  // feature is enabled, and shown active on any of their constituent routes.
+  anyFeatures?: string[];
+  activePaths?: string[];
+};
+type NavSection = { labelKey?: TranslationKey; items: NavLeaf[] };
+
+/**
+ * Sidebar IA — related routes are consolidated into tabbed hubs (the same pattern
+ * as Manage/Compliance) so the list stays short, and the rest is grouped by who
+ * uses it:
+ *  - Primary (unlabeled): the daily operator tools.
+ *      • Testing hub (/test)    → Scans · Crawl · Manual Testing
+ *      • Reports hub (/reports) → Trends · Executive
+ *  - "Compliance & Reports" → the business/buyer view (posture + reporting).
+ *  - "Workspace"            → client/agency + configuration.
+ * Blog lives in the footer — it's content, not a daily tool. NOTE: the Testing
+ * hub route is /test, distinct from the legacy /testing (Human Testing Network).
+ */
+const navSections: NavSection[] = [
+  {
+    items: [
+      { name: "Dashboard", key: "nav.dashboard", href: "/dashboard", icon: LayoutDashboard },
+      {
+        name: "Testing",
+        key: "testHub.title",
+        href: "/test?tab=scans",
+        icon: Scan,
+        anyFeatures: ["scans", "crawl", "manualTesting"],
+        activePaths: ["/test", "/scans", "/crawl", "/manual-testing"],
+      },
+      { name: "Violations", key: "nav.violations", href: "/violations", icon: AlertTriangle },
+      { name: "Analysis", key: "nav.analysis", href: "/analysis?tab=screen-reader", icon: BarChart3 },
+      { name: "Automation", key: "nav.automation", href: "/automation?tab=remediation", icon: Zap },
+      { name: "Blog", key: "nav.blog", href: "/blog", icon: BookOpen },
+    ],
+  },
+  {
+    labelKey: "nav.group.reports",
+    items: [
+      { name: "Compliance", key: "nav.compliance", href: "/compliance?tab=matrix", icon: Grid3X3 },
+      {
+        name: "Reports",
+        key: "reports.title",
+        href: "/reports?tab=trends",
+        icon: TrendingUp,
+        anyFeatures: ["trends", "executive"],
+        activePaths: ["/reports", "/trends", "/executive"],
+      },
+    ],
+  },
+  {
+    labelKey: "nav.group.workspace",
+    items: [
+      { name: "Manage", key: "nav.manage", href: "/manage?tab=team", icon: Plug },
+      { name: "Agency", key: "nav.agency", href: "/agency", icon: Building2 },
+      { name: "Settings", key: "nav.settings", href: "/settings", icon: Settings },
+    ],
+  },
 ];
 
 interface SidebarProps {
@@ -70,6 +117,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
   const langRef = useRef<HTMLDivElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
   const { hasFeature } = useFeatures();
 
   useEffect(() => {
@@ -81,6 +129,24 @@ export function Sidebar({ onNavigate }: SidebarProps) {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // Dismiss the user menu on outside click or Escape (mirrors the workspace
+  // switcher / language dropdown / notification bell patterns).
+  useEffect(() => {
+    if (!userMenuOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) setUserMenuOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setUserMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [userMenuOpen]);
   const [wsOpen, setWsOpen] = useState(false);
   const [workspaces, setWorkspaces] = useState<{ id: string; name: string; slug: string; plan: string; role: string; memberCount: number }[]>([]);
   const [activeWs, setActiveWs] = useState<string>("");
@@ -125,22 +191,25 @@ export function Sidebar({ onNavigate }: SidebarProps) {
 
   const currentWs = workspaces.find((w) => w.id === activeWs);
 
-  // Filter nav items by feature access
-  const visibleNav = mainNav.filter((item) => {
-    const basePath = item.href.split("?")[0];
-    const featureId = SIDEBAR_FEATURE_MAP[basePath];
+  // A nav item is visible unless gated. Hub items expose several routes, so they
+  // show if ANY of their features is enabled; simple items use the route's gate.
+  const isItemVisible = (item: NavLeaf) => {
+    if (item.anyFeatures) return item.anyFeatures.some((f) => hasFeature(f));
+    const featureId = SIDEBAR_FEATURE_MAP[item.href.split("?")[0]];
     if (!featureId) return true; // No gate = always show
     return hasFeature(featureId);
-  });
+  };
 
-  const NavItem = ({ item }: { item: { name: string; key: string; href: string; icon: React.ComponentType<{ className?: string }> } }) => {
-    const basePath = item.href.split("?")[0];
-    const isActive = pathname.startsWith(basePath);
+  const NavItem = ({ item }: { item: NavLeaf }) => {
+    // Hubs highlight on any of their tab routes (e.g. Testing on /scans, /crawl…).
+    const paths = item.activePaths ?? [item.href.split("?")[0]];
+    // Path-boundary match: /test matches /test and /test/x, but NOT /testing.
+    const isActive = paths.some((p) => pathname === p || pathname.startsWith(p + "/"));
     return (
       <Link
-        key={item.name}
         href={item.href}
         onClick={onNavigate}
+        aria-current={isActive ? "page" : undefined}
         className={cn(
           "group flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-all duration-150",
           isActive
@@ -149,7 +218,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
         )}
       >
         <item.icon className={cn("h-4 w-4 shrink-0", isActive ? "text-white dark:text-neutral-900" : "text-neutral-400 group-hover:text-neutral-600 dark:group-hover:text-neutral-300")} />
-        {item.key ? t(item.key as Parameters<typeof t>[0]) : item.name}
+        {t(item.key)}
       </Link>
     );
   };
@@ -217,12 +286,24 @@ export function Sidebar({ onNavigate }: SidebarProps) {
 
       {/* Navigation */}
       <nav aria-label="Main" className="flex-1 overflow-y-auto px-3 pt-3 pb-3 space-y-5">
-        {/* Main */}
-        <div className="space-y-0.5">
-          {visibleNav.map((item) => (
-            <NavItem key={item.name} item={item} />
-          ))}
-        </div>
+        {/* Sections: the first (primary) is unlabeled; the rest carry a quiet
+            uppercase label. Sections emptied by feature gates are hidden. */}
+        {navSections.map((section, i) => {
+          const items = section.items.filter(isItemVisible);
+          if (items.length === 0) return null;
+          return (
+            <div key={section.labelKey ?? `primary-${i}`} className="space-y-0.5">
+              {section.labelKey && (
+                <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-neutral-600 dark:text-neutral-400">
+                  {t(section.labelKey)}
+                </p>
+              )}
+              {items.map((item) => (
+                <NavItem key={item.name} item={item} />
+              ))}
+            </div>
+          );
+        })}
 
         {/* Master Admin */}
         {session?.user?.isMasterAdmin && (
@@ -270,24 +351,14 @@ export function Sidebar({ onNavigate }: SidebarProps) {
           <kbd className="rounded border border-neutral-300 dark:border-neutral-600 px-1.5 py-0.5 text-[10px] font-medium text-neutral-400 dark:text-neutral-500">⌘K</kbd>
         </button>
 
-        {/* Help & docs — a way out when a user is stuck */}
-        <Link
-          href="/docs"
-          onClick={onNavigate}
-          className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200/60 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-white transition-colors"
-        >
-          <HelpCircle className="h-4 w-4 shrink-0" />
-          <span className="flex-1 text-left">{t("nav.help")}</span>
-        </Link>
-
-        {/* Notifications */}
-        {session?.user && <NotificationBell />}
-
         {/* User */}
         {session?.user && (
-          <div className="relative">
+          <div className="relative" ref={userMenuRef}>
             <button
               onClick={() => setUserMenuOpen(!userMenuOpen)}
+              aria-haspopup="true"
+              aria-expanded={userMenuOpen}
+              aria-controls="user-menu-popup"
               className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 hover:bg-neutral-200/60 dark:hover:bg-neutral-800 transition-colors"
             >
               <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-blue-500 to-purple-600 text-[11px] font-bold text-white">
@@ -302,9 +373,22 @@ export function Sidebar({ onNavigate }: SidebarProps) {
             </button>
 
             {userMenuOpen && (
-              <div className="absolute bottom-full left-0 right-0 mb-1 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-lg py-1 z-50">
+              <div id="user-menu-popup" className="absolute bottom-full left-0 right-0 mb-1 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-lg py-1 z-50">
                 <div className="px-3 py-2 border-b border-neutral-100 dark:border-neutral-800">
                   <p className="text-[12px] font-medium text-neutral-700 dark:text-neutral-300 truncate">{session.user.email}</p>
+                </div>
+
+                {/* Notifications + Help — utility actions, above the theme/language row */}
+                <div className="border-b border-neutral-100 dark:border-neutral-800 py-0.5">
+                  <NotificationBell />
+                  <Link
+                    href="/docs"
+                    onClick={onNavigate}
+                    className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+                  >
+                    <HelpCircle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                    <span className="flex-1 text-left">{t("nav.help")}</span>
+                  </Link>
                 </div>
 
                 {/* Theme + Language inside menu */}
@@ -356,7 +440,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
 
                 <button
                   onClick={() => signOut({ callbackUrl: "/auth/login" })}
-                  className="flex w-full items-center gap-2.5 px-3 py-2 text-[13px] font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                  className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                 >
                   <LogOut className="h-3.5 w-3.5" />
                   Sign out
