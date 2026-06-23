@@ -9,10 +9,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
+import { requireFeature } from "@/lib/features/require-feature";
 import { generateAnalytics } from "@/lib/intelligence/analyticsEngine";
 import { prisma } from "@/lib/database/prisma";
 
 export async function GET(request: NextRequest) {
+  // Server-side gate so the PRO-only "analysis" feature can't be reached via the
+  // API by a FREE user (the page-level FeatureGate is client-side only).
+  const guard = await requireFeature("analysis");
+  if (!guard.allowed) return guard.response;
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Authentication required" }, { status: 401 });

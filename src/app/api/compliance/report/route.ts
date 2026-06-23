@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
+import { requireFeature } from "@/lib/features/require-feature";
 import { prisma } from "@/lib/database/prisma";
 import { assertScanAccess } from "@/lib/auth/access";
 import { applyRateLimit } from "@/lib/rate-limit-middleware";
@@ -21,6 +22,10 @@ const createSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    // Server gate so the multi-jurisdiction report (PRO+ "compliance" feature)
+    // can't be generated via the API past the client-side FeatureGate.
+    const guard = await requireFeature("compliance");
+    if (!guard.allowed) return guard.response;
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });

@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
+import { requireFeature } from "@/lib/features/require-feature";
 import { assertScanAccess } from "@/lib/auth/access";
 import { prisma } from "@/lib/database/prisma";
 import { calculateRevenueImpact } from "@/lib/analytics/revenue-calculator";
@@ -37,6 +38,9 @@ const impactSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  // Server gate: revenue-impact is the ENTERPRISE-only "automation" feature.
+  const guard = await requireFeature("automation");
+  if (!guard.allowed) return guard.response;
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Authentication required" }, { status: 401 });
@@ -151,6 +155,9 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
+  // Server gate: revenue-impact is the ENTERPRISE-only "automation" feature.
+  const guard = await requireFeature("automation");
+  if (!guard.allowed) return guard.response;
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Authentication required" }, { status: 401 });

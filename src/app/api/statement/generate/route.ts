@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
+import { requireFeature } from "@/lib/features/require-feature";
 import { prisma } from "@/lib/database/prisma";
 import { applyRateLimit } from "@/lib/rate-limit-middleware";
 import { assertScanAccess } from "@/lib/auth/access";
@@ -24,6 +25,11 @@ import { assertScanAccess } from "@/lib/auth/access";
  * - EN 301 549 V3.2.1 Clause 12.1
  */
 export async function POST(request: NextRequest) {
+  // Server gate: accessibility-statement generation is part of the "compliance"
+  // feature; enforce it here, not just in the client FeatureGate.
+  const guard = await requireFeature("compliance");
+  if (!guard.allowed) return guard.response;
+
   const blocked = await applyRateLimit(request, "ai");
   if (blocked) return blocked;
 
