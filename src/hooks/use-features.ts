@@ -8,15 +8,24 @@
  * Master admins see all features without network call.
  */
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useReducer } from "react";
 import { useSession } from "next-auth/react";
 import { FEATURE_CATALOG } from "@/lib/features/feature-catalog";
 
 const ALL_FEATURE_IDS = FEATURE_CATALOG.map((f) => f.id);
+const INVALIDATE_EVENT = "reglayer:features-invalidated";
 
 export function useFeatures() {
   const { data: session, status } = useSession();
   const [features, setFeatures] = useState<string[] | null>(null);
+  const [refetchKey, bump] = useReducer((x: number) => x + 1, 0);
+
+  // Listen for invalidation events (triggered by workspace switch, plan upgrade, etc.)
+  useEffect(() => {
+    const handler = () => bump();
+    window.addEventListener(INVALIDATE_EVENT, handler);
+    return () => window.removeEventListener(INVALIDATE_EVENT, handler);
+  }, []);
 
   useEffect(() => {
     if (status === "loading") return;
@@ -45,7 +54,7 @@ export function useFeatures() {
       });
 
     return () => controller.abort();
-  }, [session, status]);
+  }, [session, status, refetchKey]);
 
   const loading = features === null;
 
@@ -66,5 +75,5 @@ export function useFeatures() {
  * Force re-fetch on next render (call after plan upgrade or feature toggle).
  */
 export function invalidateFeatureCache() {
-  window.dispatchEvent(new CustomEvent("reglayer:features-invalidated"));
+  window.dispatchEvent(new CustomEvent(INVALIDATE_EVENT));
 }

@@ -25,6 +25,7 @@ export interface PlanContext {
   email: string;
   plan: PlanType;
   isMasterAdmin: boolean;
+  workspaceId: string | null;
   workspaceRole: WorkspaceRole | null;
   /** Effective scan limit after role-based override (-1 = unlimited) */
   effectiveScansPerMonth: number;
@@ -52,7 +53,7 @@ export async function getPlanContext(): Promise<PlanContext | null> {
   // Resolve workspace role for role-based limit overrides
   const membership = await prisma.workspaceMember.findFirst({
     where: { userId: user.id },
-    select: { role: true },
+    select: { role: true, workspaceId: true },
     orderBy: { joinedAt: "asc" },
   });
 
@@ -74,6 +75,7 @@ export async function getPlanContext(): Promise<PlanContext | null> {
     email: user.email,
     plan,
     isMasterAdmin: user.isMasterAdmin,
+    workspaceId: membership?.workspaceId ?? null,
     workspaceRole,
     effectiveScansPerMonth,
     limits: planLimits,
@@ -82,24 +84,20 @@ export async function getPlanContext(): Promise<PlanContext | null> {
 
 /**
  * Count scans this month for a user's workspace.
+ * Accepts workspaceId directly to avoid a redundant DB lookup.
  */
-export async function getMonthlyScansCount(userId: string): Promise<number> {
+export async function getMonthlyScansCount(workspaceId: string | null): Promise<number> {
+  if (!workspaceId) return 0;
+
   // FIX C5: use an explicit UTC month boundary. A server-local boundary
   // miscounts near month-end when the server runs in a non-UTC timezone
   // (Scan.createdAt is stored in UTC), letting users over/under their quota.
   const now = new Date();
   const startOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
 
-  const membership = await prisma.workspaceMember.findFirst({
-    where: { userId },
-    select: { workspaceId: true },
-  });
-
-  if (!membership) return 0;
-
   return prisma.scan.count({
     where: {
-      workspaceId: membership.workspaceId,
+      workspaceId,
       createdAt: { gte: startOfMonth },
     },
   });

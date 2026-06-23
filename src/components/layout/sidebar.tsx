@@ -34,7 +34,7 @@ import { useTheme } from "@/components/theme-provider";
 import { Shield, LayoutDashboard, Scan, Grid3X3, Moon, Sun, Crown, ChevronDown, Settings, BarChart3, Zap, Plug, LogOut, AlertTriangle, TrendingUp, Building2, ChevronsUpDown, Check, BookOpen, Search, HelpCircle } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 import { SUPPORTED_LOCALES, type TranslationKey } from "@/lib/i18n/translations";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useFeatures, invalidateFeatureCache } from "@/hooks/use-features";
 import { SIDEBAR_FEATURE_MAP } from "@/lib/features/feature-catalog";
 import { NotificationBell } from "@/components/notifications/notification-bell";
@@ -109,6 +109,52 @@ interface SidebarProps {
   onNavigate?: () => void;
 }
 
+// ── Extracted: prevents re-creation on every render (fix reconciliation) ──
+function NavItem({ item, pathname, onNavigate, t }: {
+  item: NavLeaf;
+  pathname: string;
+  onNavigate?: () => void;
+  t: (key: TranslationKey) => string;
+}) {
+  const paths = item.activePaths ?? [item.href.split("?")[0]];
+  const isActive = paths.some((p) => pathname === p || pathname.startsWith(p + "/"));
+  return (
+    <Link
+      href={item.href}
+      onClick={onNavigate}
+      aria-current={isActive ? "page" : undefined}
+      className={cn(
+        "group flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-all duration-150",
+        isActive
+          ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900"
+          : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-white"
+      )}
+    >
+      <item.icon className={cn("h-4 w-4 shrink-0", isActive ? "text-white dark:text-neutral-900" : "text-neutral-400 group-hover:text-neutral-600 dark:group-hover:text-neutral-300")} />
+      {t(item.key)}
+    </Link>
+  );
+}
+
+// ── useClickOutside: consolidates 3 identical click-outside effects ──
+function useClickOutside(ref: React.RefObject<HTMLElement | null>, handler: () => void, enabled = true) {
+  useEffect(() => {
+    if (!enabled) return;
+    const onDown = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) handler();
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") handler();
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [ref, handler, enabled]);
+}
+
 export function Sidebar({ onNavigate }: SidebarProps) {
   const pathname = usePathname();
   const { data: session } = useSession();
@@ -119,38 +165,18 @@ export function Sidebar({ onNavigate }: SidebarProps) {
   const langRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const { hasFeature, loading: featuresLoading } = useFeatures();
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (langRef.current && !langRef.current.contains(e.target as Node)) {
-        setLangOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  // Dismiss the user menu on outside click or Escape (mirrors the workspace
-  // switcher / language dropdown / notification bell patterns).
-  useEffect(() => {
-    if (!userMenuOpen) return;
-    const onDown = (e: MouseEvent) => {
-      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) setUserMenuOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setUserMenuOpen(false);
-    };
-    document.addEventListener("mousedown", onDown);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDown);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [userMenuOpen]);
   const [wsOpen, setWsOpen] = useState(false);
   const [workspaces, setWorkspaces] = useState<{ id: string; name: string; slug: string; plan: string; role: string; memberCount: number }[]>([]);
   const [activeWs, setActiveWs] = useState<string>("");
   const wsRef = useRef<HTMLDivElement>(null);
+
+  // Consolidated click-outside handlers (replaces 3 duplicated useEffects)
+  const closeLang = useCallback(() => setLangOpen(false), []);
+  const closeUserMenu = useCallback(() => setUserMenuOpen(false), []);
+  const closeWs = useCallback(() => setWsOpen(false), []);
+  useClickOutside(langRef, closeLang, langOpen);
+  useClickOutside(userMenuRef, closeUserMenu, userMenuOpen);
+  useClickOutside(wsRef, closeWs, wsOpen);
 
   // Fetch workspaces
   useEffect(() => {
@@ -166,15 +192,6 @@ export function Sidebar({ onNavigate }: SidebarProps) {
       })
       .catch(() => {});
   }, [session]);
-
-  // Close dropdown on outside click
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (wsRef.current && !wsRef.current.contains(e.target as Node)) setWsOpen(false);
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, []);
 
   const switchWorkspace = (wsId: string) => {
     setActiveWs(wsId);
@@ -199,29 +216,6 @@ export function Sidebar({ onNavigate }: SidebarProps) {
     const featureId = SIDEBAR_FEATURE_MAP[item.href.split("?")[0]];
     if (!featureId) return true; // No gate = always show
     return hasFeature(featureId);
-  };
-
-  const NavItem = ({ item }: { item: NavLeaf }) => {
-    // Hubs highlight on any of their tab routes (e.g. Testing on /scans, /crawl…).
-    const paths = item.activePaths ?? [item.href.split("?")[0]];
-    // Path-boundary match: /test matches /test and /test/x, but NOT /testing.
-    const isActive = paths.some((p) => pathname === p || pathname.startsWith(p + "/"));
-    return (
-      <Link
-        href={item.href}
-        onClick={onNavigate}
-        aria-current={isActive ? "page" : undefined}
-        className={cn(
-          "group flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-all duration-150",
-          isActive
-            ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900"
-            : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-white"
-        )}
-      >
-        <item.icon className={cn("h-4 w-4 shrink-0", isActive ? "text-white dark:text-neutral-900" : "text-neutral-400 group-hover:text-neutral-600 dark:group-hover:text-neutral-300")} />
-        {t(item.key)}
-      </Link>
-    );
   };
 
   return (
@@ -300,7 +294,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                 </p>
               )}
               {items.map((item) => (
-                <NavItem key={item.name} item={item} />
+                <NavItem key={item.name} item={item} pathname={pathname} onNavigate={onNavigate} t={t} />
               ))}
             </div>
           );

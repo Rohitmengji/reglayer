@@ -54,13 +54,14 @@ export default function JurisdictionsPage() {
           id: s.id, url: s.url, score: s.score, createdAt: s.createdAt,
         }));
         setScans(scanList);
-        if (!selectedScanId && scanList.length > 0) {
+        // Use URL param if present, otherwise default to first scan
+        if (!urlScanId && scanList.length > 0) {
           setSelectedScanId(scanList[0].id);
         }
       })
       .catch(() => {})
       .finally(() => setScansLoading(false));
-  }, []);
+  }, [urlScanId]);
 
   async function handleGenerate() {
     if (!selectedScanId) return;

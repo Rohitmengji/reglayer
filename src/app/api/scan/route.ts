@@ -30,6 +30,7 @@ import { getPlanContext, getMonthlyScansCount } from "@/lib/credits/plan-context
 import { requireFeature } from "@/lib/features/require-feature";
 import { rateLimit, RATE_LIMITS, rateLimitHeaders } from "@/lib/rate-limit";
 import { AuthenticationError } from "@/lib/scanner/auth";
+import { classifyError } from "@/lib/errors/scan-errors";
 import { cacheSetNX, cacheDel } from "@/lib/cache/redis";
 import { requireWorkspacePermission } from "@/lib/auth/api-guard";
 
@@ -104,7 +105,7 @@ export async function POST(request: NextRequest) {
     if (planCtx) {
       const limit = planCtx.effectiveScansPerMonth;
       if (limit !== -1) {
-        const used = await getMonthlyScansCount(planCtx.userId);
+        const used = await getMonthlyScansCount(planCtx.workspaceId);
         if (used >= limit) {
           return NextResponse.json(
             { error: `Scan limit reached (${limit}/month on ${planCtx.plan} plan). Upgrade for more scans.`, upgradeRequired: true },
@@ -149,8 +150,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Classify the error for better client UX
-    const message = error instanceof Error ? error.message : "An unexpected error occurred";
-    const { status, code } = classifyScanError(message);
+    const { status, code, message } = classifyError(error);
 
     return NextResponse.json(
       { error: "Scan failed", message, code },
@@ -159,30 +159,3 @@ export async function POST(request: NextRequest) {
   }
 }
 
-/**
- * Classify scan errors into actionable categories.
- * Returns appropriate HTTP status and error code for the client.
- */
-function classifyScanError(message: string): { status: number; code: string } {
-  const lower = message.toLowerCase();
-
-  if (lower.includes("timeout") || lower.includes("timed out")) {
-    return { status: 504, code: "TIMEOUT" };
-  }
-  if (lower.includes("net::err_name_not_resolved") || lower.includes("getaddrinfo")) {
-    return { status: 422, code: "UNREACHABLE" };
-  }
-  if (lower.includes("net::err_connection_refused") || lower.includes("econnrefused")) {
-    return { status: 422, code: "UNREACHABLE" };
-  }
-  if (lower.includes("net::err_connection_reset") || lower.includes("econnreset")) {
-    return { status: 502, code: "BLOCKED" };
-  }
-  if (lower.includes("403") || lower.includes("forbidden")) {
-    return { status: 502, code: "BLOCKED" };
-  }
-  if (lower.includes("crash") || lower.includes("target closed") || lower.includes("disconnected")) {
-    return { status: 500, code: "BROWSER_CRASH" };
-  }
-  return { status: 500, code: "UNKNOWN" };
-}
