@@ -2351,4 +2351,8 @@ export const en = {
 
   // Command palette — recent
   "palette.recentViewed": "Recently viewed",
+  "scanDetail.customRules": "Custom compliance rules",
+  "scanDetail.customRulesSummary": "{passed} of {total} passed",
+  "scanDetail.rulePass": "Pass",
+  "scanDetail.ruleFail": "Fail",
 } as const;

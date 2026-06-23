@@ -2257,4 +2257,8 @@ export const fr = {
   "rules.summaryRuleRequired": "Rule {value} must pass on every page",
   "rules.summaryImpactBudget": "At most {count} {impact} issue(s) allowed",
   "rules.summaryCriterion": "WCAG {value} must have no violations",
+  "scanDetail.customRules": "Règles de conformité personnalisées",
+  "scanDetail.customRulesSummary": "{passed} sur {total} réussies",
+  "scanDetail.rulePass": "Réussi",
+  "scanDetail.ruleFail": "Échec",
 } as const;
