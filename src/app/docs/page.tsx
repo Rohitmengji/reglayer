@@ -62,7 +62,7 @@ const sections = [
     icon: FileText,
     slug: "reports",
     title: "Reports & Statements",
-    description: "Generate compliance documentation required by the European Accessibility Act (EAA). Legally compliant accessibility statements following EN 301 549 Annex C format.",
+    description: "Generate compliance documentation required by the European Accessibility Act (EAA). EN 301 549 Annex C–formatted accessibility statements (based on automated testing; not a legal certification).",
     items: [
       "PDF compliance reports with executive summary and full details",
       "EU-compliant accessibility statement generator (Directive 2016/2102)",
@@ -71,7 +71,7 @@ const sections = [
       "Download as HTML for direct embedding on your website",
       "Scan comparison reports showing fixed vs. new violations",
       "Team activity and audit logs for regulatory evidence",
-      "Compliance certificates with verifiable badge URLs",
+      "Accessibility certificates with verifiable badge URLs",
     ],
   },
   {

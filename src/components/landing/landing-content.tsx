@@ -15,7 +15,6 @@ import {
   Lock,
   Clock,
   Star,
-  Languages,
   ChevronDown,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -166,7 +165,6 @@ export function LandingContent() {
                 { value: "80+", label: t("landing.wcagRules"), icon: "scan" },
                 { value: "6", label: "Standards Covered", icon: "shield" },
                 { value: "24/7", label: "Continuous Monitoring", icon: "clock" },
-                { value: "99.9%", label: "Uptime SLA", icon: "uptime" },
                 { value: "50+", label: "Pages per Scan", icon: "globe" },
               ]}
             />

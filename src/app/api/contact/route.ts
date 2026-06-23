@@ -26,7 +26,7 @@ const contactSchema = z.object({
   subject: z.enum(SUBJECTS).default("general"),
   message: z.string().trim().min(10, "Message must be at least 10 characters").max(5000),
   // Honeypot: a hidden field real users never fill. Bots do.
-  website: z.string().max(0).optional().or(z.string().length(0)),
+  website: z.string().optional(),
 });
 
 // Route each enquiry to the inbox that owns it (addresses shown on the contact page).

@@ -1472,7 +1472,7 @@ export const en = {
   "pricing.enterprisePlanName": "Enterprise",
   "pricing.enterprisePlanDesc": "For organizations with complex compliance needs",
   "pricing.enterpriseCta": "Contact Sales",
-  "pricing.trustedBy": "Trusted by teams across Europe",
+  "pricing.trustedBy": "Built for EAA compliance across Europe",
   "pricing.criteriaChecked": "EN 301 549 criteria checked",
   "pricing.euLanguages": "EU languages supported",
   "pricing.euDataResidency": "Data export & erasure",
@@ -2024,7 +2024,7 @@ export const en = {
   "landing.globalStandards": "Global standards coverage",
 
   // Landing page — social proof
-  "landing.trustedBy": "Trusted by compliance teams worldwide",
+  "landing.trustedBy": "Built for compliance teams worldwide",
   "landing.sitesScanned": "Sites Scanned",
   "landing.countries": "Countries",
   "landing.uptime": "Uptime",
