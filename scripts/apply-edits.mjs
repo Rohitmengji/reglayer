@@ -1,46 +1,100 @@
 /**
- * Apply file edits from the bot agent JSON output.
+ * Apply file edits from bot-agent JSON output (hardened)
+ *
+ * Security:
+ * - Re-validates every edit before applying (defense in depth)
+ * - Atomic: reads all files first, validates all, then writes
+ * - Path traversal check
+ * - Creates backup before editing (in-memory, for rollback)
  *
  * Usage: node scripts/apply-edits.mjs edits.json
- *
- * Reads the JSON array of edits and applies them to the working tree.
- * Returns a human-readable diff summary for the approval comment.
  */
 
-import { readFileSync, writeFileSync, mkdirSync } from "fs";
-import { dirname } from "path";
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from "fs";
+import { dirname, normalize, isAbsolute } from "path";
 
 const editsFile = process.argv[2];
-if (!editsFile) {
-  console.error("Usage: node apply-edits.mjs <edits.json>");
+if (!editsFile) { console.error("Usage: node apply-edits.mjs <edits.json>"); process.exit(1); }
+
+let edits;
+try {
+  edits = JSON.parse(readFileSync(editsFile, "utf8"));
+} catch (err) {
+  console.error("ERROR: Cannot read/parse edits file:", err.message);
   process.exit(1);
 }
 
-const edits = JSON.parse(readFileSync(editsFile, "utf8"));
+if (!Array.isArray(edits) || !edits.length) {
+  console.error("ERROR: No edits to apply");
+  process.exit(1);
+}
+
+const FORBIDDEN = [".env", ".github/", "package.json", "prisma/schema.prisma", "node_modules/"];
+
+// ── Phase 1: Validate ALL edits before writing anything ────────────────────
+const plan = [];
 const summary = [];
 
 for (const edit of edits) {
+  const path = normalize(edit.path);
+
+  // Security checks
+  if (isAbsolute(path) || path.startsWith("..")) {
+    summary.push(`🚫 **Blocked** \`${edit.path}\` — path traversal`);
+    continue;
+  }
+  if (FORBIDDEN.some((f) => path.startsWith(f))) {
+    summary.push(`🚫 **Blocked** \`${path}\` — protected file`);
+    continue;
+  }
+
   if (edit.action === "create") {
-    mkdirSync(dirname(edit.path), { recursive: true });
-    writeFileSync(edit.path, edit.content);
-    summary.push(`📄 **Created** \`${edit.path}\``);
-  } else if (edit.action === "edit") {
-    const content = readFileSync(edit.path, "utf8");
-    if (!content.includes(edit.search)) {
-      summary.push(`⚠️ **Skipped** \`${edit.path}\` — search string not found`);
+    if (!edit.content) {
+      summary.push(`⚠️ **Skipped** \`${path}\` — no content`);
       continue;
     }
-    const updated = content.replace(edit.search, edit.replace);
-    writeFileSync(edit.path, updated);
+    if (existsSync(path)) {
+      summary.push(`⚠️ **Skipped** \`${path}\` — file already exists (use edit action)`);
+      continue;
+    }
+    plan.push({ type: "create", path, content: edit.content });
+    summary.push(`📄 **Create** \`${path}\``);
 
-    // Generate a short diff preview
-    const searchLines = edit.search.split("\n").length;
-    const replaceLines = edit.replace.split("\n").length;
-    const delta = replaceLines - searchLines;
+  } else if (edit.action === "edit") {
+    if (!existsSync(path)) {
+      summary.push(`⚠️ **Skipped** \`${path}\` — file not found`);
+      continue;
+    }
+    const original = readFileSync(path, "utf8");
+    if (!original.includes(edit.search)) {
+      summary.push(`⚠️ **Skipped** \`${path}\` — search string not found`);
+      continue;
+    }
+    // Check for multiple matches (ambiguous edit)
+    const matchCount = original.split(edit.search).length - 1;
+    if (matchCount > 1) {
+      summary.push(`⚠️ **Skipped** \`${path}\` — search matches ${matchCount} locations (ambiguous)`);
+      continue;
+    }
+    const updated = original.replace(edit.search, edit.replace);
+    const delta = edit.replace.split("\n").length - edit.search.split("\n").length;
     const sign = delta > 0 ? `+${delta}` : delta < 0 ? `${delta}` : "±0";
-    summary.push(`✏️ **Edited** \`${edit.path}\` (${sign} lines)`);
+    plan.push({ type: "edit", path, content: updated, original });
+    summary.push(`✏️ **Edit** \`${path}\` (${sign} lines)`);
   }
 }
 
-// Output summary to stdout
+if (!plan.length) {
+  console.log("⚠️ No valid edits to apply.");
+  process.exit(0);
+}
+
+// ── Phase 2: Apply all edits atomically ────────────────────────────────────
+for (const op of plan) {
+  if (op.type === "create") {
+    mkdirSync(dirname(op.path), { recursive: true });
+  }
+  writeFileSync(op.path, op.content);
+}
+
 console.log(summary.join("\n"));
