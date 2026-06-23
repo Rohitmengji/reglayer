@@ -21,12 +21,26 @@ export const metadata: Metadata = {
   description:
     "Enterprise accessibility compliance platform. Automated WCAG 2.2 scanning, litigation risk scoring, compliance forecasting, and continuous monitoring for ADA, EAA, Section 508, and EN 301 549.",
   openGraph: {
-    title: "RegLayer — Web Accessibility Compliance",
+    title: "RegLayer — Web Accessibility Compliance, Fully Automated",
     description:
       "Automated WCAG scanning, AI fix suggestions, audit-ready reports, and continuous monitoring. One platform for worldwide accessibility standards.",
     url: "https://reglayer.vercel.app",
     siteName: "RegLayer",
     type: "website",
+    images: [
+      {
+        url: "/assests/reglayer-og.png",
+        width: 1200,
+        height: 630,
+        alt: "RegLayer — Web Accessibility Compliance Platform",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "RegLayer — Web Accessibility Compliance, Fully Automated",
+    description: "Automated WCAG scanning, litigation risk scoring, and compliance forecasting for enterprise teams.",
+    images: ["/assests/reglayer-og.png"],
   },
 };
 
