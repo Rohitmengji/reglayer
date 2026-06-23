@@ -8,6 +8,7 @@ import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
 import { executeJourney, type JourneyConfig } from "@/lib/scanner/journey/flow-scanner";
 import { applyRateLimit } from "@/lib/rate-limit-middleware";
+import { validateScanUrl, resolvesToInternalIp } from "@/lib/validations/ssrf";
 
 // ─── Preset Journeys ────────────────────────────────────
 
@@ -207,6 +208,32 @@ export async function POST(req: NextRequest) {
     if (config.steps.length > 20) {
       return NextResponse.json(
         { error: "Maximum 20 steps per journey" },
+        { status: 400 }
+      );
+    }
+  }
+
+  // SSRF protection — executeJourney navigates a headless browser to `baseUrl`
+  // and to any absolute navigate-step URL (flow-scanner: page.goto). Validate
+  // every such entry URL with the literal/private-range check AND a DNS
+  // resolution check, so a journey can't be used to probe internal services or
+  // cloud-metadata endpoints. Relative navigate steps resolve under the
+  // (validated) baseUrl, so checking baseUrl covers them.
+  const urlsToCheck: string[] = [];
+  if (config.baseUrl) urlsToCheck.push(config.baseUrl);
+  for (const step of config.steps) {
+    if (step.action.type === "navigate" && step.action.url.startsWith("http")) {
+      urlsToCheck.push(step.action.url);
+    }
+  }
+  for (const candidate of urlsToCheck) {
+    const ssrfError = validateScanUrl(candidate);
+    if (ssrfError) {
+      return NextResponse.json({ error: ssrfError }, { status: 400 });
+    }
+    if (await resolvesToInternalIp(candidate)) {
+      return NextResponse.json(
+        { error: "Journey URLs cannot target internal/private addresses" },
         { status: 400 }
       );
     }

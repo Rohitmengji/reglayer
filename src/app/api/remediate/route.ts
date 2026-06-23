@@ -10,7 +10,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
 import { authenticateApiKey } from "@/lib/auth/api-key";
-import { validateScanUrl } from "@/lib/validations/ssrf";
+import { validateScanUrl, resolvesToInternalIp } from "@/lib/validations/ssrf";
 import { remediate, type FixRecord } from "@/lib/remediation/engine";
 import { z } from "zod";
 import { applyRateLimit } from "@/lib/rate-limit-middleware";
@@ -31,6 +31,53 @@ const FIX_LABELS: Record<string, string> = {
 function describeFix(f: FixRecord): string {
   const base = FIX_LABELS[f.category] ?? `Fixed ${f.category.replace(/-/g, " ")}`;
   return f.selector ? `${base} (${f.selector})` : base;
+}
+
+/** Max redirect hops to follow when fetching a remediation target. */
+const MAX_REDIRECTS = 5;
+
+/** Thrown when a fetch target (initial OR post-redirect) violates SSRF rules. */
+class SsrfBlockedError extends Error {}
+
+/**
+ * Fetch a URL while enforcing SSRF rules on EVERY hop.
+ *
+ * `redirect: "follow"` chases 3xx redirects transparently, so a public URL that
+ * 302s to `http://169.254.169.254/…` (cloud metadata) or an internal host would
+ * sail past a single entry-point check. We instead follow redirects manually and
+ * re-validate each target — the literal/encoding/private-range check
+ * (validateScanUrl) AND a DNS-resolution check (resolvesToInternalIp, for public
+ * hostnames that point at internal IPs). The original code validated only the
+ * entry URL and only with the sync check. Throws SsrfBlockedError on a blocked
+ * hop (or too many redirects) so callers can map it to a 400.
+ *
+ * The caller's AbortSignal is reused across hops, so the timeout bounds the whole
+ * redirect chain rather than resetting per hop.
+ */
+async function fetchWithSsrfGuard(initialUrl: string, init: RequestInit): Promise<Response> {
+  let currentUrl = initialUrl;
+
+  for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+    const ssrfError = validateScanUrl(currentUrl);
+    if (ssrfError) throw new SsrfBlockedError(ssrfError);
+    if (await resolvesToInternalIp(currentUrl)) {
+      throw new SsrfBlockedError("Target resolves to a private/internal address");
+    }
+
+    const res = await fetch(currentUrl, { ...init, redirect: "manual" });
+
+    // Not a redirect → final response.
+    if (res.status < 300 || res.status >= 400) return res;
+
+    const location = res.headers.get("location");
+    if (!location) return res; // 3xx without a target — hand back as-is.
+
+    // Resolve relative redirects against the current URL; the next loop
+    // iteration re-validates this new target before fetching it.
+    currentUrl = new URL(location, currentUrl).toString();
+  }
+
+  throw new SsrfBlockedError("Too many redirects");
 }
 
 /**
@@ -97,20 +144,15 @@ export async function POST(request: NextRequest) {
 
   const { url, config, returnFormat } = parsed.data;
 
-  // SSRF protection
-  const ssrfError = validateScanUrl(url);
-  if (ssrfError) {
-    return NextResponse.json({ error: ssrfError }, { status: 400 });
-  }
-
   try {
-    // Fetch the original page
-    const response = await fetch(url, {
+    // Fetch the original page. SSRF is enforced on every redirect hop (not just
+    // the entry URL) inside fetchWithSsrfGuard — a public URL can 3xx to an
+    // internal address, so a single entry check is insufficient.
+    const response = await fetchWithSsrfGuard(url, {
       headers: {
         "User-Agent": "RegLayer-Remediation/1.0 (accessibility-scanner)",
         Accept: "text/html",
       },
-      redirect: "follow",
       signal: AbortSignal.timeout(15000),
     });
 
@@ -158,6 +200,9 @@ export async function POST(request: NextRequest) {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
+    if (error instanceof SsrfBlockedError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     if (error instanceof Error && error.name === "TimeoutError") {
       return NextResponse.json({ error: "Request timed out" }, { status: 504 });
     }
@@ -173,6 +218,12 @@ export async function POST(request: NextRequest) {
  * Designed for embedding or CDN-style usage.
  */
 export async function GET(request: NextRequest) {
+  // Rate-limit the proxy: GET performs a server-side fetch on the caller's behalf,
+  // so without metering it can be abused as an open relay / amplification vector
+  // (POST is already rate-limited; GET was not).
+  const blocked = await applyRateLimit(request, "scan");
+  if (blocked) return blocked;
+
   const url = request.nextUrl.searchParams.get("url");
   const apiKey = request.nextUrl.searchParams.get("key");
 
@@ -192,19 +243,28 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Invalid API key" }, { status: 403 });
   }
 
-  // SSRF protection
-  const ssrfError = validateScanUrl(url);
-  if (ssrfError) {
-    return NextResponse.json({ error: ssrfError }, { status: 400 });
+  // Plan gate — auto-remediation is Pro/Enterprise. POST enforces this on the
+  // session's workspace; GET authenticates by API key, so resolve the plan from
+  // the key's workspace. Without this a Free-plan key got unlimited remediation
+  // (the gate was POST-only).
+  const workspace = await prisma.workspace.findUnique({
+    where: { id: key.workspaceId },
+    select: { plan: true },
+  });
+  if (!workspace || !["PRO", "ENTERPRISE"].includes(workspace.plan)) {
+    return NextResponse.json(
+      { error: "Auto-remediation requires a Pro or Enterprise plan" },
+      { status: 403 }
+    );
   }
 
   try {
-    const response = await fetch(url, {
+    // SSRF enforced on every redirect hop (see fetchWithSsrfGuard).
+    const response = await fetchWithSsrfGuard(url, {
       headers: {
         "User-Agent": "RegLayer-Remediation/1.0 (accessibility-scanner)",
         Accept: "text/html",
       },
-      redirect: "follow",
       signal: AbortSignal.timeout(15000),
     });
 
@@ -222,7 +282,10 @@ export async function GET(request: NextRequest) {
         "Cache-Control": "public, max-age=300", // 5 min cache
       },
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof SsrfBlockedError) {
+      return new Response(error.message, { status: 400 });
+    }
     return new Response("Remediation failed", { status: 500 });
   }
 }
