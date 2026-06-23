@@ -95,14 +95,14 @@ function AnalyticsPageInner() {
           setLoading(false);
         }
       })
-      .catch(() => { if (!cancelled) { setError("Unable to load analytics. Please try again."); setLoading(false); } });
+      .catch(() => { if (!cancelled) { setError(t("analytics.errorBody")); setLoading(false); } });
     return () => { cancelled = true; };
-  }, [period]);
+  }, [period, t]);
 
   if (loading) {
     return (
       <AppShell>
-        <PageLoading message="Loading analytics..." />
+        <PageLoading message={t("analytics.loading")} />
       </AppShell>
     );
   }
@@ -112,7 +112,7 @@ function AnalyticsPageInner() {
       <AppShell>
         {error ? (
           <PageError
-            title="Couldn\u2019t load analytics"
+            title={t("analytics.errorTitle")}
             message={error}
             onRetry={() => { setError(null); setLoading(true); }}
           />
@@ -154,7 +154,7 @@ function AnalyticsPageInner() {
                     : "bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700"
                 }`}
               >
-                {d}d
+                {t(d === 7 ? "analytics.7d" : d === 30 ? "analytics.30d" : "analytics.90d")}
               </button>
             ))}
           </div>
@@ -163,13 +163,13 @@ function AnalyticsPageInner() {
         {/* Overview Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           <MetricCard
-            label="Average Score"
+            label={t("analytics.avgScore")}
             value={data.overview.averageScore.toString()}
             icon={<Target className="h-4 w-4 text-blue-500" />}
-            subtitle={`Best: ${data.overview.bestScore}`}
+            subtitle={t("analytics.bestSubtitle", { score: String(data.overview.bestScore) })}
           />
           <MetricCard
-            label="Trend"
+            label={t("analytics.trend")}
             value={`${data.trend.changePerWeek > 0 ? "+" : ""}${data.trend.changePerWeek}/wk`}
             icon={
               data.trend.direction === "improving" ? (
@@ -180,19 +180,25 @@ function AnalyticsPageInner() {
                 <Minus className="h-4 w-4 text-neutral-500 dark:text-neutral-400" />
               )
             }
-            subtitle={data.trend.direction}
+            subtitle={t(
+              data.trend.direction === "improving"
+                ? "analytics.improving"
+                : data.trend.direction === "declining"
+                ? "analytics.declining"
+                : "analytics.stable"
+            )}
           />
           <MetricCard
-            label="Total Scans"
+            label={t("analytics.totalScans")}
             value={data.overview.totalScans.toString()}
             icon={<Activity className="h-4 w-4 text-purple-500" />}
-            subtitle={`${data.overview.uniqueUrls} unique URLs`}
+            subtitle={t("analytics.uniqueUrls", { count: String(data.overview.uniqueUrls) })}
           />
           <MetricCard
-            label="Violations Found"
+            label={t("analytics.violations")}
             value={data.overview.totalViolationsFound.toString()}
             icon={<AlertTriangle className="h-4 w-4 text-orange-500" />}
-            subtitle={`${data.overview.averageViolationsPerScan} avg/scan`}
+            subtitle={t("analytics.avgPerScan", { count: String(data.overview.averageViolationsPerScan) })}
           />
         </div>
 
@@ -201,7 +207,7 @@ function AnalyticsPageInner() {
           <Card>
             <CardHeader>
               <CardTitle className="text-sm font-medium text-neutral-600 dark:text-neutral-300">
-                Score Over Time
+                {t("analytics.scoreOverTime")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -216,25 +222,25 @@ function AnalyticsPageInner() {
             <CardContent className="p-6">
               <div className="flex items-center gap-2 mb-3">
                 <Zap className="h-4 w-4 text-blue-600" />
-                <p className="text-xs font-medium text-blue-600">FORECAST</p>
+                <p className="text-xs font-medium text-blue-600">{t("analytics.forecast")}</p>
               </div>
               <div className="space-y-3">
                 <div>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400">Next Week</p>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400">{t("analytics.nextWeek")}</p>
                   <p className="text-2xl font-bold tabular-nums text-neutral-900 dark:text-white">{data.forecast.nextWeekScore}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400">Next Month</p>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400">{t("analytics.nextMonth")}</p>
                   <p className="text-2xl font-bold tabular-nums text-neutral-900 dark:text-white">{data.forecast.nextMonthScore}</p>
                 </div>
                 {data.forecast.weeksTo90 && (
                   <div>
-                    <p className="text-xs text-neutral-500 dark:text-neutral-400">Weeks to Score 90</p>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400">{t("analytics.weeksTo90")}</p>
                     <p className="text-2xl font-bold tabular-nums text-green-700">{data.forecast.weeksTo90}</p>
                   </div>
                 )}
                 <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                  Confidence: {Math.round(data.forecast.confidence * 100)}%
+                  {t("analytics.confidence", { percent: String(Math.round(data.forecast.confidence * 100)) })}
                 </p>
               </div>
             </CardContent>
@@ -245,17 +251,17 @@ function AnalyticsPageInner() {
             <CardContent className="p-6">
               <div className="flex items-center gap-2 mb-3">
                 <Clock className="h-4 w-4 text-purple-600" />
-                <p className="text-xs font-medium text-purple-600">VELOCITY</p>
+                <p className="text-xs font-medium text-purple-600">{t("analytics.velocity")}</p>
               </div>
               <div className="space-y-3">
                 <div>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400">Scans / Day</p>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400">{t("analytics.scansPerDay")}</p>
                   <p className="text-2xl font-bold tabular-nums text-neutral-900 dark:text-white">
                     {data.velocityMetrics.scansPerDay}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400">Violations Found / Week</p>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400">{t("analytics.violationsFoundWeek")}</p>
                   <p className="text-2xl font-bold tabular-nums text-orange-600">
                     {data.velocityMetrics.newViolationsPerWeek}
                   </p>
@@ -269,19 +275,19 @@ function AnalyticsPageInner() {
             <CardContent className="p-6">
               <div className="flex items-center gap-2 mb-3">
                 <BarChart3 className="h-4 w-4 text-neutral-600 dark:text-neutral-300" />
-                <p className="text-xs font-medium text-neutral-600 dark:text-neutral-300">DISTRIBUTION</p>
+                <p className="text-xs font-medium text-neutral-600 dark:text-neutral-300">{t("analytics.distribution")}</p>
               </div>
               <div className="space-y-3">
                 <div className="flex justify-between">
-                  <span className="text-xs text-neutral-500 dark:text-neutral-400">Best</span>
+                  <span className="text-xs text-neutral-500 dark:text-neutral-400">{t("analytics.best")}</span>
                   <span className="text-sm font-bold text-green-600">{data.overview.bestScore}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-xs text-neutral-500 dark:text-neutral-400">Median</span>
+                  <span className="text-xs text-neutral-500 dark:text-neutral-400">{t("analytics.median")}</span>
                   <span className="text-sm font-bold text-neutral-900 dark:text-white">{data.overview.medianScore}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-xs text-neutral-500 dark:text-neutral-400">Worst</span>
+                  <span className="text-xs text-neutral-500 dark:text-neutral-400">{t("analytics.worst")}</span>
                   <span className="text-sm font-bold text-red-600">{data.overview.worstScore}</span>
                 </div>
                 <div className="h-2 rounded-full bg-neutral-100 dark:bg-neutral-800 overflow-hidden mt-2">
@@ -300,7 +306,7 @@ function AnalyticsPageInner() {
           <Card>
             <CardHeader>
               <CardTitle className="text-sm font-medium text-neutral-600 dark:text-neutral-300">
-                Most Common Violations
+                {t("analytics.topViolations")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -327,12 +333,12 @@ function AnalyticsPageInner() {
                         )}
                       </div>
                       <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-                        Avg {v.avgAffectedElements} elements affected
+                        {t("analytics.elementsAffected", { count: String(v.avgAffectedElements) })}
                       </p>
                     </div>
                     <div className="text-right">
                       <p className="text-lg font-bold tabular-nums text-neutral-900 dark:text-white">{v.count}</p>
-                      <p className="text-xs text-neutral-500 dark:text-neutral-400">occurrences</p>
+                      <p className="text-xs text-neutral-500 dark:text-neutral-400">{t("analytics.occurrences")}</p>
                     </div>
                   </div>
                 ))}
@@ -346,7 +352,7 @@ function AnalyticsPageInner() {
           <Card>
             <CardHeader>
               <CardTitle className="text-sm font-medium text-neutral-600 dark:text-neutral-300">
-                URL Performance
+                {t("analytics.urlPerformance")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -358,7 +364,7 @@ function AnalyticsPageInner() {
                   >
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-neutral-900 dark:text-white truncate">{u.url}</p>
-                      <p className="text-xs text-neutral-500 dark:text-neutral-400">{u.scans} scans</p>
+                      <p className="text-xs text-neutral-500 dark:text-neutral-400">{t("analytics.scanCount", { count: String(u.scans) })}</p>
                     </div>
                     <div className="flex items-center gap-2">
                       {u.trend === "improving" && <TrendingUp className="h-4 w-4 text-green-500" />}
