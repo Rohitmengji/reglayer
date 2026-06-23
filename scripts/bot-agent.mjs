@@ -99,9 +99,14 @@ RULES:
 - NEVER output secrets, API keys, or credentials.
 - Maximum 5 edits.
 
-OUTPUT: ONLY a JSON array (no markdown, no explanation):
-[{"path":"src/...","action":"edit","search":"exact verbatim lines","replace":"new lines"},
- {"path":"src/...","action":"create","content":"full file"}]
+OUTPUT: ONLY a JSON object (no markdown, no explanation):
+{
+  "summary": "2-3 sentence plain-English explanation of what you changed and why",
+  "edits": [
+    {"path":"src/...","action":"edit","search":"exact verbatim lines","replace":"new lines"},
+    {"path":"src/...","action":"create","content":"full file"}
+  ]
+}
 
 "search" must be EXACT copy-paste from the file (3-5 context lines for uniqueness).`;
 
@@ -137,11 +142,22 @@ const raw = (await res.json()).choices?.[0]?.message?.content ?? "";
 if (!raw.trim()) { console.error("ERROR: Empty AI response"); process.exit(1); }
 
 // ── Parse + validate ───────────────────────────────────────────────────────
-let edits;
-try { edits = JSON.parse(raw.replace(/^```json\n?/, "").replace(/\n?```$/, "").trim()); }
+let parsed;
+try { parsed = JSON.parse(raw.replace(/^```json\n?/, "").replace(/\n?```$/, "").trim()); }
 catch { console.error("ERROR: Invalid JSON\n" + raw.slice(0, 300)); process.exit(1); }
 
-if (!Array.isArray(edits)) { console.error("ERROR: Expected array"); process.exit(1); }
+// Support both {summary, edits} and bare array (backward compat)
+let summary = "";
+let edits;
+if (Array.isArray(parsed)) {
+  edits = parsed;
+} else if (parsed && Array.isArray(parsed.edits)) {
+  edits = parsed.edits;
+  summary = parsed.summary || "";
+} else {
+  console.error("ERROR: Expected {summary, edits} or array"); process.exit(1);
+}
+
 if (!edits.length) { console.error("ERROR: 0 edits"); process.exit(1); }
 if (edits.length > 10) { console.error("ERROR: Too many edits:", edits.length); process.exit(1); }
 
@@ -167,4 +183,4 @@ for (const e of edits) {
 
 if (!valid.length) { console.error("ERROR: All edits invalid/blocked"); process.exit(1); }
 console.error(`Validated ${valid.length}/${edits.length} edits`);
-console.log(JSON.stringify(valid, null, 2));
+console.log(JSON.stringify({ summary, edits: valid }, null, 2));
