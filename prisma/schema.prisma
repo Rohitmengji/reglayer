@@ -101,6 +101,7 @@ model Workspace {
   proofs       ComplianceProof[]
   guardPolicies GuardPolicy[]
   auditRequests AuditRequest[]
+  complianceRules ComplianceRule[]
 
   @@map("workspaces")
 }
@@ -673,6 +674,37 @@ model GuardPolicy {
   @@unique([siteId, name])
   @@index([workspaceId])
   @@map("guard_policies")
+}
+
+/// Organization-defined compliance policy evaluated over scan results.
+/// THRESHOLD: { minScore }              — overall score floor
+/// RULE_REQUIRED: { axeRuleId }         — a specific axe rule must have zero violations
+/// IMPACT_BUDGET: { impact, maxCount }  — at most N violations of a given impact
+/// CRITERION_REQUIRED: { criterion }    — a WCAG criterion (e.g. "1.4.3") must have zero violations
+enum ComplianceRuleType {
+  THRESHOLD
+  RULE_REQUIRED
+  IMPACT_BUDGET
+  CRITERION_REQUIRED
+}
+
+model ComplianceRule {
+  id          String             @id @default(cuid())
+  workspaceId String
+  name        String
+  description String?
+  enabled     Boolean            @default(true)
+  type        ComplianceRuleType
+  config      Json
+  severity    Impact             @default(serious)
+  createdBy   String?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  workspace   Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@map("compliance_rules")
 }
 
 // ─────────────────────────────────────────────

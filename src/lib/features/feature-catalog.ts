@@ -112,6 +112,13 @@ export const FEATURE_CATALOG: FeatureDefinition[] = [
     category: "compliance",
     plans: ["PRO", "ENTERPRISE"],
   },
+  {
+    id: "customRules",
+    name: "Custom Compliance Rules",
+    description: "Define organization-specific compliance policies evaluated on every scan",
+    category: "compliance",
+    plans: ["ENTERPRISE"],
+  },
 
   // ─── Automation (Enterprise) ──────────────────
   {

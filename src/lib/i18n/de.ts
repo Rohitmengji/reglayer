@@ -2236,7 +2236,7 @@ export const de = {
   "pricing.ent.descUnlimitedSites": "Keine Begrenzung überwachter Websites oder gecrawlter Seiten — erfassen Sie Ihren gesamten Webbestand in einem Workspace.",
   "pricing.ent.descUnlimitedTeam": "Laden Sie Ihre gesamte Organisation ein. Keine Begrenzung pro Sitzplatz und keine Mehrkosten.",
   "pricing.ent.descVpat": "Generieren Sie VPAT-2.4- und ACR-Dokumente (WCAG 2.1, Section 508, EN 301 549) automatisch aus echten Scan-Daten — die Konformitätsberichte, die Beschaffungsteams verlangen.",
-  "pricing.ent.descCustomRules": "Definieren Sie organisationsspezifische Compliance-Prüfungen über das WCAG-Regelwerk hinaus. In aktiver Entwicklung.",
+  "pricing.ent.descCustomRules": "Definieren Sie organisationsspezifische Compliance-Richtlinien — Score-Schwellen, gesperrte Regeln, Impact-Budgets — die bei jedem Scan ausgewertet werden.",
   "pricing.ent.descIntegrations": "Öffnen Sie Jira-Tickets für neue Verstöße und posten Sie Benachrichtigungen automatisch in Slack, sodass die Behebung in Ihrem bestehenden Workflow landet.",
   "pricing.ent.descApi": "Eine REST-API mit zugriffsbeschränkten Schlüsseln und einem CI/CD-Quality-Gate, das den Build stoppt, wenn die Barrierefreiheit unter Ihren Schwellenwert fällt.",
   "pricing.ent.descAudit": "Eine unveränderliche, zeitgestempelte Aufzeichnung jeder Aktion, exportierbar als Nachweis für Sicherheits- und Compliance-Audits.",
