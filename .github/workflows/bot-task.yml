@@ -1,11 +1,123 @@
 name: Bot Task Agent
 on:
   issues:
-    types: [opened]
+    types: [opened, labeled]
+  issue_comment:
+    types: [created]
 
 jobs:
-  execute-task:
-    if: contains(github.event.issue.labels.*.name, 'bot-task')
+  # Phase 1: AI generates code changes and posts diff for approval
+  generate-changes:
+    if: |
+      github.event_name == 'issues' &&
+      contains(github.event.issue.labels.*.name, 'bot-task') &&
+      !contains(github.event.issue.labels.*.name, 'approved') &&
+      !contains(github.event.issue.labels.*.name, 'completed')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Extract task description
+        id: task
+        run: |
+          BODY='${{ github.event.issue.body }}'
+          DESC=$(echo "$BODY" | grep -oP '(?<=\*\*Description:\*\* ).*' || echo "${{ github.event.issue.title }}")
+          echo "description=$DESC" >> $GITHUB_OUTPUT
+
+      - name: Comment — AI working
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: '🤖 **AI Agent started** — analyzing codebase and generating changes...'
+            });
+
+      - name: Run AI Agent
+        id: agent
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          node scripts/bot-agent.mjs "${{ steps.task.outputs.description }}" > edits.json 2>agent.log
+          cat agent.log >&2
+          echo "edits_count=$(node -e "console.log(JSON.parse(require('fs').readFileSync('edits.json','utf8')).length)")" >> $GITHUB_OUTPUT
+
+      - name: Apply edits
+        id: apply
+        run: |
+          SUMMARY=$(node scripts/apply-edits.mjs edits.json)
+          echo "summary<<EOF" >> $GITHUB_OUTPUT
+          echo "$SUMMARY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Generate diff
+        id: diff
+        run: |
+          DIFF=$(git diff --stat && echo "---" && git diff --no-color | head -200)
+          echo "diff<<EOF" >> $GITHUB_OUTPUT
+          echo "$DIFF" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Comment — changes ready for approval
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const summary = `${{ steps.apply.outputs.summary }}`;
+            const diff = `${{ steps.diff.outputs.diff }}`;
+            const count = '${{ steps.agent.outputs.edits_count }}';
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: [
+                '## 📋 Changes Ready for Review',
+                '',
+                `**${count} file(s) modified:**`,
+                summary,
+                '',
+                '<details><summary>View diff</summary>',
+                '',
+                '```diff',
+                diff,
+                '```',
+                '</details>',
+                '',
+                '---',
+                '**To approve:** Add the `approved` label to this issue.',
+                '**To reject:** Close the issue.',
+              ].join('\n')
+            });
+
+      - name: Upload edits artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bot-edits
+          path: edits.json
+          retention-days: 1
+
+  # Phase 2: After approval, apply edits, run gates, create PR
+  apply-and-pr:
+    if: |
+      github.event_name == 'issues' &&
+      github.event.action == 'labeled' &&
+      github.event.label.name == 'approved' &&
+      contains(github.event.issue.labels.*.name, 'bot-task')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -25,13 +137,25 @@ jobs:
       - name: Generate Prisma Client
         run: npx prisma generate
 
-      - name: Extract task description
-        id: task
-        run: |
-          DESCRIPTION=$(echo '${{ github.event.issue.body }}' | grep -oP '(?<=\*\*Description:\*\* ).*')
-          echo "description=$DESCRIPTION" >> $GITHUB_OUTPUT
+      - name: Download edits
+        uses: actions/download-artifact@v4
+        with:
+          name: bot-edits
+        continue-on-error: true
 
-      - name: Comment — task started
+      - name: Re-generate if no artifact
+        if: hashFiles('edits.json') == ''
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          BODY='${{ github.event.issue.body }}'
+          DESC=$(echo "$BODY" | grep -oP '(?<=\*\*Description:\*\* ).*' || echo "${{ github.event.issue.title }}")
+          node scripts/bot-agent.mjs "$DESC" > edits.json
+
+      - name: Apply edits
+        run: node scripts/apply-edits.mjs edits.json
+
+      - name: Comment — running gates
         uses: actions/github-script@v7
         with:
           script: |
@@ -39,32 +163,57 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body: '🤖 **Agent started** — working on this task.\n\nWill run all 3 gates (tsc, vitest, build) before creating a PR.'
+              body: '⏳ **Running 3 gates** — tsc, vitest, build...'
             });
 
-      # PLACEHOLDER: In Phase 2, this step calls Claude API to edit code.
-      # For now, it just validates gates pass on current main.
-      - name: Run Gate 1 — TypeScript
+      - name: Gate 1 — TypeScript
         run: npx tsc --noEmit
 
-      - name: Run Gate 2 — Tests
+      - name: Gate 2 — Tests
         run: npx vitest run
 
-      - name: Run Gate 3 — Build
+      - name: Gate 3 — Build
         run: npx next build
         env:
           SKIP_ENV_VALIDATION: "1"
 
-      - name: Comment — gates passed
+      - name: Create branch and PR
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="bot/issue-${{ github.event.issue.number }}"
+          git config user.name "RegLayer Bot"
+          git config user.email "bot@reglayer.dev"
+          git checkout -b "$BRANCH"
+          git add -A
+          git commit -m "fix: ${{ github.event.issue.title }}
+
+          Automated by RegLayer Bot from issue #${{ github.event.issue.number }}"
+          git push origin "$BRANCH"
+          gh pr create --base main --head "$BRANCH" \
+            --title "fix: ${{ github.event.issue.title }}" \
+            --body "Automated PR from Discord bot task #${{ github.event.issue.number }}.
+
+          All 3 gates passed: tsc, vitest, build."
+
+      - name: Comment — PR created
         if: success()
         uses: actions/github-script@v7
         with:
           script: |
+            const prs = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              head: `${context.repo.owner}:bot/issue-${context.issue.number}`,
+              state: 'open'
+            });
+            const pr = prs.data[0];
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body: '✅ **All 3 gates green** — tsc, vitest, build all pass.\n\n⏳ Phase 2 will add autonomous code editing here.'
+              body: `✅ **All 3 gates green!** PR created: #${pr?.number ?? '?'}\n\nMerge it when ready.`
             });
             await github.rest.issues.update({
               owner: context.repo.owner,
@@ -83,5 +232,11 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body: '❌ **Gate failure** — one or more checks failed. Check the [workflow run](' + context.serverUrl + '/' + context.repo.owner + '/' + context.repo.repo + '/actions/runs/' + context.runId + ') for details.'
+              body: '❌ **Gate failure** — AI changes broke something. Check the [workflow run](' + context.serverUrl + '/' + context.repo.owner + '/' + context.repo.repo + '/actions/runs/' + context.runId + ').\n\nRemove the `approved` label to retry.'
             });
+            await github.rest.issues.removeLabel({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              name: 'approved'
+            }).catch(() => {});
