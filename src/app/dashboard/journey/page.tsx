@@ -9,7 +9,7 @@ import { FeatureGate } from "@/components/ui/feature-gate";
  * HOW: POSTs flow definition to /api/journey, receives per-step scan results.
  */
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { ModernSelect } from "@/components/ui/modern-select";
 import { AppShell } from "@/components/layout/app-shell";
@@ -76,6 +76,16 @@ function JourneyPageInner() {
   const [baseUrl, setBaseUrl] = useState("https://");
   const [expandedStep, setExpandedStep] = useState<number | null>(null);
 
+  const presetOptions = useMemo(
+    () => [
+      { value: "ecommerce-checkout", label: t("journey.presetEcommerce") },
+      { value: "login-flow", label: t("journey.presetLogin") },
+      { value: "form-wizard", label: t("journey.presetFormWizard") },
+      ...presets.map((p) => ({ value: p.id, label: p.name })),
+    ],
+    [t, presets]
+  );
+
   async function loadPresets() {
     if (presetsLoaded) return;
     const res = await fetch("/api/journey");
@@ -102,7 +112,7 @@ function JourneyPageInner() {
         setResult(await res.json());
       } else {
         const err = await res.json();
-        toast.error(err.error || "Journey failed");
+        toast.error(err.error || t("journey.failed"));
       }
     } finally {
       setLoading(false);
@@ -115,10 +125,10 @@ function JourneyPageInner() {
         <div>
           <h1 className="text-2xl font-bold">{t("journey.title")}</h1>
           <p className="text-muted-foreground">
-            Scan multi-step user flows. Catches accessibility bugs that only appear during navigation.
+            {t("journey.subtitleFull")}
           </p>
           <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
-            Requires Pro or Enterprise plan.
+            {t("journey.requiresPlan")}
           </p>
         </div>
 
@@ -127,31 +137,31 @@ function JourneyPageInner() {
           <CardContent className="pt-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="text-sm font-medium block mb-1">Journey Preset</label>
+                <label className="text-sm font-medium block mb-1">{t("journey.preset")}</label>
                 <ModernSelect
-              options={[{ value: "ecommerce-checkout", label: "E-Commerce Checkout" }, { value: "login-flow", label: "Authentication Flow" }, { value: "form-wizard", label: "Multi-Step Form" }, ...presets.map((p) => ({ value: p.id, label: p.name }))]}
+              options={presetOptions}
               value={selectedPreset}
               onChange={setSelectedPreset}
             />
               </div>
               <div className="md:col-span-2">
-                <label className="text-sm font-medium block mb-1">Base URL</label>
+                <label className="text-sm font-medium block mb-1">{t("journey.baseUrl")}</label>
                 <input
                   type="url"
                   value={baseUrl}
                   onChange={(e) => setBaseUrl(e.target.value)}
-                  placeholder="https://your-app.com"
+                  placeholder={t("journey.baseUrlPlaceholder")}
                   className="w-full rounded-md border px-3 py-2 text-sm bg-background"
                 />
               </div>
             </div>
             <Button onClick={runJourney} disabled={loading || !baseUrl.startsWith("http")} className="mt-4">
               <Play className="h-4 w-4 mr-2" />
-              {loading ? "Running Journey..." : "Run Journey Scan"}
+              {loading ? t("journey.running") : t("journey.run")}
             </Button>
             {loading && (
               <p className="text-sm text-muted-foreground mt-2 animate-pulse">
-                Executing steps with Playwright... This may take 30-60 seconds.
+                {t("journey.executingFull")}
               </p>
             )}
           </CardContent>
@@ -166,34 +176,34 @@ function JourneyPageInner() {
                 <CardContent className="pt-6 text-center">
                   <Gauge className="h-6 w-6 mx-auto mb-1" />
                   <p className="text-3xl font-bold tabular-nums">{result.result.overallScore}</p>
-                  <p className="text-xs text-muted-foreground">Score</p>
+                  <p className="text-xs text-muted-foreground">{t("journey.score")}</p>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="pt-6 text-center">
                   <Eye className="h-6 w-6 mx-auto mb-1 text-orange-500" />
                   <p className="text-3xl font-bold tabular-nums">{result.result.summary.focusIssues}</p>
-                  <p className="text-xs text-muted-foreground">Focus Issues</p>
+                  <p className="text-xs text-muted-foreground">{t("journey.focusIssues")}</p>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="pt-6 text-center">
                   <Keyboard className="h-6 w-6 mx-auto mb-1 text-red-500" />
                   <p className="text-3xl font-bold tabular-nums">{result.result.summary.keyboardTraps}</p>
-                  <p className="text-xs text-muted-foreground">Keyboard Traps</p>
+                  <p className="text-xs text-muted-foreground">{t("journey.keyboardTraps")}</p>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="pt-6 text-center">
                   <Volume2 className="h-6 w-6 mx-auto mb-1 text-blue-500" />
                   <p className="text-3xl font-bold tabular-nums">{result.result.summary.missingAnnouncements}</p>
-                  <p className="text-xs text-muted-foreground">Missing Announcements</p>
+                  <p className="text-xs text-muted-foreground">{t("journey.missingAnnouncements")}</p>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="pt-6 text-center">
                   <p className="text-3xl font-bold tabular-nums">{result.result.passedSteps}/{result.result.totalSteps}</p>
-                  <p className="text-xs text-muted-foreground">Steps Passed</p>
+                  <p className="text-xs text-muted-foreground">{t("journey.stepsPassed")}</p>
                 </CardContent>
               </Card>
             </div>
@@ -201,7 +211,7 @@ function JourneyPageInner() {
             {/* Steps */}
             <Card>
               <CardContent className="pt-6">
-                <h3 className="font-semibold mb-4">Journey Steps</h3>
+                <h3 className="font-semibold mb-4">{t("journey.steps")}</h3>
                 <div className="space-y-2">
                   {result.result.steps.map((step, i) => (
                     <div key={i} className="border rounded-lg overflow-hidden">
@@ -217,12 +227,12 @@ function JourneyPageInner() {
                           )}
                           <div>
                             <span className="font-medium">{step.stepName}</span>
-                            <span className="text-xs text-muted-foreground ml-2">{step.duration}ms</span>
+                            <span className="text-xs text-muted-foreground ml-2">{t("journey.durationMs", { ms: String(step.duration) })}</span>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
                           {step.accessibility.violations.length > 0 && (
-                            <Badge variant="destructive">{step.accessibility.violations.length} issues</Badge>
+                            <Badge variant="destructive">{t("journey.issuesCount", { count: String(step.accessibility.violations.length) })}</Badge>
                           )}
                         </div>
                       </button>
@@ -230,24 +240,24 @@ function JourneyPageInner() {
                         <div className="p-3 pt-0 border-t bg-muted/30">
                           <div className="grid grid-cols-2 gap-4 text-sm mt-3">
                             <div>
-                              <p className="font-medium mb-1">Focus</p>
+                              <p className="font-medium mb-1">{t("journey.focus")}</p>
                               <p className="text-muted-foreground">
-                                {step.accessibility.focusedElement || "No focused element"} 
-                                {step.accessibility.focusVisible ? " (visible)" : " (not visible)"}
+                                {step.accessibility.focusedElement || t("journey.noFocusedElement")}
+                                {step.accessibility.focusVisible ? t("journey.focusVisible") : t("journey.focusNotVisible")}
                               </p>
                             </div>
                             <div>
-                              <p className="font-medium mb-1">Landmarks</p>
+                              <p className="font-medium mb-1">{t("journey.landmarks")}</p>
                               <p className="text-muted-foreground">
-                                {step.accessibility.landmarks.length > 0 
+                                {step.accessibility.landmarks.length > 0
                                   ? step.accessibility.landmarks.join(", ")
-                                  : "None detected"}
+                                  : t("journey.noneDetected")}
                               </p>
                             </div>
                           </div>
                           {step.accessibility.violations.length > 0 && (
                             <div className="mt-3">
-                              <p className="font-medium text-sm mb-2">Violations</p>
+                              <p className="font-medium text-sm mb-2">{t("journey.violations")}</p>
                               {step.accessibility.violations.map((v, vi) => (
                                 <div key={vi} className="flex items-start gap-2 text-sm mb-1">
                                   <Badge variant={v.severity === "critical" ? "destructive" : "secondary"} className="text-xs shrink-0">
@@ -260,7 +270,7 @@ function JourneyPageInner() {
                           )}
                           {step.assertions.length > 0 && (
                             <div className="mt-3">
-                              <p className="font-medium text-sm mb-2">Assertions</p>
+                              <p className="font-medium text-sm mb-2">{t("journey.assertions")}</p>
                               {step.assertions.map((a, ai) => (
                                 <div key={ai} className="flex items-center gap-2 text-sm mb-1">
                                   {a.passed ? <CheckCircle className="h-3 w-3 text-green-500" /> : <XCircle className="h-3 w-3 text-red-500" />}
@@ -281,7 +291,7 @@ function JourneyPageInner() {
             {result.recommendations?.length > 0 && (
               <Card>
                 <CardContent className="pt-6">
-                  <h3 className="font-semibold mb-4">Recommendations</h3>
+                  <h3 className="font-semibold mb-4">{t("journey.recommendations")}</h3>
                   <div className="space-y-3">
                     {result.recommendations.map((rec, i) => (
                       <p key={i} className="text-sm p-3 bg-muted/50 rounded-lg">{rec}</p>

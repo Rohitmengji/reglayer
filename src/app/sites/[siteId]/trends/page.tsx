@@ -37,17 +37,20 @@ import {
 } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 
-const TIME_RANGES: Array<{ key: TimeRange; label: string }> = [
-  { key: "7D", label: "7D" },
-  { key: "30D", label: "30D" },
-  { key: "90D", label: "90D" },
-  { key: "ALL", label: "All Time" },
-];
-
 export default function SiteTrendsPage() {
   const { t } = useI18n();
   const params = useParams();
   const siteId = params.siteId as string;
+
+  const TIME_RANGES = useMemo<Array<{ key: TimeRange; label: string }>>(
+    () => [
+      { key: "7D", label: t("trends.range7d") },
+      { key: "30D", label: t("trends.range30d") },
+      { key: "90D", label: t("trends.range90d") },
+      { key: "ALL", label: t("trends.rangeAll") },
+    ],
+    [t]
+  );
 
   const {
     loading,
@@ -95,7 +98,7 @@ export default function SiteTrendsPage() {
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="text-center">
             <p className="text-red-500 font-medium">{error}</p>
-            <p className="text-sm text-neutral-500 mt-2">Unable to load trends for this site.</p>
+            <p className="text-sm text-neutral-500 mt-2">{t("trends.loadErrorBody")}</p>
           </div>
         </div>
       </AppShell>
@@ -112,7 +115,7 @@ export default function SiteTrendsPage() {
           <div className="flex items-start justify-between">
             <div>
               <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">
-                {siteName || "Site Trends"}
+                {siteName || t("trends.fallbackTitle")}
               </h1>
               {siteUrl && (
                 <a
@@ -128,7 +131,10 @@ export default function SiteTrendsPage() {
               {summary && (
                 <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
                   <Calendar className="h-3 w-3 inline mr-1" />
-                  {summary.totalScans} scans since {new Date(summary.firstScanAt).toLocaleDateString()}
+                  {t("trends.scansSince", {
+                    count: String(summary.totalScans),
+                    date: new Date(summary.firstScanAt).toLocaleDateString(),
+                  })}
                 </p>
               )}
             </div>
@@ -169,7 +175,7 @@ export default function SiteTrendsPage() {
         <Card className="mb-6 border border-neutral-200 dark:border-neutral-700">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-              AIS Score Over Time
+              {t("trends.aisScoreOverTime")}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -181,7 +187,7 @@ export default function SiteTrendsPage() {
         <Card className="mb-8 border border-neutral-200 dark:border-neutral-700">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-              Violations Over Time
+              {t("trends.violationsOverTime")}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -193,22 +199,22 @@ export default function SiteTrendsPage() {
         <Card className="border border-neutral-200 dark:border-neutral-700">
           <CardHeader>
             <CardTitle className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-              Scan History
+              {t("trends.scanHistory")}
             </CardTitle>
           </CardHeader>
           <CardContent>
             {scanHistory.length === 0 ? (
-              <p className="text-sm text-neutral-500 text-center py-8">No scan history yet.</p>
+              <p className="text-sm text-neutral-500 text-center py-8">{t("trends.noScanHistory")}</p>
             ) : (
               <>
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm" aria-label="Scan history table">
+                  <table className="w-full text-sm" aria-label={t("trends.tableAria")}>
                     <thead>
                       <tr className="border-b border-neutral-200 dark:border-neutral-700">
-                        <th className="text-left py-2 px-3 text-xs font-medium text-neutral-500">Date</th>
-                        <th className="text-left py-2 px-3 text-xs font-medium text-neutral-500">AIS Score</th>
-                        <th className="text-left py-2 px-3 text-xs font-medium text-neutral-500">Change</th>
-                        <th className="text-right py-2 px-3 text-xs font-medium text-neutral-500">Actions</th>
+                        <th className="text-left py-2 px-3 text-xs font-medium text-neutral-500">{t("trends.colDate")}</th>
+                        <th className="text-left py-2 px-3 text-xs font-medium text-neutral-500">{t("trends.colAisScore")}</th>
+                        <th className="text-left py-2 px-3 text-xs font-medium text-neutral-500">{t("trends.colChange")}</th>
+                        <th className="text-right py-2 px-3 text-xs font-medium text-neutral-500">{t("trends.colActions")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -259,7 +265,7 @@ export default function SiteTrendsPage() {
                                 href={`/scans/${scan.scanId}`}
                                 className="text-xs text-blue-600 hover:underline"
                               >
-                                View Report
+                                {t("trends.viewReport")}
                               </a>
                             </td>
                           </tr>
@@ -273,7 +279,7 @@ export default function SiteTrendsPage() {
                 {historyPages > 1 && (
                   <div className="flex items-center justify-between mt-4 pt-3 border-t border-neutral-100 dark:border-neutral-800">
                     <p className="text-xs text-neutral-500">
-                      Page {historyPage} of {historyPages}
+                      {t("trends.pageOf", { page: String(historyPage), pages: String(historyPages) })}
                     </p>
                     <div className="flex items-center gap-2">
                       <Button
