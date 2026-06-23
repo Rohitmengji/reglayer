@@ -146,14 +146,17 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: "Request not found or already resolved" }, { status: 404 });
   }
 
-  // Permission check: must be master admin or owner of the target workspace
+  // Permission check: master admin, OR owner/admin of the workspace the REQUEST
+  // targets. Authority derives from the STORED request, never the body — otherwise
+  // an owner of workspace A could act on (or redirect) a request targeted at B by
+  // passing their own workspaceId. Globally-pending requests (no target) are
+  // master-admin only.
   if (!actor.isMasterAdmin) {
-    const targetWsId = workspaceId || accessRequest.workspaceId;
-    if (!targetWsId) {
-      return NextResponse.json({ error: "Must specify workspaceId to approve" }, { status: 400 });
+    if (!accessRequest.workspaceId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     const hasPermission = actor.memberships.some(
-      (m) => m.workspaceId === targetWsId && (m.role === "OWNER" || m.role === "ADMIN")
+      (m) => m.workspaceId === accessRequest.workspaceId && (m.role === "OWNER" || m.role === "ADMIN")
     );
     if (!hasPermission) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -168,13 +171,23 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ success: true, status: "DENIED" });
   }
 
-  // Approve: add user to workspace
-  const targetWorkspaceId = workspaceId || accessRequest.workspaceId;
+  // Approve: add the user to the workspace. Non-master actors can only approve
+  // INTO the request's targeted workspace (the one they were just verified to own);
+  // only a master admin may direct an approval to an arbitrary workspaceId.
+  const targetWorkspaceId = actor.isMasterAdmin
+    ? (workspaceId || accessRequest.workspaceId)
+    : accessRequest.workspaceId;
   if (!targetWorkspaceId) {
     return NextResponse.json({ error: "Must specify workspaceId to approve" }, { status: 400 });
   }
 
+  // OWNER is never assignable via access-request approval (prevents an admin from
+  // minting a co-owner). Reject anything outside the safe set instead of 500ing
+  // on an invalid enum at create time.
   const assignRole = role || "MEMBER";
+  if (!["ADMIN", "MEMBER", "VIEWER"].includes(assignRole)) {
+    return NextResponse.json({ error: "Invalid role" }, { status: 400 });
+  }
 
   // Check workspace exists
   const workspace = await prisma.workspace.findUnique({ where: { id: targetWorkspaceId } });
