@@ -157,7 +157,7 @@ export default function ContactPage() {
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4" noValidate>
                 {/* Honeypot: hidden from users and AT; bots fill it and get dropped. */}
-                <div aria-hidden="true" className="absolute left-[-9999px] h-0 w-0 overflow-hidden" >
+                <div aria-hidden="true" className="absolute -left-2499.75 h-0 w-0 overflow-hidden" >
                   <label htmlFor="website">Leave this field empty</label>
                   <input id="website" name="website" type="text" tabIndex={-1} autoComplete="off" />
                 </div>
