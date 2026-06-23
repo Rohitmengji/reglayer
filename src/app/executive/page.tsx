@@ -106,7 +106,7 @@ function ExecutiveDashboardPageInner() {
     return (
       <AppShell>
         <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4">
-          <p className="text-red-700 dark:text-red-300">{error || "No data available"}</p>
+          <p className="text-red-700 dark:text-red-300">{error || t("executive.noData")}</p>
         </div>
       </AppShell>
     );
@@ -139,6 +139,16 @@ function ExecutiveDashboardPageInner() {
     }
   }
 
+  function getImpactLabel(impact: string) {
+    switch (impact) {
+      case "critical": return t("executive.impactCritical");
+      case "serious": return t("executive.impactSerious");
+      case "moderate": return t("executive.impactModerate");
+      case "minor": return t("executive.impactMinor");
+      default: return impact;
+    }
+  }
+
   function getImpactBadge(impact: string) {
     switch (impact) {
       case "critical": return "destructive" as const;
@@ -159,12 +169,12 @@ function ExecutiveDashboardPageInner() {
           <div>
             <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{t("nav.executive")}</h1>
             <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-              Portfolio-level accessibility compliance overview
+              {t("executive.subtitle")}
             </p>
           </div>
           <Button variant="outline" size="sm" onClick={handleExport} className="shrink-0 self-start sm:self-auto">
             <Download className="h-3.5 w-3.5 mr-1.5" />
-            Export All
+            {t("executive.exportAll")}
           </Button>
         </div>
 
@@ -174,12 +184,12 @@ function ExecutiveDashboardPageInner() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">Portfolio Score</p>
+                  <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">{t("executive.portfolioScore")}</p>
                   <p className={`text-3xl font-bold mt-1 ${getScoreColor(portfolio.avgScore)}`}>
                     {portfolio.avgScore}
                   </p>
                   {/* Clarify scope: this is the all-time average, distinct from the 12-week trend chart below. */}
-                  <p className="text-[11px] text-neutral-400 mt-0.5">All-time average across all scans</p>
+                  <p className="text-[11px] text-neutral-400 mt-0.5">{t("executive.portfolioScoreHint")}</p>
                 </div>
                 <div className={`h-12 w-12 rounded-full flex items-center justify-center ${portfolio.avgScore >= 70 ? "bg-green-100 dark:bg-green-900/30" : "bg-red-100 dark:bg-red-900/30"}`}>
                   <Shield className={`h-6 w-6 ${portfolio.avgScore >= 70 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`} />
@@ -192,7 +202,7 @@ function ExecutiveDashboardPageInner() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">Sites Monitored</p>
+                  <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">{t("executive.sitesMonitored")}</p>
                   <p className="text-3xl font-bold mt-1 text-neutral-900 dark:text-white">{portfolio.totalSites}</p>
                 </div>
                 <div className="h-12 w-12 rounded-full flex items-center justify-center bg-blue-100 dark:bg-blue-900/30">
@@ -206,7 +216,7 @@ function ExecutiveDashboardPageInner() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">Total Violations</p>
+                  <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">{t("executive.totalViolations")}</p>
                   <p className="text-3xl font-bold mt-1 text-neutral-900 dark:text-white">{portfolio.totalViolations}</p>
                 </div>
                 <div className="h-12 w-12 rounded-full flex items-center justify-center bg-orange-100 dark:bg-orange-900/30">
@@ -220,7 +230,7 @@ function ExecutiveDashboardPageInner() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">Total Scans</p>
+                  <p className="text-sm font-medium text-neutral-500 dark:text-neutral-400">{t("executive.totalScans")}</p>
                   <p className="text-3xl font-bold mt-1 text-neutral-900 dark:text-white">{portfolio.totalScans}</p>
                 </div>
                 <div className="h-12 w-12 rounded-full flex items-center justify-center bg-purple-100 dark:bg-purple-900/30">
@@ -236,8 +246,8 @@ function ExecutiveDashboardPageInner() {
           {/* Compliance Buckets */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm">Compliance Distribution</CardTitle>
-              <CardDescription>Sites grouped by their compliance score</CardDescription>
+              <CardTitle className="text-sm">{t("executive.complianceDistribution")}</CardTitle>
+              <CardDescription>{t("executive.complianceDistributionDesc")}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -245,7 +255,7 @@ function ExecutiveDashboardPageInner() {
                   <div className="w-3 h-3 rounded-full bg-red-500" />
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-neutral-700 dark:text-neutral-300">Critical (&lt;50)</span>
+                      <span className="text-sm text-neutral-700 dark:text-neutral-300">{t("executive.bucketCritical")}</span>
                       <span className="text-sm font-medium text-neutral-900 dark:text-white">{portfolio.complianceBuckets.critical}</span>
                     </div>
                     <div className="mt-1 h-2 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
@@ -257,7 +267,7 @@ function ExecutiveDashboardPageInner() {
                   <div className="w-3 h-3 rounded-full bg-orange-500" />
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-neutral-700 dark:text-neutral-300">Needs Work (50-69)</span>
+                      <span className="text-sm text-neutral-700 dark:text-neutral-300">{t("executive.bucketNeedsWork")}</span>
                       <span className="text-sm font-medium text-neutral-900 dark:text-white">{portfolio.complianceBuckets.needsWork}</span>
                     </div>
                     <div className="mt-1 h-2 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
@@ -269,7 +279,7 @@ function ExecutiveDashboardPageInner() {
                   <div className="w-3 h-3 rounded-full bg-yellow-500" />
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-neutral-700 dark:text-neutral-300">Passing (70-89)</span>
+                      <span className="text-sm text-neutral-700 dark:text-neutral-300">{t("executive.bucketPassing")}</span>
                       <span className="text-sm font-medium text-neutral-900 dark:text-white">{portfolio.complianceBuckets.passing}</span>
                     </div>
                     <div className="mt-1 h-2 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
@@ -281,7 +291,7 @@ function ExecutiveDashboardPageInner() {
                   <div className="w-3 h-3 rounded-full bg-green-500" />
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-neutral-700 dark:text-neutral-300">Excellent (90+)</span>
+                      <span className="text-sm text-neutral-700 dark:text-neutral-300">{t("executive.bucketExcellent")}</span>
                       <span className="text-sm font-medium text-neutral-900 dark:text-white">{portfolio.complianceBuckets.excellent}</span>
                     </div>
                     <div className="mt-1 h-2 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
@@ -296,8 +306,8 @@ function ExecutiveDashboardPageInner() {
           {/* Impact Distribution */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm">Violation Severity</CardTitle>
-              <CardDescription>Distribution of violations by impact level</CardDescription>
+              <CardTitle className="text-sm">{t("executive.violationSeverity")}</CardTitle>
+              <CardDescription>{t("executive.violationSeverityDesc")}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -309,7 +319,7 @@ function ExecutiveDashboardPageInner() {
                       <div className={`w-3 h-3 rounded-full ${getImpactColor(impact)}`} />
                       <div className="flex-1">
                         <div className="flex items-center justify-between">
-                          <span className="text-sm capitalize text-neutral-700 dark:text-neutral-300">{impact}</span>
+                          <span className="text-sm text-neutral-700 dark:text-neutral-300">{getImpactLabel(impact)}</span>
                           <span className="text-sm font-medium text-neutral-900 dark:text-white">{count} ({pct}%)</span>
                         </div>
                         <div className="mt-1 h-2 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
@@ -327,8 +337,8 @@ function ExecutiveDashboardPageInner() {
         {/* Weekly Trend */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">Score Trend (12 Weeks)</CardTitle>
-            <CardDescription>Average accessibility score over time</CardDescription>
+            <CardTitle className="text-sm">{t("executive.scoreTrend")}</CardTitle>
+            <CardDescription>{t("executive.scoreTrendDesc")}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex items-end gap-1 h-32">
@@ -341,11 +351,11 @@ function ExecutiveDashboardPageInner() {
                       <div
                         className={`w-full rounded-t transition-all ${isActive ? getScoreBg(point.avgScore) : "bg-neutral-200 dark:bg-neutral-700"}`}
                         style={{ height }}
-                        title={`${point.week}: ${point.avgScore} avg (${point.scanCount} scans)`}
+                        title={`${point.week}: ${t("executive.trendTooltip", { score: String(point.avgScore), count: String(point.scanCount) })}`}
                       />
                       <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-10">
                         <div className="bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-xs rounded px-2 py-1 whitespace-nowrap">
-                          {point.avgScore} • {point.scanCount} scans
+                          {t("executive.trendTooltip", { score: String(point.avgScore), count: String(point.scanCount) })}
                         </div>
                       </div>
                     </div>
@@ -366,31 +376,31 @@ function ExecutiveDashboardPageInner() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-sm">Site Rankings</CardTitle>
+                <CardTitle className="text-sm">{t("executive.siteRankings")}</CardTitle>
                 <CardDescription>
                   {/* API returns the lowest-scoring 20; show the true total honestly. */}
                   {portfolio.totalSites > siteRankings.length
-                    ? `Showing the ${siteRankings.length} lowest-scoring of ${portfolio.totalSites} monitored sites`
-                    : "All monitored sites ranked by compliance score"}
+                    ? t("executive.siteRankingsPartial", { shown: String(siteRankings.length), total: String(portfolio.totalSites) })
+                    : t("executive.siteRankingsAll")}
                 </CardDescription>
               </div>
-              <Badge variant="secondary">{portfolio.totalSites} sites</Badge>
+              <Badge variant="secondary">{t("executive.sitesCount", { count: String(portfolio.totalSites) })}</Badge>
             </div>
           </CardHeader>
           <CardContent>
             {siteRankings.length === 0 ? (
-              <p className="text-sm text-neutral-500 text-center py-8">No scans yet. Run your first scan to see data here.</p>
+              <p className="text-sm text-neutral-500 text-center py-8">{t("executive.noScans")}</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-neutral-200 dark:border-neutral-700">
-                      <th className="text-left py-2 px-2 font-medium text-neutral-600 dark:text-neutral-400">Site</th>
-                      <th className="text-center py-2 px-2 font-medium text-neutral-600 dark:text-neutral-400">Score</th>
-                      <th className="text-center py-2 px-2 font-medium text-neutral-600 dark:text-neutral-400">Trend</th>
-                      <th className="text-center py-2 px-2 font-medium text-neutral-600 dark:text-neutral-400">Violations</th>
-                      <th className="text-center py-2 px-2 font-medium text-neutral-600 dark:text-neutral-400">Scans</th>
-                      <th className="text-right py-2 px-2 font-medium text-neutral-600 dark:text-neutral-400">Last Scanned</th>
+                      <th className="text-left py-2 px-2 font-medium text-neutral-600 dark:text-neutral-400">{t("executive.colSite")}</th>
+                      <th className="text-center py-2 px-2 font-medium text-neutral-600 dark:text-neutral-400">{t("executive.colScore")}</th>
+                      <th className="text-center py-2 px-2 font-medium text-neutral-600 dark:text-neutral-400">{t("executive.colTrend")}</th>
+                      <th className="text-center py-2 px-2 font-medium text-neutral-600 dark:text-neutral-400">{t("executive.colViolations")}</th>
+                      <th className="text-center py-2 px-2 font-medium text-neutral-600 dark:text-neutral-400">{t("executive.colScans")}</th>
+                      <th className="text-right py-2 px-2 font-medium text-neutral-600 dark:text-neutral-400">{t("executive.colLastScanned")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -446,12 +456,12 @@ function ExecutiveDashboardPageInner() {
         {/* Top Violations */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">Top Violations Across Portfolio</CardTitle>
-            <CardDescription>Most frequently occurring accessibility issues</CardDescription>
+            <CardTitle className="text-sm">{t("executive.topViolations")}</CardTitle>
+            <CardDescription>{t("executive.topViolationsDesc")}</CardDescription>
           </CardHeader>
           <CardContent>
             {topViolations.length === 0 ? (
-              <p className="text-sm text-neutral-500 text-center py-4">No violations recorded yet.</p>
+              <p className="text-sm text-neutral-500 text-center py-4">{t("executive.noViolations")}</p>
             ) : (
               <div className="space-y-2">
                 {topViolations.map((v, i) => {
@@ -460,7 +470,7 @@ function ExecutiveDashboardPageInner() {
                   return (
                     <div key={i} className="flex items-center gap-3">
                       <Badge variant={getImpactBadge(v.impact)} className="w-20 justify-center text-xs">
-                        {v.impact}
+                        {getImpactLabel(v.impact)}
                       </Badge>
                       <div className="flex-1">
                         <div className="flex items-center justify-between mb-1">

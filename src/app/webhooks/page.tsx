@@ -9,7 +9,7 @@ import { FeatureGate } from "@/components/ui/feature-gate";
  * HOW: Fetches /api/webhooks. POST to create, DELETE to remove. Test button sends sample payload.
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,15 +52,6 @@ interface Delivery {
   error?: string;
 }
 
-const ALL_EVENTS = [
-  { value: "scan.completed", label: "Scan Completed", description: "When any scan finishes successfully" },
-  { value: "scan.failed", label: "Scan Failed", description: "When a scan errors out" },
-  { value: "alert.triggered", label: "Alert Triggered", description: "When an alert rule fires" },
-  { value: "score.improved", label: "Score Improved", description: "When score increases vs previous scan" },
-  { value: "score.degraded", label: "Score Degraded", description: "When score decreases vs previous scan" },
-  { value: "crawl.completed", label: "Crawl Completed", description: "When a site crawl finishes" },
-];
-
 function WebhooksPageInner() {
   const [webhooks, setWebhooks] = useState<WebhookEntry[]>([]);
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
@@ -80,6 +71,18 @@ function WebhooksPageInner() {
   const [testResult, setTestResult] = useState<{ id: string; status: string; statusCode: number } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const { t } = useI18n();
+
+  const ALL_EVENTS = useMemo(
+    () => [
+      { value: "scan.completed", label: t("webhooks.scanCompleted"), description: t("webhooks.scanCompletedDesc") },
+      { value: "scan.failed", label: t("webhooks.scanFailed"), description: t("webhooks.scanFailedDesc") },
+      { value: "alert.triggered", label: t("webhooks.alertTriggered"), description: t("webhooks.alertTriggeredDesc") },
+      { value: "score.improved", label: t("webhooks.scoreImproved"), description: t("webhooks.scoreImprovedDesc") },
+      { value: "score.degraded", label: t("webhooks.scoreDegraded"), description: t("webhooks.scoreDegradedDesc") },
+      { value: "crawl.completed", label: t("webhooks.crawlCompleted"), description: t("webhooks.crawlCompletedDesc") },
+    ],
+    [t]
+  );
 
   useEffect(() => {
     fetchWebhooks();
@@ -166,16 +169,16 @@ function WebhooksPageInner() {
           </div>
           <Button onClick={() => setShowCreate(!showCreate)}>
             <Plus className="mr-2 h-4 w-4" />
-            Add Endpoint
+            {t("webhooks.addEndpoint")}
           </Button>
         </div>
 
         {/* Secret reveal (one-time) */}
         {newSecret && (
           <div className="rounded-xl border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950 p-5">
-            <h3 className="text-sm font-semibold text-green-800 dark:text-green-200 mb-2">Signing Secret Created</h3>
+            <h3 className="text-sm font-semibold text-green-800 dark:text-green-200 mb-2">{t("webhooks.secretTitle")}</h3>
             <p className="text-xs text-green-700 dark:text-green-300 mb-3">
-              Copy this secret now — it won&apos;t be shown again. Use it to verify webhook signatures.
+              {t("webhooks.secretMessage")}
             </p>
             <div className="flex items-center gap-2">
               <code className="flex-1 min-w-0 break-all rounded bg-white dark:bg-neutral-900 px-3 py-2 text-xs font-mono border border-green-200 dark:border-green-800">
@@ -189,7 +192,7 @@ function WebhooksPageInner() {
               </Button>
             </div>
             <Button variant="ghost" size="sm" className="mt-3 text-green-600" onClick={() => setNewSecret(null)}>
-              Dismiss
+              {t("webhooks.secretDismiss")}
             </Button>
           </div>
         )}
@@ -198,17 +201,17 @@ function WebhooksPageInner() {
         {showCreate && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm">Register Webhook Endpoint</CardTitle>
+              <CardTitle className="text-sm">{t("webhooks.createTitle")}</CardTitle>
               <CardDescription>
-                We&apos;ll send a POST request with a JSON payload for each selected event.
+                {t("webhooks.createSubtitle")}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleCreate} className="space-y-4">
                 <div>
-                  <label className="text-xs font-medium text-neutral-600 dark:text-neutral-300">Name</label>
+                  <label className="text-xs font-medium text-neutral-600 dark:text-neutral-300">{t("webhooks.nameLabel")}</label>
                   <Input
-                    placeholder="e.g. Slack Notifications"
+                    placeholder={t("webhooks.namePlaceholder")}
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required
@@ -216,10 +219,10 @@ function WebhooksPageInner() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-neutral-600 dark:text-neutral-300">Endpoint URL</label>
+                  <label className="text-xs font-medium text-neutral-600 dark:text-neutral-300">{t("webhooks.urlLabel")}</label>
                   <Input
                     type="url"
-                    placeholder="https://your-server.com/webhook"
+                    placeholder={t("webhooks.urlPlaceholder")}
                     value={url}
                     onChange={(e) => setUrl(e.target.value)}
                     required
@@ -227,7 +230,7 @@ function WebhooksPageInner() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-neutral-600 dark:text-neutral-300 mb-2 block">Events</label>
+                  <label className="text-xs font-medium text-neutral-600 dark:text-neutral-300 mb-2 block">{t("webhooks.eventsLabel")}</label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {ALL_EVENTS.map((ev) => (
                       <label
@@ -255,10 +258,10 @@ function WebhooksPageInner() {
                 <div className="flex gap-2">
                   <Button type="submit" disabled={creating || selectedEvents.length === 0}>
                     {creating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Webhook className="mr-2 h-4 w-4" />}
-                    Create Webhook
+                    {t("webhooks.createButton")}
                   </Button>
                   <Button type="button" variant="ghost" onClick={() => setShowCreate(false)}>
-                    Cancel
+                    {t("webhooks.cancelButton")}
                   </Button>
                 </div>
               </form>
@@ -272,9 +275,9 @@ function WebhooksPageInner() {
             <Card>
               <CardContent className="p-12 text-center">
                 <Webhook className="h-12 w-12 text-neutral-200 mx-auto mb-4" />
-                <p className="text-neutral-600 dark:text-neutral-300 font-medium">No webhooks configured</p>
+                <p className="text-neutral-600 dark:text-neutral-300 font-medium">{t("webhooks.empty")}</p>
                 <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-                  Add an endpoint to receive real-time event notifications.
+                  {t("webhooks.emptySubtitle")}
                 </p>
               </CardContent>
             </Card>
@@ -314,7 +317,7 @@ function WebhooksPageInner() {
                       )}
                     </Button>
                     {/* Delete */}
-                    <Button variant="ghost" size="sm" onClick={() => setDeleteTarget(hook.id)} aria-label={`Delete webhook ${hook.name}`}>
+                    <Button variant="ghost" size="sm" onClick={() => setDeleteTarget(hook.id)} aria-label={t("webhooks.deleteAriaLabel", { name: hook.name })}>
                       <Trash2 className="h-3.5 w-3.5 text-red-400" />
                     </Button>
                   </div>
@@ -329,7 +332,10 @@ function WebhooksPageInner() {
                     ) : (
                       <XCircle className="h-3.5 w-3.5" />
                     )}
-                    HTTP {testResult.statusCode} — {testResult.status}
+                    {t("webhooks.testResult", {
+                      code: String(testResult.statusCode),
+                      status: testResult.status === "success" ? t("webhooks.success") : t("webhooks.failed"),
+                    })}
                   </div>
                 )}
               </CardContent>
@@ -341,8 +347,8 @@ function WebhooksPageInner() {
         {deliveries.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm">Recent Deliveries</CardTitle>
-              <CardDescription>Last {deliveries.length} webhook deliveries</CardDescription>
+              <CardTitle className="text-sm">{t("webhooks.deliveries")}</CardTitle>
+              <CardDescription>{t("webhooks.deliveriesSubtitle", { count: String(deliveries.length) })}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
@@ -363,8 +369,8 @@ function WebhooksPageInner() {
                       </div>
                     </div>
                     <div className="flex items-center gap-4 text-xs text-neutral-500 dark:text-neutral-400">
-                      <span>HTTP {d.statusCode}</span>
-                      <span>{d.duration}ms</span>
+                      <span>{t("webhooks.httpStatus", { code: String(d.statusCode) })}</span>
+                      <span>{t("webhooks.durationMs", { ms: String(d.duration) })}</span>
                       <span className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />
                         {new Date(d.timestamp).toLocaleString()}
@@ -380,13 +386,13 @@ function WebhooksPageInner() {
         {/* Payload Documentation */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">Payload Format</CardTitle>
-            <CardDescription>Every delivery includes these headers and body structure</CardDescription>
+            <CardTitle className="text-sm">{t("webhooks.payloadTitle")}</CardTitle>
+            <CardDescription>{t("webhooks.payloadSubtitle")}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <div>
-                <p className="text-xs font-medium text-neutral-600 dark:text-neutral-300 mb-1">Headers</p>
+                <p className="text-xs font-medium text-neutral-600 dark:text-neutral-300 mb-1">{t("webhooks.headers")}</p>
                 <pre className="rounded-lg bg-neutral-900 p-3 text-xs text-green-300 overflow-x-auto">
 {`X-RegLayer-Event: scan.completed
 X-RegLayer-Signature: sha256=<hmac_hex>
@@ -395,7 +401,7 @@ Content-Type: application/json`}
                 </pre>
               </div>
               <div>
-                <p className="text-xs font-medium text-neutral-600 dark:text-neutral-300 mb-1">Body</p>
+                <p className="text-xs font-medium text-neutral-600 dark:text-neutral-300 mb-1">{t("webhooks.body")}</p>
                 <pre className="rounded-lg bg-neutral-900 p-3 text-xs text-green-300 overflow-x-auto">
 {`{
   "event": "scan.completed",
@@ -412,7 +418,7 @@ Content-Type: application/json`}
                 </pre>
               </div>
               <div>
-                <p className="text-xs font-medium text-neutral-600 dark:text-neutral-300 mb-1">Verifying Signatures (Node.js)</p>
+                <p className="text-xs font-medium text-neutral-600 dark:text-neutral-300 mb-1">{t("webhooks.verifyTitle")}</p>
                 <pre className="rounded-lg bg-neutral-900 p-3 text-xs text-green-300 overflow-x-auto">
 {`const crypto = require('crypto');
 const signature = req.headers['x-reglayer-signature'];
@@ -431,9 +437,9 @@ const valid = crypto.timingSafeEqual(
       </div>
       <ConfirmDialog
         open={!!deleteTarget}
-        title="Delete webhook"
-        description="Are you sure you want to delete this webhook endpoint? It will stop receiving events immediately. This action cannot be undone."
-        confirmLabel="Delete"
+        title={t("webhooks.deleteDialogTitle")}
+        description={t("webhooks.deleteDialogDescription")}
+        confirmLabel={t("webhooks.delete")}
         variant="danger"
         onConfirm={() => deleteTarget && handleDelete(deleteTarget)}
         onCancel={() => setDeleteTarget(null)}
