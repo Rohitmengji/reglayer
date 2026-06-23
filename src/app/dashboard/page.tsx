@@ -29,6 +29,7 @@ import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
+import { useAnimatedNumber } from "@/hooks/use-animated-number";
 import { AppShell } from "@/components/layout/app-shell";
 import { ScanForm } from "@/components/scanner/scan-form";
 import { ScoreCard } from "@/components/dashboard/score-card";
@@ -242,22 +243,26 @@ export default function DashboardPage() {
               label={t("dashboard.totalScans")}
               value={stats.totalScans.toString()}
               icon={<Activity className="h-4 w-4 text-blue-500" />}
+              delay={0}
             />
             <StatCard
               label={t("dashboard.avgScore")}
               value={stats.avgScore.toString()}
               icon={<Target className="h-4 w-4 text-green-500" />}
               trend={stats.trend}
+              delay={75}
             />
             <StatCard
               label={t("dashboard.violationsFound")}
               value={stats.totalViolations.toString()}
               icon={<AlertTriangle className="h-4 w-4 text-orange-500" />}
+              delay={150}
             />
             <StatCard
               label={t("dashboard.sitesMonitored")}
               value={stats.sitesMonitored.toString()}
               icon={<Globe className="h-4 w-4 text-purple-500" />}
+              delay={225}
             />
           </div>
         )}
@@ -450,19 +455,28 @@ function MetricCard({ label, value }: { label: string; value: string }) {
   );
 }
 
-function StatCard({ label, value, icon, trend }: { label: string; value: string; icon: React.ReactNode; trend?: number }) {
+function StatCard({ label, value, icon, trend, delay = 0 }: { label: string; value: string; icon: React.ReactNode; trend?: number; delay?: number }) {
+  const numericValue = parseInt(value, 10);
+  const isNumeric = !isNaN(numericValue);
+  const animatedValue = useAnimatedNumber(isNumeric ? numericValue : 0, 900);
+
   return (
-    <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4">
+    <div
+      className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4 animate-in fade-in slide-in-from-bottom-2 duration-500 fill-mode-both"
+      style={{ animationDelay: `${delay}ms` }}
+    >
       <div className="flex items-center justify-between mb-2">
         {icon}
         {trend !== undefined && trend !== 0 && (
           <span className={`flex items-center gap-0.5 text-xs font-medium ${trend > 0 ? "text-green-600" : "text-red-600"}`}>
             {trend > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-            {Math.abs(trend)}
+            {trend > 0 ? "+" : ""}{Math.abs(Math.round(trend * 10) / 10)}
           </span>
         )}
       </div>
-      <p className="text-2xl font-bold text-neutral-900 dark:text-white">{value}</p>
+      <p className="text-2xl font-bold tabular-nums text-neutral-900 dark:text-white">
+        {isNumeric ? animatedValue.toLocaleString() : value}
+      </p>
       <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">{label}</p>
     </div>
   );

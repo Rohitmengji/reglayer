@@ -18,10 +18,12 @@ import { TrendingUp, TrendingDown } from "lucide-react";
 
 function TrendTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number }>; label?: string }) {
   if (!active || !payload?.length) return null;
+  const score = payload[0].value;
+  const color = score >= 90 ? "text-emerald-600" : score >= 70 ? "text-green-600" : score >= 50 ? "text-amber-600" : "text-red-600";
   return (
-    <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 shadow-lg">
-      <p className="text-[10px] font-medium text-neutral-500 dark:text-neutral-400">{label}</p>
-      <p className="text-sm font-bold text-neutral-900 dark:text-white">{payload[0].value}%</p>
+    <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 shadow-xl shadow-neutral-200/50 dark:shadow-neutral-900/50">
+      <p className="text-[10px] font-medium text-neutral-400 dark:text-neutral-500">{label}</p>
+      <p className={`text-lg font-bold tabular-nums ${color}`}>{score}<span className="text-xs font-normal text-neutral-400 ml-0.5">/100</span></p>
     </div>
   );
 }
@@ -84,14 +86,22 @@ export function ComplianceTrend() {
           <AreaChart data={dataPoints} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
             <defs>
               <linearGradient id="trendGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#6366f1" stopOpacity={0.3} />
-                <stop offset="100%" stopColor="#6366f1" stopOpacity={0.02} />
+                <stop offset="0%" stopColor="#6366f1" stopOpacity={0.25} />
+                <stop offset="50%" stopColor="#6366f1" stopOpacity={0.08} />
+                <stop offset="100%" stopColor="#6366f1" stopOpacity={0} />
               </linearGradient>
+              <filter id="glow">
+                <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                <feMerge>
+                  <feMergeNode in="coloredBlur"/>
+                  <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+              </filter>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.04)" vertical={false} />
             <XAxis
               dataKey="date"
-              tick={{ fontSize: 10, fill: "#9ca3af" }}
+              tick={{ fontSize: 10, fill: "#9ca3af", fontWeight: 500 }}
               axisLine={false}
               tickLine={false}
               interval={Math.max(0, Math.floor(dataPoints.length / 5) - 1)}
@@ -106,13 +116,13 @@ export function ComplianceTrend() {
             />
             <Tooltip content={<TrendTooltip />} cursor={{ stroke: "#6366f1", strokeWidth: 1, strokeDasharray: "4 4" }} />
             <Area
-              type="natural"
+              type="monotone"
               dataKey="score"
               stroke="#6366f1"
               strokeWidth={2.5}
               fill="url(#trendGradient)"
               dot={false}
-              activeDot={{ r: 6, fill: "#6366f1", strokeWidth: 3, stroke: "#ffffff" }}
+              activeDot={{ r: 7, fill: "#6366f1", strokeWidth: 3, stroke: "#ffffff", filter: "url(#glow)" }}
             />
           </AreaChart>
         </ResponsiveContainer>

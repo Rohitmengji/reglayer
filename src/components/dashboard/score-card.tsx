@@ -13,6 +13,7 @@ import type { ScanSummary } from "@/lib/types";
 import { ShieldAlert, AlertTriangle, Info } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 import { InfoHint } from "@/components/ui/info-hint";
+import { useAnimatedNumber } from "@/hooks/use-animated-number";
 
 interface ScoreCardProps {
   summary: ScanSummary;
@@ -21,9 +22,12 @@ interface ScoreCardProps {
 export function ScoreCard({ summary }: ScoreCardProps) {
   const scoreColor = getScoreColor(summary.score);
   const { t } = useI18n();
+  const animatedScore = useAnimatedNumber(summary.score, 1200);
+  const circumference = 2 * Math.PI * 40; // r=40
+  const strokeDasharray = `${(animatedScore / 100) * circumference} ${circumference}`;
 
   return (
-    <Card>
+    <Card className="overflow-hidden">
       <CardHeader>
         <CardTitle className="flex items-center gap-1.5 text-sm font-medium text-neutral-600 dark:text-neutral-400">
           {t("scoreCard.title")}
@@ -32,17 +36,17 @@ export function ScoreCard({ summary }: ScoreCardProps) {
       </CardHeader>
       <CardContent>
         <div className="flex items-center gap-6">
-          {/* Score Circle */}
-          <div className="relative flex h-24 w-24 items-center justify-center">
-            <svg className="h-24 w-24 -rotate-90" viewBox="0 0 100 100">
+          {/* Score Circle — animated fill on mount */}
+          <div className="relative flex h-28 w-28 items-center justify-center">
+            <svg className="h-28 w-28 -rotate-90" viewBox="0 0 100 100">
               <circle
                 cx="50"
                 cy="50"
                 r="40"
                 fill="none"
                 stroke="currentColor"
-                strokeWidth="8"
-                className="text-neutral-200 dark:text-neutral-700"
+                strokeWidth="7"
+                className="text-neutral-100 dark:text-neutral-800"
               />
               <circle
                 cx="50"
@@ -50,17 +54,22 @@ export function ScoreCard({ summary }: ScoreCardProps) {
                 r="40"
                 fill="none"
                 stroke={scoreColor}
-                strokeWidth="8"
-                strokeDasharray={`${summary.score * 2.51} 251`}
+                strokeWidth="7"
+                strokeDasharray={strokeDasharray}
                 strokeLinecap="round"
+                className="transition-[stroke-dasharray] duration-1000 ease-out"
+                style={{ filter: `drop-shadow(0 0 6px ${scoreColor}40)` }}
               />
             </svg>
-            <span
-              className="absolute text-2xl font-bold tabular-nums"
-              style={{ color: scoreColor }}
-            >
-              {summary.score}
-            </span>
+            <div className="absolute flex flex-col items-center">
+              <span
+                className="text-3xl font-bold tabular-nums"
+                style={{ color: scoreColor }}
+              >
+                {animatedScore}
+              </span>
+              <span className="text-[10px] font-medium text-neutral-400 dark:text-neutral-500 -mt-0.5">/ 100</span>
+            </div>
           </div>
 
           {/* Breakdown */}
