@@ -2,20 +2,24 @@ name: Bot Task Agent
 on:
   issues:
     types: [opened, labeled]
-  issue_comment:
-    types: [created]
+
+# Prevent concurrent runs for the same issue
+concurrency:
+  group: bot-task-${{ github.event.issue.number }}
+  cancel-in-progress: false
 
 jobs:
-  # Phase 1: AI generates code changes and posts diff for approval
+  # ── Phase 1: AI generates changes, posts diff for human approval ────────
   generate-changes:
     if: |
-      github.event_name == 'issues' &&
+      github.event.action == 'opened' &&
       contains(github.event.issue.labels.*.name, 'bot-task') &&
       !contains(github.event.issue.labels.*.name, 'approved') &&
       !contains(github.event.issue.labels.*.name, 'completed')
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
-      contents: write
+      contents: read
       issues: write
 
     steps:
@@ -31,12 +35,17 @@ jobs:
       - name: Generate Prisma Client
         run: npx prisma generate
 
+      # Security: extract task via env var, not shell interpolation
       - name: Extract task description
         id: task
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
         run: |
-          BODY='${{ github.event.issue.body }}'
-          DESC=$(echo "$BODY" | grep -oP '(?<=\*\*Description:\*\* ).*' || echo "${{ github.event.issue.title }}")
-          echo "description=$DESC" >> $GITHUB_OUTPUT
+          DESC=$(echo "$ISSUE_BODY" | grep -oP '(?<=\*\*Description:\*\* ).*' || echo "$ISSUE_TITLE")
+          # Sanitize: strip shell metacharacters, limit length
+          DESC=$(echo "$DESC" | tr -d '`${}\\' | head -c 500)
+          echo "description=$DESC" >> "$GITHUB_OUTPUT"
 
       - name: Comment — AI working
         uses: actions/github-script@v7
@@ -53,33 +62,31 @@ jobs:
         id: agent
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          TASK_DESC: ${{ steps.task.outputs.description }}
         run: |
-          node scripts/bot-agent.mjs "${{ steps.task.outputs.description }}" > edits.json 2>agent.log
+          node scripts/bot-agent.mjs "$TASK_DESC" > edits.json 2>agent.log
           cat agent.log >&2
-          echo "edits_count=$(node -e "console.log(JSON.parse(require('fs').readFileSync('edits.json','utf8')).length)")" >> $GITHUB_OUTPUT
+          COUNT=$(node -e "console.log(JSON.parse(require('fs').readFileSync('edits.json','utf8')).length)")
+          echo "edits_count=$COUNT" >> "$GITHUB_OUTPUT"
 
-      - name: Apply edits
-        id: apply
+      - name: Preview edits (dry run)
+        id: preview
         run: |
+          # Apply to get summary without committing
           SUMMARY=$(node scripts/apply-edits.mjs edits.json)
-          echo "summary<<EOF" >> $GITHUB_OUTPUT
-          echo "$SUMMARY" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-      - name: Generate diff
-        id: diff
-        run: |
-          DIFF=$(git diff --stat && echo "---" && git diff --no-color | head -200)
-          echo "diff<<EOF" >> $GITHUB_OUTPUT
-          echo "$DIFF" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          DIFF=$(git diff --stat && echo '---' && git diff --no-color | head -300)
+          
+          # Write to files to avoid shell escaping issues
+          echo "$SUMMARY" > /tmp/summary.txt
+          echo "$DIFF" > /tmp/diff.txt
 
       - name: Comment — changes ready for approval
         uses: actions/github-script@v7
         with:
           script: |
-            const summary = `${{ steps.apply.outputs.summary }}`;
-            const diff = `${{ steps.diff.outputs.diff }}`;
+            const fs = require('fs');
+            const summary = fs.readFileSync('/tmp/summary.txt', 'utf8');
+            const diff = fs.readFileSync('/tmp/diff.txt', 'utf8');
             const count = '${{ steps.agent.outputs.edits_count }}';
             await github.rest.issues.createComment({
               owner: context.repo.owner,
@@ -94,31 +101,39 @@ jobs:
                 '<details><summary>View diff</summary>',
                 '',
                 '```diff',
-                diff,
+                diff.slice(0, 3000),
                 '```',
                 '</details>',
                 '',
                 '---',
-                '**To approve:** Add the `approved` label to this issue.',
-                '**To reject:** Close the issue.',
+                '✅ **To approve:** Add the `approved` label.',
+                '❌ **To reject:** Close the issue.',
               ].join('\n')
             });
 
-      - name: Upload edits artifact
-        uses: actions/upload-artifact@v4
+      - name: Comment — agent failed
+        if: failure()
+        uses: actions/github-script@v7
         with:
-          name: bot-edits
-          path: edits.json
-          retention-days: 1
+          script: |
+            const fs = require('fs');
+            const log = fs.existsSync('agent.log') ? fs.readFileSync('agent.log', 'utf8').slice(0, 500) : 'No log';
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `❌ **AI Agent failed**\n\n\`\`\`\n${log}\n\`\`\`\n\nClose and retry, or fix manually.`
+            });
 
-  # Phase 2: After approval, apply edits, run gates, create PR
+  # ── Phase 2: After approval, apply edits → run gates → create PR ────────
   apply-and-pr:
     if: |
-      github.event_name == 'issues' &&
       github.event.action == 'labeled' &&
       github.event.label.name == 'approved' &&
-      contains(github.event.issue.labels.*.name, 'bot-task')
+      contains(github.event.issue.labels.*.name, 'bot-task') &&
+      !contains(github.event.issue.labels.*.name, 'completed')
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: write
       pull-requests: write
@@ -137,25 +152,42 @@ jobs:
       - name: Generate Prisma Client
         run: npx prisma generate
 
-      - name: Download edits
-        uses: actions/download-artifact@v4
-        with:
-          name: bot-edits
-        continue-on-error: true
-
-      - name: Re-generate if no artifact
-        if: hashFiles('edits.json') == ''
+      - name: Re-generate AI edits
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
         run: |
-          BODY='${{ github.event.issue.body }}'
-          DESC=$(echo "$BODY" | grep -oP '(?<=\*\*Description:\*\* ).*' || echo "${{ github.event.issue.title }}")
+          DESC=$(echo "$ISSUE_BODY" | grep -oP '(?<=\*\*Description:\*\* ).*' || echo "$ISSUE_TITLE")
+          DESC=$(echo "$DESC" | tr -d '`${}\\' | head -c 500)
           node scripts/bot-agent.mjs "$DESC" > edits.json
 
       - name: Apply edits
         run: node scripts/apply-edits.mjs edits.json
 
+      - name: Check for actual changes
+        id: changes
+        run: |
+          if git diff --quiet; then
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Comment — no changes
+        if: steps.changes.outputs.has_changes == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: '⚠️ **No changes detected** — AI edits produced no diff. Task may need clarification.'
+            });
+
       - name: Comment — running gates
+        if: steps.changes.outputs.has_changes == 'true'
         uses: actions/github-script@v7
         with:
           script: |
@@ -167,45 +199,54 @@ jobs:
             });
 
       - name: Gate 1 — TypeScript
+        if: steps.changes.outputs.has_changes == 'true'
         run: npx tsc --noEmit
 
       - name: Gate 2 — Tests
+        if: steps.changes.outputs.has_changes == 'true'
         run: npx vitest run
 
       - name: Gate 3 — Build
+        if: steps.changes.outputs.has_changes == 'true'
         run: npx next build
         env:
           SKIP_ENV_VALIDATION: "1"
 
       - name: Create branch and PR
-        if: success()
+        if: steps.changes.outputs.has_changes == 'true' && success()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
         run: |
-          BRANCH="bot/issue-${{ github.event.issue.number }}"
+          BRANCH="bot/issue-${ISSUE_NUMBER}"
+          SAFE_TITLE=$(echo "$ISSUE_TITLE" | tr -d '`${}\\' | head -c 72)
           git config user.name "RegLayer Bot"
           git config user.email "bot@reglayer.dev"
           git checkout -b "$BRANCH"
           git add -A
-          git commit -m "fix: ${{ github.event.issue.title }}
+          git commit -m "fix: ${SAFE_TITLE}
 
-          Automated by RegLayer Bot from issue #${{ github.event.issue.number }}"
+          Automated by RegLayer Bot from issue #${ISSUE_NUMBER}"
           git push origin "$BRANCH"
           gh pr create --base main --head "$BRANCH" \
-            --title "fix: ${{ github.event.issue.title }}" \
-            --body "Automated PR from Discord bot task #${{ github.event.issue.number }}.
+            --title "fix: ${SAFE_TITLE}" \
+            --body "Automated PR from Discord bot task #${ISSUE_NUMBER}.
 
-          All 3 gates passed: tsc, vitest, build."
+          All 3 gates passed locally: tsc, vitest, build."
 
       - name: Comment — PR created
-        if: success()
+        if: steps.changes.outputs.has_changes == 'true' && success()
         uses: actions/github-script@v7
+        env:
+          ISSUE_NUM: ${{ github.event.issue.number }}
         with:
           script: |
+            const num = process.env.ISSUE_NUM;
             const prs = await github.rest.pulls.list({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              head: `${context.repo.owner}:bot/issue-${context.issue.number}`,
+              head: `${context.repo.owner}:bot/issue-${num}`,
               state: 'open'
             });
             const pr = prs.data[0];
@@ -213,7 +254,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body: `✅ **All 3 gates green!** PR created: #${pr?.number ?? '?'}\n\nMerge it when ready.`
+              body: `✅ **All 3 gates green!** PR created: #${pr?.number ?? '?'}\n\nReview and merge when ready.`
             });
             await github.rest.issues.update({
               owner: context.repo.owner,
@@ -228,15 +269,16 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body: '❌ **Gate failure** — AI changes broke something. Check the [workflow run](' + context.serverUrl + '/' + context.repo.owner + '/' + context.repo.repo + '/actions/runs/' + context.runId + ').\n\nRemove the `approved` label to retry.'
+              body: `❌ **Gate failure** — AI changes broke a check.\n\n[View logs](${runUrl})\n\nRemove \`approved\` label to retry.`
             });
-            await github.rest.issues.removeLabel({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              name: 'approved'
-            }).catch(() => {});
+            try {
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: context.issue.number, name: 'approved'
+              });
+            } catch {}
