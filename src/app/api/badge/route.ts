@@ -89,8 +89,8 @@ function renderBadge(
   const shadow = style === "plastic" ? `<linearGradient id="s" x2="0" y2="100%"><stop offset="0" stop-color="#fff" stop-opacity=".15"/><stop offset="1" stop-opacity=".15"/></linearGradient>` : "";
   const overlay = style === "plastic" ? `<rect width="${totalWidth}" height="20" fill="url(#s)" rx="${radius}"/>` : "";
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${totalWidth}" height="20" role="img" aria-label="${label}: ${value}">
-  <title>${label}: ${value}</title>
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${totalWidth}" height="20" role="img" aria-label="${escapeXml(label)}: ${escapeXml(value)}">
+  <title>${escapeXml(label)}: ${escapeXml(value)}</title>
   <defs>${shadow}</defs>
   <clipPath id="r"><rect width="${totalWidth}" height="20" rx="${radius}" fill="#fff"/></clipPath>
   <g clip-path="url(#r)">
@@ -105,6 +105,14 @@ function renderBadge(
 </svg>`;
 }
 
+// Escape for both SVG text nodes AND attribute values (label is reflected into
+// aria-label="…" and <title>), so quotes must be encoded too — otherwise a
+// label like `"><script>…` breaks out when the SVG is opened as image/svg+xml.
 function escapeXml(str: string): string {
-  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
