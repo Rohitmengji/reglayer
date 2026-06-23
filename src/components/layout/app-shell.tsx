@@ -118,7 +118,7 @@ export function AppShell({ children, bare }: { children: React.ReactNode; bare?:
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[var(--background)] dark:bg-neutral-950">
+    <div className="flex h-screen overflow-hidden bg-background dark:bg-neutral-950">
       {/* Skip to content — visible on focus for keyboard users */}
       <a
         href="#main-content"
