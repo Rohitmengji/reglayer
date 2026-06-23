@@ -148,8 +148,10 @@ export function ScanForm({ onScanComplete }: ScanFormProps) {
       });
 
       const data = await res.json().catch(() => ({
-        error: "The scan took too long or the server encountered an issue. Please try again.",
-        code: "TIMEOUT",
+        error: res.status >= 500
+          ? "Server error — please try again"
+          : "Invalid response from server",
+        code: res.status === 504 ? "TIMEOUT" : "UNKNOWN",
       }));
 
       if (!res.ok) {

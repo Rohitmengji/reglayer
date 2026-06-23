@@ -118,7 +118,8 @@ export async function GET() {
       count: v._count.ruleId,
     })),
   });
-  } catch {
+  } catch (err) {
+    console.error("[dashboard/stats] Query failed:", err instanceof Error ? err.message : err);
     return NextResponse.json(
       { error: "Failed to load dashboard stats" },
       { status: 500 }

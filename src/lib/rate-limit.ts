@@ -88,11 +88,13 @@ function memoryRateLimit(identifier: string, limit: number, windowSec: number): 
     return { success: true, limit, remaining: limit - 1, resetAt };
   }
 
-  if (entry.count >= limit) {
+  // Increment first, then check — prevents race where two concurrent calls
+  // both read count < limit, both pass, both increment (bypassing the limit).
+  entry.count++;
+  if (entry.count > limit) {
     return { success: false, limit, remaining: 0, resetAt: entry.resetAt };
   }
 
-  entry.count++;
   return { success: true, limit, remaining: limit - entry.count, resetAt: entry.resetAt };
 }
 
