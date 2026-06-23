@@ -166,10 +166,10 @@ export function evaluate(input: EvaluatorInput): EvaluatorOutput {
         status = "pass";
         source = "manual";
       } else if (!hasFailed && violationRules.length === 0) {
-        // Automation didn't flag it — but we can't be sure it passes without manual verification
-        // Mark as pass (inferred) for now — confidence scoring accounts for this uncertainty
-        passed++;
-        status = "pass";
+        // Automation didn't flag it — but we can't be sure it passes without manual verification.
+        // NOT counted as passed for confidence — only explicit evidence counts.
+        notTested++;
+        status = "not_tested";
         source = "inferred";
       } else {
         notTested++;

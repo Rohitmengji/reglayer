@@ -144,16 +144,21 @@ export async function consumeCredits(userId: string, action: AiAction): Promise<
  * (e.g. if a monthly reset happened between consume and refund). Master admins
  * never had credits consumed, so refunds are a no-op for them.
  */
-export async function refundCredits(userId: string, action: AiAction): Promise<void> {
+export async function refundCredits(userId: string, action: AiAction, opts?: { isMasterAdmin?: boolean }): Promise<void> {
   const cost = AI_CREDIT_COSTS[action];
   if (cost <= 0) return;
 
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { isMasterAdmin: true },
-  });
-  // Master admins never had credits deducted — nothing to refund.
-  if (!user || user.isMasterAdmin) return;
+  // If caller already knows admin status, skip the lookup
+  if (opts?.isMasterAdmin) return;
+
+  if (opts?.isMasterAdmin === undefined) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { isMasterAdmin: true },
+    });
+    // Master admins never had credits deducted — nothing to refund.
+    if (!user || user.isMasterAdmin) return;
+  }
 
   // Floored decrement: GREATEST(0, used - cost) prevents negative balances.
   await prisma.$executeRaw`

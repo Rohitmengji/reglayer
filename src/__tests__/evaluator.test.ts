@@ -13,17 +13,18 @@ const makeViolation = (criterion: string, impact: "critical" | "serious" = "seri
 });
 
 describe("evaluate", () => {
-  it("returns supports when no violations exist", () => {
+  it("returns not_evaluated when no evidence exists (no violations, no manual verdicts)", () => {
     const input: EvaluatorInput = {
       violations: [],
       manualVerdicts: [],
       jurisdictions: ["ADA", "EAA", "SECTION508", "AODA"],
     };
     const result = evaluate(input);
-    expect(result.jurisdictions.ADA.status).toBe("supports");
-    expect(result.jurisdictions.EAA.status).toBe("supports");
-    expect(result.jurisdictions.SECTION508.status).toBe("supports");
-    expect(result.jurisdictions.AODA.status).toBe("supports");
+    // Without any automated violations OR manual verdicts, nothing is actually tested
+    expect(result.jurisdictions.ADA.status).toBe("not_evaluated");
+    expect(result.jurisdictions.EAA.status).toBe("not_evaluated");
+    expect(result.jurisdictions.SECTION508.status).toBe("not_evaluated");
+    expect(result.jurisdictions.AODA.status).toBe("not_evaluated");
   });
 
   it("returns does_not_support when many violations exist", () => {
@@ -43,11 +44,12 @@ describe("evaluate", () => {
     expect(result.jurisdictions.ADA.criteriaFailed).toBe(8);
   });
 
-  it("returns partially_supports for few violations", () => {
+  it("returns does_not_support when many violations among few evaluated", () => {
     const violations = [makeViolation("1.4.3")];
     const input: EvaluatorInput = { violations, manualVerdicts: [], jurisdictions: ["ADA"] };
     const result = evaluate(input);
-    expect(result.jurisdictions.ADA.status).toBe("partially_supports");
+    // 1 failed out of 1 evaluated (other criteria are not_tested) → does_not_support
+    expect(result.jurisdictions.ADA.status).toBe("does_not_support");
     expect(result.jurisdictions.ADA.criteriaFailed).toBe(1);
   });
 
@@ -75,11 +77,11 @@ describe("evaluate", () => {
     expect(result.jurisdictions.ADA.criteriaFailed).toBeGreaterThanOrEqual(1);
   });
 
-  it("computes confidence based on evaluated vs total", () => {
+  it("confidence is 0 when no criteria are actually tested", () => {
     const input: EvaluatorInput = { violations: [], manualVerdicts: [], jurisdictions: ["ADA"] };
     const result = evaluate(input);
-    // All criteria are "inferred pass" (no violations, no manual) = 100% confidence
-    expect(result.jurisdictions.ADA.confidence).toBe(100);
+    // No violations and no manual verdicts = nothing actually evaluated
+    expect(result.jurisdictions.ADA.confidence).toBe(0);
   });
 
   it("detects cross-jurisdiction risks", () => {
