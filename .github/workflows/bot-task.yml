@@ -1,0 +1,87 @@
+name: Bot Task Agent
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  execute-task:
+    if: contains(github.event.issue.labels.*.name, 'bot-task')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Extract task description
+        id: task
+        run: |
+          DESCRIPTION=$(echo '${{ github.event.issue.body }}' | grep -oP '(?<=\*\*Description:\*\* ).*')
+          echo "description=$DESCRIPTION" >> $GITHUB_OUTPUT
+
+      - name: Comment — task started
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: '🤖 **Agent started** — working on this task.\n\nWill run all 3 gates (tsc, vitest, build) before creating a PR.'
+            });
+
+      # PLACEHOLDER: In Phase 2, this step calls Claude API to edit code.
+      # For now, it just validates gates pass on current main.
+      - name: Run Gate 1 — TypeScript
+        run: npx tsc --noEmit
+
+      - name: Run Gate 2 — Tests
+        run: npx vitest run
+
+      - name: Run Gate 3 — Build
+        run: npx next build
+        env:
+          SKIP_ENV_VALIDATION: "1"
+
+      - name: Comment — gates passed
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: '✅ **All 3 gates green** — tsc, vitest, build all pass.\n\n⏳ Phase 2 will add autonomous code editing here.'
+            });
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              state: 'closed',
+              labels: ['bot-task', 'completed']
+            });
+
+      - name: Comment — gates failed
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: '❌ **Gate failure** — one or more checks failed. Check the [workflow run](' + context.serverUrl + '/' + context.repo.owner + '/' + context.repo.repo + '/actions/runs/' + context.runId + ') for details.'
+            });
