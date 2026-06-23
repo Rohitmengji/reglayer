@@ -223,7 +223,7 @@ async function launchOnce(): Promise<Browser> {
   return chromium.launch({
     headless: true,
     args: ["--disable-gpu", "--no-sandbox"],
-  });
+  }) as Promise<Browser>;
 }
 
 /**
