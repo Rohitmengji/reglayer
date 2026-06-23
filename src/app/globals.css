@@ -95,6 +95,16 @@ input:focus-within:not([type="checkbox"]):not([type="radio"]) {
   --font-mono: var(--font-mono);
 }
 
+/* Override Tailwind's white/neutral-50 in light mode to our warm cream tokens.
+   This means every `bg-white` and `bg-neutral-50` automatically picks up the
+   softer cream palette — no need to change 100+ files. Dark mode is unaffected. */
+:root:not(.dark) {
+  --color-white: #fefdfb;       /* Warm off-white for cards (replaces pure #fff) */
+  --color-neutral-50: #f8f7f4;  /* Cream page background (replaces cool #fafafa) */
+  --color-neutral-100: #f2f1ec; /* Subtle hover states */
+  --color-neutral-200: #e8e7e2; /* Borders — warm grey */
+}
+
 @media (prefers-color-scheme: dark) {
   :root:not(.light) {
     --background: #0c0c10;
