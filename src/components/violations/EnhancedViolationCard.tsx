@@ -17,7 +17,7 @@
  *      Uses shadcn Card/Badge/Button patterns for consistency.
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,6 +37,7 @@ import {
 import { useViolationStatus } from "@/hooks/use-violation-status";
 import type { ViolationStatus } from "@/generated/prisma/client";
 import { useI18n } from "@/components/i18n-provider";
+import type { TranslationKey } from "@/lib/i18n/translations";
 
 // ─────────────── Types ───────────────
 
@@ -66,54 +67,58 @@ interface EnhancedViolationCardProps {
 
 // ─────────────── Status Config ───────────────
 
-const STATUS_CONFIG: Record<
+// Static per-status metadata. Visual bits (icon/badge) stay here; `labelKey` and
+// `ariaKey` reference i18n keys resolved inside the component via t().
+const STATUS_META: Record<
   string,
-  { label: string; icon: typeof AlertTriangle; badgeClass: string; ariaLabel: string }
+  { labelKey: TranslationKey; ariaKey: TranslationKey; icon: typeof AlertTriangle; badgeClass: string }
 > = {
   OPEN: {
-    label: "Open",
+    labelKey: "violations.open",
+    ariaKey: "violations.statusAriaOpen",
     icon: AlertTriangle,
     badgeClass: "bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-300",
-    ariaLabel: "Status: Open — needs fixing",
   },
   IN_PROGRESS: {
-    label: "In Progress",
+    labelKey: "violations.inProgress",
+    ariaKey: "violations.statusAriaInProgress",
     icon: Clock,
     badgeClass: "bg-amber-100 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300",
-    ariaLabel: "Status: In Progress — being worked on",
   },
   FIXED: {
-    label: "Fixed",
+    labelKey: "violations.fixed",
+    ariaKey: "violations.statusAriaFixed",
     icon: CheckCircle2,
     badgeClass: "bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300",
-    ariaLabel: "Status: Fixed — awaiting verification",
   },
   VERIFIED: {
-    label: "Verified",
+    labelKey: "violations.verified",
+    ariaKey: "violations.statusAriaVerified",
     icon: CheckCircle2,
     badgeClass: "bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-300",
-    ariaLabel: "Status: Verified — confirmed fixed by re-scan",
   },
   WONT_FIX: {
-    label: "Won't Fix",
+    labelKey: "violations.wontFix",
+    ariaKey: "violations.statusAriaWontFix",
     icon: XCircle,
     badgeClass: "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400",
-    ariaLabel: "Status: Won't Fix — intentional decision",
   },
   ACCEPTABLE_RISK: {
-    label: "Acceptable Risk",
+    labelKey: "violations.acceptableRisk",
+    ariaKey: "violations.statusAriaAcceptableRisk",
     icon: Shield,
     badgeClass: "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400",
-    ariaLabel: "Status: Acceptable Risk — documented exception",
   },
 };
 
-const DROPDOWN_OPTIONS: Array<{ value: ViolationStatus; label: string; requiresNote: boolean }> = [
-  { value: "OPEN" as ViolationStatus, label: "Open", requiresNote: false },
-  { value: "IN_PROGRESS" as ViolationStatus, label: "In Progress", requiresNote: false },
-  { value: "FIXED" as ViolationStatus, label: "Fixed", requiresNote: false },
-  { value: "WONT_FIX" as ViolationStatus, label: "Won't Fix", requiresNote: true },
-  { value: "ACCEPTABLE_RISK" as ViolationStatus, label: "Acceptable Risk", requiresNote: true },
+// Enum `value`s are API identifiers and stay unchanged; `labelKey` is localized
+// inside the component (see DROPDOWN_OPTIONS useMemo).
+const DROPDOWN_OPTION_DEFS: Array<{ value: ViolationStatus; labelKey: TranslationKey; requiresNote: boolean }> = [
+  { value: "OPEN" as ViolationStatus, labelKey: "violations.open", requiresNote: false },
+  { value: "IN_PROGRESS" as ViolationStatus, labelKey: "violations.inProgress", requiresNote: false },
+  { value: "FIXED" as ViolationStatus, labelKey: "violations.fixed", requiresNote: false },
+  { value: "WONT_FIX" as ViolationStatus, labelKey: "violations.wontFix", requiresNote: true },
+  { value: "ACCEPTABLE_RISK" as ViolationStatus, labelKey: "violations.acceptableRisk", requiresNote: true },
 ];
 
 // ─────────────── Main Component ───────────────
@@ -144,7 +149,7 @@ export function EnhancedViolationCard({ violation, onStatusChange }: EnhancedVio
   const handleStatusSelect = useCallback(
     (newStatus: ViolationStatus) => {
       setDropdownOpen(false);
-      const option = DROPDOWN_OPTIONS.find((o) => o.value === newStatus);
+      const option = DROPDOWN_OPTION_DEFS.find((o) => o.value === newStatus);
       if (option?.requiresNote) {
         setPendingStatus(newStatus);
         setNoteText("");
@@ -168,8 +173,16 @@ export function EnhancedViolationCard({ violation, onStatusChange }: EnhancedVio
     verifyFix();
   }, [verifyFix]);
 
-  const config = STATUS_CONFIG[state.status] ?? STATUS_CONFIG.OPEN;
-  const StatusIcon = config.icon;
+  // Localized dropdown options (value/requiresNote unchanged; label via t()).
+  const dropdownOptions = useMemo(
+    () => DROPDOWN_OPTION_DEFS.map((o) => ({ ...o, label: t(o.labelKey) })),
+    [t]
+  );
+
+  const meta = STATUS_META[state.status] ?? STATUS_META.OPEN;
+  const StatusIcon = meta.icon;
+  const statusLabel = t(meta.labelKey);
+  const statusAriaLabel = t(meta.ariaKey);
 
   const elements = Array.isArray(violation.affectedElements) ? violation.affectedElements : [];
 
@@ -201,12 +214,12 @@ export function EnhancedViolationCard({ violation, onStatusChange }: EnhancedVio
 
             {/* Status Badge */}
             <span
-              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${config.badgeClass}`}
-              aria-label={config.ariaLabel}
+              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${meta.badgeClass}`}
+              aria-label={statusAriaLabel}
               role="status"
             >
               <StatusIcon className="h-3 w-3" />
-              {config.label}
+              {statusLabel}
             </span>
           </div>
         </div>
@@ -233,7 +246,7 @@ export function EnhancedViolationCard({ violation, onStatusChange }: EnhancedVio
         {elements.length > 0 && (
           <div className="space-y-2">
             <p className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
-              {elements.length} affected element{elements.length !== 1 ? "s" : ""}
+              {t(elements.length === 1 ? "violations.affectedElementsSingular" : "violations.affectedElementsPlural", { count: String(elements.length) })}
             </p>
             {elements.slice(0, 2).map((node, i) => (
               <div key={i} className="rounded-md bg-neutral-50 dark:bg-neutral-800 p-2 font-mono text-xs overflow-x-auto">
@@ -243,7 +256,7 @@ export function EnhancedViolationCard({ violation, onStatusChange }: EnhancedVio
               </div>
             ))}
             {elements.length > 2 && (
-              <p className="text-xs text-neutral-500">+{elements.length - 2} more elements</p>
+              <p className="text-xs text-neutral-500">{t("violationCard.moreElements", { count: String(elements.length - 2) })}</p>
             )}
           </div>
         )}
@@ -251,7 +264,7 @@ export function EnhancedViolationCard({ violation, onStatusChange }: EnhancedVio
         {/* Status Note (if WONT_FIX or ACCEPTABLE_RISK) */}
         {state.statusNote && (state.status === "WONT_FIX" || state.status === "ACCEPTABLE_RISK") && (
           <div className="rounded-md bg-neutral-50 dark:bg-neutral-800 px-3 py-2 text-xs text-neutral-600 dark:text-neutral-400 italic">
-            Note: {state.statusNote}
+            {t("violations.notePrefix", { note: state.statusNote })}
           </div>
         )}
 
@@ -271,7 +284,7 @@ export function EnhancedViolationCard({ violation, onStatusChange }: EnhancedVio
                 onClick={() => setDropdownOpen(!dropdownOpen)}
                 disabled={isUpdating}
                 className="inline-flex items-center gap-1.5 rounded-md border border-neutral-200 dark:border-neutral-700 px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-50"
-                aria-label="Change status"
+                aria-label={t("violations.changeStatusAria")}
                 aria-expanded={dropdownOpen}
                 aria-haspopup="listbox"
               >
@@ -280,16 +293,16 @@ export function EnhancedViolationCard({ violation, onStatusChange }: EnhancedVio
                 ) : (
                   <ChevronDown className="h-3 w-3" />
                 )}
-                Change Status
+                {t("violations.changeStatus")}
               </button>
 
               {dropdownOpen && (
                 <div
                   className="absolute left-0 bottom-full mb-1 z-50 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-lg shadow-neutral-200/50 dark:shadow-neutral-900/50 py-1.5 min-w-44"
                   role="listbox"
-                  aria-label="Status options"
+                  aria-label={t("violations.statusOptionsAria")}
                 >
-                  {DROPDOWN_OPTIONS.map((opt) => (
+                  {dropdownOptions.map((opt) => (
                     <button
                       key={opt.value}
                       onClick={() => handleStatusSelect(opt.value)}
@@ -300,7 +313,7 @@ export function EnhancedViolationCard({ violation, onStatusChange }: EnhancedVio
                       aria-selected={state.status === opt.value}
                     >
                       {opt.label}
-                      {opt.requiresNote && <span className="text-neutral-500 dark:text-neutral-400 ml-auto">(note)</span>}
+                      {opt.requiresNote && <span className="text-neutral-500 dark:text-neutral-400 ml-auto">{t("violations.noteSuffix")}</span>}
                     </button>
                   ))}
                 </div>
@@ -315,17 +328,17 @@ export function EnhancedViolationCard({ violation, onStatusChange }: EnhancedVio
                 onClick={handleVerify}
                 disabled={isVerifying}
                 className="gap-1.5 text-xs"
-                aria-label="Verify fix by re-scanning"
+                aria-label={t("violations.verifyFixAria")}
               >
                 {isVerifying ? (
                   <>
                     <Loader2 className="h-3 w-3 animate-spin" />
-                    Re-scanning...
+                    {t("violations.rescanning")}
                   </>
                 ) : (
                   <>
                     <Scan className="h-3 w-3" />
-                    Verify Fix
+                    {t("violations.verifyFix")}
                   </>
                 )}
               </Button>
@@ -341,7 +354,7 @@ export function EnhancedViolationCard({ violation, onStatusChange }: EnhancedVio
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
               >
-                Learn more
+                {t("violationCard.learnMore")}
                 <ExternalLink className="h-3 w-3" />
               </a>
             )}
@@ -351,10 +364,10 @@ export function EnhancedViolationCard({ violation, onStatusChange }: EnhancedVio
               onClick={() => setShowHistory(!showHistory)}
               className="inline-flex items-center gap-1 text-xs text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
               aria-expanded={showHistory}
-              aria-label="Toggle status history"
+              aria-label={t("violations.toggleHistoryAria")}
             >
               <History className="h-3 w-3" />
-              History
+              {t("violations.history")}
             </button>
           </div>
         </div>
@@ -366,22 +379,22 @@ export function EnhancedViolationCard({ violation, onStatusChange }: EnhancedVio
               <div className="flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400">
                 <div className="w-1.5 h-1.5 rounded-full bg-neutral-400" />
                 <span>
-                  Status changed to <strong>{STATUS_CONFIG[state.status]?.label ?? state.status}</strong>
-                  {violation.statusUpdatedByName && ` by ${violation.statusUpdatedByName}`}
+                  {t("violations.statusChangedTo")} <strong>{STATUS_META[state.status] ? t(STATUS_META[state.status].labelKey) : state.status}</strong>
+                  {violation.statusUpdatedByName && ` ${t("violations.statusChangedBy", { name: violation.statusUpdatedByName })}`}
                 </span>
                 <span className="ml-auto text-neutral-500 dark:text-neutral-400">
-                  {formatRelativeTime(state.statusUpdatedAt)}
+                  {formatRelativeTime(state.statusUpdatedAt, t)}
                 </span>
               </div>
             ) : (
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 italic">No status changes yet</p>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 italic">{t("violations.noStatusChanges")}</p>
             )}
             {state.verifiedAt && (
               <div className="flex items-center gap-2 text-xs text-green-600 dark:text-green-400">
                 <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                <span>Fix verified by re-scan</span>
+                <span>{t("violations.fixVerifiedByRescan")}</span>
                 <span className="ml-auto text-neutral-500 dark:text-neutral-400">
-                  {formatRelativeTime(state.verifiedAt)}
+                  {formatRelativeTime(state.verifiedAt, t)}
                 </span>
               </div>
             )}
@@ -403,23 +416,22 @@ export function EnhancedViolationCard({ violation, onStatusChange }: EnhancedVio
             onClick={(e) => e.stopPropagation()}
           >
             <h3 id="note-dialog-title" className="text-sm font-semibold text-neutral-900 dark:text-white mb-2">
-              Add a reason
+              {t("violations.addReason")}
             </h3>
             <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-4">
-              Explain why this violation is being marked as &quot;{pendingStatus === "WONT_FIX" ? "Won't Fix" : "Acceptable Risk"}&quot;.
-              This is required for compliance documentation.
+              {t("violations.noteDialogDesc", { status: t(pendingStatus === "WONT_FIX" ? "violations.wontFix" : "violations.acceptableRisk") })}
             </p>
             <textarea
               value={noteText}
               onChange={(e) => setNoteText(e.target.value)}
-              placeholder="e.g., Decorative image — alt text intentionally empty per design system guidelines"
+              placeholder={t("violations.notePlaceholder")}
               className="w-full rounded-md border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 px-3 py-2 text-sm text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
               rows={3}
               minLength={10}
               autoFocus
             />
             <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-              {noteText.trim().length}/10 characters minimum
+              {t("violations.charMinimum", { count: String(noteText.trim().length) })}
             </p>
             <div className="flex justify-end gap-2 mt-4">
               <Button
@@ -427,14 +439,14 @@ export function EnhancedViolationCard({ violation, onStatusChange }: EnhancedVio
                 size="sm"
                 onClick={() => setNoteDialogOpen(false)}
               >
-                Cancel
+                {t("common.cancel")}
               </Button>
               <Button
                 size="sm"
                 onClick={handleNoteSubmit}
                 disabled={noteText.trim().length < 10}
               >
-                Confirm
+                {t("violations.confirm")}
               </Button>
             </div>
           </div>
@@ -456,14 +468,16 @@ function getImpactColor(impact: string): string {
   }
 }
 
-function formatRelativeTime(isoString: string): string {
+type TFunc = (key: TranslationKey, params?: Record<string, string | number>) => string;
+
+function formatRelativeTime(isoString: string, t: TFunc): string {
   const diff = Date.now() - new Date(isoString).getTime();
   const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 1) return t("violations.justNow");
+  if (minutes < 60) return t("violations.minutesAgo", { count: String(minutes) });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return t("violations.hoursAgo", { count: String(hours) });
   const days = Math.floor(hours / 24);
-  if (days < 7) return `${days}d ago`;
+  if (days < 7) return t("violations.daysAgo", { count: String(days) });
   return new Date(isoString).toLocaleDateString();
 }
