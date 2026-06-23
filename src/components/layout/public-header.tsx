@@ -7,8 +7,11 @@
  */
 
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 
 export function PublicHeader() {
+  const { data: session } = useSession();
+
   return (
     <header className="border-b border-neutral-100 dark:border-neutral-800">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 sm:px-6 py-4">
@@ -23,12 +26,21 @@ export function PublicHeader() {
           <span className="text-lg font-bold tracking-tight text-neutral-900 dark:text-white">RegLayer</span>
         </Link>
         <div className="flex items-center gap-3">
-          <Link
-            href="/auth/login"
-            className="text-sm font-medium text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors"
-          >
-            Sign In
-          </Link>
+          {session?.user ? (
+            <Link
+              href="/dashboard"
+              className="rounded-lg bg-neutral-900 dark:bg-white px-4 py-2 text-sm font-medium text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors"
+            >
+              Dashboard
+            </Link>
+          ) : (
+            <Link
+              href="/auth/login"
+              className="text-sm font-medium text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors"
+            >
+              Sign In
+            </Link>
+          )}
         </div>
       </div>
     </header>
