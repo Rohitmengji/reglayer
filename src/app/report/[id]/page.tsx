@@ -7,6 +7,9 @@
  */
 
 import { prisma } from "@/lib/database/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth/config";
+import { assertScanAccess } from "@/lib/auth/access";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Shield, ExternalLink, Clock, AlertTriangle, CheckCircle2, ArrowLeft, Eye, TrendingUp } from "lucide-react";
@@ -16,8 +19,16 @@ interface ReportPageProps {
   params: Promise<{ id: string }>;
 }
 
-export default async function PublicReportPage({ params }: ReportPageProps) {
+export default async function ReportPage({ params }: ReportPageProps) {
   const { id } = await params;
+
+  // SECURITY: this report renders FULL violation detail (incl. raw element HTML /
+  // selectors), so it must require auth + workspace ownership. It was previously
+  // fetched by id with no auth, exposing any tenant's scan to anyone with the URL.
+  // Anonymous link-sharing lives on the dedicated /report/public/[scanId] page.
+  const session = await getServerSession(authOptions);
+  const access = await assertScanAccess(id, session);
+  if (!access.ok) notFound();
 
   const scan = await prisma.scan.findUnique({
     where: { id },
