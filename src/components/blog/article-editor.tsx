@@ -25,7 +25,7 @@ import { useState } from "react";
 import { useSession } from "next-auth/react";
 import {
   Pencil, X, Save, Sparkles, RotateCcw, AlertTriangle,
-  Loader2, History, Plus, Trash2, ChevronUp, ChevronDown, Copy,
+  Loader2, Plus, Trash2, ChevronUp, ChevronDown, Copy,
   Type, List, ListOrdered, Image as ImageIcon, Quote, Info, Code, Link2,
   Minus, Video, Table as TableIcon, HelpCircle, BarChart3, Lightbulb, CheckCircle2,
 } from "lucide-react";
@@ -99,7 +99,6 @@ export function ArticleEditor({ article, onUpdate, onEditingChange }: ArticleEdi
   const [aiSuggestion, setAiSuggestion] = useState<{ sections: Section[] } | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showVersions, setShowVersions] = useState(false);
   const [changeNote, setChangeNote] = useState("");
   const [showBlockPicker, setShowBlockPicker] = useState(false);
 
@@ -300,12 +299,6 @@ export function ArticleEditor({ article, onUpdate, onEditingChange }: ArticleEdi
               className="flex items-center gap-1.5 rounded-lg border border-violet-200 dark:border-violet-800 px-3 py-1.5 text-xs font-medium text-violet-700 dark:text-violet-300 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors"
             >
               <Sparkles className="h-3 w-3" /> AI Edit
-            </button>
-            <button
-              onClick={() => setShowVersions(!showVersions)}
-              className="flex items-center gap-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 px-3 py-1.5 text-xs font-medium text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
-            >
-              <History className="h-3 w-3" /> Versions
             </button>
             <button
               onClick={cancelEditing}

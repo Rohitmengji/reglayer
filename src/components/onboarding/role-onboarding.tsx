@@ -8,7 +8,7 @@
  *      wants dashboards and risk scores.
  *
  * WHAT: "What's your role?" → Developer/Designer/Legal/Executive
- *       → Tailors dashboard layout, default views, and guidance.
+ *       → Highlights the capabilities most relevant to the role.
  *
  * HOW: Full-screen overlay on first login (no role stored yet).
  *      Stores selection in localStorage + persists to API.
@@ -18,8 +18,7 @@
 import { useState } from "react";
 import { useI18n } from "@/components/i18n-provider";
 import {
-  Code2, Palette, Scale, Briefcase, ArrowRight, Sparkles, Shield,
-  BarChart3, FileText, Wrench, Eye, Target, CheckCircle2,
+  Code2, Palette, Scale, Briefcase, ArrowRight, Sparkles, CheckCircle2,
 } from "lucide-react";
 
 export type UserPersona = "developer" | "designer" | "legal" | "executive";
@@ -208,47 +207,6 @@ export function RoleOnboarding({ userName, onComplete, onSkip }: RoleOnboardingP
               ))}
             </div>
 
-            {/* Dashboard Preview Cards */}
-            <div className="rounded-xl border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900 p-6 max-w-md mx-auto">
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500 mb-3">
-                Dashboard Preview
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {selected === "developer" && (
-                  <>
-                    <PreviewCard icon={Wrench} label="Fix Queue" value="12 issues" />
-                    <PreviewCard icon={Code2} label="Code Fixes" value="Auto-gen" />
-                    <PreviewCard icon={Target} label="WCAG Score" value="87%" />
-                    <PreviewCard icon={Shield} label="CI Status" value="Passing" />
-                  </>
-                )}
-                {selected === "designer" && (
-                  <>
-                    <PreviewCard icon={Eye} label="Contrast" value="4 issues" />
-                    <PreviewCard icon={Palette} label="Colors" value="Audited" />
-                    <PreviewCard icon={Target} label="Focus" value="3 missing" />
-                    <PreviewCard icon={Shield} label="Motion" value="Safe" />
-                  </>
-                )}
-                {selected === "legal" && (
-                  <>
-                    <PreviewCard icon={Scale} label="Risk Level" value="Medium" />
-                    <PreviewCard icon={FileText} label="VPAT" value="Draft" />
-                    <PreviewCard icon={Shield} label="Compliance" value="72%" />
-                    <PreviewCard icon={BarChart3} label="Trend" value="↑ 8%" />
-                  </>
-                )}
-                {selected === "executive" && (
-                  <>
-                    <PreviewCard icon={BarChart3} label="Overview" value="3 sites" />
-                    <PreviewCard icon={Target} label="Avg Score" value="84%" />
-                    <PreviewCard icon={Shield} label="Risk" value="Low" />
-                    <PreviewCard icon={Briefcase} label="ROI" value="$42k saved" />
-                  </>
-                )}
-              </div>
-            </div>
-
             <div className="mt-8 flex items-center justify-center gap-3">
               <button
                 onClick={() => setStep("role")}
@@ -267,16 +225,6 @@ export function RoleOnboarding({ userName, onComplete, onSkip }: RoleOnboardingP
           </>
         )}
       </div>
-    </div>
-  );
-}
-
-function PreviewCard({ icon: Icon, label, value }: { icon: typeof Code2; label: string; value: string }) {
-  return (
-    <div className="rounded-lg bg-white dark:bg-neutral-800 border border-neutral-100 dark:border-neutral-700 p-3">
-      <Icon className="h-3.5 w-3.5 text-neutral-400 mb-1.5" />
-      <div className="text-[10px] text-neutral-500 dark:text-neutral-400">{label}</div>
-      <div className="text-xs font-semibold text-neutral-900 dark:text-white">{value}</div>
     </div>
   );
 }

@@ -93,6 +93,7 @@ export const it = {
   "nav.team": "Team",
   "nav.auditLog": "Registro audit",
   "nav.notifications": "Notifiche",
+  "nav.monitoring": "Monitoraggio",
   "nav.search": "Cerca",
   "nav.help": "Aiuto e documentazione",
   "testHub.title": "Test",

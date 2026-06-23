@@ -56,7 +56,9 @@ export function OnboardingFlow({ userName, onComplete, onStartScan }: Onboarding
       normalizedUrl = "https://" + normalizedUrl;
     }
     onStartScan(normalizedUrl);
-    handleDismiss();
+    // Advance to the "What's Next" step (was dismissing here, making step 2 + its
+    // progress dot unreachable). "Start Exploring" on step 2 dismisses the wizard.
+    setStep(2);
   }
 
   const steps = [

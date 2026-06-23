@@ -8,7 +8,7 @@
  * HOW: Fetches /api/compliance/vpat, renders structured VPAT document with export options.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ModernSelect } from "@/components/ui/modern-select";
 import { AppShell } from "@/components/layout/app-shell";
@@ -63,6 +63,14 @@ export default function VPATPage() {
     }
     setScansLoaded(true);
   }
+
+  // Populate the "Scan (optional)" dropdown on mount — loadScans existed but was
+  // never called, so the selector never listed real scans. (Guarded by scansLoaded.)
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- mount-only fetch; loadScans sets state only after an await
+    void loadScans();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional mount-only; loadScans self-guards re-runs
+  }, []);
 
   async function generate() {
     setLoading(true);

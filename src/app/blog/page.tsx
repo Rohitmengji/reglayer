@@ -268,29 +268,6 @@ export default function BlogPage() {
           ))}
         </div>
       </section>
-
-      {/* Newsletter CTA */}
-      <section className="mx-auto max-w-5xl px-4 sm:px-6">
-        <div className="rounded-xl bg-neutral-50 dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 p-8 text-center">
-          <h2 className="text-base font-bold text-neutral-900 dark:text-white mb-2">
-          {t("blog.newsletterHeading")}
-          </h2>
-          <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-6 max-w-md mx-auto">
-            {t("blog.newsletterDesc")}
-          </p>
-          <div className="flex items-center justify-center gap-2 max-w-sm mx-auto">
-            <input
-              type="email"
-              placeholder={t("blog.emailPlaceholder")}
-              className="flex-1 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-4 py-2.5 text-sm text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-500 outline-none focus:ring-2 focus:ring-accent/50"
-              aria-label="Email address"
-            />
-            <button className="rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-white hover:bg-accent/90 transition-colors shadow-sm">
-              {t("blog.subscribe")}
-            </button>
-          </div>
-        </div>
-      </section>
     </div>
   );
 }
