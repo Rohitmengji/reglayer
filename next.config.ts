@@ -29,6 +29,10 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/api/scan": ["./node_modules/@sparticuz/chromium/bin/**"],
     "/api/scan/crawl": ["./node_modules/@sparticuz/chromium/bin/**"],
+    // Journey + screen-reader also launch a headless browser; without the
+    // bundled Chromium binary both features failed in production.
+    "/api/journey": ["./node_modules/@sparticuz/chromium/bin/**"],
+    "/api/screen-reader": ["./node_modules/@sparticuz/chromium/bin/**"],
   },
 
   experimental: {

@@ -13,7 +13,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { rateLimit, RATE_LIMITS, rateLimitHeaders } from "@/lib/rate-limit";
 import { validateScanUrl } from "@/lib/validations/ssrf";
-import { consumeCredits } from "@/lib/credits";
+import { consumeCredits, refundCredits } from "@/lib/credits";
 import { prisma } from "@/lib/database/prisma";
 import { captureNarration } from "@/lib/screen-reader/narration-engine";
 import { launchBrowser, isServerless } from "@/lib/scanner/browser/launch";
@@ -107,6 +107,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(snapshot);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
+      // Capture produced no result — refund the up-front charge so users aren't
+      // billed for a failure (esp. important while the prod browser was broken).
+      await refundCredits(user.id, "pageSummary").catch(() => {});
       return NextResponse.json({ error: `Screen reader capture failed: ${message}` }, { status: 500 });
     } finally {
       if (browser) {
