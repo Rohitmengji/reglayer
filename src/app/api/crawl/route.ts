@@ -139,6 +139,20 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // SSRF: the form-login URL is navigated to by the headless browser just like
+  // the seed URL, so it must pass the same checks — otherwise an attacker points
+  // loginUrl at an internal/metadata host and exfiltrates the response via the
+  // captured auth-proof screenshot in the job result.
+  if (resolvedAuth?.method === "form" && resolvedAuth.loginUrl) {
+    const loginUrlError = validateScanUrl(resolvedAuth.loginUrl);
+    if (loginUrlError) {
+      return NextResponse.json({ error: `Login URL: ${loginUrlError}` }, { status: 400 });
+    }
+    if (await resolvesToInternalIp(resolvedAuth.loginUrl)) {
+      return NextResponse.json({ error: "Login URL resolves to a private or internal address." }, { status: 400 });
+    }
+  }
+
   // Create job
   const crawlConfig = {
     startUrl: url,
