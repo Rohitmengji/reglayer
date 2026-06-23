@@ -30,6 +30,7 @@ import {
   ShieldCheck,
   Headset,
   Building2,
+  SlidersHorizontal,
 } from "lucide-react";
 import type { TranslationKey } from "@/lib/i18n/translations";
 
@@ -116,10 +117,10 @@ export const ENTERPRISE_FEATURES: EnterpriseFeature[] = [
     id: "custom-rules",
     labelKey: "pricing.enterpriseFeature5",
     descKey: "pricing.ent.descCustomRules",
-    status: "coming-soon",
+    status: "available",
     category: "compliance",
-    icon: Lock,
-    evidence: "No backing code yet — correctly surfaced as coming soon.",
+    icon: SlidersHorizontal,
+    evidence: "ComplianceRule model + /api/rules CRUD + lib/compliance/customRules.ts, evaluated via /api/scans/[id]/custom-rules; managed at /compliance/rules.",
   },
   {
     id: "jira-slack",

@@ -2198,7 +2198,7 @@ export const nl = {
   "pricing.ent.descUnlimitedSites": "Geen limiet op gemonitorde sites of gecrawlde pagina's — dek uw volledige weblandschap in één werkruimte.",
   "pricing.ent.descUnlimitedTeam": "Nodig uw hele organisatie uit. Geen limiet per gebruiker en geen meerkosten.",
   "pricing.ent.descVpat": "Genereer automatisch VPAT 2.4- en ACR-documenten (WCAG 2.1, Section 508, EN 301 549) uit echte scangegevens — de conformiteitsrapporten die inkoopteams vereisen.",
-  "pricing.ent.descCustomRules": "Definieer organisatiespecifieke compliancecontroles buiten de WCAG-regelset. In ontwikkeling.",
+  "pricing.ent.descCustomRules": "Definieer organisatiespecifiek compliancebeleid — scoredrempels, verboden regels, impactbudgetten — dat bij elke scan wordt geëvalueerd.",
   "pricing.ent.descIntegrations": "Open Jira-tickets voor nieuwe overtredingen en plaats automatisch meldingen in Slack, zodat het herstel in uw bestaande workflow terechtkomt.",
   "pricing.ent.descApi": "Een REST-API met scoped sleutels en een CI/CD-kwaliteitspoort die de build laat falen wanneer toegankelijkheid onder uw drempel zakt.",
   "pricing.ent.descAudit": "Een onveranderlijk, van tijdstempel voorzien register van elke actie, exporteerbaar als bewijs voor beveiligings- en compliance-audits.",

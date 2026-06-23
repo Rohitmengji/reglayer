@@ -2198,7 +2198,7 @@ export const it = {
   "pricing.ent.descUnlimitedSites": "Nessun limite ai siti monitorati o alle pagine sottoposte a scansione: copri l'intero parco web in un unico spazio di lavoro.",
   "pricing.ent.descUnlimitedTeam": "Invita tutta la tua organizzazione. Nessun limite per postazione e nessun costo aggiuntivo.",
   "pricing.ent.descVpat": "Genera automaticamente documenti VPAT 2.4 e ACR (WCAG 2.1, Section 508, EN 301 549) da dati di scansione reali: i report di conformità richiesti dai team di approvvigionamento.",
-  "pricing.ent.descCustomRules": "Definisci controlli di conformità specifici per la tua organizzazione oltre al set di regole WCAG. In fase di sviluppo.",
+  "pricing.ent.descCustomRules": "Definisci criteri di conformità specifici per la tua organizzazione — soglie di punteggio, regole vietate, budget di impatto — valutati a ogni scansione.",
   "pricing.ent.descIntegrations": "Apri ticket Jira per le nuove violazioni e pubblica avvisi su Slack automaticamente, così la correzione arriva nel tuo flusso di lavoro esistente.",
   "pricing.ent.descApi": "Un'API REST con chiavi ad ambito limitato e un quality gate CI/CD che fa fallire la build quando l'accessibilità scende sotto la tua soglia.",
   "pricing.ent.descAudit": "Una registrazione immutabile e con marca temporale di ogni azione, esportabile come prova per audit di sicurezza e conformità.",
