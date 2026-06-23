@@ -7,9 +7,10 @@
  * WHAT: Lists all endpoints with methods, request/response examples, auth, rate limits.
  * HOW: Client component with i18n. Formatted code blocks showing curl examples and JSON responses.
  */
-import { Shield, Code2, Lock, Zap } from "lucide-react";
+import { Code2, Lock, Zap } from "lucide-react";
 import Link from "next/link";
 import { Footer } from "@/components/layout/footer";
+import { PublicHeader } from "@/components/layout/public-header";
 import { useI18n } from "@/components/i18n-provider";
 
 const endpoints = [
@@ -82,14 +83,9 @@ export default function ApiReferencePage() {
   const { t } = useI18n();
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950">
-      <div className="mx-auto max-w-5xl px-4 sm:px-6 py-12">
-        <div className="flex items-center gap-2 mb-12">
-          <Link href="/" className="flex items-center gap-2 text-neutral-900 dark:text-white">
-            <Shield className="h-5 w-5" />
-            <span className="font-bold">RegLayer</span>
-          </Link>
-        </div>
+      <PublicHeader />
 
+      <div className="mx-auto max-w-5xl px-4 sm:px-6 py-12">
         <div className="flex items-center gap-3 mb-4">
           <Code2 className="h-8 w-8 text-neutral-700 dark:text-neutral-300" />
           <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">{t("apiReference.title")}</h1>

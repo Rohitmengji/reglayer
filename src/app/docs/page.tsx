@@ -7,8 +7,10 @@
  * WHAT: Card grid linking to: Getting Started, Scanning, Monitoring, Reports, Integrations, Teams.
  * HOW: Client component with i18n. Renders links to /docs/* sub-pages.
  */
-import { Shield, BookOpen, Rocket, ScanLine, Bell, FileText, Code2, Users } from "lucide-react";
+import { BookOpen, Rocket, ScanLine, Bell, FileText, Code2, Users } from "lucide-react";
 import Link from "next/link";
+import { PublicHeader } from "@/components/layout/public-header";
+import { Footer } from "@/components/layout/footer";
 import { useI18n } from "@/components/i18n-provider";
 
 const sections = [
@@ -108,14 +110,9 @@ export default function DocsPage() {
   const { t } = useI18n();
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950">
-      <div className="mx-auto max-w-5xl px-4 sm:px-6 py-12">
-        <div className="flex items-center gap-2 mb-12">
-          <Link href="/" className="flex items-center gap-2 text-neutral-900 dark:text-white">
-            <Shield className="h-5 w-5" />
-            <span className="font-bold">RegLayer</span>
-          </Link>
-        </div>
+      <PublicHeader />
 
+      <div className="mx-auto max-w-5xl px-4 sm:px-6 py-12">
         <div className="flex items-center gap-3 mb-8">
           <BookOpen className="h-8 w-8 text-neutral-700 dark:text-neutral-300" />
           <div>
@@ -172,6 +169,7 @@ export default function DocsPage() {
           </div>
         </div>
       </div>
+      <Footer />
     </div>
   );
 }

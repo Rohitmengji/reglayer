@@ -7,9 +7,10 @@
  * WHAT: Explains WCAG 2.2, ADA, Section 508, EAA, EN 301 549, AODA with key requirements.
  * HOW: Client-rendered content with standard comparison cards.
  */
-import { Shield, CheckCircle2 } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { Footer } from "@/components/layout/footer";
+import { PublicHeader } from "@/components/layout/public-header";
 import { useI18n } from "@/components/i18n-provider";
 
 const standards = [
@@ -68,14 +69,9 @@ export default function StandardsPage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950">
-      <div className="mx-auto max-w-4xl px-4 sm:px-6 py-12">
-        <div className="flex items-center gap-2 mb-12">
-          <Link href="/" className="flex items-center gap-2 text-neutral-900 dark:text-white">
-            <Shield className="h-5 w-5" />
-            <span className="font-bold">RegLayer</span>
-          </Link>
-        </div>
+      <PublicHeader />
 
+      <div className="mx-auto max-w-4xl px-4 sm:px-6 py-12">
         <h1 className="text-3xl font-bold text-neutral-900 dark:text-white mb-2">{t("standards.title")}</h1>
         <p className="text-neutral-500 dark:text-neutral-400 mb-12">
           {t("standards.subtitle")}
