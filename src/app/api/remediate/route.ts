@@ -10,7 +10,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
 import { authenticateApiKey } from "@/lib/auth/api-key";
-import { validateScanUrl } from "@/lib/validations/ssrf";
+import { validateScanUrl, resolvesToInternalIp } from "@/lib/validations/ssrf";
 import { remediate, type FixRecord } from "@/lib/remediation/engine";
 import { z } from "zod";
 import { applyRateLimit } from "@/lib/rate-limit-middleware";
@@ -32,6 +32,7 @@ function describeFix(f: FixRecord): string {
   const base = FIX_LABELS[f.category] ?? `Fixed ${f.category.replace(/-/g, " ")}`;
   return f.selector ? `${base} (${f.selector})` : base;
 }
+
 
 /**
  * Auto-Remediation Edge Layer API
@@ -97,22 +98,40 @@ export async function POST(request: NextRequest) {
 
   const { url, config, returnFormat } = parsed.data;
 
-  // SSRF protection
+  // SSRF protection — literal/encoding/private-range check (validateScanUrl) AND a
+  // DNS-resolution check (resolvesToInternalIp): a public hostname can resolve to
+  // an internal IP. The original code ran only the sync check.
   const ssrfError = validateScanUrl(url);
   if (ssrfError) {
     return NextResponse.json({ error: ssrfError }, { status: 400 });
   }
+  if (await resolvesToInternalIp(url)) {
+    return NextResponse.json(
+      { error: "URL resolves to a private/internal address" },
+      { status: 400 }
+    );
+  }
 
   try {
-    // Fetch the original page
+    // Fetch the original page. Redirects are NOT followed (redirect: "manual"):
+    // a validated public URL can 3xx to an internal/metadata address, and this
+    // route reflects the fetched body back to the caller, so chasing redirects
+    // would re-open SSRF (F031). A 3xx is rejected below.
     const response = await fetch(url, {
       headers: {
         "User-Agent": "RegLayer-Remediation/1.0 (accessibility-scanner)",
         Accept: "text/html",
       },
-      redirect: "follow",
+      redirect: "manual",
       signal: AbortSignal.timeout(15000),
     });
+
+    if (response.status >= 300 && response.status < 400) {
+      return NextResponse.json(
+        { error: "The URL redirected. RegLayer does not follow redirects when remediating — please provide the final URL." },
+        { status: 400 }
+      );
+    }
 
     if (!response.ok) {
       return NextResponse.json(
@@ -173,6 +192,12 @@ export async function POST(request: NextRequest) {
  * Designed for embedding or CDN-style usage.
  */
 export async function GET(request: NextRequest) {
+  // Rate-limit the proxy: GET performs a server-side fetch on the caller's behalf,
+  // so without metering it can be abused as an open relay / amplification vector
+  // (POST is already rate-limited; GET was not).
+  const blocked = await applyRateLimit(request, "scan");
+  if (blocked) return blocked;
+
   const url = request.nextUrl.searchParams.get("url");
   const apiKey = request.nextUrl.searchParams.get("key");
 
@@ -192,21 +217,54 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Invalid API key" }, { status: 403 });
   }
 
-  // SSRF protection
+  // Plan gate — auto-remediation is Pro/Enterprise. POST enforces this on the
+  // session's workspace; GET authenticates by API key, so resolve the plan from
+  // the key's workspace. Without this a Free-plan key got unlimited remediation
+  // (the gate was POST-only).
+  const workspace = await prisma.workspace.findUnique({
+    where: { id: key.workspaceId },
+    select: { plan: true },
+  });
+  if (!workspace || !["PRO", "ENTERPRISE"].includes(workspace.plan)) {
+    return NextResponse.json(
+      { error: "Auto-remediation requires a Pro or Enterprise plan" },
+      { status: 403 }
+    );
+  }
+
+  // SSRF protection — literal/private-range check + DNS resolution (a public
+  // hostname can resolve to an internal IP). The original code ran only the sync
+  // check.
   const ssrfError = validateScanUrl(url);
   if (ssrfError) {
     return NextResponse.json({ error: ssrfError }, { status: 400 });
   }
+  if (await resolvesToInternalIp(url)) {
+    return NextResponse.json(
+      { error: "URL resolves to a private/internal address" },
+      { status: 400 }
+    );
+  }
 
   try {
+    // Redirects are NOT followed (redirect: "manual"): a validated public URL can
+    // 3xx to an internal/metadata address, and this proxy reflects the fetched
+    // body back to the caller, so chasing redirects would re-open SSRF (F031).
     const response = await fetch(url, {
       headers: {
         "User-Agent": "RegLayer-Remediation/1.0 (accessibility-scanner)",
         Accept: "text/html",
       },
-      redirect: "follow",
+      redirect: "manual",
       signal: AbortSignal.timeout(15000),
     });
+
+    if (response.status >= 300 && response.status < 400) {
+      return new Response(
+        "The URL redirected. RegLayer does not follow redirects — provide the final URL.",
+        { status: 400 }
+      );
+    }
 
     if (!response.ok) {
       return new Response(`Failed to fetch: ${response.status}`, { status: 502 });
