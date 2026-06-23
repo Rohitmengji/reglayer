@@ -16,7 +16,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import {
-  Shield,
   Check,
   ArrowRight,
   Building2,

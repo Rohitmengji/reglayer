@@ -122,7 +122,7 @@ export default function PrivacyPage() {
                   </tr>
                   <tr className="border-t border-neutral-100 dark:border-neutral-800">
                     <td className="p-3">OpenAI</td>
-                    <td className="p-3">AI explanations (no PII sent)</td>
+                    <td className="p-3">AI explanations, demand-letter parsing and visual review (may process submitted text/screenshots; DPA in place)</td>
                     <td className="p-3">US (DPA in place)</td>
                   </tr>
                 </tbody>

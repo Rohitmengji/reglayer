@@ -177,11 +177,11 @@ export default function CertificatePage() {
             <div className="flex items-center justify-center gap-2 mb-1">
               <Shield className="h-4 w-4 text-neutral-900 dark:text-white" />
               <p className="text-[9px] font-semibold tracking-[0.25em] uppercase text-neutral-500 dark:text-neutral-500">
-                RegLayer Verified
+                RegLayer Automated Scan
               </p>
             </div>
             <h1 className="text-base sm:text-lg font-bold text-neutral-900 dark:text-white tracking-tight">
-              Certificate of Accessibility Compliance
+              Automated Accessibility Scan Summary
             </h1>
 
             {/* Score + Level Row */}
