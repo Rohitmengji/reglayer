@@ -406,7 +406,7 @@ export default function ScanDetailPage({
               {t("scanDetail.violations", { count: String(scan.violations.length) })}
             </h2>
             {scan.violations.map((violation) => (
-              <ViolationCard key={violation.id} violation={violation} />
+              <ViolationCard key={violation.id} violation={violation} scanId={scan.id} />
             ))}
           </div>
         )}
