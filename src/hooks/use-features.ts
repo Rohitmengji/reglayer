@@ -33,6 +33,7 @@ export function useFeatures() {
 
     // Master admin — all features, no network needed
     if (session.user.isMasterAdmin) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: master admins get all features synchronously, no network round-trip
       setFeatures(ALL_FEATURE_IDS);
       return;
     }

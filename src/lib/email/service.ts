@@ -38,6 +38,8 @@ export interface EmailPayload {
   html: string;
   text?: string;
   from?: string;
+  /** Address replies should go to (e.g. the customer who filled in a contact form). */
+  replyTo?: string;
 }
 
 /**
@@ -59,6 +61,7 @@ export async function sendEmail(payload: EmailPayload) {
       subject: payload.subject,
       html: payload.html,
       text: payload.text,
+      replyTo: payload.replyTo,
     });
 
     return { success: true, id: info.messageId };

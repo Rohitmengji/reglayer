@@ -10,7 +10,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
 import { generateVPAT, vpatToMarkdown, vpatToHTML } from "@/lib/compliance/vpat-generator";
-import type { VPATViolation } from "@/lib/compliance/vpat-generator";
+import type { VPATViolation, VPATBranding } from "@/lib/compliance/vpat-generator";
 import { assertScanAccess } from "@/lib/auth/access";
 import { requireFeature } from "@/lib/features/require-feature";
 import { loadManualVerdicts } from "@/lib/testing/manualVerdicts";
@@ -97,6 +97,7 @@ export async function POST(request: NextRequest) {
 
   // Generate VPAT document, layering in human-attested manual verdicts where present
   const manualVerdicts = await loadManualVerdicts(scan.siteId);
+  const branding = await resolveBranding(session.user.email);
   const vpatDoc = generateVPAT({
     ...vpatConfig,
     scanData: {
@@ -107,6 +108,7 @@ export async function POST(request: NextRequest) {
       scanDate: scan.createdAt.toISOString(),
     },
     manualVerdicts,
+    branding,
   });
 
   // Return in requested format
@@ -179,6 +181,7 @@ export async function GET(request: NextRequest) {
   });
 
   const manualVerdicts = await loadManualVerdicts(scan.siteId);
+  const branding = await resolveBranding(session.user.email);
   const vpatDoc = generateVPAT({
     productName: new URL(scan.url).hostname,
     vendorName: session.user.name || "Organization",
@@ -191,6 +194,7 @@ export async function GET(request: NextRequest) {
       scanDate: scan.createdAt.toISOString(),
     },
     manualVerdicts,
+    branding,
   });
 
   if (format === "html") {
@@ -216,4 +220,28 @@ function tagToWcagId(tag: string): string {
   const match = tag.match(/^wcag(\d)(\d)(\d+)$/);
   if (!match) return tag;
   return `${match[1]}.${match[2]}.${match[3]}`;
+}
+
+/**
+ * White-label resolution: if the requesting user owns an active agency, the
+ * report is rendered under that agency's brand (logo, colors, support contact).
+ * Otherwise returns undefined and the report uses the default RegLayer branding.
+ */
+async function resolveBranding(email: string): Promise<VPATBranding | undefined> {
+  const user = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+  if (!user) return undefined;
+
+  const agency = await prisma.agency.findFirst({
+    where: { ownerId: user.id, isActive: true },
+    select: { brandName: true, logoUrl: true, primaryColor: true, accentColor: true, supportEmail: true },
+  });
+  if (!agency) return undefined;
+
+  return {
+    brandName: agency.brandName,
+    logoUrl: agency.logoUrl ?? undefined,
+    primaryColor: agency.primaryColor ?? undefined,
+    accentColor: agency.accentColor ?? undefined,
+    supportEmail: agency.supportEmail ?? undefined,
+  };
 }
