@@ -559,26 +559,26 @@ export function vpatToHTML(doc: VPATDocument): string {
   <p><strong>Overall Conformance:</strong> <span class="${doc.summary.overallConformance === 'Supports' ? 'supports' : doc.summary.overallConformance === 'Partially Supports' ? 'partial' : 'not-support'}">${doc.summary.overallConformance}</span></p>
 
   <h2>Evaluation Methods</h2>
-  <ul>${doc.metadata.evaluationMethods.map((m) => `<li>${m}</li>`).join('')}</ul>
+  <ul>${doc.metadata.evaluationMethods.map((m) => `<li>${escapeHtml(m)}</li>`).join('')}</ul>
 
   ${doc.sections.map((section) => `
-  <h2>${section.title}</h2>
-  <p>${section.description}</p>
+  <h2>${escapeHtml(section.title)}</h2>
+  <p>${escapeHtml(section.description)}</p>
   <table>
     <thead><tr><th>Criteria</th><th>Level</th><th>Conformance</th><th>Remarks</th></tr></thead>
     <tbody>
       ${section.criteria.map((c) => `<tr>
-        <td>${c.id} ${c.name}</td>
-        <td>${c.level}</td>
-        <td class="${c.conformance === 'Supports' ? 'supports' : c.conformance === 'Partially Supports' ? 'partial' : 'not-support'}">${c.conformance}</td>
-        <td>${c.remarks}</td>
+        <td>${escapeHtml(c.id)} ${escapeHtml(c.name)}</td>
+        <td>${escapeHtml(c.level)}</td>
+        <td class="${c.conformance === 'Supports' ? 'supports' : c.conformance === 'Partially Supports' ? 'partial' : 'not-support'}">${escapeHtml(c.conformance)}</td>
+        <td>${escapeHtml(c.remarks)}</td>
       </tr>`).join('')}
     </tbody>
   </table>
   `).join('')}
 
   <div class="disclaimer">
-    <strong>Legal Disclaimer:</strong> ${doc.legalDisclaimer}
+    <strong>Legal Disclaimer:</strong> ${escapeHtml(doc.legalDisclaimer)}
   </div>
 
   <p style="margin-top: 2rem; color: #9ca3af; font-size: 0.8rem; text-align: center;">
