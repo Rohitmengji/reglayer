@@ -16,6 +16,7 @@ import { PageError } from "@/components/ui/page-error";
 import { useScanStore } from "@/stores/scanStore";
 import { ScoreCard } from "@/components/dashboard/score-card";
 import { ViolationCard } from "@/components/scanner/violation-card";
+import { CustomRulesCard } from "@/components/scanner/custom-rules-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -398,6 +399,8 @@ export default function ScanDetailPage({
           </CardContent>
         </Card>
         )}
+
+        <CustomRulesCard scanId={scan.id} />
 
         {/* Violations */}
         {scan.violations.length > 0 && (

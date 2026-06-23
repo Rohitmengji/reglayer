@@ -2294,4 +2294,8 @@ export const de = {
   "rules.summaryRuleRequired": "Rule {value} must pass on every page",
   "rules.summaryImpactBudget": "At most {count} {impact} issue(s) allowed",
   "rules.summaryCriterion": "WCAG {value} must have no violations",
+  "scanDetail.customRules": "Benutzerdefinierte Compliance-Regeln",
+  "scanDetail.customRulesSummary": "{passed} von {total} bestanden",
+  "scanDetail.rulePass": "Bestanden",
+  "scanDetail.ruleFail": "Nicht bestanden",
 } as const;

@@ -2256,4 +2256,8 @@ export const nl = {
   "rules.summaryRuleRequired": "Rule {value} must pass on every page",
   "rules.summaryImpactBudget": "At most {count} {impact} issue(s) allowed",
   "rules.summaryCriterion": "WCAG {value} must have no violations",
+  "scanDetail.customRules": "Aangepaste compliance-regels",
+  "scanDetail.customRulesSummary": "{passed} van {total} geslaagd",
+  "scanDetail.rulePass": "Geslaagd",
+  "scanDetail.ruleFail": "Mislukt",
 } as const;
