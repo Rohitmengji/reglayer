@@ -30,6 +30,7 @@ import {
   Lock,
 } from "lucide-react";
 import { Footer } from "@/components/layout/footer";
+import { PublicHeader } from "@/components/layout/public-header";
 import { useI18n } from "@/components/i18n-provider";
 import { Badge } from "@/components/ui/badge";
 import { InfoHint } from "@/components/ui/info-hint";
@@ -115,23 +116,7 @@ export default function PricingPage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950">
-      {/* Header */}
-      <header className="border-b border-neutral-100 dark:border-neutral-800">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 sm:px-6 py-4">
-          <Link href="/" className="flex items-center gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 dark:focus-visible:ring-white">
-            <Shield className="h-6 w-6 text-neutral-900 dark:text-white" aria-hidden="true" />
-            <span className="text-lg font-bold tracking-tight text-neutral-900 dark:text-white">RegLayer</span>
-          </Link>
-          <div className="flex items-center gap-3">
-            <Link
-              href="/auth/login"
-              className="rounded-md px-4 py-2 text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 dark:focus-visible:ring-white"
-            >
-              {t("pricing.signIn")}
-            </Link>
-          </div>
-        </div>
-      </header>
+      <PublicHeader />
 
       <main className="mx-auto max-w-6xl px-4 sm:px-6 py-12 sm:py-16">
         {/* Hero */}
