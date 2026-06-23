@@ -995,7 +995,7 @@ export const en = {
   "cookie.essentialOnly": "Essential Only",
   "cookie.save": "Save Preferences",
   "cookie.customize": "Customize",
-  "cookie.footer": "By continuing, you agree to our Privacy Policy and Terms of Service. Data processed in EU (Frankfurt). You can change your preferences anytime in Settings.",
+  "cookie.footer": "By continuing, you agree to our Privacy Policy and Terms of Service. You can change your preferences anytime in Settings.",
 
   // Common
   "common.loading": "Loading...",
@@ -1475,7 +1475,7 @@ export const en = {
   "pricing.trustedBy": "Trusted by teams across Europe",
   "pricing.criteriaChecked": "EN 301 549 criteria checked",
   "pricing.euLanguages": "EU languages supported",
-  "pricing.euDataResidency": "EU data residency (Frankfurt)",
+  "pricing.euDataResidency": "EU data residency",
   "pricing.readyCta": "Ready to meet EAA compliance?",
   "pricing.readyDesc": "Start scanning in under 60 seconds. No credit card required for the free plan.",
   "pricing.startTrial": "Start Free Trial",
@@ -1528,7 +1528,7 @@ export const en = {
   "pricing.ent.catSupport": "Support & SLA",
   "pricing.ent.trustTitle": "Why teams trust RegLayer",
   "pricing.ent.trustEuTitle": "EU data residency",
-  "pricing.ent.trustEuBody": "Hosted in Frankfurt, Germany by RegLayer GmbH. GDPR-aligned, EU-only infrastructure.",
+  "pricing.ent.trustEuBody": "Enterprise-grade infrastructure with GDPR-aligned data handling.",
   "pricing.ent.trustAuditTitle": "Audit-ready evidence",
   "pricing.ent.trustAuditBody": "Timestamped audit trail and one-click evidence export to support your SOC 2 and ISO 27001 programs.",
   "pricing.ent.trustSlaTitle": "99.9% uptime SLA",
@@ -2037,7 +2037,7 @@ export const en = {
   "landing.gdpr": "GDPR Compliant",
   "landing.gdprSub": "EU data processing",
   "landing.euHosted": "EU Hosted",
-  "landing.euHostedSub": "Frankfurt data center",
+  "landing.euHostedSub": "EU-hosted infrastructure",
   "landing.ssoRbac": "RBAC",
   "landing.ssoRbacSub": "Role-based access control",
 

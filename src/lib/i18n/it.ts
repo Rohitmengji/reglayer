@@ -2187,7 +2187,7 @@ export const it = {
   "pricing.ent.catSupport": "Supporto e SLA",
   "pricing.ent.trustTitle": "Perché i team si fidano di RegLayer",
   "pricing.ent.trustEuTitle": "Residenza dei dati nell'UE",
-  "pricing.ent.trustEuBody": "Ospitato a Francoforte, in Germania, da RegLayer GmbH. Conforme al GDPR, infrastruttura esclusivamente europea.",
+  "pricing.ent.trustEuBody": "Infrastruttura di livello aziendale con gestione dei dati conforme al GDPR.",
   "pricing.ent.trustAuditTitle": "Prove pronte per l'audit",
   "pricing.ent.trustAuditBody": "Registro di audit con marca temporale ed esportazione delle prove con un clic per supportare i tuoi programmi SOC 2 e ISO 27001.",
   "pricing.ent.trustSlaTitle": "SLA di disponibilità del 99,9%",

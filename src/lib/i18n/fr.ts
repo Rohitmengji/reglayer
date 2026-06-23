@@ -2188,7 +2188,7 @@ export const fr = {
   "pricing.ent.catSupport": "Support & SLA",
   "pricing.ent.trustTitle": "Pourquoi les équipes font confiance à RegLayer",
   "pricing.ent.trustEuTitle": "Hébergement des données dans l'UE",
-  "pricing.ent.trustEuBody": "Hébergé à Francfort, en Allemagne, par RegLayer GmbH. Conforme au RGPD, infrastructure exclusivement européenne.",
+  "pricing.ent.trustEuBody": "Infrastructure de niveau entreprise avec traitement des données conforme au RGPD.",
   "pricing.ent.trustAuditTitle": "Preuves prêtes pour l'audit",
   "pricing.ent.trustAuditBody": "Journal d'audit horodaté et export des preuves en un clic pour appuyer vos programmes SOC 2 et ISO 27001.",
   "pricing.ent.trustSlaTitle": "SLA de disponibilité de 99,9 %",
