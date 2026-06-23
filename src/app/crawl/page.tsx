@@ -301,12 +301,12 @@ function CrawlPageInner() {
     if (!running) return;
     const handler = (e: BeforeUnloadEvent) => {
       e.preventDefault();
-      e.returnValue = "An audit is currently in progress. Leaving will disconnect you from live results.";
+      e.returnValue = t("crawl.audit.beforeUnload");
       return e.returnValue;
     };
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
-  }, [running]);
+  }, [running, t]);
 
   // Persist jobId to sessionStorage for reconnection
   useEffect(() => {
@@ -326,7 +326,7 @@ function CrawlPageInner() {
     stopTracking();
     setRunning(false);
     if (kind === "failed") {
-      setError(payload?.error || "We couldn't finish the audit. Please try again.");
+      setError(payload?.error || t("crawl.audit.errorGeneric"));
     } else {
       // complete OR cancelled: pull the authoritative final result from the API
       // (the SSE payload may be screenshot-stripped or arrive before the record).
@@ -337,16 +337,16 @@ function CrawlPageInner() {
           else if (payload?.result) setResult(payload.result);
           // Never strand the user on a blank "done" page if BOTH the authoritative
           // fetch and the event payload lack a result.
-          else if (kind === "complete") setError("The audit finished but its results couldn't be loaded. Please run it again.");
+          else if (kind === "complete") setError(t("crawl.audit.errorResultsUnloadable"));
         })
         .catch(() => {
           if (payload?.result) setResult(payload.result);
-          else if (kind === "complete") setError("The audit finished but its results couldn't be loaded. Please run it again.");
+          else if (kind === "complete") setError(t("crawl.audit.errorResultsUnloadable"));
         });
       if (kind === "cancelled") setProgress((prev) => (prev ? { ...prev, phase: "cancelled" } : prev));
     }
     setStep("done");
-  }, [stopTracking]);
+  }, [stopTracking, t]);
 
   const connectSSE = useCallback((id: string) => {
     stopTracking();
@@ -571,7 +571,7 @@ function CrawlPageInner() {
     // must be caught here with a clear inline message, not after a wasted crawl.
     const { url: targetUrl, error: vErr } = normalizeTargetUrl(url);
     if (vErr || !targetUrl) {
-      setUrlError(vErr || "Enter a valid web address.");
+      setUrlError(vErr || t("crawl.audit.errorInvalidUrl"));
       setStep("config");
       return;
     }
@@ -580,7 +580,7 @@ function CrawlPageInner() {
     const hasAuth = !!savedConfigId || (!!authConfig && authConfig.method !== "none");
     if (mode === "authenticated" && !hasAuth) {
       setUrlError(null);
-      setError("Authenticated audits need a login. Configure authentication (or pick a saved login) below, then start.");
+      setError(t("crawl.audit.errorAuthRequired"));
       setStep("config");
       return;
     }
@@ -624,20 +624,20 @@ function CrawlPageInner() {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "Failed to start audit");
+        throw new Error(data.error || t("crawl.audit.errorFailedToStart"));
       }
       const data = await res.json();
       // Surface a silent plan clamp so a 50→5 (FREE) reduction isn't mysterious.
       if (data?.config?.maxPages && data.config.maxPages < safeMaxPages) {
         setProgress(null);
-        setClampNotice(`Your plan limits audits to ${data.config.maxPages} pages — scanning the first ${data.config.maxPages}.`);
+        setClampNotice(t("crawl.audit.clampNotice", { limit: String(data.config.maxPages) }));
       } else {
         setClampNotice(null);
       }
       setJobId(data.jobId);
       connectSSE(data.jobId);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to start audit");
+      setError(err instanceof Error ? err.message : t("crawl.audit.errorFailedToStart"));
       setRunning(false);
       setStep("done");
     } finally {
@@ -682,17 +682,17 @@ function CrawlPageInner() {
         {/* Header */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Site Audit</h1>
+            <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{t("crawl.audit.pageTitle")}</h1>
             <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">
-              {step === "mode" && "Choose what to scan"}
-              {step === "config" && `Configure ${mode === "public" ? "public site" : mode === "authenticated" ? "authenticated app" : "deep crawl"} audit`}
-              {step === "running" && "Audit in progress..."}
-              {step === "done" && "Audit complete"}
+              {step === "mode" && t("crawl.audit.subtitleChooseScope")}
+              {step === "config" && (mode === "public" ? t("crawl.audit.subtitleConfigurePublic") : mode === "authenticated" ? t("crawl.audit.subtitleConfigureAuthenticated") : t("crawl.audit.subtitleConfigureDeep"))}
+              {step === "running" && t("crawl.audit.subtitleRunning")}
+              {step === "done" && t("crawl.audit.subtitleDone")}
             </p>
           </div>
           {(step === "done" || step === "config") && (
             <Button variant="outline" size="sm" onClick={handleReset} className="text-xs">
-              <ArrowLeft className="h-3.5 w-3.5 mr-1.5" /> New Audit
+              <ArrowLeft className="h-3.5 w-3.5 mr-1.5" /> {t("crawl.audit.newAudit")}
             </Button>
           )}
         </div>
@@ -701,7 +701,7 @@ function CrawlPageInner() {
             scroll so 4 steps never widen the page (was overflowing at ≤400px). */}
         <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto pb-1 -mx-1 px-1">
           {(["mode", "config", "running", "done"] as const).map((s, i) => {
-            const labels = ["Scope", "Configure", "Scanning", "Results"];
+            const labels = [t("crawl.audit.stepScope"), t("crawl.audit.stepConfigure"), t("crawl.audit.stepScanning"), t("crawl.audit.stepResults")];
             const isCurrent = step === s;
             const isPast = ["mode", "config", "running", "done"].indexOf(step) > i;
             return (
@@ -727,30 +727,36 @@ function CrawlPageInner() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <ModeCard
                 icon={<Eye className="h-6 w-6" />}
-                title="Public Site"
-                description="Discovers and audits the publicly-reachable pages of any site — no login required."
-                pageCountHint="Public pages"
+                title={t("crawl.mode.publicTitle")}
+                description={t("crawl.mode.publicDescription")}
+                pageCountHint={t("crawl.mode.publicHint")}
                 color="blue"
-                features={["No login required", "Sitemap + link discovery", "ADA litigation surface"]}
+                features={[t("crawl.mode.publicFeature1"), t("crawl.mode.publicFeature2"), t("crawl.mode.publicFeature3")]}
+                recommendedLabel={t("crawl.mode.recommended")}
+                authNeededLabel={t("crawl.mode.authNeeded")}
                 onClick={() => selectMode("public")}
               />
               <ModeCard
                 icon={<ShieldCheck className="h-6 w-6" />}
-                title="Authenticated App"
-                description="Logs in first, then discovers and audits the pages that live behind the login."
-                pageCountHint="Behind login"
+                title={t("crawl.mode.authenticatedTitle")}
+                description={t("crawl.mode.authenticatedDescription")}
+                pageCountHint={t("crawl.mode.authenticatedHint")}
                 color="violet"
-                features={["Requires authentication", "Crawls behind login", "Internal app coverage"]}
+                features={[t("crawl.mode.authenticatedFeature1"), t("crawl.mode.authenticatedFeature2"), t("crawl.mode.authenticatedFeature3")]}
+                recommendedLabel={t("crawl.mode.recommended")}
+                authNeededLabel={t("crawl.mode.authNeeded")}
                 requiresAuth
                 onClick={() => selectMode("authenticated")}
               />
               <ModeCard
                 icon={<Layers className="h-6 w-6" />}
-                title="Deep Crawl"
-                description="Deeper discovery that follows links further into the site — find template issues everywhere."
-                pageCountHint="Deeper crawl"
+                title={t("crawl.mode.deepTitle")}
+                description={t("crawl.mode.deepDescription")}
+                pageCountHint={t("crawl.mode.deepHint")}
                 color="emerald"
-                features={["Higher crawl depth", "Auth optional", "Template pattern detection"]}
+                features={[t("crawl.mode.deepFeature1"), t("crawl.mode.deepFeature2"), t("crawl.mode.deepFeature3")]}
+                recommendedLabel={t("crawl.mode.recommended")}
+                authNeededLabel={t("crawl.mode.authNeeded")}
                 recommended
                 onClick={() => selectMode("deep")}
               />
@@ -758,20 +764,20 @@ function CrawlPageInner() {
             {/* Quick actions + history */}
             <div className="flex items-center gap-3 text-xs text-neutral-500">
               <Link href="/scans" className="flex items-center gap-1.5 hover:text-blue-600 transition-colors">
-                <History className="h-3.5 w-3.5" /> View past audits
+                <History className="h-3.5 w-3.5" /> {t("crawl.viewPastAudits")}
               </Link>
               <span className="text-neutral-300 dark:text-neutral-600">·</span>
               <span className="flex items-center gap-1.5">
-                <Crosshair className="h-3.5 w-3.5" /> Target:{" "}
+                <Crosshair className="h-3.5 w-3.5" /> {t("crawl.target")}{" "}
                 {url ? (
                   <>
                     <code className="text-neutral-700 dark:text-neutral-300">{url}</code>
                     {urlAutoDetected && (
-                      <span className="text-green-600 dark:text-green-400">· auto-detected</span>
+                      <span className="text-green-600 dark:text-green-400">· {t("crawl.targetAutoDetected")}</span>
                     )}
                   </>
                 ) : (
-                  <span className="text-neutral-400">enter a URL in the next step</span>
+                  <span className="text-neutral-400">{t("crawl.targetEnterNext")}</span>
                 )}
               </span>
             </div>
@@ -785,11 +791,10 @@ function CrawlPageInner() {
               <CardContent className="p-4 flex items-start gap-3">
                 <Info className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-sm font-medium text-blue-800 dark:text-blue-200">Automatic page discovery</p>
+                  <p className="text-sm font-medium text-blue-800 dark:text-blue-200">{t("crawl.config.autoDiscoveryTitle")}</p>
                   <p className="text-xs text-blue-700 dark:text-blue-300 mt-1 leading-relaxed">
-                    RegLayer will automatically discover pages starting from this URL — following its
-                    sitemap.xml and on-page links — up to your page limit.
-                    {mode === "deep" && " Deep Crawl follows links further into the site for broader coverage."}
+                    {t("crawl.config.autoDiscoveryBody")}
+                    {mode === "deep" && t("crawl.config.autoDiscoveryDeep")}
                   </p>
                 </div>
               </CardContent>
@@ -798,10 +803,10 @@ function CrawlPageInner() {
             <Card>
               <CardContent className="p-6 space-y-4">
                 <div>
-                  <label className="text-sm font-medium text-neutral-700 dark:text-neutral-200">Target URL</label>
+                  <label className="text-sm font-medium text-neutral-700 dark:text-neutral-200">{t("crawl.config.targetUrl")}</label>
                   <Input
                     type="url"
-                    placeholder="https://www.yourcompany.com"
+                    placeholder={t("crawl.config.targetUrlPlaceholder")}
                     value={url}
                     onChange={(e) => { setUrl(e.target.value); setUrlAutoDetected(false); if (urlError) setUrlError(null); }}
                     required
@@ -813,28 +818,28 @@ function CrawlPageInner() {
                       <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> {urlError}
                     </p>
                   ) : (
-                    <p className="text-xs text-neutral-400 mt-1">We&apos;ll crawl this site and discover its pages automatically.</p>
+                    <p className="text-xs text-neutral-400 mt-1">{t("crawl.config.targetUrlHint")}</p>
                   )}
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
-                    <label className="text-sm font-medium text-neutral-700 dark:text-neutral-200">Max Pages</label>
+                    <label className="text-sm font-medium text-neutral-700 dark:text-neutral-200">{t("crawl.maxPages")}</label>
                     <Input type="number" min="1" max="500" value={maxPages} onChange={(e) => setMaxPages(e.target.value)} className="mt-1" />
-                    <p className="text-xs text-neutral-400 mt-1">Discovery stops at this limit (1–500)</p>
+                    <p className="text-xs text-neutral-400 mt-1">{t("crawl.config.maxPagesHint")}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-neutral-700 dark:text-neutral-200">Crawl Depth</label>
+                    <label className="text-sm font-medium text-neutral-700 dark:text-neutral-200">{t("crawl.config.crawlDepth")}</label>
                     <Input type="number" min="1" max="10" value={maxDepth} onChange={(e) => setMaxDepth(e.target.value)} className="mt-1" />
-                    <p className="text-xs text-neutral-400 mt-1">How many links deep to follow (1–10)</p>
+                    <p className="text-xs text-neutral-400 mt-1">{t("crawl.config.crawlDepthHint")}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-neutral-700 dark:text-neutral-200">Speed</label>
+                    <label className="text-sm font-medium text-neutral-700 dark:text-neutral-200">{t("crawl.config.speed")}</label>
                     <div className="flex gap-2 mt-1">
                       {[
-                        { label: "Gentle", value: "1", desc: "1 at a time" },
-                        { label: "Normal", value: "3", desc: "3 parallel" },
-                        { label: "Fast", value: "6", desc: "6 parallel" },
+                        { label: t("crawl.config.speedGentle"), value: "1" },
+                        { label: t("crawl.config.speedNormal"), value: "3" },
+                        { label: t("crawl.config.speedFast"), value: "6" },
                       ].map((preset) => (
                         <button key={preset.value} onClick={() => setConcurrency(preset.value)} className={`flex-1 px-3 py-2 rounded-lg border text-xs font-medium transition-all ${
                           concurrency === preset.value
@@ -845,7 +850,7 @@ function CrawlPageInner() {
                         </button>
                       ))}
                     </div>
-                    <p className="text-xs text-neutral-400 mt-1">Faster = more server load</p>
+                    <p className="text-xs text-neutral-400 mt-1">{t("crawl.config.speedHint")}</p>
                   </div>
                 </div>
 
@@ -854,13 +859,13 @@ function CrawlPageInner() {
                     <div className="flex items-center gap-2 mb-3">
                       <Shield className="h-4 w-4 text-amber-600" />
                       <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
-                        {mode === "authenticated" ? "Authentication Required" : "Authentication (Optional)"}
+                        {mode === "authenticated" ? t("crawl.config.authRequiredTitle") : t("crawl.config.authOptionalTitle")}
                       </p>
                     </div>
                     <p className="text-xs text-amber-700 dark:text-amber-300 mb-3">
                       {mode === "authenticated"
-                        ? "Log in so the crawler can discover and audit pages behind the login. Configure authentication below or select a saved config."
-                        : "Add login details to also discover pages behind authentication, or leave blank to crawl public pages only."}
+                        ? t("crawl.config.authRequiredBody")
+                        : t("crawl.config.authOptionalBody")}
                     </p>
                     <ScanAuthSection key={mode} onAuthChange={setAuthConfig} onSavedConfigChange={setSavedConfigId} scanUrl={url} />
                   </div>
@@ -878,19 +883,19 @@ function CrawlPageInner() {
                     CTA must not stretch the full card width on large screens. */}
                 <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 pt-2">
                   <Button variant="outline" onClick={() => { setError(null); setStep("mode"); }} className="w-full sm:w-auto px-6">
-                    <ArrowLeft className="h-4 w-4 mr-2" /> Back
+                    <ArrowLeft className="h-4 w-4 mr-2" /> {t("common.back")}
                   </Button>
                   <Button onClick={handleAudit} disabled={!url.trim()} className="w-full sm:w-auto sm:min-w-64 h-11 text-sm font-medium">
                     <Zap className="h-4 w-4 mr-2" />
-                    Start {mode === "public" ? "Public Site" : mode === "authenticated" ? "Authenticated" : "Deep Crawl"} Audit
+                    {mode === "public" ? t("crawl.config.startPublic") : mode === "authenticated" ? t("crawl.config.startAuthenticated") : t("crawl.config.startDeep")}
                     <ArrowRight className="h-4 w-4 ml-2" />
                   </Button>
                 </div>
                 <div className="flex flex-col gap-1 text-xs text-neutral-400 px-1 sm:flex-row sm:items-center sm:justify-between">
                   <span className="flex items-center gap-1.5">
-                    <Timer className="h-3.5 w-3.5 shrink-0" /> Estimated time: <strong className="text-neutral-600 dark:text-neutral-300">{getTimeEstimate()}</strong>
+                    <Timer className="h-3.5 w-3.5 shrink-0" /> {t("crawl.config.estimatedTime")} <strong className="text-neutral-600 dark:text-neutral-300">{getTimeEstimate()}</strong>
                   </span>
-                  <span>up to {Number(maxPages) || 0} pages · depth {Number(maxDepth) || 0} · {concurrency} parallel</span>
+                  <span>{t("crawl.config.budgetSummary", { pages: String(Number(maxPages) || 0), depth: String(Number(maxDepth) || 0), concurrency: String(concurrency) })}</span>
                 </div>
               </CardContent>
             </Card>
@@ -919,8 +924,8 @@ function CrawlPageInner() {
             <CardContent className="p-8 flex flex-col items-center gap-4">
               <Loader2 className="h-8 w-8 text-blue-500 animate-spin" />
               <div className="text-center" role="status" aria-live="polite">
-                <p className="text-sm font-medium text-neutral-900 dark:text-white">Starting audit engine...</p>
-                <p className="text-xs text-neutral-500 mt-1">Launching browser and connecting to target</p>
+                <p className="text-sm font-medium text-neutral-900 dark:text-white">{t("crawl.running.startingEngine")}</p>
+                <p className="text-xs text-neutral-500 mt-1">{t("crawl.running.startingEngineSub")}</p>
               </div>
             </CardContent>
           </Card>
@@ -932,17 +937,17 @@ function CrawlPageInner() {
             <CardContent className="p-4 flex items-start gap-3">
               <XCircle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
               <div className="flex-1">
-                <p className="text-sm font-medium text-red-800 dark:text-red-200">We couldn&apos;t finish the audit</p>
+                <p className="text-sm font-medium text-red-800 dark:text-red-200">{t("crawl.results.couldntFinish")}</p>
                 <p className="text-sm text-red-600 dark:text-red-400 mt-1">{error}</p>
                 <div className="flex flex-wrap gap-2 mt-3">
                   <Button size="sm" onClick={() => handleAudit()} disabled={!url.trim()} className="h-8 text-xs">
-                    <Radio className="h-3.5 w-3.5 mr-1.5" /> Try again
+                    <Radio className="h-3.5 w-3.5 mr-1.5" /> {t("crawl.results.tryAgain")}
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => setStep("config")} className="h-8 text-xs">
-                    Adjust settings
+                    {t("crawl.results.adjustSettings")}
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => setStep("mode")} className="h-8 text-xs">
-                    New audit
+                    {t("crawl.results.newAudit")}
                   </Button>
                 </div>
               </div>
@@ -959,10 +964,10 @@ function CrawlPageInner() {
 // MODE CARD
 // ══════════════════════════════════════════════════════════════
 
-function ModeCard({ icon, title, description, pageCountHint, color, features, requiresAuth, recommended, onClick }: {
+function ModeCard({ icon, title, description, pageCountHint, color, features, requiresAuth, recommended, recommendedLabel, authNeededLabel, onClick }: {
   icon: React.ReactNode; title: string; description: string; pageCountHint: string;
   color: "blue" | "violet" | "emerald"; features: string[];
-  requiresAuth?: boolean; recommended?: boolean; onClick: () => void;
+  requiresAuth?: boolean; recommended?: boolean; recommendedLabel: string; authNeededLabel: string; onClick: () => void;
 }) {
   const c = {
     blue: { bg: "bg-blue-50 dark:bg-blue-950/40", border: "border-blue-200 dark:border-blue-800 hover:border-blue-400 dark:hover:border-blue-600", icon: "bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400", badge: "bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300", ring: "hover:ring-2 hover:ring-blue-200 dark:hover:ring-blue-800" },
@@ -973,7 +978,7 @@ function ModeCard({ icon, title, description, pageCountHint, color, features, re
   return (
     <button onClick={onClick} className={`relative text-left rounded-xl border-2 p-5 transition-all cursor-pointer ${c.bg} ${c.border} ${c.ring}`}>
       {recommended && (
-        <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-emerald-500 text-white">Recommended</span>
+        <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-emerald-500 text-white">{recommendedLabel}</span>
       )}
       <div className={`h-12 w-12 rounded-xl flex items-center justify-center mb-4 ${c.icon}`}>{icon}</div>
       <h3 className="text-base font-semibold text-neutral-900 dark:text-white mb-1">{title}</h3>
@@ -989,7 +994,7 @@ function ModeCard({ icon, title, description, pageCountHint, color, features, re
         <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${c.badge}`}>{pageCountHint}</span>
         {requiresAuth && (
           <span className="text-[10px] text-amber-600 dark:text-amber-400 flex items-center gap-1">
-            <Lock className="h-2.5 w-2.5" /> Auth needed
+            <Lock className="h-2.5 w-2.5" /> {authNeededLabel}
           </span>
         )}
       </div>
@@ -1004,11 +1009,12 @@ function ModeCard({ icon, title, description, pageCountHint, color, features, re
 function LiveProgressDashboard({ progress, livePages, onCancel }: {
   progress: LiveProgress; livePages: LivePageEvent[]; onCancel: () => void;
 }) {
+  const { t } = useI18n();
   const [expanded, setExpanded] = useState(true);
   const pct = progress.pagesTotal > 0 ? Math.round((progress.pagesScanned / progress.pagesTotal) * 100) : 0;
   const phaseLabel: Record<string, string> = {
-    queued: "Queued", connecting: "Launching Browser...", discovering: "Discovering Pages...",
-    scanning: "Scanning Pages", analyzing: "Analyzing Patterns...",
+    queued: t("crawl.running.phaseQueued"), connecting: t("crawl.running.phaseConnecting"), discovering: t("crawl.running.phaseDiscovering"),
+    scanning: t("crawl.running.phaseScanning"), analyzing: t("crawl.running.phaseAnalyzing"),
   };
   const completedPages = livePages.filter(p => p.status === "complete");
   const scanningPages = livePages.filter(p => p.status === "scanning");
@@ -1033,10 +1039,10 @@ function LiveProgressDashboard({ progress, livePages, onCancel }: {
             </div>
             <div className="flex items-center gap-2 sm:gap-3 shrink-0">
               {progress.eta !== undefined && progress.eta > 0 && (
-                <span className="flex items-center gap-1 text-xs text-neutral-500 whitespace-nowrap"><Timer className="h-3.5 w-3.5" /> ETA {formatDuration(progress.eta)}</span>
+                <span className="flex items-center gap-1 text-xs text-neutral-500 whitespace-nowrap"><Timer className="h-3.5 w-3.5" /> {t("crawl.running.eta", { time: formatDuration(progress.eta) })}</span>
               )}
               <Button variant="outline" size="sm" onClick={onCancel} className="text-xs text-red-600 border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-950 h-7 shrink-0">
-                <StopCircle className="h-3 w-3 mr-1" /> Cancel
+                <StopCircle className="h-3 w-3 mr-1" /> {t("common.cancel")}
               </Button>
             </div>
           </div>
@@ -1045,19 +1051,19 @@ function LiveProgressDashboard({ progress, livePages, onCancel }: {
             <div className="space-y-2">
               <div className="flex justify-between text-xs">
                 <span className="text-neutral-600 dark:text-neutral-300 font-medium">
-                  {progress.pagesScanned} of {progress.pagesTotal} pages
-                  {progress.scanRate && progress.scanRate > 0 && <span className="ml-2 text-neutral-400">({progress.scanRate.toFixed(1)} pages/s)</span>}
+                  {t("crawl.running.pagesProgress", { scanned: String(progress.pagesScanned), total: String(progress.pagesTotal) })}
+                  {progress.scanRate && progress.scanRate > 0 && <span className="ml-2 text-neutral-400">{t("crawl.running.pagesPerSecond", { rate: progress.scanRate.toFixed(1) })}</span>}
                 </span>
                 <span className="text-neutral-500 font-mono">{pct}%</span>
               </div>
               <div
                 className="h-2.5 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden"
                 role="progressbar"
-                aria-label="Pages scanned"
+                aria-label={t("crawl.running.pagesScannedAria")}
                 aria-valuenow={pct}
                 aria-valuemin={0}
                 aria-valuemax={100}
-                aria-valuetext={`${progress.pagesScanned} of ${progress.pagesTotal} pages scanned`}
+                aria-valuetext={t("crawl.running.pagesScannedValueText", { scanned: String(progress.pagesScanned), total: String(progress.pagesTotal) })}
               >
                 <div className="h-full bg-linear-to-r from-blue-500 to-violet-500 rounded-full transition-all duration-500 ease-out" style={{ width: `${pct}%` }} />
               </div>
@@ -1066,12 +1072,12 @@ function LiveProgressDashboard({ progress, livePages, onCancel }: {
 
           {progress.phase === "discovering" && (
             <div className="space-y-1">
-              <p className="text-xs text-neutral-600 dark:text-neutral-300" role="status" aria-live="polite">{progress.pagesDiscovered} pages queued</p>
+              <p className="text-xs text-neutral-600 dark:text-neutral-300" role="status" aria-live="polite">{t("crawl.running.pagesQueued", { count: String(progress.pagesDiscovered) })}</p>
               <div
                 className="h-2 bg-neutral-200 dark:bg-neutral-700 rounded-full overflow-hidden"
                 role="progressbar"
-                aria-label="Discovering pages"
-                aria-valuetext={`${progress.pagesDiscovered} pages discovered`}
+                aria-label={t("crawl.running.discoveringAria")}
+                aria-valuetext={t("crawl.running.discoveredValueText", { count: String(progress.pagesDiscovered) })}
               >
                 <div className="h-full bg-linear-to-r from-blue-400 to-blue-600 rounded-full animate-[indeterminate_2s_ease-in-out_infinite] w-1/3" />
               </div>
@@ -1080,10 +1086,10 @@ function LiveProgressDashboard({ progress, livePages, onCancel }: {
 
           {progress.phase === "scanning" && progress.pagesScanned > 0 && (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <LiveStat label="Avg Score" value={progress.avgScore > 0 ? progress.avgScore.toFixed(1) : "—"} color={progress.avgScore >= 90 ? "green" : progress.avgScore >= 70 ? "yellow" : "red"} />
-              <LiveStat label="Violations" value={progress.totalViolations.toString()} color={progress.totalViolations > 0 ? "red" : "green"} />
-              <LiveStat label="Completed" value={`${completedPages.length}`} />
-              <LiveStat label="Failed" value={failedPages.length.toString()} color={failedPages.length > 0 ? "amber" : "green"} />
+              <LiveStat label={t("crawl.avgScore")} value={progress.avgScore > 0 ? progress.avgScore.toFixed(1) : "—"} color={progress.avgScore >= 90 ? "green" : progress.avgScore >= 70 ? "yellow" : "red"} />
+              <LiveStat label={t("crawl.running.statViolations")} value={progress.totalViolations.toString()} color={progress.totalViolations > 0 ? "red" : "green"} />
+              <LiveStat label={t("crawl.running.statCompleted")} value={`${completedPages.length}`} />
+              <LiveStat label={t("crawl.running.statFailed")} value={failedPages.length.toString()} color={failedPages.length > 0 ? "amber" : "green"} />
             </div>
           )}
 
@@ -1103,7 +1109,7 @@ function LiveProgressDashboard({ progress, livePages, onCancel }: {
                   }`}>
                     {isPast && <CheckCircle2 className="h-3 w-3" />}
                     {isActive && <Loader2 className="h-3 w-3 animate-spin" />}
-                    <span className="capitalize">{phase === "connecting" ? "Auth" : phase === "discovering" ? "Discover" : phase === "scanning" ? "Scan" : "Analyze"}</span>
+                    <span className="capitalize">{phase === "connecting" ? t("crawl.running.phaseAuth") : phase === "discovering" ? t("crawl.running.phaseDiscover") : phase === "scanning" ? t("crawl.running.phaseScan") : t("crawl.running.phaseAnalyze")}</span>
                     {dur !== undefined && dur > 0 && <span className="text-[9px] opacity-60">{(dur / 1000).toFixed(1)}s</span>}
                   </div>
                 </div>
@@ -1119,10 +1125,10 @@ function LiveProgressDashboard({ progress, livePages, onCancel }: {
           <CardHeader className="pb-2">
             <button onClick={() => setExpanded(!expanded)} className="flex items-center justify-between w-full">
               <CardTitle className="text-sm flex items-center gap-2">
-                <Activity className="h-4 w-4 text-blue-500" /> Live Results
+                <Activity className="h-4 w-4 text-blue-500" /> {t("crawl.running.liveResults")}
                 <Badge variant="outline" className="text-xs">{completedPages.length}/{livePages.length}</Badge>
                 {scanningPages.length > 0 && (
-                  <span className="text-[10px] text-blue-500 flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" />{scanningPages.length} scanning</span>
+                  <span className="text-[10px] text-blue-500 flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" />{t("crawl.running.scanningCount", { count: String(scanningPages.length) })}</span>
                 )}
               </CardTitle>
               {expanded ? <ChevronUp className="h-4 w-4 text-neutral-400" /> : <ChevronDown className="h-4 w-4 text-neutral-400" />}
@@ -1181,6 +1187,7 @@ function LiveStat({ label, value, color }: { label: string; value: string; color
 // ══════════════════════════════════════════════════════════════
 
 function AuditResults({ result }: { result: AuditResult }) {
+  const { t } = useI18n();
   // Defensive defaults: a partial/older/stale durable record may be missing
   // arrays/objects. Never let a missing field white-screen the results page.
   const pages = result.pages ?? [];
@@ -1207,12 +1214,12 @@ function AuditResults({ result }: { result: AuditResult }) {
             <AlertTriangle className="h-6 w-6 text-amber-500 shrink-0" />
             <div>
               <h3 className="text-base font-semibold text-neutral-900 dark:text-white">
-                {isNoPages ? "No pages could be scanned" : "We couldn't scan any of the discovered pages"}
+                {isNoPages ? t("crawl.results.noPagesScanned") : t("crawl.results.noneScannable")}
               </h3>
               <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-0.5">
                 {isNoPages
-                  ? `We discovered ${discovery?.totalUnique ?? 0} URL(s) but none were scannable.`
-                  : `${result.pagesDiscovered} page(s) were discovered, but every scan failed.`}
+                  ? t("crawl.results.noPagesBody", { count: String(discovery?.totalUnique ?? 0) })
+                  : t("crawl.results.allFailedBody", { count: String(result.pagesDiscovered) })}
               </p>
             </div>
           </div>
@@ -1222,9 +1229,9 @@ function AuditResults({ result }: { result: AuditResult }) {
             </p>
           )}
           <ul className="text-sm text-neutral-600 dark:text-neutral-300 list-disc pl-5 space-y-1">
-            <li>Check the URL is correct and publicly reachable.</li>
-            <li>Some sites block automated scanners — try again, or use Authenticated mode.</li>
-            <li>For large or slow sites, retry with a lower speed (fewer pages in parallel).</li>
+            <li>{t("crawl.results.tip1")}</li>
+            <li>{t("crawl.results.tip2")}</li>
+            <li>{t("crawl.results.tip3")}</li>
           </ul>
         </CardContent>
       </Card>
@@ -1238,9 +1245,9 @@ function AuditResults({ result }: { result: AuditResult }) {
           <CardContent className="p-4 flex items-start gap-3">
             <Clock className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
             <div className="text-sm">
-              <p className="font-medium text-neutral-900 dark:text-white">Stopped at the time limit — partial results</p>
+              <p className="font-medium text-neutral-900 dark:text-white">{t("crawl.results.partialTitle")}</p>
               <p className="text-neutral-600 dark:text-neutral-400 mt-0.5">
-                Scanned {result.pagesScanned} of {result.pagesDiscovered} discovered pages within the scan window. Re-run with fewer pages, or a narrower section, to cover the rest.
+                {t("crawl.results.partialBody", { scanned: String(result.pagesScanned), discovered: String(result.pagesDiscovered) })}
               </p>
             </div>
           </CardContent>
@@ -1259,22 +1266,22 @@ function AuditResults({ result }: { result: AuditResult }) {
                 : "bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-400"
               }`}>{Math.round(result.averageScore)}</div>
               <div>
-                <p className="text-sm font-semibold text-neutral-900 dark:text-white">Overall Score</p>
-                <p className="text-xs text-neutral-500 mt-0.5">{result.pagesScanned} pages · {result.totalViolations} violations · {formatDuration(result.duration)}</p>
-                <p className="text-xs text-neutral-400 mt-0.5">{patterns.filter(p => p.isTemplateIssue).length} template issues found</p>
+                <p className="text-sm font-semibold text-neutral-900 dark:text-white">{t("crawl.results.overallScore")}</p>
+                <p className="text-xs text-neutral-500 mt-0.5">{t("crawl.results.scoreSummary", { pages: String(result.pagesScanned), violations: String(result.totalViolations), duration: formatDuration(result.duration) })}</p>
+                <p className="text-xs text-neutral-400 mt-0.5">{t("crawl.results.templateIssuesFound", { count: String(patterns.filter(p => p.isTemplateIssue).length) })}</p>
               </div>
             </div>
             <div className="flex gap-4 sm:ml-auto">
               {cleanCount > 0 && (
                 <div className="text-center px-4 py-2 rounded-xl bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800">
                   <p className="text-2xl font-bold text-green-700 dark:text-green-400">{cleanCount}</p>
-                  <p className="text-[10px] text-green-600 dark:text-green-400 font-medium uppercase tracking-wide">Clean</p>
+                  <p className="text-[10px] text-green-600 dark:text-green-400 font-medium uppercase tracking-wide">{t("crawl.results.clean")}</p>
                 </div>
               )}
               {errorCount > 0 && (
                 <div className="text-center px-4 py-2 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
                   <p className="text-2xl font-bold text-amber-700 dark:text-amber-400">{errorCount}</p>
-                  <p className="text-[10px] text-amber-600 dark:text-amber-400 font-medium uppercase tracking-wide">Failed</p>
+                  <p className="text-[10px] text-amber-600 dark:text-amber-400 font-medium uppercase tracking-wide">{t("crawl.results.failed")}</p>
                 </div>
               )}
             </div>
@@ -1288,10 +1295,10 @@ function AuditResults({ result }: { result: AuditResult }) {
       {/* Phase Timeline */}
       <div className="flex items-center gap-1 overflow-x-auto pb-2">
         {[
-          { name: "Auth", dur: timing.auth, icon: <Shield className="h-3.5 w-3.5" />, ok: result.auth?.authenticated ? "success" : result.auth ? "error" : "skip" },
-          { name: "Discover", dur: timing.discovery, icon: <Search className="h-3.5 w-3.5" />, ok: "success" },
-          { name: "Scan", dur: timing.scanning, icon: <Activity className="h-3.5 w-3.5" />, ok: "success" },
-          { name: "Analyze", dur: timing.analysis, icon: <BarChart3 className="h-3.5 w-3.5" />, ok: "success" },
+          { name: "Auth", label: t("crawl.running.phaseAuth"), dur: timing.auth, icon: <Shield className="h-3.5 w-3.5" />, ok: result.auth?.authenticated ? "success" : result.auth ? "error" : "skip" },
+          { name: "Discover", label: t("crawl.running.phaseDiscover"), dur: timing.discovery, icon: <Search className="h-3.5 w-3.5" />, ok: "success" },
+          { name: "Scan", label: t("crawl.running.phaseScan"), dur: timing.scanning, icon: <Activity className="h-3.5 w-3.5" />, ok: "success" },
+          { name: "Analyze", label: t("crawl.running.phaseAnalyze"), dur: timing.analysis, icon: <BarChart3 className="h-3.5 w-3.5" />, ok: "success" },
         ].map((p, i) => (
           <div key={p.name} className="flex items-center">
             {i > 0 && <div className="w-4 h-px bg-neutral-300 dark:bg-neutral-600 mx-1" />}
@@ -1300,7 +1307,7 @@ function AuditResults({ result }: { result: AuditResult }) {
               : p.ok === "error" ? "bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800"
               : "bg-neutral-100 dark:bg-neutral-800 text-neutral-500 border border-neutral-200 dark:border-neutral-700"
             }`}>
-              {p.icon} <span>{p.name}</span> <span className="text-[10px] opacity-70">{p.dur > 0 ? formatDuration(p.dur) : "—"}</span>
+              {p.icon} <span>{p.label}</span> <span className="text-[10px] opacity-70">{p.dur > 0 ? formatDuration(p.dur) : "—"}</span>
             </div>
           </div>
         ))}
@@ -1321,23 +1328,23 @@ function AuditResults({ result }: { result: AuditResult }) {
             </div>
             <div>
               <p className="text-sm font-medium text-neutral-900 dark:text-white">
-                {result.auth.authenticated ? `Authenticated via ${result.auth.method}` : `Auth failed (${result.auth.method})`}
+                {result.auth.authenticated ? t("crawl.results.authenticatedVia", { method: result.auth.method }) : t("crawl.results.authFailed", { method: result.auth.method })}
               </p>
-              <p className="text-xs text-neutral-500">{result.auth.authenticated ? `${result.auth.sessionPages || 0} pages with shared session` : "Admin pages were not accessible"}</p>
+              <p className="text-xs text-neutral-500">{result.auth.authenticated ? t("crawl.results.sessionPages", { count: String(result.auth.sessionPages || 0) }) : t("crawl.results.adminNotAccessible")}</p>
             </div>
           </div>
-          {result.auth.proof && <img src={`data:image/jpeg;base64,${result.auth.proof}`} alt="Auth proof" className="hidden sm:block h-12 w-20 object-cover rounded border" />}
+          {result.auth.proof && <img src={`data:image/jpeg;base64,${result.auth.proof}`} alt={t("crawl.results.authProofAlt")} className="hidden sm:block h-12 w-20 object-cover rounded border" />}
         </div>
       )}
 
       {/* Metrics */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-        <MetricCard icon={<Layers className="h-4 w-4" />} label="Pages" value={result.pagesScanned.toString()} sublabel={`of ${result.pagesDiscovered} found`} />
-        <MetricCard icon={<BarChart3 className="h-4 w-4" />} label="Avg Score" value={result.averageScore.toString()} color={result.averageScore >= 90 ? "green" : result.averageScore >= 70 ? "yellow" : "red"} />
-        <MetricCard icon={<AlertTriangle className="h-4 w-4" />} label="Violations" value={result.totalViolations.toString()} color={result.totalViolations > 0 ? "red" : "green"} />
-        <MetricCard icon={<Activity className="h-4 w-4" />} label="Patterns" value={patterns.length.toString()} sublabel={`${patterns.filter(p => p.isTemplateIssue).length} template`} />
-        <MetricCard icon={<Search className="h-4 w-4" />} label="Discovery" value="Routes" sublabel={`${discovery.totalUnique} URLs`} />
-        <MetricCard icon={<Clock className="h-4 w-4" />} label="Duration" value={formatDuration(result.duration)} sublabel={`${result.pagesScanned} pages`} />
+        <MetricCard icon={<Layers className="h-4 w-4" />} label={t("crawl.results.metricPages")} value={result.pagesScanned.toString()} sublabel={t("crawl.results.metricPagesSub", { count: String(result.pagesDiscovered) })} />
+        <MetricCard icon={<BarChart3 className="h-4 w-4" />} label={t("crawl.results.metricAvgScore")} value={result.averageScore.toString()} color={result.averageScore >= 90 ? "green" : result.averageScore >= 70 ? "yellow" : "red"} />
+        <MetricCard icon={<AlertTriangle className="h-4 w-4" />} label={t("crawl.results.metricViolations")} value={result.totalViolations.toString()} color={result.totalViolations > 0 ? "red" : "green"} />
+        <MetricCard icon={<Activity className="h-4 w-4" />} label={t("crawl.results.metricPatterns")} value={patterns.length.toString()} sublabel={t("crawl.results.metricPatternsSub", { count: String(patterns.filter(p => p.isTemplateIssue).length) })} />
+        <MetricCard icon={<Search className="h-4 w-4" />} label={t("crawl.results.metricDiscovery")} value={t("crawl.results.metricDiscoveryValue")} sublabel={t("crawl.results.metricDiscoverySub", { count: String(discovery.totalUnique) })} />
+        <MetricCard icon={<Clock className="h-4 w-4" />} label={t("crawl.results.metricDuration")} value={formatDuration(result.duration)} sublabel={t("crawl.results.metricDurationSub", { count: String(result.pagesScanned) })} />
       </div>
 
       {/* Patterns */}
@@ -1345,9 +1352,9 @@ function AuditResults({ result }: { result: AuditResult }) {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm flex items-center gap-2">
-              <Layers className="h-4 w-4 text-violet-500" /> Violation Patterns <Badge variant="outline" className="ml-auto">{patterns.length}</Badge>
+              <Layers className="h-4 w-4 text-violet-500" /> {t("crawl.results.violationPatterns")} <Badge variant="outline" className="ml-auto">{patterns.length}</Badge>
             </CardTitle>
-            <p className="text-xs text-neutral-500">Issues on multiple pages — fix in template to resolve everywhere</p>
+            <p className="text-xs text-neutral-500">{t("crawl.results.patternsHint")}</p>
           </CardHeader>
           <CardContent className="space-y-2">
             {patterns.slice(0, 10).map((p) => (
@@ -1356,8 +1363,8 @@ function AuditResults({ result }: { result: AuditResult }) {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-neutral-900 dark:text-white truncate">{p.description}</p>
                   <p className="text-xs text-neutral-500 mt-0.5">
-                    {p.ruleId} · {p.pageCount} pages
-                    {p.isTemplateIssue && <span className="ml-2 text-violet-600 dark:text-violet-400 font-medium">⚡ Template Issue</span>}
+                    {p.ruleId} · {t("crawl.results.patternPages", { count: String(p.pageCount) })}
+                    {p.isTemplateIssue && <span className="ml-2 text-violet-600 dark:text-violet-400 font-medium">{t("crawl.results.templateIssue")}</span>}
                   </p>
                 </div>
                 <span className="text-lg font-bold text-neutral-400">{p.pageCount}</span>
@@ -1372,7 +1379,7 @@ function AuditResults({ result }: { result: AuditResult }) {
         <Card className="border-amber-200 dark:border-amber-800">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm flex items-center gap-2 text-amber-800 dark:text-amber-200">
-              <AlertTriangle className="h-4 w-4" /> Issues ({errors.length})
+              <AlertTriangle className="h-4 w-4" /> {t("crawl.results.issues", { count: String(errors.length) })}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-1.5">
@@ -1390,7 +1397,7 @@ function AuditResults({ result }: { result: AuditResult }) {
       )}
 
       {/* Page Results — grouped */}
-      {discoveredPages.length > 0 && <PageGroup pages={discoveredPages} title="Discovered Pages" icon={<Globe className="h-4 w-4 text-blue-500" />} color="blue" />}
+      {discoveredPages.length > 0 && <PageGroup pages={discoveredPages} title={t("crawl.results.discoveredPages")} icon={<Globe className="h-4 w-4 text-blue-500" />} color="blue" />}
     </div>
   );
 }
@@ -1404,22 +1411,23 @@ function AuditResults({ result }: { result: AuditResult }) {
  * dollar estimate. Framed as an informational estimate (not legal advice).
  */
 function LitigationSurfaceCard({ surface }: { surface: LitigationSurface }) {
+  const { t } = useI18n();
   const TIER: Record<LitigationSurface["tier"], { label: string; bar: string; chip: string; ring: string }> = {
-    LOW: { label: "Low exposure", bar: "bg-green-500", chip: "bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300", ring: "border-green-200 dark:border-green-800" },
-    MODERATE: { label: "Moderate exposure", bar: "bg-yellow-500", chip: "bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-300", ring: "border-yellow-200 dark:border-yellow-800" },
-    HIGH: { label: "High exposure", bar: "bg-orange-500", chip: "bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300", ring: "border-orange-200 dark:border-orange-800" },
-    CRITICAL: { label: "Critical exposure", bar: "bg-red-500", chip: "bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300", ring: "border-red-200 dark:border-red-800" },
+    LOW: { label: t("crawl.litigation.tierLow"), bar: "bg-green-500", chip: "bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300", ring: "border-green-200 dark:border-green-800" },
+    MODERATE: { label: t("crawl.litigation.tierModerate"), bar: "bg-yellow-500", chip: "bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-300", ring: "border-yellow-200 dark:border-yellow-800" },
+    HIGH: { label: t("crawl.litigation.tierHigh"), bar: "bg-orange-500", chip: "bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300", ring: "border-orange-200 dark:border-orange-800" },
+    CRITICAL: { label: t("crawl.litigation.tierCritical"), bar: "bg-red-500", chip: "bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300", ring: "border-red-200 dark:border-red-800" },
   };
-  const t = TIER[surface.tier];
+  const tier = TIER[surface.tier];
   const money = (n: number) => `$${n.toLocaleString()}`;
 
   return (
-    <Card className={`overflow-hidden border ${t.ring}`}>
-      <div className={`h-1.5 ${t.bar}`} />
+    <Card className={`overflow-hidden border ${tier.ring}`}>
+      <div className={`h-1.5 ${tier.bar}`} />
       <CardHeader className="pb-3">
         <CardTitle className="text-sm flex items-center gap-2">
-          <Scale className="h-4 w-4 text-neutral-700 dark:text-neutral-300" /> ADA Litigation Surface
-          <span className={`ml-auto px-2 py-0.5 rounded-full text-[11px] font-semibold ${t.chip}`}>{t.label}</span>
+          <Scale className="h-4 w-4 text-neutral-700 dark:text-neutral-300" /> {t("crawl.litigation.title")}
+          <span className={`ml-auto px-2 py-0.5 rounded-full text-[11px] font-semibold ${tier.chip}`}>{tier.label}</span>
         </CardTitle>
         <p className="text-xs text-neutral-500">{surface.summary}</p>
       </CardHeader>
@@ -1427,15 +1435,15 @@ function LitigationSurfaceCard({ surface }: { surface: LitigationSurface }) {
         {/* Headline metrics — stack on mobile so the "$500,000+" exposure doesn't overflow a 3-col row */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
           <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 p-3">
-            <p className="text-[10px] uppercase tracking-wide text-neutral-400 font-medium">Risk score</p>
+            <p className="text-[10px] uppercase tracking-wide text-neutral-400 font-medium">{t("crawl.litigation.riskScore")}</p>
             <p className="text-2xl font-black text-neutral-900 dark:text-white">{surface.score}<span className="text-sm font-medium text-neutral-400">/100</span></p>
           </div>
           <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 p-3">
-            <p className="text-[10px] uppercase tracking-wide text-neutral-400 font-medium">Est. exposure</p>
+            <p className="text-[10px] uppercase tracking-wide text-neutral-400 font-medium">{t("crawl.litigation.estExposure")}</p>
             <p className="text-2xl font-black text-neutral-900 dark:text-white">{formatExposure(surface.estimatedExposure)}</p>
           </div>
           <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 p-3">
-            <p className="text-[10px] uppercase tracking-wide text-neutral-400 font-medium">High-risk issues</p>
+            <p className="text-[10px] uppercase tracking-wide text-neutral-400 font-medium">{t("crawl.litigation.highRiskIssues")}</p>
             <p className="text-2xl font-black text-neutral-900 dark:text-white">{surface.coveredRuleCount}<span className="text-sm font-medium text-neutral-400">/{surface.totalHighRiskRules}</span></p>
           </div>
         </div>
@@ -1448,12 +1456,12 @@ function LitigationSurfaceCard({ surface }: { surface: LitigationSurface }) {
                 <div className="flex items-start gap-3">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-neutral-900 dark:text-white">{f.label}</p>
-                    <p className="text-[11px] text-neutral-500 mt-0.5">{f.wcag} · cited in {Math.round(f.lawsuitFrequency * 100)}% of ADA web suits</p>
+                    <p className="text-[11px] text-neutral-500 mt-0.5">{t("crawl.litigation.citedIn", { wcag: f.wcag, pct: String(Math.round(f.lawsuitFrequency * 100)) })}</p>
                     <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1.5">{f.plaintiffNote}</p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-sm font-bold text-neutral-900 dark:text-white">{f.affectedPages} page{f.affectedPages === 1 ? "" : "s"}</p>
-                    <p className="text-[11px] text-neutral-500">{f.occurrences} instance{f.occurrences === 1 ? "" : "s"}</p>
+                    <p className="text-sm font-bold text-neutral-900 dark:text-white">{f.affectedPages === 1 ? t("crawl.litigation.pageCount", { count: String(f.affectedPages) }) : t("crawl.litigation.pagesCount", { count: String(f.affectedPages) })}</p>
+                    <p className="text-[11px] text-neutral-500">{f.occurrences === 1 ? t("crawl.litigation.instanceCount", { count: String(f.occurrences) }) : t("crawl.litigation.instancesCount", { count: String(f.occurrences) })}</p>
                     <p className="text-[11px] text-neutral-400 mt-0.5">~{money(f.estimatedExposure)}</p>
                   </div>
                 </div>
@@ -1463,13 +1471,13 @@ function LitigationSurfaceCard({ surface }: { surface: LitigationSurface }) {
         ) : (
           <div className="rounded-lg border border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/30 p-3 flex items-center gap-2">
             <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
-            <p className="text-sm text-green-800 dark:text-green-300">None of the highest-litigation issue types were found — a low litigation surface.</p>
+            <p className="text-sm text-green-800 dark:text-green-300">{t("crawl.litigation.noneFound")}</p>
           </div>
         )}
 
         <p className="text-[11px] text-neutral-400 flex items-start gap-1.5">
           <Info className="h-3.5 w-3.5 shrink-0 mt-px" />
-          Informational estimate based on published ADA Title III filing data (issue frequency &amp; settlement ranges). Not legal advice.
+          {t("crawl.litigation.disclaimer")}
         </p>
       </CardContent>
     </Card>
@@ -1479,6 +1487,7 @@ function LitigationSurfaceCard({ surface }: { surface: LitigationSurface }) {
 // ── Page Group ──
 
 function PageGroup({ pages, title, icon, color }: { pages: PageResult[]; title: string; icon: React.ReactNode; color: "blue" | "violet" }) {
+  const { t } = useI18n();
   const [showAll, setShowAll] = useState(false);
   const sorted = [...pages].sort((a, b) => {
     if (a.error && !b.error) return 1;
@@ -1501,7 +1510,7 @@ function PageGroup({ pages, title, icon, color }: { pages: PageResult[]; title: 
             avg >= 90 ? "bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400"
             : avg >= 70 ? "bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-400"
             : "bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-400"
-          }`}>Avg: {avg}</span>
+          }`}>{t("crawl.results.avgLabel", { score: String(avg) })}</span>
         </div>
       </CardHeader>
       <CardContent>
@@ -1527,19 +1536,19 @@ function PageGroup({ pages, title, icon, color }: { pages: PageResult[]; title: 
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
-                  {p.error && <Badge variant="destructive" className="text-[10px]">Error</Badge>}
-                  {!p.error && p.critical > 0 && <Badge variant="critical" className="text-[10px]">{p.critical} crit</Badge>}
-                  {!p.error && p.serious > 0 && <Badge variant="serious" className="text-[10px]">{p.serious} ser</Badge>}
-                  {!p.error && p.moderate > 0 && <Badge variant="outline" className="text-[10px]">{p.moderate} mod</Badge>}
+                  {p.error && <Badge variant="destructive" className="text-[10px]">{t("crawl.results.errorBadge")}</Badge>}
+                  {!p.error && p.critical > 0 && <Badge variant="critical" className="text-[10px]">{t("crawl.results.critBadge", { count: String(p.critical) })}</Badge>}
+                  {!p.error && p.serious > 0 && <Badge variant="serious" className="text-[10px]">{t("crawl.results.serBadge", { count: String(p.serious) })}</Badge>}
+                  {!p.error && p.moderate > 0 && <Badge variant="outline" className="text-[10px]">{t("crawl.results.modBadge", { count: String(p.moderate) })}</Badge>}
                   {!p.error && p.violations === 0 && p.scanId && (
-                    <Badge className="text-[10px] bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800">Clean</Badge>
+                    <Badge className="text-[10px] bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800">{t("crawl.results.clean")}</Badge>
                   )}
                 </div>
                 {p.scanId && (
                   <Link
                     href={`/report/${p.scanId}`}
-                    aria-label={`Open full report for ${p.url}`}
-                    title="Open full report"
+                    aria-label={t("crawl.results.openReportFor", { url: p.url })}
+                    title={t("crawl.results.openFullReport")}
                     className="text-neutral-400 hover:text-blue-500 transition-colors opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
                   >
                     <ExternalLink className="h-4 w-4" aria-hidden="true" />
@@ -1554,10 +1563,10 @@ function PageGroup({ pages, title, icon, color }: { pages: PageResult[]; title: 
             type="button"
             onClick={() => setShowAll(true)}
             aria-expanded={false}
-            aria-label={`Show all ${pages.length} discovered pages`}
+            aria-label={t("crawl.results.showAllPagesAria", { count: String(pages.length) })}
             className="w-full mt-3 py-2 text-sm text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950 rounded-lg font-medium"
           >
-            Show all {pages.length} pages
+            {t("crawl.results.showAllPages", { count: String(pages.length) })}
           </button>
         )}
       </CardContent>
