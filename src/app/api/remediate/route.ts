@@ -33,52 +33,6 @@ function describeFix(f: FixRecord): string {
   return f.selector ? `${base} (${f.selector})` : base;
 }
 
-/** Max redirect hops to follow when fetching a remediation target. */
-const MAX_REDIRECTS = 5;
-
-/** Thrown when a fetch target (initial OR post-redirect) violates SSRF rules. */
-class SsrfBlockedError extends Error {}
-
-/**
- * Fetch a URL while enforcing SSRF rules on EVERY hop.
- *
- * `redirect: "follow"` chases 3xx redirects transparently, so a public URL that
- * 302s to `http://169.254.169.254/…` (cloud metadata) or an internal host would
- * sail past a single entry-point check. We instead follow redirects manually and
- * re-validate each target — the literal/encoding/private-range check
- * (validateScanUrl) AND a DNS-resolution check (resolvesToInternalIp, for public
- * hostnames that point at internal IPs). The original code validated only the
- * entry URL and only with the sync check. Throws SsrfBlockedError on a blocked
- * hop (or too many redirects) so callers can map it to a 400.
- *
- * The caller's AbortSignal is reused across hops, so the timeout bounds the whole
- * redirect chain rather than resetting per hop.
- */
-async function fetchWithSsrfGuard(initialUrl: string, init: RequestInit): Promise<Response> {
-  let currentUrl = initialUrl;
-
-  for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
-    const ssrfError = validateScanUrl(currentUrl);
-    if (ssrfError) throw new SsrfBlockedError(ssrfError);
-    if (await resolvesToInternalIp(currentUrl)) {
-      throw new SsrfBlockedError("Target resolves to a private/internal address");
-    }
-
-    const res = await fetch(currentUrl, { ...init, redirect: "manual" });
-
-    // Not a redirect → final response.
-    if (res.status < 300 || res.status >= 400) return res;
-
-    const location = res.headers.get("location");
-    if (!location) return res; // 3xx without a target — hand back as-is.
-
-    // Resolve relative redirects against the current URL; the next loop
-    // iteration re-validates this new target before fetching it.
-    currentUrl = new URL(location, currentUrl).toString();
-  }
-
-  throw new SsrfBlockedError("Too many redirects");
-}
 
 /**
  * Auto-Remediation Edge Layer API
@@ -144,17 +98,40 @@ export async function POST(request: NextRequest) {
 
   const { url, config, returnFormat } = parsed.data;
 
+  // SSRF protection — literal/encoding/private-range check (validateScanUrl) AND a
+  // DNS-resolution check (resolvesToInternalIp): a public hostname can resolve to
+  // an internal IP. The original code ran only the sync check.
+  const ssrfError = validateScanUrl(url);
+  if (ssrfError) {
+    return NextResponse.json({ error: ssrfError }, { status: 400 });
+  }
+  if (await resolvesToInternalIp(url)) {
+    return NextResponse.json(
+      { error: "URL resolves to a private/internal address" },
+      { status: 400 }
+    );
+  }
+
   try {
-    // Fetch the original page. SSRF is enforced on every redirect hop (not just
-    // the entry URL) inside fetchWithSsrfGuard — a public URL can 3xx to an
-    // internal address, so a single entry check is insufficient.
-    const response = await fetchWithSsrfGuard(url, {
+    // Fetch the original page. Redirects are NOT followed (redirect: "manual"):
+    // a validated public URL can 3xx to an internal/metadata address, and this
+    // route reflects the fetched body back to the caller, so chasing redirects
+    // would re-open SSRF (F031). A 3xx is rejected below.
+    const response = await fetch(url, {
       headers: {
         "User-Agent": "RegLayer-Remediation/1.0 (accessibility-scanner)",
         Accept: "text/html",
       },
+      redirect: "manual",
       signal: AbortSignal.timeout(15000),
     });
+
+    if (response.status >= 300 && response.status < 400) {
+      return NextResponse.json(
+        { error: "The URL redirected. RegLayer does not follow redirects when remediating — please provide the final URL." },
+        { status: 400 }
+      );
+    }
 
     if (!response.ok) {
       return NextResponse.json(
@@ -200,9 +177,6 @@ export async function POST(request: NextRequest) {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    if (error instanceof SsrfBlockedError) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
     if (error instanceof Error && error.name === "TimeoutError") {
       return NextResponse.json({ error: "Request timed out" }, { status: 504 });
     }
@@ -258,15 +232,39 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  // SSRF protection — literal/private-range check + DNS resolution (a public
+  // hostname can resolve to an internal IP). The original code ran only the sync
+  // check.
+  const ssrfError = validateScanUrl(url);
+  if (ssrfError) {
+    return NextResponse.json({ error: ssrfError }, { status: 400 });
+  }
+  if (await resolvesToInternalIp(url)) {
+    return NextResponse.json(
+      { error: "URL resolves to a private/internal address" },
+      { status: 400 }
+    );
+  }
+
   try {
-    // SSRF enforced on every redirect hop (see fetchWithSsrfGuard).
-    const response = await fetchWithSsrfGuard(url, {
+    // Redirects are NOT followed (redirect: "manual"): a validated public URL can
+    // 3xx to an internal/metadata address, and this proxy reflects the fetched
+    // body back to the caller, so chasing redirects would re-open SSRF (F031).
+    const response = await fetch(url, {
       headers: {
         "User-Agent": "RegLayer-Remediation/1.0 (accessibility-scanner)",
         Accept: "text/html",
       },
+      redirect: "manual",
       signal: AbortSignal.timeout(15000),
     });
+
+    if (response.status >= 300 && response.status < 400) {
+      return new Response(
+        "The URL redirected. RegLayer does not follow redirects — provide the final URL.",
+        { status: 400 }
+      );
+    }
 
     if (!response.ok) {
       return new Response(`Failed to fetch: ${response.status}`, { status: 502 });
@@ -282,10 +280,7 @@ export async function GET(request: NextRequest) {
         "Cache-Control": "public, max-age=300", // 5 min cache
       },
     });
-  } catch (error) {
-    if (error instanceof SsrfBlockedError) {
-      return new Response(error.message, { status: 400 });
-    }
+  } catch {
     return new Response("Remediation failed", { status: 500 });
   }
 }
