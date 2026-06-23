@@ -150,6 +150,19 @@ async function makeServerlessContext(browser: any, options?: Record<string, unkn
   if (typeof page.viewportSize !== "function") {
     page.viewportSize = () => (typeof page.viewport === "function" ? page.viewport() : VIEWPORT);
   }
+  // page.selectOption is Playwright-only; puppeteer's Page exposes select(selector, ...values).
+  // The journey scanner's "select" step calls page.selectOption, so without this
+  // shim any journey with a dropdown step fails on Vercel.
+  if (typeof page.selectOption !== "function") {
+    page.selectOption = async (selector: string, value: string | string[]) =>
+      page.select(selector, ...(Array.isArray(value) ? value : [value]));
+  }
+  // page.addInitScript is Playwright-only; puppeteer's equivalent is
+  // evaluateOnNewDocument. The journey scanner's live-region monitor uses it.
+  if (typeof page.addInitScript !== "function") {
+    page.addInitScript = async (fn: unknown, ...args: unknown[]) =>
+      page.evaluateOnNewDocument(fn as never, ...(args as never[]));
+  }
   return { ctx, page };
 }
 

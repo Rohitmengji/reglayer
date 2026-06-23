@@ -17,7 +17,8 @@
  * ---------------------------------------------------------
  */
 
-import { chromium, type Browser, type Page } from "playwright-core";
+import { type Browser, type Page } from "playwright-core";
+import { launchBrowser } from "@/lib/scanner/browser/launch";
 
 export interface JourneyStep {
   name: string;
@@ -126,9 +127,10 @@ export async function executeJourney(config: JourneyConfig): Promise<JourneyResu
   let browser: Browser | null = null;
 
   try {
-    browser = await chromium.launch({
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    });
+    // Shared cross-environment launcher: real Playwright locally, puppeteer-core
+    // + @sparticuz/chromium on serverless. Launching playwright-core's chromium
+    // directly shipped no binary on Vercel, so every journey failed in prod.
+    browser = await launchBrowser();
 
     const context = await browser.newContext({
       viewport: config.viewport || { width: 1280, height: 720 },
