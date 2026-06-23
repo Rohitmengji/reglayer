@@ -11,6 +11,7 @@
 import { Shield, ScanLine, Bell, BarChart3, FileText, Code2, Users, Zap } from "lucide-react";
 import Link from "next/link";
 import { Footer } from "@/components/layout/footer";
+import { PublicHeader } from "@/components/layout/public-header";
 import { useI18n } from "@/components/i18n-provider";
 
 export default function FeaturesPage() {
@@ -29,14 +30,9 @@ export default function FeaturesPage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950">
-      <div className="mx-auto max-w-5xl px-4 sm:px-6 py-8 sm:py-12">
-        <div className="flex items-center gap-2 mb-12">
-          <Link href="/" className="flex items-center gap-2 text-neutral-900 dark:text-white">
-            <Shield className="h-5 w-5" />
-            <span className="font-bold">RegLayer</span>
-          </Link>
-        </div>
+      <PublicHeader />
 
+      <div className="mx-auto max-w-5xl px-4 sm:px-6 py-8 sm:py-12">
         <div className="text-center mb-16">
           <h1 className="text-3xl sm:text-4xl font-bold text-neutral-900 dark:text-white mb-4">
             {t("features.title")}
