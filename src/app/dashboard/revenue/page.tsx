@@ -9,7 +9,7 @@ import { FeatureGate } from "@/components/ui/feature-gate";
  * HOW: Fetches /api/revenue-impact with site traffic data, renders financial impact breakdown.
  */
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ModernSelect } from "@/components/ui/modern-select";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent } from "@/components/ui/card";
@@ -38,6 +38,18 @@ function RevenueImpactPageInner() {
   const [aov, setAov] = useState("75");
   const [convRate, setConvRate] = useState("3");
   const [region, setRegion] = useState("US");
+
+  const regionOptions = useMemo(
+    () => [
+      { value: "US", label: t("revenue.regionUS") },
+      { value: "UK", label: t("revenue.regionUK") },
+      { value: "EU", label: t("revenue.regionEU") },
+      { value: "AU", label: t("revenue.regionAU") },
+      { value: "CA", label: t("revenue.regionCA") },
+      { value: "GLOBAL", label: t("revenue.regionGLOBAL") },
+    ],
+    [t]
+  );
 
   async function calculate() {
     setLoading(true);
@@ -68,10 +80,10 @@ function RevenueImpactPageInner() {
         <div>
           <h1 className="text-2xl font-bold">{t("revenue.title")}</h1>
           <p className="text-muted-foreground">
-            Estimate how much revenue you&apos;re losing due to accessibility barriers.
+            {t("revenue.subtitle")}
           </p>
           <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
-            Illustrative model only — based on published disability statistics and your inputs, not measured user behavior. Treat as directional, not exact.
+            {t("revenue.disclaimer")}
           </p>
         </div>
 
@@ -80,7 +92,7 @@ function RevenueImpactPageInner() {
           <CardContent className="pt-6">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
-                <label className="text-sm font-medium block mb-1">Monthly Visitors</label>
+                <label className="text-sm font-medium block mb-1">{t("revenue.monthlyVisitors")}</label>
                 <input
                   type="number"
                   value={visitors}
@@ -89,7 +101,7 @@ function RevenueImpactPageInner() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium block mb-1">Avg Order Value ($)</label>
+                <label className="text-sm font-medium block mb-1">{t("revenue.avgOrderValue")}</label>
                 <input
                   type="number"
                   value={aov}
@@ -98,7 +110,7 @@ function RevenueImpactPageInner() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium block mb-1">Conversion Rate (%)</label>
+                <label className="text-sm font-medium block mb-1">{t("revenue.conversionRate")}</label>
                 <input
                   type="number"
                   value={convRate}
@@ -107,16 +119,16 @@ function RevenueImpactPageInner() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium block mb-1">Region</label>
+                <label className="text-sm font-medium block mb-1">{t("revenue.region")}</label>
                 <ModernSelect
-              options={[{ value: "US", label: "United States" }, { value: "UK", label: "United Kingdom" }, { value: "EU", label: "European Union" }, { value: "AU", label: "Australia" }, { value: "CA", label: "Canada" }, { value: "GLOBAL", label: "Global" }]}
+              options={regionOptions}
               value={region}
               onChange={setRegion}
             />
               </div>
             </div>
             <Button onClick={calculate} disabled={loading} className="mt-4">
-              {loading ? "Calculating..." : "Calculate Revenue Impact"}
+              {loading ? t("revenue.calculating") : t("revenue.calculate")}
             </Button>
           </CardContent>
         </Card>
@@ -130,7 +142,7 @@ function RevenueImpactPageInner() {
                 <CardContent className="pt-6">
                   <div className="flex items-center gap-2 mb-2">
                     <DollarSign className="h-5 w-5 text-red-500" />
-                    <span className="text-sm text-muted-foreground">Est. Monthly Loss</span>
+                    <span className="text-sm text-muted-foreground">{t("revenue.estMonthlyLoss")}</span>
                   </div>
                   <p className="text-3xl font-bold tabular-nums text-red-600">
                     ${result.estimatedMonthlyLoss.toLocaleString()}
@@ -141,7 +153,7 @@ function RevenueImpactPageInner() {
                 <CardContent className="pt-6">
                   <div className="flex items-center gap-2 mb-2">
                     <TrendingDown className="h-5 w-5 text-red-500" />
-                    <span className="text-sm text-muted-foreground">Est. Annual Loss</span>
+                    <span className="text-sm text-muted-foreground">{t("revenue.estAnnualLoss")}</span>
                   </div>
                   <p className="text-3xl font-bold tabular-nums text-red-600">
                     ${result.estimatedAnnualLoss.toLocaleString()}
@@ -152,7 +164,7 @@ function RevenueImpactPageInner() {
                 <CardContent className="pt-6">
                   <div className="flex items-center gap-2 mb-2">
                     <Users className="h-5 w-5 text-orange-500" />
-                    <span className="text-sm text-muted-foreground">Unreachable Users/mo</span>
+                    <span className="text-sm text-muted-foreground">{t("revenue.unreachableUsers")}</span>
                   </div>
                   <p className="text-3xl font-bold tabular-nums">
                     {result.unreachableVisitorsMonthly.toLocaleString()}
@@ -163,11 +175,11 @@ function RevenueImpactPageInner() {
                 <CardContent className="pt-6">
                   <div className="flex items-center gap-2 mb-2">
                     <BarChart3 className="h-5 w-5 text-blue-500" />
-                    <span className="text-sm text-muted-foreground">Score vs. Baseline</span>
+                    <span className="text-sm text-muted-foreground">{t("revenue.scoreVsBaseline")}</span>
                   </div>
                   <p className="text-3xl font-bold tabular-nums">
                     {result.industryComparison.yourScore}
-                    <span className="text-base font-normal text-muted-foreground"> / {result.industryComparison.avgScore} avg</span>
+                    <span className="text-base font-normal text-muted-foreground">{t("revenue.avgSuffix", { avg: String(result.industryComparison.avgScore) })}</span>
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">{result.industryComparison.competitorEstimate}</p>
                 </CardContent>
@@ -177,7 +189,7 @@ function RevenueImpactPageInner() {
             {/* Breakdown */}
             <Card>
               <CardContent className="pt-6">
-                <h3 className="font-semibold mb-4">Loss Breakdown by Severity</h3>
+                <h3 className="font-semibold mb-4">{t("revenue.lossBreakdown")}</h3>
                 <div className="space-y-3">
                   {Object.entries(result.breakdown).map(([severity, data]) => (
                     <div key={severity} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
@@ -187,7 +199,7 @@ function RevenueImpactPageInner() {
                       </div>
                       <div className="text-right">
                         <p className="font-bold">${data.revenue.toLocaleString()}</p>
-                        <p className="text-xs text-muted-foreground">{data.visitors.toLocaleString()} users affected</p>
+                        <p className="text-xs text-muted-foreground">{t("revenue.usersAffected", { count: data.visitors.toLocaleString() })}</p>
                       </div>
                     </div>
                   ))}
@@ -201,22 +213,22 @@ function RevenueImpactPageInner() {
                 <CardContent className="pt-6">
                   <div className="flex items-center gap-2 mb-4">
                     <Shield className="h-5 w-5" />
-                    <h3 className="font-semibold">Legal Risk Assessment</h3>
+                    <h3 className="font-semibold">{t("revenue.legalRisk")}</h3>
                   </div>
-                  <p className="text-[11px] text-amber-600 dark:text-amber-400 mb-3">Directional estimate from published ADA filing data — not legal advice.</p>
+                  <p className="text-[11px] text-amber-600 dark:text-amber-400 mb-3">{t("revenue.legalDisclaimer")}</p>
                   <div className="space-y-2">
                     <div className="flex justify-between">
-                      <span>Risk Level</span>
+                      <span>{t("revenue.riskLevel")}</span>
                       <span className={`font-bold capitalize ${result.legalRisk.level === "high" ? "text-red-500" : result.legalRisk.level === "medium" ? "text-yellow-500" : "text-green-500"}`}>
                         {result.legalRisk.level}
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span>Lawsuit Probability</span>
+                      <span>{t("revenue.lawsuitProbability")}</span>
                       <span>{result.legalRisk.lawsuitProbability}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>Relevant Laws</span>
+                      <span>{t("revenue.relevantLaws")}</span>
                       <span>{result.legalRisk.relevantLaws.join(", ")}</span>
                     </div>
                   </div>
@@ -227,15 +239,15 @@ function RevenueImpactPageInner() {
                 <CardContent className="pt-6">
                   <div className="flex items-center gap-2 mb-4">
                     <AlertTriangle className="h-5 w-5" />
-                    <h3 className="font-semibold">Recommendations</h3>
+                    <h3 className="font-semibold">{t("revenue.recommendations")}</h3>
                   </div>
                   <div className="space-y-3">
                     {result.recommendations.map((rec, i) => (
                       <div key={i} className="p-3 rounded-lg bg-muted/50">
                         <p className="text-sm font-medium">{rec.action}</p>
                         <div className="flex gap-4 mt-1 text-xs text-muted-foreground">
-                          <span>Recovery: ${rec.potentialRecovery.toLocaleString()}</span>
-                          <span>Effort: {rec.effort}</span>
+                          <span>{t("revenue.recovery", { amount: rec.potentialRecovery.toLocaleString() })}</span>
+                          <span>{t("revenue.effort", { effort: rec.effort })}</span>
                         </div>
                       </div>
                     ))}
