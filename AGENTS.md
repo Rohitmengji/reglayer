@@ -62,3 +62,21 @@ npx next build
 3. If any fails → fix → restart from Gate 1
 4. All green → `git commit` → `git push` → `gh pr create` → `gh pr merge`
 <!-- END:merge-gate -->
+
+<!-- BEGIN:read-codebase-guide -->
+# READ FIRST: the codebase is already mapped — don't re-scan it
+
+Before exploring the repo, **read `docs/CODEBASE_GUIDE.md`** — a complete, maintained
+file-by-file map: architecture/stack, the Prisma data model (all models + enums), every page
+and API route, the `src/lib` domain modules, services/stores/hooks, testing, CI, and the
+end-to-end scan data-flow. Companions: `docs/architecture/{PLATFORM,FEATURES,SECURITY,ROADMAP}.md`
+and `docs/onboarding/DEVELOPER.md`.
+
+- **Do NOT** fan out broad "map the whole codebase" agents — that re-derives what the guide
+  already documents and wastes time/tokens. Read the guide, jump to the named files, and use
+  *targeted* grep/read only to confirm specifics.
+- The guide is a living doc and can lag very recent merges — verify exact line numbers / new
+  files before relying on them.
+- When you make a structural change (new model, route group, lib module, or convention),
+  update `docs/CODEBASE_GUIDE.md` in the same PR so it stays authoritative.
+<!-- END:read-codebase-guide -->

@@ -949,4 +949,16 @@ Data-network moat [feature ⑤, PR #170]. Scores every third-party widget (Inter
 
 ---
 
+## Recent Additions
+
+Structural pieces added after the main snapshot (fold into the tables above when convenient):
+
+- **Custom Compliance Rules** (Enterprise) — Prisma model `ComplianceRule` + enum `ComplianceRuleType`; pure engine `src/lib/compliance/customRules.ts`; API `src/app/api/rules/route.ts` + `[id]/route.ts` (CRUD) and `src/app/api/scans/[id]/custom-rules/route.ts` (per-scan eval); management UI `src/app/compliance/rules/page.tsx`; results card `src/components/scanner/custom-rules-card.tsx` on the scan detail page. Feature id `customRules` in `src/lib/features/feature-catalog.ts`.
+- **Enterprise pricing model** — `src/lib/pricing/enterprise.ts` (typed feature list with availability status + per-feature `evidence`) drives `src/app/pricing/page.tsx` + `src/components/pricing/enterprise-section.tsx`.
+- **Contact / sales flow** — real `src/app/api/contact/route.ts` (zod + rate-limit + honeypot + email) wired to `src/app/contact/page.tsx`.
+- **White-label reports** — `src/lib/compliance/vpat-generator.ts` accepts sanitized agency branding; `src/app/api/compliance/vpat/route.ts` resolves it.
+- **Honesty posture** — every public claim must be backed by code or softened. EU "data residency" / "SOC 2 Type II" claims were removed/softened (infra is US-default; OpenAI/US is a live sub-processor). Do **not** reintroduce hosting-location or certification claims without backing config.
+
+---
+
 *Generated for RegLayer codebase comprehension. Last updated: June 2026.*
