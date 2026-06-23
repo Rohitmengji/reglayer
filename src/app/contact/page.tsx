@@ -12,9 +12,10 @@
  *       next step (retry, or email us directly). Honeypot field deters bots.
  */
 
-import { Shield, Mail, MessageSquare, MapPin, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Mail, MessageSquare, MapPin, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { Footer } from "@/components/layout/footer";
+import { PublicHeader } from "@/components/layout/public-header";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/components/i18n-provider";
@@ -91,17 +92,9 @@ export default function ContactPage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950">
-      <div className="mx-auto max-w-4xl px-4 sm:px-6 py-12">
-        <div className="flex items-center gap-2 mb-12">
-          <Link
-            href="/"
-            className="flex items-center gap-2 text-neutral-900 dark:text-white rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 dark:focus-visible:ring-white"
-          >
-            <Shield className="h-5 w-5" aria-hidden="true" />
-            <span className="font-bold">RegLayer</span>
-          </Link>
-        </div>
+      <PublicHeader />
 
+      <div className="mx-auto max-w-4xl px-4 sm:px-6 py-12">
         <h1 className="text-3xl font-bold text-neutral-900 dark:text-white mb-2">{t("contact.title")}</h1>
         <p className="text-neutral-500 dark:text-neutral-400 mb-10">{t("contact.subtitle")}</p>
 

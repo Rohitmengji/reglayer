@@ -7,23 +7,18 @@
  * WHAT: Full privacy policy covering data collection, processing, retention, rights.
  * HOW: Client component with i18n for titles.
  */
-import { Shield } from "lucide-react";
 import Link from "next/link";
 import { Footer } from "@/components/layout/footer";
+import { PublicHeader } from "@/components/layout/public-header";
 import { useI18n } from "@/components/i18n-provider";
 
 export default function PrivacyPage() {
   const { t } = useI18n();
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950">
-      <div className="mx-auto max-w-3xl px-4 sm:px-6 py-12">
-        <div className="flex items-center gap-2 mb-8">
-          <Link href="/" className="flex items-center gap-2 text-neutral-900 dark:text-white">
-            <Shield className="h-5 w-5" />
-            <span className="font-bold">RegLayer</span>
-          </Link>
-        </div>
+      <PublicHeader />
 
+      <div className="mx-auto max-w-3xl px-4 sm:px-6 py-12">
         <h1 className="text-3xl font-bold text-neutral-900 dark:text-white mb-2">{t("privacyPolicy.title")}</h1>
         <p className="text-sm text-neutral-500 mb-8">{t("privacyPolicy.lastUpdated")}</p>
 
