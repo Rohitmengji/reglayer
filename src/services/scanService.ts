@@ -140,15 +140,7 @@ export async function performScan(
     }
 
     // Persist to database — blocking, scan data is the product
-    try {
-      await persistScan(scanResult, complianceReport, request.userEmail);
-    } catch (err) {
-      scanLogger.error("Failed to persist scan to database", {
-        scanId: scanResult.id,
-        error: err instanceof Error ? err.message : "Unknown",
-      });
-      // Continue — return result even if DB write fails
-    }
+    await persistScan(scanResult, complianceReport, request.userEmail);
 
     // Evaluate alert rules (fire-and-forget, workspace-scoped)
     evaluateAlerts(scanResult, workspaceId).catch((err) => {
