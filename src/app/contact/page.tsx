@@ -137,9 +137,8 @@ export default function ContactPage() {
               <div>
                 <h2 className="font-medium text-neutral-900 dark:text-white">{t("contact.location")}</h2>
                 <p className="text-sm text-neutral-600 dark:text-neutral-300">
-                  RegLayer GmbH<br />
-                  Frankfurt am Main, Germany<br />
-                  EU-hosted infrastructure
+                  RegLayer<br />
+                  Remote-first team
                 </p>
               </div>
             </div>

@@ -33,7 +33,7 @@ export default function TermsPage() {
             <p className="text-neutral-600 dark:text-neutral-300">
               By accessing or using RegLayer (&quot;the Service&quot;), you agree to be bound by these Terms of Service. 
               If you do not agree to these terms, do not use the Service. These terms constitute a legal agreement 
-              between you and RegLayer GmbH (&quot;we&quot;, &quot;us&quot;, &quot;our&quot;), registered in Frankfurt, Germany.
+              between you and RegLayer (&quot;we&quot;, &quot;us&quot;, &quot;our&quot;).
             </p>
           </section>
 
@@ -92,7 +92,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-lg font-semibold text-neutral-900 dark:text-white mt-8 mb-3">6. Intellectual Property</h2>
             <p className="text-neutral-600 dark:text-neutral-300">
-              The Service, including its design, features, and documentation, is the property of RegLayer GmbH. 
+              The Service, including its design, features, and documentation, is the property of RegLayer. 
               You retain all rights to your content (scan targets, reports). We grant you a limited, non-exclusive 
               license to use the Service for its intended purpose during your subscription.
             </p>
@@ -129,8 +129,8 @@ export default function TermsPage() {
           <section>
             <h2 className="text-lg font-semibold text-neutral-900 dark:text-white mt-8 mb-3">10. Governing Law</h2>
             <p className="text-neutral-600 dark:text-neutral-300">
-              These terms are governed by the laws of the Federal Republic of Germany. Any disputes 
-              shall be resolved in the courts of Frankfurt am Main, subject to mandatory EU consumer 
+              These terms are governed by applicable law. Any disputes 
+              shall be resolved in accordance with applicable jurisdiction rules, subject to mandatory consumer 
               protection provisions that may grant you the right to bring proceedings in your country of residence.
             </p>
           </section>

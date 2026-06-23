@@ -61,7 +61,7 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-lg font-semibold text-neutral-900 dark:text-white mt-8 mb-3">4. Data Storage & Transfer</h2>
             <p className="text-neutral-600 dark:text-neutral-300">
-              All data is stored within the European Union (Frankfurt, Germany). We do not transfer personal data 
+              All data is stored securely with GDPR-aligned hosting providers. We do not transfer personal data 
               outside the EEA without adequate safeguards as required by GDPR Chapter V.
             </p>
           </section>
@@ -116,12 +116,12 @@ export default function PrivacyPage() {
                   <tr className="border-t border-neutral-100 dark:border-neutral-800">
                     <td className="p-3">Neon (Neon Inc.)</td>
                     <td className="p-3">Database hosting</td>
-                    <td className="p-3">EU (Frankfurt)</td>
+                    <td className="p-3">EU</td>
                   </tr>
                   <tr className="border-t border-neutral-100 dark:border-neutral-800">
                     <td className="p-3">Vercel Inc.</td>
                     <td className="p-3">Application hosting</td>
-                    <td className="p-3">EU (Frankfurt)</td>
+                    <td className="p-3">EU</td>
                   </tr>
                   <tr className="border-t border-neutral-100 dark:border-neutral-800">
                     <td className="p-3">OpenAI</td>
