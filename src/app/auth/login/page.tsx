@@ -15,7 +15,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Shield, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 
 export default function LoginPage() {
@@ -50,8 +50,12 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-start pt-[15vh] sm:items-center sm:pt-0 justify-center px-4 py-8 bg-neutral-50 dark:bg-neutral-950">
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-neutral-900 dark:bg-neutral-100">
-            <Shield className="h-6 w-6 text-white dark:text-neutral-900" />
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-neutral-900 dark:bg-white">
+            <svg className="h-6 w-6 text-white dark:text-neutral-900" viewBox="0 0 26 26" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinejoin="round" strokeLinecap="round">
+              <path d="M13 1.5 24.5 7.5 13 13.5 1.5 7.5 13 1.5Z" fill="currentColor" />
+              <path d="M1.5 13 13 19 24.5 13" />
+              <path d="M1.5 18.5 13 24.5 24.5 18.5" />
+            </svg>
           </div>
           <CardTitle className="text-xl">{t("login.title")}</CardTitle>
           <CardDescription>
