@@ -66,8 +66,14 @@ export async function evaluateGuard(
   siteId: string,
   workspaceId: string
 ): Promise<GuardVerdict[]> {
-  const scan = await prisma.scan.findUnique({
-    where: { id: scanId },
+  // Scope the scan to the caller's workspace. Without this, a valid API key could
+  // pass another tenant's scanId (alongside its own siteId/workspaceId) and read
+  // that scan's score + violation counts back in the verdict — a cross-tenant leak
+  // (the policies query below is already workspace-scoped, but the scan fetch was
+  // by id alone). workspaceId is reliably set on scans; siteId is intentionally
+  // not added here since interactive scans frequently have a null siteId.
+  const scan = await prisma.scan.findFirst({
+    where: { id: scanId, workspaceId },
     include: { violations: { select: { ruleId: true, impact: true } } },
   });
 
