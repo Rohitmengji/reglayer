@@ -7,8 +7,10 @@
  * WHAT: Quick start guide: create account, run first scan, understand results, set up monitoring.
  * HOW: Static content page with code examples and screenshots.
  */
-import { Shield, Rocket, ArrowLeft } from "lucide-react";
+import { Rocket, ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { Footer } from "@/components/layout/footer";
+import { PublicHeader } from "@/components/layout/public-header";
 import { useI18n } from "@/components/i18n-provider";
 
 
@@ -16,13 +18,9 @@ export default function GettingStartedPage() {
   const { t } = useI18n();
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950">
+      <PublicHeader />
+
       <div className="mx-auto max-w-3xl px-4 sm:px-6 py-12">
-        <div className="flex items-center gap-2 mb-8">
-          <Link href="/" className="flex items-center gap-2 text-neutral-900 dark:text-white">
-            <Shield className="h-5 w-5" />
-            <span className="font-bold">RegLayer</span>
-          </Link>
-        </div>
 
         <Link href="/docs" className="inline-flex items-center gap-1 text-sm text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white mb-6">
           <ArrowLeft className="h-4 w-4" /> Back to Documentation
@@ -127,6 +125,6 @@ export default function GettingStartedPage() {
           </section>
         </div>
       </div>
-    </div>
-  );
+      <Footer />
+    </div> );
 }
