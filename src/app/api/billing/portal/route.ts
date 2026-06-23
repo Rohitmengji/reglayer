@@ -28,6 +28,10 @@ export async function POST() {
   if (!user?.memberships[0]?.workspace.stripeCustomerId) {
     return NextResponse.json({ error: "No billing account" }, { status: 404 });
   }
+  // Managing the subscription (cancel/downgrade/payment method) is owner/admin-only.
+  if (!["OWNER", "ADMIN"].includes(user.memberships[0].role)) {
+    return NextResponse.json({ error: "Only workspace owners and admins can manage billing" }, { status: 403 });
+  }
 
   // The `!stripe` guard only catches an absent key; a present-but-invalid key
   // would throw here and 500. Wrap and return a clean 502.

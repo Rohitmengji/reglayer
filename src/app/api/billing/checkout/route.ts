@@ -53,7 +53,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "No workspace found" }, { status: 404 });
   }
 
-  const workspace = user.memberships[0].workspace;
+  const membership = user.memberships[0];
+  // Billing changes (upgrade/trial/customer creation) are owner/admin-only — a
+  // low-privilege MEMBER/VIEWER must not be able to start or alter the subscription.
+  if (!["OWNER", "ADMIN"].includes(membership.role)) {
+    return NextResponse.json({ error: "Only workspace owners and admins can manage billing" }, { status: 403 });
+  }
+  const workspace = membership.workspace;
 
   // Wrap every Stripe call: the `!stripe` guard above only catches an ABSENT key.
   // A present-but-invalid key (e.g. a placeholder) makes `stripe` truthy, so these
