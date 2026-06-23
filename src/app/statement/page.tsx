@@ -335,14 +335,16 @@ export default function StatementPage() {
                   statement declaring their conformance status and providing contact information.
                 </p>
                 <div className="rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900 p-4">
-                  <p className="font-medium text-blue-900 dark:text-blue-200 mb-2">Supported Standards</p>
+                  <p className="font-medium text-blue-900 dark:text-blue-200 mb-2">Standard</p>
                   <ul className="list-disc list-inside space-y-1 text-blue-800 dark:text-blue-300 text-xs">
-                    <li>WCAG 2.2 Level AA (W3C global standard)</li>
-                    <li>ADA Title III (United States)</li>
-                    <li>Section 508 (US Federal)</li>
-                    <li>EAA / EN 301 549 (European Union)</li>
-                    <li>AODA (Canada — Ontario)</li>
+                    <li>EAA / EN 301 549 V3.2.1 (European Union model statement)</li>
+                    <li>WCAG 2.1 Level AA (as referenced by EN 301 549)</li>
                   </ul>
+                  <p className="text-blue-700 dark:text-blue-400 text-xs mt-2">
+                    This generator produces the EU/EAA accessibility statement. For US &amp; Canada
+                    jurisdiction analysis (ADA, Section&nbsp;508, AODA), use the multi-jurisdiction
+                    compliance report.
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <p className="font-medium text-neutral-900 dark:text-white">Your statement will include:</p>

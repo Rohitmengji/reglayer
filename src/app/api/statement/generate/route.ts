@@ -46,7 +46,6 @@ export async function POST(request: NextRequest) {
     contactEmail,
     contactPhone,
     enforcementBody,
-    conformanceLevel = "partial",
     nonAccessibleContent = [],
     disproportionateBurden = [],
     preparationDate,
@@ -97,17 +96,22 @@ export async function POST(request: NextRequest) {
   const criticalCount = scanData?.critical ?? 0;
   const seriousCount = scanData?.serious ?? 0;
 
-  // Determine conformance status
+  // Conformance status is a LEGAL claim, so it is derived solely from real scan
+  // data — never from client input (a caller must not be able to publish a
+  // "fully conformant" statement the evidence doesn't support — the old
+  // client-supplied `conformanceLevel` override is removed).
+  //
+  // Automated testing can only verify a subset of WCAG criteria (manual-only
+  // criteria like meaningful alt text, logical focus order, and complete keyboard
+  // operation are never checked), so an automated-only assessment can NEVER on
+  // its own establish FULL conformance with EN 301 549 / WCAG 2.1 AA. The most it
+  // can honestly claim is "partially conformant" (clean automated scan) or "not
+  // conformant" (clearly failing). "fully" is reserved for human-attested audits,
+  // which this endpoint does not perform.
   let conformanceStatus: "fully" | "partially" | "not" = "partially";
-  if (score !== null) {
-    if (score >= 95 && criticalCount === 0 && seriousCount === 0) {
-      conformanceStatus = "fully";
-    } else if (score < 50) {
-      conformanceStatus = "not";
-    }
+  if (score !== null && score < 50) {
+    conformanceStatus = "not";
   }
-  if (conformanceLevel === "full") conformanceStatus = "fully";
-  if (conformanceLevel === "none") conformanceStatus = "not";
 
   const today = new Date().toISOString().split("T")[0];
 

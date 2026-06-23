@@ -20,6 +20,8 @@
  * ---------------------------------------------------------
  */
 
+import { isManualOnly } from "@/lib/wcag/criteria";
+
 /**
  * White-label branding applied to the rendered report (Enterprise/Agency).
  * All values originate from the agency record and are sanitised at render time.
@@ -299,8 +301,19 @@ export function generateVPAT(input: VPATInput): VPATDocument {
         remarks += ` (Attested by tester)`;
       }
     } else if (violations.length === 0) {
-      conformance = "Supports";
-      remarks = "No violations detected during automated testing.";
+      // Absence of *automated* violations only proves conformance for criteria a
+      // tool can actually verify. ~half of WCAG A/AA criteria are manual-only
+      // (meaningful alt text, logical focus order, complete keyboard operation,
+      // clear error messages…). Asserting "Supports" for those is fabricated
+      // conformance in a legal procurement document — mark them "Not Evaluated".
+      // (A human verdict, handled in the branch above, still overrides this.)
+      if (isManualOnly(criterion.id)) {
+        conformance = "Not Evaluated";
+        remarks = "Not verifiable by automated testing; requires manual review. No human attestation on record.";
+      } else {
+        conformance = "Supports";
+        remarks = "No violations detected during automated testing (criterion is machine-testable).";
+      }
     } else {
       const hasCritical = violations.some((v) => v.impact === "critical");
       const hasSerious = violations.some((v) => v.impact === "serious");
@@ -452,6 +465,7 @@ export function vpatToMarkdown(doc: VPATDocument): string {
   lines.push(`| Criteria Supported | ${doc.summary.supportedCriteria}/${doc.summary.totalCriteria} |`);
   lines.push(`| Partially Supported | ${doc.summary.partiallySupportedCriteria} |`);
   lines.push(`| Not Supported | ${doc.summary.notSupportedCriteria} |`);
+  lines.push(`| Not Evaluated (manual review required) | ${doc.summary.notEvaluatedCriteria} |`);
   lines.push("");
 
   // Evaluation Methods
@@ -530,6 +544,7 @@ export function vpatToHTML(doc: VPATDocument): string {
     .supports { color: #16a34a; font-weight: 600; }
     .partial { color: #d97706; font-weight: 600; }
     .not-support { color: #dc2626; font-weight: 600; }
+    .neutral { color: #6b7280; font-weight: 600; }
     .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin: 1rem 0; }
     .summary-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; text-align: center; }
     .summary-card .value { font-size: 1.5rem; font-weight: 700; }
@@ -555,7 +570,9 @@ export function vpatToHTML(doc: VPATDocument): string {
     <div class="summary-card"><div class="value">${doc.summary.supportedCriteria}</div><div>Supported</div></div>
     <div class="summary-card"><div class="value">${doc.summary.partiallySupportedCriteria}</div><div>Partial</div></div>
     <div class="summary-card"><div class="value">${doc.summary.notSupportedCriteria}</div><div>Not Supported</div></div>
+    <div class="summary-card"><div class="value">${doc.summary.notEvaluatedCriteria}</div><div>Not Evaluated</div></div>
   </div>
+  ${doc.summary.notEvaluatedCriteria > 0 ? `<p class="metadata">${doc.summary.notEvaluatedCriteria} criteria require manual review and were not evaluated by automated testing — full conformance cannot be determined from this report alone.</p>` : ""}
   <p><strong>Overall Conformance:</strong> <span class="${doc.summary.overallConformance === 'Supports' ? 'supports' : doc.summary.overallConformance === 'Partially Supports' ? 'partial' : 'not-support'}">${doc.summary.overallConformance}</span></p>
 
   <h2>Evaluation Methods</h2>
@@ -570,7 +587,7 @@ export function vpatToHTML(doc: VPATDocument): string {
       ${section.criteria.map((c) => `<tr>
         <td>${escapeHtml(c.id)} ${escapeHtml(c.name)}</td>
         <td>${escapeHtml(c.level)}</td>
-        <td class="${c.conformance === 'Supports' ? 'supports' : c.conformance === 'Partially Supports' ? 'partial' : 'not-support'}">${escapeHtml(c.conformance)}</td>
+        <td class="${c.conformance === 'Supports' ? 'supports' : c.conformance === 'Partially Supports' ? 'partial' : c.conformance === 'Does Not Support' ? 'not-support' : 'neutral'}">${escapeHtml(c.conformance)}</td>
         <td>${escapeHtml(c.remarks)}</td>
       </tr>`).join('')}
     </tbody>
