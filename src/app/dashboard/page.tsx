@@ -28,6 +28,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useSession } from "next-auth/react";
+import { toast } from "sonner";
 import { AppShell } from "@/components/layout/app-shell";
 import { ScanForm } from "@/components/scanner/scan-form";
 import { ScoreCard } from "@/components/dashboard/score-card";
@@ -150,18 +151,20 @@ export default function DashboardPage() {
         body: JSON.stringify(scanResult),
       });
 
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `reglayer-report-${scanResult.scan.id}.pdf`;
-        a.click();
-        URL.revokeObjectURL(url);
+      if (!response.ok) {
+        toast.error("Failed to generate PDF report");
+        return;
       }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `reglayer-report-${scanResult.scan.id}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
     } catch {
-      // Swallow network failures (matches existing silent-failure UX) so the
-      // click handler can't surface an unhandled promise rejection
+      toast.error("Network error — unable to export PDF");
     }
   }
 

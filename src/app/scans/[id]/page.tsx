@@ -9,6 +9,7 @@
  */
 
 import { use, useEffect, useState } from "react";
+import { toast } from "sonner";
 import { AppShell } from "@/components/layout/app-shell";
 import { PageLoading } from "@/components/ui/page-loading";
 import { PageError } from "@/components/ui/page-error";
@@ -140,7 +141,10 @@ export default function ScanDetailPage({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ scan, compliance }),
       });
-      if (!response.ok) return;
+      if (!response.ok) {
+        toast.error("Failed to generate PDF report");
+        return;
+      }
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -149,7 +153,7 @@ export default function ScanDetailPage({
       a.click();
       URL.revokeObjectURL(url);
     } catch {
-      // network failure — no-op (matches the dashboard's export UX)
+      toast.error("Network error — unable to export PDF");
     }
   }
 
