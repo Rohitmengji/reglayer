@@ -10,6 +10,7 @@
 
 import { prisma } from "@/lib/database/prisma";
 import { withRetry } from "@/lib/retry";
+import { validateScanUrl, resolvesToInternalIp } from "@/lib/validations/ssrf";
 import type { Prisma } from "@/generated/prisma/client";
 import crypto from "crypto";
 
@@ -39,20 +40,10 @@ interface DeliveryOutcome {
  * Returns true if the URL is safe to call, false if it should be skipped.
  */
 function isWebhookUrlAllowed(url: string): boolean {
-  try {
-    const parsed = new URL(url);
-    const hostname = parsed.hostname.toLowerCase();
-    if (
-      hostname === "localhost" ||
-      hostname === "metadata.google.internal" ||
-      /^(127\.|10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|169\.254\.)/.test(hostname)
-    ) {
-      return false; // internal/private — skip
-    }
-    return true;
-  } catch {
-    return false; // invalid URL — skip
-  }
+  // Shared hardened validator: covers IPv6 literals, encoded/decimal IPs, and the
+  // private/link-local ranges the old inline regex missed. DNS-resolution is
+  // checked separately at delivery time (see deliverToHook) to close rebinding.
+  return validateScanUrl(url) === null;
 }
 
 /**
@@ -74,7 +65,10 @@ async function deliverToHook(params: {
 }): Promise<DeliveryOutcome> {
   const { url, secret, event, payloadStr, deliveryId } = params;
 
-  if (!isWebhookUrlAllowed(url)) {
+  // Re-validate at delivery time (not just at creation) and resolve the host to
+  // close the DNS-rebinding window — a hostname that was public at registration
+  // could later resolve to an internal IP.
+  if (!isWebhookUrlAllowed(url) || (await resolvesToInternalIp(url))) {
     return { status: "failed", statusCode: 0, error: "URL not allowed (SSRF guard)" };
   }
 
