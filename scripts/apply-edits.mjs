@@ -18,7 +18,8 @@ if (!editsFile) { console.error("Usage: node apply-edits.mjs <edits.json>"); pro
 
 let edits;
 try {
-  edits = JSON.parse(readFileSync(editsFile, "utf8"));
+  const parsed = JSON.parse(readFileSync(editsFile, "utf8"));
+  edits = Array.isArray(parsed) ? parsed : parsed.edits;
 } catch (err) {
   console.error("ERROR: Cannot read/parse edits file:", err.message);
   process.exit(1);

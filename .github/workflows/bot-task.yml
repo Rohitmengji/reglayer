@@ -66,8 +66,10 @@ jobs:
         run: |
           node scripts/bot-agent.mjs "$TASK_DESC" > edits.json 2>agent.log
           cat agent.log >&2
-          COUNT=$(node -e "console.log(JSON.parse(require('fs').readFileSync('edits.json','utf8')).length)")
+          COUNT=$(node -e "const d=JSON.parse(require('fs').readFileSync('edits.json','utf8')); console.log((d.edits||d).length)")
+          SUMMARY=$(node -e "const d=JSON.parse(require('fs').readFileSync('edits.json','utf8')); console.log(d.summary||'No summary')")
           echo "edits_count=$COUNT" >> "$GITHUB_OUTPUT"
+          echo "$SUMMARY" > /tmp/ai_summary.txt
 
       - name: Preview edits (dry run)
         id: preview
@@ -85,7 +87,8 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const summary = fs.readFileSync('/tmp/summary.txt', 'utf8');
+            const aiSummary = fs.readFileSync('/tmp/ai_summary.txt', 'utf8').trim();
+            const fileSummary = fs.readFileSync('/tmp/summary.txt', 'utf8');
             const diff = fs.readFileSync('/tmp/diff.txt', 'utf8');
             const count = '${{ steps.agent.outputs.edits_count }}';
             await github.rest.issues.createComment({
@@ -95,10 +98,15 @@ jobs:
               body: [
                 '## 📋 Changes Ready for Review',
                 '',
-                `**${count} file(s) modified:**`,
-                summary,
+                '### What the AI did:',
+                aiSummary,
                 '',
-                '<details><summary>View diff</summary>',
+                '---',
+                '',
+                `### Files changed (${count}):`,
+                fileSummary,
+                '',
+                '<details><summary>View full diff</summary>',
                 '',
                 '```diff',
                 diff.slice(0, 3000),
