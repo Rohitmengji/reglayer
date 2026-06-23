@@ -62,7 +62,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     wcagCriteria: v.tags.filter((t) => /^wcag\d/.test(t)).map(tagToWcagId),
   }));
 
-  const rules = dbRules.map((r) =>
+  const rules = dbRules.map((r: { id: string; name: string; type: string; severity: string; config: unknown }) =>
     toEvaluableRule({ id: r.id, name: r.name, type: r.type as CustomRuleType, severity: r.severity, config: r.config })
   );
   const results = evaluateCustomRules(rules, { score: scan.score ?? 0, violations });
