@@ -161,24 +161,18 @@ export async function GET() {
 
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
-      select: { id: true, isMasterAdmin: true, memberships: { select: { workspaceId: true } } },
+      select: { id: true, isMasterAdmin: true },
     });
 
     if (!user) {
       return NextResponse.json({ audits: [] });
     }
 
-    // Master admins see all audits; regular users see their workspace's audits only
-    const where = user.isMasterAdmin
-      ? { type: "manual-test" as const }
-      : { workspaceId: { in: user.memberships.map((m) => m.workspaceId) }, type: "manual-test" as const };
-
-    if (!user.isMasterAdmin && user.memberships.length === 0) {
-      return NextResponse.json({ audits: [] });
-    }
-
+    // Single query: master admins see all; regular users filter by workspace membership
     const audits = await prisma.auditRequest.findMany({
-      where,
+      where: user.isMasterAdmin
+        ? { type: "manual-test" }
+        : { type: "manual-test", workspace: { members: { some: { userId: user.id } } } },
       orderBy: { createdAt: "desc" },
       select: {
         id: true,
