@@ -22,13 +22,11 @@ import {
   ExternalLink,
   GitCompare,
   Share2,
-  Clock,
   BarChart3,
   Check,
   Trash2,
   Search,
   Download,
-  Filter,
   AlertTriangle,
   FileSearch,
 } from "lucide-react";
@@ -66,13 +64,6 @@ const SCAN_ACCESSORS = {
   url: (s: ScanRecord) => s.pageTitle || s.url,
 } as const;
 
-const SCAN_SORT_OPTIONS: SortOption[] = [
-  { key: "createdAt", label: "Date" },
-  { key: "score", label: "Score" },
-  { key: "totalViolations", label: "Violations" },
-  { key: "url", label: "Name" },
-];
-
 export default function ScansPage() {
   const [scans, setScans] = useState<ScanRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -99,11 +90,11 @@ export default function ScansPage() {
       })
       .catch((err) => {
         if (err instanceof DOMException && err.name === "AbortError") return;
-        setError("Unable to load your scans right now. Please try again.");
+        setError(t("scans.loadErrorBody"));
         setLoading(false);
       });
     return () => controller.abort();
-  }, []);
+  }, [t]);
 
   // Filtered scans
   const filteredScans = useMemo(() => {
@@ -149,6 +140,18 @@ export default function ScansPage() {
     filteredScans,
     { key: "createdAt", dir: "desc" },
     SCAN_ACCESSORS
+  );
+
+  // Sort options carry localized labels, so build them in-component (keys are
+  // stable and drive useSortable via SCAN_ACCESSORS).
+  const sortOptions: SortOption[] = useMemo(
+    () => [
+      { key: "createdAt", label: t("scans.sortDate") },
+      { key: "score", label: t("scans.sortScore") },
+      { key: "totalViolations", label: t("scans.sortViolations") },
+      { key: "url", label: t("scans.sortName") },
+    ],
+    [t]
   );
 
   // CSV export
@@ -238,7 +241,7 @@ export default function ScansPage() {
               className="inline-flex items-center gap-2 rounded-lg bg-accent hover:bg-accent/90 px-4 py-2 text-sm font-medium text-white transition-colors"
             >
               <FileSearch className="h-4 w-4" />
-              Run Site Audit
+              {t("scans.runSiteAudit")}
             </Link>
           </div>
         </div>
@@ -287,7 +290,7 @@ export default function ScansPage() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by URL or page title..."
+                placeholder={t("scans.searchPlaceholder")}
                 className="w-full rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 pl-9 pr-3 py-2 text-sm text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
               />
             </div>
@@ -295,11 +298,11 @@ export default function ScansPage() {
             {/* Severity Filter */}
             <ModernSelect
               options={[
-                { value: "all", label: "All Severities" },
-                { value: "critical", label: "Has Critical" },
-                { value: "serious", label: "Has Serious" },
-                { value: "failing", label: "Score < 70" },
-                { value: "clean", label: "Clean (0 violations)" },
+                { value: "all", label: t("scans.filterAllSeverities") },
+                { value: "critical", label: t("scans.filterHasCritical") },
+                { value: "serious", label: t("scans.filterHasSerious") },
+                { value: "failing", label: t("scans.filterScoreBelow") },
+                { value: "clean", label: t("scans.filterCleanZero") },
               ]}
               value={severityFilter}
               onChange={setSeverityFilter}
@@ -308,10 +311,10 @@ export default function ScansPage() {
             {/* Date Filter */}
             <ModernSelect
               options={[
-                { value: "all", label: "All Time" },
-                { value: "today", label: "Last 24h" },
-                { value: "week", label: "Last 7 days" },
-                { value: "month", label: "Last 30 days" },
+                { value: "all", label: t("scans.dateAllTime") },
+                { value: "today", label: t("scans.dateToday") },
+                { value: "week", label: t("scans.dateWeek") },
+                { value: "month", label: t("scans.dateMonth") },
               ]}
               value={dateFilter}
               onChange={setDateFilter}
@@ -319,7 +322,7 @@ export default function ScansPage() {
 
             {/* Sort */}
             <SortControl
-              options={SCAN_SORT_OPTIONS}
+              options={sortOptions}
               sortKey={sortKey}
               sortDir={sortDir}
               onChangeKey={toggleSort}
@@ -332,44 +335,46 @@ export default function ScansPage() {
               className="inline-flex items-center gap-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
             >
               <Download className="h-4 w-4" />
-              Export{filteredScans.length !== scans.length ? ` ${filteredScans.length}` : ""} CSV
+              {filteredScans.length !== scans.length
+                ? t("scans.exportCsvCount", { count: String(filteredScans.length) })
+                : t("scans.exportCsv")}
             </button>
           </div>
         )}
 
         {/* Scan List */}
         {loading ? (
-          <PageLoading message="Loading your scans..." />
+          <PageLoading message={t("scans.loadingScans")} />
         ) : error ? (
           <PageError
-            title="Couldn\u2019t load scans"
+            title={t("scans.loadErrorTitle")}
             message={error}
-            onRetry={() => { setError(null); setLoading(true); fetch("/api/scans").then(r => r.json()).then(d => setScans(d.scans || [])).catch(() => setError("Unable to load your scans right now. Please try again.")).finally(() => setLoading(false)); }}
+            onRetry={() => { setError(null); setLoading(true); fetch("/api/scans").then(r => r.json()).then(d => setScans(d.scans || [])).catch(() => setError(t("scans.loadErrorBody"))).finally(() => setLoading(false)); }}
             fallbackHref="/dashboard"
           />
         ) : scans.length === 0 ? (
           <EmptyState
             icon={BarChart3}
             iconColor="text-blue-400"
-            title="No scans yet"
-            description="Run your first accessibility scan to see results here. Each scan analyzes your website for WCAG compliance issues."
-            actionLabel="Run First Scan"
+            title={t("scans.noScansTitle")}
+            description={t("scans.emptyDescription")}
+            actionLabel={t("scans.emptyAction")}
             actionHref="/crawl"
-            secondaryLabel="Learn More"
+            secondaryLabel={t("scans.learnMore")}
             secondaryHref="/learn"
             tips={[
-              "Go to the Dashboard and enter any URL to scan",
-              "Scans check for WCAG 2.2 AA compliance issues",
-              "Results include severity ratings and fix suggestions",
-              "Compare scans over time to track your progress",
+              t("scans.tip1"),
+              t("scans.tip2"),
+              t("scans.tip3"),
+              t("scans.tip4"),
             ]}
           />
         ) : filteredScans.length === 0 ? (
           <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-12 text-center">
             <Search className="h-12 w-12 text-neutral-300 mx-auto mb-4" />
-            <p className="text-lg font-medium text-neutral-700 dark:text-neutral-200">No matching scans</p>
+            <p className="text-lg font-medium text-neutral-700 dark:text-neutral-200">{t("scans.noMatchTitle")}</p>
             <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-              Try adjusting your search or filter criteria.
+              {t("scans.noMatchDescription")}
             </p>
           </div>
         ) : (
@@ -386,10 +391,10 @@ export default function ScansPage() {
                 selectedScans.length === 2 ? "text-green-600" : selectedScans.length === 1 ? "text-blue-500" : "text-neutral-400"
               }`} />
               <p className="text-xs text-neutral-600 dark:text-neutral-300 flex-1">
-                {selectedScans.length === 0 && "Select 2 scans to compare scores, violations & progress over time"}
-                {selectedScans.length === 1 && "1 selected — pick one more to compare"}
+                {selectedScans.length === 0 && t("scans.compareHintNone")}
+                {selectedScans.length === 1 && t("scans.compareHintOne")}
                 {selectedScans.length === 2 && (
-                  <span className="font-medium text-green-700 dark:text-green-300">Ready to compare!</span>
+                  <span className="font-medium text-green-700 dark:text-green-300">{t("scans.compareReady")}</span>
                 )}
               </p>
               {selectedScans.length === 2 && (
@@ -397,7 +402,7 @@ export default function ScansPage() {
                   href={`/scans/compare?base=${selectedScans[0]}&head=${selectedScans[1]}`}
                   className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-green-600 hover:bg-green-700 text-white text-xs font-medium transition-colors"
                 >
-                  <GitCompare className="h-3 w-3" /> Compare Now
+                  <GitCompare className="h-3 w-3" /> {t("scans.compareNow")}
                 </Link>
               )}
               {selectedScans.length > 0 && selectedScans.length < 2 && (
@@ -405,7 +410,7 @@ export default function ScansPage() {
                   onClick={() => setSelectedScans([])}
                   className="text-xs text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200"
                 >
-                  Clear
+                  {t("scans.clearSelection")}
                 </button>
               )}
             </div>
@@ -471,7 +476,7 @@ export default function ScansPage() {
                     {scan.serious > 0 && <Badge variant="serious">{scan.serious}</Badge>}
                     {scan.moderate > 0 && <Badge variant="moderate">{scan.moderate}</Badge>}
                     {scan.minor > 0 && <Badge variant="minor">{scan.minor}</Badge>}
-                    {scan.totalViolations === 0 && <Badge variant="success">Clean</Badge>}
+                    {scan.totalViolations === 0 && <Badge variant="success">{t("scans.clean")}</Badge>}
                   </div>
 
                   {/* Meta */}
@@ -494,7 +499,7 @@ export default function ScansPage() {
                     <Link
                       href={`/report/${scan.id}`}
                       className="rounded-md p-1.5 text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-600 dark:hover:text-white dark:text-neutral-300"
-                      title="View Report"
+                      title={t("scans.viewReport")}
                     >
                       <ExternalLink className="h-4 w-4" />
                     </Link>
@@ -503,7 +508,7 @@ export default function ScansPage() {
                       <button
                         onClick={() => setDeleteTarget(scan.id)}
                         className="rounded-md p-1.5 text-neutral-500 dark:text-neutral-300 hover:bg-red-50 dark:hover:bg-red-950 hover:text-red-600 dark:hover:text-red-400 transition-colors"
-                        title="Delete Scan (Admin only)"
+                        title={t("scans.deleteAdmin")}
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -517,9 +522,9 @@ export default function ScansPage() {
       </div>
       <ConfirmDialog
         open={!!deleteTarget}
-        title="Delete scan"
-        description="Are you sure you want to delete this scan? This action cannot be undone."
-        confirmLabel="Delete"
+        title={t("scans.deleteTitle")}
+        description={t("scans.deleteDescription")}
+        confirmLabel={t("common.delete")}
         variant="danger"
         onConfirm={() => deleteTarget && handleDelete(deleteTarget)}
         onCancel={() => setDeleteTarget(null)}
@@ -550,6 +555,7 @@ function SummaryCard({
 
 function CopyLinkButton({ scanId }: { scanId: string }) {
   const [copied, setCopied] = useState(false);
+  const { t } = useI18n();
 
   function handleCopy() {
     navigator.clipboard.writeText(`${window.location.origin}/report/${scanId}`);
@@ -562,13 +568,13 @@ function CopyLinkButton({ scanId }: { scanId: string }) {
       <button
         onClick={handleCopy}
         className="rounded-md p-1.5 text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-600 dark:hover:text-white dark:text-neutral-300 transition-colors"
-        title="Copy Share Link"
+        title={t("scans.copyLink")}
       >
         {copied ? <Check className="h-4 w-4 text-green-500" /> : <Share2 className="h-4 w-4" />}
       </button>
       {copied && (
         <span className="absolute -top-8 left-1/2 -translate-x-1/2 rounded-md bg-neutral-900 px-2 py-1 text-xs text-white whitespace-nowrap animate-in fade-in slide-in-from-bottom-1 duration-200">
-          Copied!
+          {t("scans.copied")}
         </span>
       )}
     </div>
