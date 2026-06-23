@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
+import { canManageUser } from "@/lib/auth/rbac";
 import { prisma } from "@/lib/database/prisma";
 import { applyRateLimit } from "@/lib/rate-limit-middleware";
 import { logger } from "@/lib/telemetry/logger";
@@ -25,7 +26,10 @@ const inviteSchema = z.object({
 
 const patchSchema = z.object({
   memberId: z.string().optional(),
-  role: z.enum(["OWNER", "ADMIN", "MEMBER", "VIEWER"]).optional(),
+  // OWNER is intentionally NOT assignable via team PATCH — there is no
+  // owner-transfer flow, and allowing it let an ADMIN promote themselves/others
+  // to OWNER (privilege escalation). Owner changes go through dedicated tooling.
+  role: z.enum(["ADMIN", "MEMBER", "VIEWER"]).optional(),
   plan: z.enum(["FREE", "PRO", "ENTERPRISE"]).optional(),
   userId: z.string().optional(),
 });
@@ -274,6 +278,16 @@ export async function PATCH(request: NextRequest) {
     if (target.role === "OWNER") {
       return NextResponse.json({ error: "Cannot change owner role" }, { status: 403 });
     }
+    // Only ADMIN/MEMBER/VIEWER may be granted here — OWNER is never assignable via
+    // this route, closing the escalation where an ADMIN promoted self/others to OWNER.
+    if (!["ADMIN", "MEMBER", "VIEWER"].includes(role)) {
+      return NextResponse.json({ error: "That role cannot be assigned here" }, { status: 403 });
+    }
+    // The actor must outrank the target (a non-master ADMIN cannot re-role a peer
+    // ADMIN); master admins retain god-mode.
+    if (!currentUser.isMasterAdmin && !canManageUser(myMembership.role, target.role)) {
+      return NextResponse.json({ error: "You cannot manage this member" }, { status: 403 });
+    }
 
     const updated = await prisma.workspaceMember.update({
       where: { id: memberId },
@@ -321,8 +335,17 @@ export async function DELETE(request: NextRequest) {
   if (!target) {
     return NextResponse.json({ error: "Member not found" }, { status: 404 });
   }
+  // IDOR guard: the target must belong to the caller's workspace — mirror the
+  // PATCH guard so an owner/admin of one workspace cannot remove members of another.
+  if (target.workspaceId !== myMembership.workspaceId) {
+    return NextResponse.json({ error: "Member not found" }, { status: 404 });
+  }
   if (target.role === "OWNER") {
     return NextResponse.json({ error: "Cannot remove workspace owner" }, { status: 403 });
+  }
+  // The actor must outrank the target (a non-master ADMIN cannot remove a peer ADMIN).
+  if (!currentUser.isMasterAdmin && !canManageUser(myMembership.role, target.role)) {
+    return NextResponse.json({ error: "You cannot remove this member" }, { status: 403 });
   }
 
   await prisma.workspaceMember.delete({ where: { id: memberId } });
