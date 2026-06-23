@@ -13,6 +13,8 @@ import { prisma } from "@/lib/database/prisma";
 import { z } from "zod";
 import crypto from "crypto";
 import { PLAN_LIMITS, type PlanType } from "@/lib/credits/plan-limits";
+import { requireWorkspacePermission } from "@/lib/auth/api-guard";
+import { validateScanUrl, resolvesToInternalIp } from "@/lib/validations/ssrf";
 
 const webhookSchema = z.object({
   name: z.string().min(1).max(100),
@@ -110,6 +112,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "No workspace found" }, { status: 403 });
   }
 
+  // Registering a webhook (subscribes to scan events and POSTs data to an external
+  // URL) is a privileged integration action — require integrations.manage so a
+  // read-only VIEWER/MEMBER can't wire up an exfiltration endpoint.
+  const perm = await requireWorkspacePermission("integrations.manage", { workspaceId });
+  if (!perm.ok) return perm.response;
+
   const user = await prisma.user.findUnique({
     where: { email: session.user.email },
     select: { plan: true, isMasterAdmin: true },
@@ -155,28 +163,24 @@ export async function POST(request: NextRequest) {
 
   const { name, url, events, secret, enabled } = parsed.data;
 
-  // SSRF protection — block internal URLs as webhook targets
+  // SSRF protection — webhook targets are fetched server-side, so use the shared
+  // hardened validator (covers IPv6 literals, encoded/decimal IPs, etc.) plus a
+  // DNS-resolution check (a public hostname resolving to a private IP), on top of
+  // the HTTPS-only requirement. The old inline IPv4 regex missed all of those.
+  let parsedUrl: URL;
   try {
-    const parsedUrl = new URL(url);
-    const hostname = parsedUrl.hostname.toLowerCase();
-    if (
-      hostname === "localhost" ||
-      hostname === "metadata.google.internal" ||
-      /^(127\.|10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|169\.254\.)/.test(hostname)
-    ) {
-      return NextResponse.json(
-        { error: "Webhook URLs cannot target internal/private addresses" },
-        { status: 400 }
-      );
-    }
-    if (parsedUrl.protocol !== "https:") {
-      return NextResponse.json(
-        { error: "Webhook URLs must use HTTPS" },
-        { status: 400 }
-      );
-    }
+    parsedUrl = new URL(url);
   } catch {
     return NextResponse.json({ error: "Invalid webhook URL" }, { status: 400 });
+  }
+  if (parsedUrl.protocol !== "https:") {
+    return NextResponse.json({ error: "Webhook URLs must use HTTPS" }, { status: 400 });
+  }
+  if (validateScanUrl(url) || (await resolvesToInternalIp(url))) {
+    return NextResponse.json(
+      { error: "Webhook URLs cannot target internal/private addresses" },
+      { status: 400 }
+    );
   }
 
   // Generate signing secret if not provided
@@ -219,6 +223,11 @@ export async function DELETE(request: NextRequest) {
   if (!workspaceId) {
     return NextResponse.json({ error: "Webhook not found" }, { status: 404 });
   }
+
+  // Deleting integrations is an owner/admin-tier action (integrations.manage),
+  // not something a read-only role should be able to do.
+  const perm = await requireWorkspacePermission("integrations.manage", { workspaceId });
+  if (!perm.ok) return perm.response;
 
   const id = request.nextUrl.searchParams.get("id");
   if (!id) {
