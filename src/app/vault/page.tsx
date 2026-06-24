@@ -222,7 +222,7 @@ export default function VaultPage() {
           <FileCheck className="mx-auto mb-3 h-12 w-12 text-neutral-500 dark:text-neutral-400" />
           <h3 className="text-lg font-medium text-neutral-900 dark:text-white">No proofs yet</h3>
           <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-            Compliance proofs are automatically generated when scans complete with passing scores.
+            Issued compliance proofs are tamper-evident certificates you can verify, download, or revoke. Once a proof is issued for a scan, it appears here.
           </p>
         </div>
       ) : (
