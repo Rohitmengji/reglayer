@@ -60,7 +60,7 @@ function RevenueImpactPageInner() {
         body: JSON.stringify({
           traffic: {
             monthlyVisitors: parseInt(visitors),
-            averageOrderValue: parseFloat(aov),
+            avgOrderValue: parseFloat(aov),
             conversionRate: parseFloat(convRate) / 100,
           },
           region,

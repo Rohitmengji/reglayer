@@ -90,6 +90,18 @@ export async function POST(
         },
       });
 
+      // Grant the agency owner OWNER access to the new client workspace.
+      // Without this the workspace has no WorkspaceMember at all, so it is
+      // unreachable (every workspace query is gated through workspaceMember) —
+      // the client could be "added" but never opened or managed.
+      await tx.workspaceMember.create({
+        data: {
+          workspaceId: workspace.id,
+          userId: agency.ownerId,
+          role: "OWNER",
+        },
+      });
+
       return { workspace, client };
     });
 
