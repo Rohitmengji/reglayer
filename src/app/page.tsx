@@ -60,15 +60,10 @@ export default function Home() {
     url: "https://reglayer.vercel.app",
     offers: {
       "@type": "AggregateOffer",
-      priceCurrency: "EUR",
+      priceCurrency: "USD",
       lowPrice: "0",
       highPrice: "199",
       offerCount: "3",
-    },
-    aggregateRating: {
-      "@type": "AggregateRating",
-      ratingValue: "4.8",
-      ratingCount: "150",
     },
     featureList: [
       "WCAG 2.1/2.2 automated scanning",

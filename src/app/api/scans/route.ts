@@ -69,7 +69,10 @@ export async function GET(request: NextRequest) {
       take: limit,
     });
 
-    return NextResponse.json({ scans, count: scans.length });
+    return NextResponse.json(
+      { scans, count: scans.length },
+      { headers: { "Cache-Control": "private, max-age=15" } }
+    );
   } catch {
     return NextResponse.json({ error: "Failed to load scans", scans: [] }, { status: 500 });
   }
