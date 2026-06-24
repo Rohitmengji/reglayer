@@ -412,7 +412,7 @@ function RemediationPageInner() {
             <div className="mt-4 flex items-start gap-2 rounded-lg border border-blue-100 dark:border-blue-900/40 bg-blue-50 dark:bg-blue-950/30 p-3 text-xs text-blue-700 dark:text-blue-300">
               <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
               <span>
-                Add <code className="font-mono">?key=YOUR_API_KEY</code> to the script URL to attribute applied-fix counts to your workspace (create a key in Settings → API). The script fixes structure and attributes; meaningful alt text and complex ARIA still need human review.
+                Add <code className="font-mono">?key=YOUR_API_KEY</code> to the script URL to associate it with your account (create a key in Settings → API). The script fixes structure and attributes; meaningful alt text and complex ARIA still need human review.
               </span>
             </div>
 

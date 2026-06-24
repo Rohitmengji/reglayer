@@ -190,10 +190,10 @@ export function RoleOnboarding({ userName, onComplete, onSkip }: RoleOnboardingP
                 {selectedPersona && <selectedPersona.icon className={`h-7 w-7 ${selectedPersona.color}`} />}
               </div>
               <h2 className="text-xl font-bold text-neutral-900 dark:text-white">
-                Your {selectedPersona?.title} Dashboard
+                You&apos;re all set, {selectedPersona?.title}
               </h2>
               <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
-                Here&apos;s what we&apos;ll prioritize for you:
+                Based on your role, these features are most relevant:
               </p>
             </div>
 
