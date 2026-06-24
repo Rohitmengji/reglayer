@@ -83,14 +83,19 @@ export async function POST(request: NextRequest) {
 
   const { siteKey, events, userAgent } = parsed.data;
 
-  // Validate API key exists and resolve the owning workspace.
-  // For RUM we use a lightweight check - key just needs to exist.
-  // In production, use a dedicated RUM site key model.
-  const apiKeyRecord = await prisma.apiKey.findFirst({
-    where: { keyHash: siteKey },
+  // Resolve the owning workspace from the snippet key. The GET handler bakes the
+  // workspace member's userId into the snippet URL (?key=<userId>), so the snippet
+  // POSTs siteKey = that userId. The previous code hashed siteKey against the
+  // apiKey table (keyHash) — which never matched a userId — so every event was
+  // stored with workspaceId=null and silently never surfaced on the dashboard
+  // (which reads by workspaceId). Resolve via the member instead, restoring the
+  // workspace-scoping the GET handler relies on.
+  const keyOwner = await prisma.workspaceMember.findFirst({
+    where: { userId: siteKey },
+    select: { workspaceId: true },
   });
 
-  const workspaceId = apiKeyRecord?.workspaceId ?? null;
+  const workspaceId = keyOwner?.workspaceId ?? null;
 
   // Enrich events with device/AT detection
   const ua = userAgent || request.headers.get("user-agent") || "";
