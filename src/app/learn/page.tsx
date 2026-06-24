@@ -632,10 +632,6 @@ function LessonQuiz({ lessonId }: { lessonId: string }) {
                 Pass: 70%+ correct
               </span>
               <span className="inline-flex items-center gap-1.5 text-[11px] text-neutral-500 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-md px-2 py-1">
-                <Award className="h-3 w-3 text-amber-400" />
-                Earn up to +5 skill pts
-              </span>
-              <span className="inline-flex items-center gap-1.5 text-[11px] text-neutral-500 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-md px-2 py-1">
                 <RotateCcw className="h-3 w-3 text-indigo-400" />
                 {MAX_ATTEMPTS} attempts per session
               </span>
@@ -702,12 +698,6 @@ function LessonQuiz({ lessonId }: { lessonId: string }) {
                 <p className="text-xs text-neutral-500 mt-0.5">
                   {gradeResult.correct}/{gradeResult.total} correct &middot; Attempt {attempt}/{MAX_ATTEMPTS}
                 </p>
-                {gradeResult.passed && gradeResult.skillBoost > 0 && (
-                  <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400 mt-1 flex items-center gap-1">
-                    <Sparkles className="h-3 w-3" />
-                    +{gradeResult.skillBoost} skill points earned!
-                  </p>
-                )}
               </div>
             </div>
 
