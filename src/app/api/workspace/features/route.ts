@@ -51,7 +51,10 @@ export async function GET(request: NextRequest) {
   }
 
   const features = await getWorkspaceFeatures(membership.workspaceId);
-  return NextResponse.json({ features, plan: membership.workspace.plan });
+  return NextResponse.json(
+    { features, plan: membership.workspace.plan },
+    { headers: { "Cache-Control": "private, max-age=60" } }
+  );
 }
 
 const updateSchema = z.object({
