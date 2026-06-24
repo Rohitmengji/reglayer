@@ -66,7 +66,13 @@ export async function getSsoBackend(): Promise<SsoBackend> {
     return embeddedJacksonBackend;
   }
   // "service" mode = a standalone Jackson reached over HTTPS (review #3's
-  // recommended scale path). Implement JacksonServiceBackend behind this same
-  // interface when we split Jackson out — nothing else changes.
-  throw new Error("SSO backend mode 'service' not implemented yet — set SSO_BACKEND=embedded.");
+  // recommended scale path AND the production posture — keeps Jackson's vuln
+  // tree out of our app). Same interface, so nothing else changes.
+  const baseUrl = process.env.SSO_JACKSON_URL;
+  const apiKey = process.env.SSO_JACKSON_API_KEY;
+  if (!baseUrl || !apiKey) {
+    throw new Error("SSO_BACKEND=service requires SSO_JACKSON_URL + SSO_JACKSON_API_KEY");
+  }
+  const { createJacksonServiceBackend } = await import("./backend-service");
+  return createJacksonServiceBackend({ baseUrl, apiKey });
 }
