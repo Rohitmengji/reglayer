@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@axe-core/playwright": "^4.11.3",
+    "@boxyhq/saml-jackson": "^26.2.0",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "@sentry/nextjs": "^10.58.0",

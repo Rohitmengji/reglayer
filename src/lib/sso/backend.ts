@@ -37,9 +37,15 @@ export function ssoBackendMode(): SsoBackendMode {
   return process.env.SSO_BACKEND === "service" ? "service" : "embedded";
 }
 
-export function getSsoBackend(): SsoBackend {
-  throw new Error(
-    `SSO backend (mode=${ssoBackendMode()}) is not wired yet — Phase 2 implements ` +
-      "EmbeddedJacksonBackend / JacksonServiceBackend behind SsoBackend. See docs/architecture/SSO_REVIEW.md."
-  );
+export async function getSsoBackend(): Promise<SsoBackend> {
+  const mode = ssoBackendMode();
+  if (mode === "embedded") {
+    // Lazy server-only import so Jackson never reaches client/edge bundles.
+    const { embeddedJacksonBackend } = await import("./backend-embedded");
+    return embeddedJacksonBackend;
+  }
+  // "service" mode = a standalone Jackson reached over HTTPS (review #3's
+  // recommended scale path). Implement JacksonServiceBackend behind this same
+  // interface when we split Jackson out — nothing else changes.
+  throw new Error("SSO backend mode 'service' not implemented yet — set SSO_BACKEND=embedded.");
 }
