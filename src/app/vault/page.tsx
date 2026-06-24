@@ -59,6 +59,8 @@ export default function VaultPage() {
   const [loading, setLoading] = useState(true);
   const [verifying, setVerifying] = useState<string | null>(null);
   const [verifyResult, setVerifyResult] = useState<{ id: string; valid: boolean } | null>(null);
+  const [revoking, setRevoking] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const loadProofs = useCallback(async () => {
     try {
@@ -94,6 +96,34 @@ export default function VaultPage() {
       setVerifyResult({ id: proofId, valid: false });
     } finally {
       setVerifying(null);
+    }
+  };
+
+  // Revoke a proof. The server enforces OWNER/ADMIN membership, so non-admins get
+  // a clear error rather than a silent no-op. A reason is required and recorded —
+  // it surfaces on the proof's public verification page.
+  const handleRevoke = async (proofId: string) => {
+    const reason = window.prompt(
+      "Revoke this compliance proof? Enter a reason — it is recorded and shown on the proof's public verification page."
+    );
+    if (!reason || !reason.trim()) return;
+    setRevoking(proofId);
+    setActionError(null);
+    try {
+      const res = await fetch(`/api/vault/${proofId}/revoke`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: reason.trim() }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to revoke proof");
+      }
+      await loadProofs();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Failed to revoke proof");
+    } finally {
+      setRevoking(null);
     }
   };
 
@@ -179,6 +209,12 @@ export default function VaultPage() {
           </div>
         </div>
       </div>
+
+      {actionError && (
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-400">
+          {actionError}
+        </div>
+      )}
 
       {/* Proof List */}
       {proofs.length === 0 ? (
@@ -277,6 +313,16 @@ export default function VaultPage() {
                     >
                       <Download className="h-4 w-4" aria-hidden="true" />
                     </button>
+                    {status !== "revoked" && (
+                      <button
+                        onClick={() => handleRevoke(proof.id)}
+                        disabled={revoking === proof.id}
+                        title="Revoke this proof (owners/admins only)"
+                        className="rounded-md border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 dark:border-red-900/50 dark:text-red-400 dark:hover:bg-red-900/20"
+                      >
+                        {revoking === proof.id ? "Revoking..." : "Revoke"}
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
