@@ -20,7 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { PageLoading } from "@/components/ui/page-loading";
 import { PageError } from "@/components/ui/page-error";
 import { FeatureGate } from "@/components/ui/feature-gate";
-import { Building2, Palette, Users, Key, Plus, Trash2, Copy } from "lucide-react";
+import { Building2, Palette, Users, Plus, Trash2 } from "lucide-react";
 
 interface Agency {
   id: string;
@@ -36,7 +36,6 @@ interface Agency {
   maxClients: number;
   isActive: boolean;
   clients: AgencyClient[];
-  apiKeys: AgencyApiKeyDisplay[];
   _count: { clients: number };
 }
 
@@ -47,15 +46,6 @@ interface AgencyClient {
   isActive: boolean;
   addedAt: string;
   workspace: { id: string; name: string; slug: string };
-}
-
-interface AgencyApiKeyDisplay {
-  id: string;
-  keyPrefix: string;
-  label: string;
-  lastUsedAt: string | null;
-  expiresAt: string | null;
-  createdAt: string;
 }
 
 function AgencyDashboardInner() {
@@ -84,11 +74,6 @@ function AgencyDashboardInner() {
   const [newClientName, setNewClientName] = useState("");
   const [newClientEmail, setNewClientEmail] = useState("");
   const [addingClient, setAddingClient] = useState(false);
-
-  // API Key generation
-  const [newKeyLabel, setNewKeyLabel] = useState("");
-  const [generatedKey, setGeneratedKey] = useState<string | null>(null);
-  const [generatingKey, setGeneratingKey] = useState(false);
 
   const loadAgency = useCallback(async () => {
     try {
@@ -214,7 +199,7 @@ function AgencyDashboardInner() {
     }
   };
 
-  const [confirmAction, setConfirmAction] = useState<{ type: "removeClient" | "revokeKey"; id: string } | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{ type: "removeClient"; id: string } | null>(null);
 
   const removeClient = async (clientId: string) => {
     if (!agency) return;
@@ -224,39 +209,6 @@ function AgencyDashboardInner() {
       await loadAgency();
     } catch (err) {
       setError(err instanceof Error ? err.message : t("agency.errRemoveGeneric"));
-    }
-    setConfirmAction(null);
-  };
-
-  const generateApiKey = async () => {
-    if (!agency || !newKeyLabel) return;
-    setGeneratingKey(true);
-    try {
-      const res = await fetch(`/api/agency/${agency.id}/api-keys`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ label: newKeyLabel }),
-      });
-      if (!res.ok) throw new Error(t("agency.errGenerateKey"));
-      const data = await res.json();
-      setGeneratedKey(data.apiKey.key);
-      setNewKeyLabel("");
-      await loadAgency();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t("agency.errGenerateGeneric"));
-    } finally {
-      setGeneratingKey(false);
-    }
-  };
-
-  const revokeApiKey = async (keyId: string) => {
-    if (!agency) return;
-    try {
-      const res = await fetch(`/api/agency/${agency.id}/api-keys/${keyId}`, { method: "DELETE" });
-      if (!res.ok) throw new Error(t("agency.errRevokeKey"));
-      await loadAgency();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t("agency.errRevokeGeneric"));
     }
     setConfirmAction(null);
   };
@@ -557,72 +509,6 @@ function AgencyDashboardInner() {
           </CardContent>
         </Card>
 
-        {/* API Keys */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Key className="h-5 w-5" />
-              <CardTitle className="text-sm">{t("agency.apiKeys")}</CardTitle>
-            </div>
-            <CardDescription>{t("agency.apiKeysDesc")}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {generatedKey && (
-              <div className="p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
-                <p className="text-sm font-medium text-green-800 dark:text-green-200 mb-1">
-                  {t("agency.newKeyNotice")}
-                </p>
-                <div className="flex items-center gap-2">
-                  <code className="flex-1 p-2 bg-white dark:bg-neutral-800 rounded border text-xs font-mono break-all">
-                    {generatedKey}
-                  </code>
-                  <Button size="sm" variant="outline" onClick={() => navigator.clipboard.writeText(generatedKey)}>
-                    <Copy className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-                <button onClick={() => setGeneratedKey(null)} className="text-xs text-green-600 mt-2 hover:underline">
-                  {t("agency.dismiss")}
-                </button>
-              </div>
-            )}
-
-            <div className="flex gap-2">
-              <Input
-                placeholder={t("agency.keyLabelPlaceholder")}
-                value={newKeyLabel}
-                onChange={(e) => setNewKeyLabel(e.target.value)}
-                className="flex-1"
-              />
-              <Button size="sm" onClick={generateApiKey} disabled={generatingKey || !newKeyLabel}>
-                {generatingKey ? "..." : t("agency.generate")}
-              </Button>
-            </div>
-
-            {agency.apiKeys.length === 0 ? (
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">{t("agency.noApiKeys")}</p>
-            ) : (
-              <div className="space-y-2">
-                {agency.apiKeys.map((key) => (
-                  <div key={key.id} className="flex items-center justify-between p-3 rounded-lg bg-neutral-50 dark:bg-neutral-800">
-                    <div>
-                      <span className="font-mono text-sm text-neutral-700 dark:text-neutral-300">{key.keyPrefix}...</span>
-                      <span className="ml-2 text-xs text-neutral-500">{key.label}</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs text-neutral-500 dark:text-neutral-400">
-                        {key.lastUsedAt ? t("agency.keyUsed", { date: new Date(key.lastUsedAt).toLocaleDateString() }) : t("agency.keyNeverUsed")}
-                      </span>
-                      <Button size="sm" variant="ghost" onClick={() => setConfirmAction({ type: "revokeKey", id: key.id })}>
-                        <Trash2 className="h-3.5 w-3.5 text-red-500" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
         {/* Plan & Usage */}
         <Card>
           <CardHeader>
@@ -647,13 +533,12 @@ function AgencyDashboardInner() {
       </div>
       <ConfirmDialog
         open={!!confirmAction}
-        title={confirmAction?.type === "removeClient" ? t("agency.removeClientTitle") : t("agency.revokeKeyTitle")}
-        description={confirmAction?.type === "removeClient" ? t("agency.removeClientDesc") : t("agency.revokeKeyDesc")}
-        confirmLabel={confirmAction?.type === "removeClient" ? t("agency.remove") : t("agency.revoke")}
+        title={t("agency.removeClientTitle")}
+        description={t("agency.removeClientDesc")}
+        confirmLabel={t("agency.remove")}
         variant="danger"
         onConfirm={() => {
-          if (confirmAction?.type === "removeClient") removeClient(confirmAction.id);
-          else if (confirmAction?.type === "revokeKey") revokeApiKey(confirmAction.id);
+          if (confirmAction) removeClient(confirmAction.id);
         }}
         onCancel={() => setConfirmAction(null)}
       />
