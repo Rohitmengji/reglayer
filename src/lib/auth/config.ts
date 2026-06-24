@@ -29,6 +29,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/database/prisma";
 import { rateLimit } from "@/lib/rate-limit";
 import { cacheGet, cacheSet } from "@/lib/cache/redis";
+import { isSessionRevoked } from "@/lib/sso/guards";
 
 /**
  * Login attempts per IP+email per 5 minutes. Deliberately generous — it only
@@ -195,26 +196,40 @@ export const authOptions: NextAuthOptions = {
       // (the legacy `role` string was only ever set for seeded accounts).
       if (token.email) {
         const cacheKey = `auth:ctx:${token.email}`;
-        const cached = await cacheGet<{ isMasterAdmin: boolean; workspaceRole: string | null }>(cacheKey);
+        const cached = await cacheGet<{ isMasterAdmin: boolean; workspaceRole: string | null; revokedAtSec: number | null }>(cacheKey);
+        let revokedAtSec: number | null = null;
         if (cached) {
           token.isMasterAdmin = cached.isMasterAdmin;
           token.workspaceRole = cached.workspaceRole;
+          revokedAtSec = cached.revokedAtSec ?? null;
         } else {
           try {
             const dbUser = await prisma.user.findUnique({
               where: { email: token.email },
               select: {
                 isMasterAdmin: true,
+                sessionsRevokedAt: true,
                 memberships: { select: { role: true }, orderBy: { joinedAt: "asc" }, take: 1 },
               },
             });
             token.isMasterAdmin = dbUser?.isMasterAdmin ?? false;
             token.workspaceRole = dbUser?.memberships?.[0]?.role ?? null;
-            await cacheSet(cacheKey, { isMasterAdmin: token.isMasterAdmin, workspaceRole: token.workspaceRole }, 60);
+            revokedAtSec = dbUser?.sessionsRevokedAt ? Math.floor(dbUser.sessionsRevokedAt.getTime() / 1000) : null;
+            await cacheSet(cacheKey, { isMasterAdmin: token.isMasterAdmin, workspaceRole: token.workspaceRole, revokedAtSec }, 60);
           } catch {
             token.isMasterAdmin = token.isMasterAdmin ?? false;
             token.workspaceRole = token.workspaceRole ?? null;
           }
+        }
+        // Session revocation (review #1): a token issued before the user's
+        // sessionsRevokedAt immediately loses elevated context. Defaults to
+        // not-revoked (revokedAtSec=null) so normal users and lookup errors are
+        // never affected. Full hard sign-out wants Auth.js v5 DB sessions
+        // (review #11) — tracked follow-up.
+        const iat = (token as { iat?: number }).iat;
+        if (isSessionRevoked(typeof iat === "number" ? iat : undefined, revokedAtSec)) {
+          token.isMasterAdmin = false;
+          token.workspaceRole = null;
         }
       }
       return token;

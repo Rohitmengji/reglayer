@@ -29,6 +29,9 @@ model User {
   persona              String?
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
+  // Set to "now" to revoke a user's existing sessions (deprovision / sign-out-everywhere).
+  // The jwt callback rejects tokens issued before this timestamp.
+  sessionsRevokedAt    DateTime?
 
   // Relations
   memberships    WorkspaceMember[]
@@ -802,6 +805,7 @@ model SSOConnection {
   roleMappings      SsoRoleMapping[]
   attributeMappings SsoAttributeMapping[]
   auditEvents       SsoConnectionAudit[]
+  verifiedDomains   VerifiedDomain[]
 
   @@index([workspaceId])
   @@map("sso_connections")
@@ -830,6 +834,24 @@ model SsoDomain {
   @@index([connectionId])
   @@index([domain, verificationStatus, deletedAt])
   @@map("sso_domains")
+}
+
+/// Race-safe, migration-safe global uniqueness for verified SSO domains (review #2).
+/// One row per currently-verified domain with a NATIVE @@unique — replaces the
+/// fragile raw partial-index. Insert on verify (catch P2002 → already claimed),
+/// delete on soft-delete/transfer. Routing/provisioning treat presence here as
+/// the source of truth for "this domain belongs to exactly one workspace".
+model VerifiedDomain {
+  id           String        @id @default(cuid())
+  domain       String        @unique // lowercased; exactly one workspace per verified domain
+  workspaceId  String
+  connectionId String
+  verifiedAt   DateTime      @default(now())
+
+  connection   SSOConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@map("sso_verified_domains")
 }
 
 /// IdP group → workspace role (#25). Schema now, wired in the provisioning phase.
