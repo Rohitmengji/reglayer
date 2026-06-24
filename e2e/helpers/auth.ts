@@ -19,6 +19,9 @@ export async function login(page: Page) {
 export const test = base.extend<{ authedPage: Page }>({
   authedPage: async ({ page }, use) => {
     await login(page);
+    // `use` is Playwright's fixture-provider callback, not React 19's use() hook —
+    // the rules-of-hooks heuristic only matches it by name.
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     await use(page);
   },
 });
