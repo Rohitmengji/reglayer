@@ -621,6 +621,19 @@ Data-network moat [feature ⑤, PR #170]. Scores every third-party widget (Inter
 - **WHAT**: Single source of truth for "can this session access this scan/site?". Exports `assertScanAccess(scanId, session)` and `assertSiteAccess(siteId, session)`, each returning a discriminated `AccessResult` — `{ ok: true, userId, isMasterAdmin, workspaceId }` or `{ ok: false, status: 401|403|404, error }`
 - **HOW**: Master-admin bypass; otherwise workspace-membership (or, for legacy workspace-less scans, ownership by `userId`). Returns a result rather than throwing so callers map denials to the right HTTP status. Used across vault/vpat/statement/risk/score/simulate plus the new defense-file/demand-letter/vendor-risk routes. Closed proof-forgery (C-3) and IDOR (S-3) findings
 
+### Enterprise SSO (`src/lib/sso/` + `/api/auth/sso/`) — multi-tenant SAML/OIDC
+
+Built on **`@boxyhq/saml-jackson` (embedded)** bridged into NextAuth v4 (JWT, no adapter). Per-tenant IdP connections; employees JIT-provision into their workspace. **Feature-flagged OFF by default** (`SSO_ENABLED` env + per-connection `rolloutStage`); pricing stays "coming soon" until a real-IdP round-trip is verified. See `docs/architecture/SSO_REVIEW.md` for the adversarial review (the embedded→service swap path, revocation, verified-domain uniqueness).
+
+- **`sso/backend.ts`** — the `SsoBackend` seam (the single place the Jackson hosting choice lives). `getSsoBackend()` async-loads the impl by `SSO_BACKEND` mode (`embedded` default; `service` reserved for a standalone Jackson — review #3 scale path). Swapping = one new impl, nothing else moves.
+- **`sso/backend-embedded.ts`** — `EmbeddedJacksonBackend` (server-only): runs Jackson in-process on the app Postgres. Maps authorize / token / userInfo / samlResponse / oidcResponse / connection CRUD to Jackson's controllers. Verified at runtime by `sso-jackson-embedded.test.ts` (in-memory engine + real mocksaml metadata).
+- **`sso/resolve.ts`** — server-side email→tenant resolution from a VERIFIED domain (tenant = `SSOConnection.id`, supports multi-IdP, #27). Client never supplies the tenant (#14).
+- **`sso/routing.ts`** / **`guards.ts`** / **`provision.ts`** — PURE, unit-tested: domain normalization + connection resolution; freemail/revocation/assertion-domain guards; the JIT `planProvisioning()` decision (domain re-check #4, role precedence, attribute→column mapping).
+- **`sso/provision-execute.ts`** — executes the plan against Prisma (txn-safe `WorkspaceMember` upsert, never downgrades, never touches other workspaces #5/#15).
+- **`/api/auth/sso/{discovery,authorize,token,userinfo,acs,oidc}`** — discovery returns a bare boolean (non-revealing #10); authorize/token/userinfo bridge NextAuth↔Jackson (PKCE+state); acs/oidc receive the IdP response and redirect back with the OAuth code.
+- **`auth/config.ts`** — `boxyhq-saml` OAuth provider (gated on `SSO_ENABLED`) + JIT in the `signIn` callback (reads `requested.tenant`; failure never blocks sign-in — additive v1 #20).
+- **`auth/login/page.tsx`** — "Continue with SSO": discovery check → `signIn("boxyhq-saml", …, { login_hint })`.
+
 ### Credits (`src/lib/credits/`)
 
 #### `credits/plan-limits.ts`

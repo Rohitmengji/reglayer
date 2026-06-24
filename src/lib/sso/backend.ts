@@ -18,15 +18,36 @@ export interface SsoUserInfo {
   email: string;
   name?: string;
   groups?: string[];
+  /** Params echoed back by Jackson (incl. the server-resolved `tenant`/`product`). */
+  requested: Record<string, string>;
   raw: Record<string, unknown>;
+}
+
+export interface SsoAuthorizeInput {
+  /** SERVER-resolved tenant (= workspaceId) — never client-supplied (review #14). */
+  tenant: string;
+  product: string;
+  state: string;
+  redirectUri: string;
+  /** PKCE passthrough from NextAuth (S256). Empty when the flow isn't using PKCE. */
+  codeChallenge?: string;
+  codeChallengeMethod?: string;
+  scope?: string;
+  nonce?: string;
+  loginHint?: string;
 }
 
 export interface SsoBackend {
   readonly mode: SsoBackendMode;
   /** Authorize redirect for a SERVER-resolved tenant (never client-supplied — review #14). */
-  authorizeUrl(input: { tenant: string; product: string; state: string; redirectUri: string }): Promise<string>;
-  exchangeCode(input: { code: string; redirectUri: string }): Promise<{ accessToken: string }>;
+  authorizeUrl(input: SsoAuthorizeInput): Promise<string>;
+  /** Exchange the OAuth code; forwards the PKCE verifier when NextAuth issued one. */
+  exchangeCode(input: { code: string; redirectUri: string; codeVerifier?: string }): Promise<{ accessToken: string; expiresIn: number }>;
   userInfo(accessToken: string): Promise<SsoUserInfo>;
+  /** IdP → SP SAML assertion POST (ACS); returns the app redirect carrying the OAuth code. */
+  samlResponse(body: { SAMLResponse: string; RelayState: string }): Promise<{ redirectUrl: string }>;
+  /** IdP → SP OIDC authorization response; returns the app redirect carrying the OAuth code. */
+  oidcResponse(query: Record<string, string>): Promise<{ redirectUrl: string }>;
   // Admin connection management (per tenant/product).
   upsertConnection(input: Record<string, unknown>): Promise<{ tenant: string; product: string }>;
   deleteConnection(input: { tenant: string; product: string }): Promise<void>;

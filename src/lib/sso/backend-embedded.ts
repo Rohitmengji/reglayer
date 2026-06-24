@@ -38,8 +38,9 @@ function getJackson(): Promise<SAMLJackson> {
 export const embeddedJacksonBackend: SsoBackend = {
   mode: "embedded",
 
-  async authorizeUrl({ tenant, product, state, redirectUri }) {
+  async authorizeUrl({ tenant, product, state, redirectUri, codeChallenge, codeChallengeMethod, scope, nonce, loginHint }) {
     const { oauthController } = await getJackson();
+    const method = codeChallengeMethod === "S256" || codeChallengeMethod === "plain" ? codeChallengeMethod : "";
     const req: OAuthReq = {
       client_id: "dummy",
       tenant,
@@ -47,25 +48,27 @@ export const embeddedJacksonBackend: SsoBackend = {
       redirect_uri: redirectUri,
       state,
       response_type: "code",
-      code_challenge: "",
-      code_challenge_method: "",
+      code_challenge: codeChallenge ?? "",
+      code_challenge_method: method,
+      ...(scope ? { scope } : {}),
+      ...(nonce ? { nonce } : {}),
+      ...(loginHint ? { login_hint: loginHint } : {}),
     };
-    const { redirect_url } = await oauthController.authorize(req);
+    const { redirect_url, error } = await oauthController.authorize(req);
+    if (error) throw new Error(`Jackson authorize(): ${error}`);
     if (!redirect_url) throw new Error("Jackson authorize() returned no redirect_url");
     return redirect_url;
   },
 
-  async exchangeCode({ code, redirectUri }) {
+  async exchangeCode({ code, redirectUri, codeVerifier }) {
     const { oauthController } = await getJackson();
-    const body: OAuthTokenReq = {
-      code,
-      grant_type: "authorization_code",
-      redirect_uri: redirectUri,
-      client_id: "dummy",
-      client_secret: "dummy",
-    };
+    // PKCE flow when NextAuth issued a verifier; otherwise fall back to the
+    // dummy client-credentials Jackson accepts for the non-PKCE path.
+    const body: OAuthTokenReq = codeVerifier
+      ? { code, grant_type: "authorization_code", redirect_uri: redirectUri, code_verifier: codeVerifier }
+      : { code, grant_type: "authorization_code", redirect_uri: redirectUri, client_id: "dummy", client_secret: "dummy" };
     const res = await oauthController.token(body);
-    return { accessToken: res.access_token };
+    return { accessToken: res.access_token, expiresIn: res.expires_in };
   },
 
   async userInfo(accessToken): Promise<SsoUserInfo> {
@@ -77,8 +80,25 @@ export const embeddedJacksonBackend: SsoBackend = {
       email: p.email,
       name: name || undefined,
       groups: p.groups,
+      requested: p.requested ?? {},
       raw: (p.raw ?? {}) as Record<string, unknown>,
     };
+  },
+
+  async samlResponse(body) {
+    const { oauthController } = await getJackson();
+    const r = await oauthController.samlResponse({ SAMLResponse: body.SAMLResponse, RelayState: body.RelayState });
+    if (r.error) throw new Error(`Jackson samlResponse: ${r.error}`);
+    if (!r.redirect_url) throw new Error("Jackson samlResponse returned no redirect_url");
+    return { redirectUrl: r.redirect_url };
+  },
+
+  async oidcResponse(query) {
+    const { oauthController } = await getJackson();
+    const r = await oauthController.oidcAuthzResponse(query);
+    if (r.error) throw new Error(`Jackson oidcAuthzResponse: ${r.error}`);
+    if (!r.redirect_url) throw new Error("Jackson oidcAuthzResponse returned no redirect_url");
+    return { redirectUrl: r.redirect_url };
   },
 
   async upsertConnection(input) {
