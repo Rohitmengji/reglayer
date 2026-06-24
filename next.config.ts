@@ -25,7 +25,9 @@ import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["@sparticuz/chromium", "playwright", "puppeteer-core", "pg"],
+  // @boxyhq/saml-jackson (embedded SSO) pulls typeorm + dynamic driver requires
+  // that must NOT be bundled — externalize so the server build resolves them at runtime.
+  serverExternalPackages: ["@sparticuz/chromium", "playwright", "puppeteer-core", "pg", "@boxyhq/saml-jackson"],
   outputFileTracingIncludes: {
     "/api/scan": ["./node_modules/@sparticuz/chromium/bin/**"],
     "/api/scan/crawl": ["./node_modules/@sparticuz/chromium/bin/**"],
