@@ -10,6 +10,16 @@
  * serverless (per-cold-start init + DB connections). This is the documented
  * "start embedded, swap to a service later" path; validate cold-start + pool
  * load before GA.
+ *
+ * SECURITY / DEPENDENCY POSTURE: `@boxyhq/saml-jackson` is a **devDependency**, not
+ * a production dependency. Its tree pulls high-severity, partly-unfixable vulns
+ * (`@grpc/grpc-js` + OpenTelemetry via `@boxyhq/metrics`, which we don't even use)
+ * that fail `npm audit --omit=dev --audit-level=high`. We will NOT ship those into
+ * production for a feature that's gated OFF. So this embedded backend is for
+ * dev/test + the verified API contract; **production GA uses the SERVICE backend**
+ * (a standalone, BoxyHQ-maintained Jackson reached over HTTPS — review #3), which
+ * keeps that dependency tree out of our app entirely. The SsoBackend seam makes
+ * that swap a single factory line.
  */
 import "server-only";
 import { controllers } from "@boxyhq/saml-jackson";
