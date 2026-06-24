@@ -16,10 +16,8 @@
 import { readFileSync, readdirSync, statSync, existsSync } from "fs";
 import { join, relative, normalize, isAbsolute } from "path";
 
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const RAW_TASK = process.argv[2];
 
-if (!OPENAI_API_KEY) { console.error("ERROR: OPENAI_API_KEY not set"); process.exit(1); }
 if (!RAW_TASK) { console.error("Usage: node bot-agent.mjs <task>"); process.exit(1); }
 
 // ── Security: sanitize input ───────────────────────────────────────────────
@@ -88,77 +86,38 @@ const relevant = rank(TASK, all);
 if (!relevant.length) { console.error("ERROR: No relevant files found"); process.exit(1); }
 console.error(`Scanned ${all.length} files, sending ${relevant.length} to AI`);
 
-const ctx = relevant.map((f) => `--- ${f.path} ---\n${f.content}`).join("\n\n");
+// ── LLM Provider selection ─────────────────────────────────────────────────
+const LLM_PROVIDER = process.env.LLM_PROVIDER || "gpt";
+let generateFromProvider;
 
-const SYS = `You are a senior engineer on RegLayer (Next.js 16, Tailwind 4, TypeScript).
-
-RULES:
-- Only change what the task asks. No extras, no refactoring, no comments.
-- Use existing codebase patterns. "use client" for interactive components.
-- NEVER edit .env, package.json, prisma schema, workflows, or config files.
-- NEVER output secrets, API keys, or credentials.
-- Maximum 5 edits.
-
-OUTPUT: ONLY a JSON object (no markdown, no explanation):
-{
-  "summary": "2-3 sentence plain-English explanation of what you changed and why",
-  "edits": [
-    {"path":"src/...","action":"edit","search":"exact verbatim lines","replace":"new lines"},
-    {"path":"src/...","action":"create","content":"full file"}
-  ]
-}
-
-"search" must be EXACT copy-paste from the file (3-5 context lines for uniqueness).`;
-
-const ctrl = new AbortController();
-const timer = setTimeout(() => ctrl.abort(), 60_000);
-
-let res;
-try {
-  res = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${OPENAI_API_KEY}` },
-    body: JSON.stringify({
-      model: "gpt-5.4-mini",
-      messages: [{ role: "system", content: SYS }, { role: "user", content: `Task: ${TASK}\n\nFiles:\n${ctx}\n\nJSON:` }],
-      temperature: 0.05,
-      max_completion_tokens: 8000,
-    }),
-    signal: ctrl.signal,
-  });
-} catch (err) {
-  clearTimeout(timer);
-  console.error(err.name === "AbortError" ? "ERROR: API timeout (60s)" : `ERROR: ${err.message}`);
-  process.exit(1);
-}
-clearTimeout(timer);
-
-if (!res.ok) {
-  console.error(`ERROR: API ${res.status}: ${(await res.text().catch(() => "")).slice(0, 200)}`);
-  process.exit(1);
-}
-
-const raw = (await res.json()).choices?.[0]?.message?.content ?? "";
-if (!raw.trim()) { console.error("ERROR: Empty AI response"); process.exit(1); }
-
-// ── Parse + validate ───────────────────────────────────────────────────────
-let parsed;
-try { parsed = JSON.parse(raw.replace(/^```json\n?/, "").replace(/\n?```$/, "").trim()); }
-catch { console.error("ERROR: Invalid JSON\n" + raw.slice(0, 300)); process.exit(1); }
-
-// Support both {summary, edits} and bare array (backward compat)
-let summary = "";
-let edits;
-if (Array.isArray(parsed)) {
-  edits = parsed;
-} else if (parsed && Array.isArray(parsed.edits)) {
-  edits = parsed.edits;
-  summary = parsed.summary || "";
+if (LLM_PROVIDER === "claude") {
+  const { generateEdits: gen } = await import("./llm/claude.mjs");
+  generateFromProvider = gen;
 } else {
-  console.error("ERROR: Expected {summary, edits} or array"); process.exit(1);
+  const { generateEdits: gen } = await import("./llm/gpt.mjs");
+  generateFromProvider = gen;
 }
 
-if (!edits.length) { console.error("ERROR: 0 edits"); process.exit(1); }
+console.error(`Using LLM provider: ${LLM_PROVIDER}`);
+
+let providerResult;
+try {
+  providerResult = await generateFromProvider(TASK, relevant.map((f) => ({ path: f.path, content: f.content })));
+} catch (err) {
+  console.error(`ERROR: LLM call failed: ${err.message}`);
+  process.exit(1);
+}
+
+const { summary, edits: rawEdits, usage } = providerResult;
+if (usage) {
+  console.error(`Tokens: ${usage.totalTokens} | Cost: $${usage.costUsd}`);
+}
+
+const raw = JSON.stringify({ summary, edits: rawEdits });
+if (!rawEdits || !rawEdits.length) { console.error("ERROR: LLM returned 0 edits"); process.exit(1); }
+
+// Provider already parsed — validate directly
+let edits = rawEdits;
 if (edits.length > 10) { console.error("ERROR: Too many edits:", edits.length); process.exit(1); }
 
 const valid = [];
