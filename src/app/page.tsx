@@ -76,7 +76,6 @@ export default function Home() {
       "ADA Title III monitoring",
       "Litigation risk scoring",
       "Compliance forecasting",
-      "Third-party vendor risk analysis",
       "Auto-remediation engine",
       "CI/CD regression guard",
       "Executive compliance dashboard",
