@@ -122,7 +122,7 @@ try {
       model: "gpt-5.4-mini",
       messages: [{ role: "system", content: SYS }, { role: "user", content: `Task: ${TASK}\n\nFiles:\n${ctx}\n\nJSON:` }],
       temperature: 0.05,
-      max_tokens: 8000,
+      max_completion_tokens: 8000,
     }),
     signal: ctrl.signal,
   });
