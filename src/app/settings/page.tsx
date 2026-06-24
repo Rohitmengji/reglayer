@@ -98,6 +98,57 @@ function PlanUsageTab() {
     costs: Record<string, number>;
   } | null>(null);
   const { t } = useI18n();
+  const [billingBusy, setBillingBusy] = useState(false);
+  const [billingError, setBillingError] = useState<string | null>(null);
+
+  // Start a Stripe Checkout upgrade. The route returns { url } on success, or 503
+  // when billing isn't configured — surface that honestly instead of a dead button.
+  const startCheckout = async (plan: "PRO" | "ENTERPRISE") => {
+    setBillingBusy(true);
+    setBillingError(null);
+    try {
+      const res = await fetch("/api/billing/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan, interval: "monthly" }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (res.status === 503) {
+        setBillingError("Billing isn't configured yet — please contact support to upgrade.");
+        return;
+      }
+      if (!res.ok || !body.url) {
+        throw new Error(typeof body.error === "string" ? body.error : "Could not start checkout");
+      }
+      window.location.href = body.url;
+    } catch (err) {
+      setBillingError(err instanceof Error ? err.message : "Could not start checkout");
+    } finally {
+      setBillingBusy(false);
+    }
+  };
+
+  // Open the Stripe billing portal (manage/cancel subscription).
+  const openBillingPortal = async () => {
+    setBillingBusy(true);
+    setBillingError(null);
+    try {
+      const res = await fetch("/api/billing/portal", { method: "POST" });
+      const body = await res.json().catch(() => ({}));
+      if (res.status === 503) {
+        setBillingError("Billing isn't configured yet — please contact support.");
+        return;
+      }
+      if (!res.ok || !body.url) {
+        throw new Error(typeof body.error === "string" ? body.error : "Could not open billing portal");
+      }
+      window.location.href = body.url;
+    } catch (err) {
+      setBillingError(err instanceof Error ? err.message : "Could not open billing portal");
+    } finally {
+      setBillingBusy(false);
+    }
+  };
 
   useEffect(() => {
     fetch("/api/credits")
@@ -158,6 +209,48 @@ function PlanUsageTab() {
               </p>
             </div>
           </div>
+
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            {data.plan === "FREE" && (
+              <button
+                onClick={() => startCheckout("PRO")}
+                disabled={billingBusy}
+                className="inline-flex items-center rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-100"
+              >
+                {billingBusy ? "…" : "Upgrade to Pro"}
+              </button>
+            )}
+            {data.plan === "PRO" && (
+              <>
+                <button
+                  onClick={() => startCheckout("ENTERPRISE")}
+                  disabled={billingBusy}
+                  className="inline-flex items-center rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-100"
+                >
+                  {billingBusy ? "…" : "Upgrade to Enterprise"}
+                </button>
+                <button
+                  onClick={openBillingPortal}
+                  disabled={billingBusy}
+                  className="inline-flex items-center rounded-lg border border-neutral-200 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                >
+                  Manage billing
+                </button>
+              </>
+            )}
+            {data.plan === "ENTERPRISE" && (
+              <button
+                onClick={openBillingPortal}
+                disabled={billingBusy}
+                className="inline-flex items-center rounded-lg border border-neutral-200 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+              >
+                Manage billing
+              </button>
+            )}
+          </div>
+          {billingError && (
+            <p className="mt-2 text-xs text-red-600 dark:text-red-400">{billingError}</p>
+          )}
         </CardContent>
       </Card>
 
