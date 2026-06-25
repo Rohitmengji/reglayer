@@ -635,6 +635,8 @@ Built on **BoxyHQ Jackson** bridged into NextAuth v4 (JWT, no adapter). Per-tena
 - **`/api/auth/sso/{discovery,authorize,token,userinfo,acs,oidc}`** — discovery returns a bare boolean (non-revealing #10); authorize/token/userinfo bridge NextAuth↔Jackson (PKCE+state); acs/oidc receive the IdP response and redirect back with the OAuth code.
 - **`auth/config.ts`** — `boxyhq-saml` OAuth provider (gated on `SSO_ENABLED`) + JIT in the `signIn` callback (reads `requested.tenant`; failure never blocks sign-in — additive v1 #20).
 - **`auth/login/page.tsx`** — "Continue with SSO": discovery check → `signIn("boxyhq-saml", …, { login_hint })`.
+- **`sso/backend-service.ts`** — `JacksonServiceBackend`: HTTP client to a standalone Jackson (`/api/oauth/*`, `/api/v1/sso`, Api-Key). The production path. Request construction unit-tested with an injected fetch.
+- **Admin connection management** — `/api/sso/connections` (GET list, POST create+register-with-Jackson), `/api/sso/connections/[id]` (PATCH rollout/enforcement/enable-disable, DELETE soft-delete+release-domains), `/api/sso/connections/[id]/domains` (POST claim → DNS TXT token), `/api/sso/domains/[id]/verify` (POST → resolve TXT, claim `VerifiedDomain` under a `SELECT … FOR UPDATE` lock so a concurrent connection-delete can't orphan it, flip to VERIFIED). All gated by `requireSsoAdmin` (`src/lib/sso/admin-guard.ts` — `sso.manage` permission [new in `rbac.ts`] + Enterprise `sso` feature + rate limit), workspace-scoped (cross-workspace ⇒ 404). Every change writes `recordSsoAudit` (`src/lib/sso/audit.ts`, review #32).
 
 ### Credits (`src/lib/credits/`)
 

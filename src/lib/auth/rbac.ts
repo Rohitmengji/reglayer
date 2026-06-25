@@ -55,6 +55,7 @@ export type Permission =
   | "integrations.manage"
   | "apiKeys.manage"
   | "settings.manage"
+  | "sso.manage"
   | "content.edit"
   | "admin.allWorkspaces"
   | "admin.managePlans"
@@ -74,6 +75,7 @@ const ROLE_PERMISSIONS: Record<WorkspaceRole, Permission[]> = {
     "integrations.manage",
     "apiKeys.manage",
     "settings.manage",
+    "sso.manage",
     "content.edit",
   ],
   ADMIN: [
@@ -87,6 +89,7 @@ const ROLE_PERMISSIONS: Record<WorkspaceRole, Permission[]> = {
     "integrations.manage",
     "apiKeys.manage",
     "settings.manage",
+    "sso.manage",
     "content.edit",
   ],
   MEMBER: ["scans.run", "scans.view"],
@@ -110,6 +113,7 @@ const MASTER_ADMIN_PERMISSIONS: Permission[] = [
   "integrations.manage",
   "apiKeys.manage",
   "settings.manage",
+  "sso.manage",
   "content.edit",
 ];
 
