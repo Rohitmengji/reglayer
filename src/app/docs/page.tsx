@@ -7,7 +7,7 @@
  * WHAT: Card grid linking to: Getting Started, Scanning, Monitoring, Reports, Integrations, Teams.
  * HOW: Client component with i18n. Renders links to /docs/* sub-pages.
  */
-import { BookOpen, Rocket, ScanLine, Bell, FileText, Code2, Users } from "lucide-react";
+import { Rocket, ScanLine, Bell, FileText, Code2, Users } from "lucide-react";
 import Link from "next/link";
 import { PublicHeader } from "@/components/layout/public-header";
 import { Footer } from "@/components/layout/footer";
@@ -18,90 +18,79 @@ const sections = [
     icon: Rocket,
     slug: "getting-started",
     title: "Getting Started",
-    description: "Create your account, configure your first workspace, and run your first accessibility scan in under 5 minutes. No credit card required for the free plan.",
+    description: "Create your account and run your first scan in under 5 minutes.",
+    color: "text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-950/30",
     items: [
-      "Sign up with email or Google OAuth (instant access)",
-      "Create a workspace — choose a name and invite your team",
-      "Paste any public URL and hit Scan to get your first report",
-      "Review violations grouped by severity with WCAG references",
-      "Check your compliance score (0–100) and EN 301 549 status",
-      "Export your first PDF report or share the live report link",
+      "Sign up with email or Google OAuth",
+      "Create a workspace and invite your team",
+      "Paste a URL and run your first scan",
+      "Review violations by severity",
+      "Export your first PDF report",
     ],
   },
   {
     icon: ScanLine,
     slug: "scanning",
     title: "Scanning",
-    description: "Run accessibility scans against any public URL. Get AI-powered remediation guidance, code fix examples, and standards mapping for WCAG 2.1 and EN 301 549.",
+    description: "Single-page and multi-page crawls with AI-powered fix suggestions.",
+    color: "text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-950/30",
     items: [
-      "Single-page scans (instant) vs. multi-page crawls (up to 100 pages)",
-      "Standards: WCAG 2.1 Level A & AA, EN 301 549 V3.2.1, Section 508",
-      "Severity levels: Critical, Serious, Moderate, Minor — with impact scores",
-      "AI-powered fix suggestions with before/after code examples",
-      "Affected elements highlighted with CSS selectors and DOM context",
-      "Export results as PDF, share as a public link, or download raw JSON",
-      "Compare scans side-by-side to track regression and improvement",
+      "WCAG 2.2 AA, EN 301 549, Section 508",
+      "AI fix suggestions with code examples",
+      "Multi-page crawls up to 100 pages",
+      "Compare scans to track progress",
     ],
   },
   {
     icon: Bell,
     slug: "monitoring",
     title: "Monitoring & Alerts",
-    description: "Set up recurring scans to catch regressions before they reach production. Get notified via Slack, email, or webhooks when compliance status changes.",
+    description: "Scheduled scans with Slack, email, and webhook notifications.",
+    color: "text-amber-600 bg-amber-50 dark:text-amber-400 dark:bg-amber-950/30",
     items: [
-      "Schedule scans: daily, weekly, bi-weekly, or monthly",
-      "Choose specific days and times (e.g., Monday 9:00 AM UTC)",
-      "Slack & Teams notifications for score changes",
-      "Email alerts when new critical/serious violations appear",
-      "Compliance score threshold alerts (e.g., alert if score drops below 80)",
-      "Webhook events for custom automation and CI/CD pipelines",
-      "Pause and resume schedules without deleting configuration",
+      "Daily, weekly, or monthly schedules",
+      "Score threshold alerts",
+      "Slack and email notifications",
+      "Webhook events for CI/CD",
     ],
   },
   {
     icon: FileText,
     slug: "reports",
     title: "Reports & Statements",
-    description: "Generate compliance documentation required by the European Accessibility Act (EAA). EN 301 549 Annex C–formatted accessibility statements (based on automated testing; not a legal certification).",
+    description: "PDF reports, accessibility statements, and compliance certificates.",
+    color: "text-violet-600 bg-violet-50 dark:text-violet-400 dark:bg-violet-950/30",
     items: [
-      "PDF compliance reports with executive summary and full details",
-      "EU-compliant accessibility statement generator (Directive 2016/2102)",
-      "Auto-populated conformance status from your latest scan data",
-      "Feedback mechanism, enforcement procedure, and contact details included",
-      "Download as HTML for direct embedding on your website",
-      "Scan comparison reports showing fixed vs. new violations",
-      "Team activity and audit logs for regulatory evidence",
-      "Accessibility certificates with verifiable badge URLs",
+      "PDF reports with executive summary",
+      "EU accessibility statement generator",
+      "Compliance certificates with badges",
+      "Scan comparison reports",
     ],
   },
   {
     icon: Users,
     slug: "team-management",
     title: "Team Management",
-    description: "Collaborate with your team using role-based access control. Assign violations, track progress, and maintain accountability across your organization.",
+    description: "Role-based access, violation assignment, and audit logs.",
+    color: "text-pink-600 bg-pink-50 dark:text-pink-400 dark:bg-pink-950/30",
     items: [
-      "4 roles: Owner (full control), Admin (manage team), Member (scan & fix), Viewer (read-only)",
-      "Invite members via email — they join your workspace instantly",
-      "Assign violations to specific team members for accountability",
-      "Track who fixed what and when via the audit log",
-      "Workspace-level settings: scan defaults, notification preferences, plan management",
-      "Multiple workspaces for agencies managing client sites",
+      "Owner, Admin, Member, Viewer roles",
+      "Assign violations to team members",
+      "Audit log for accountability",
+      "Multiple workspaces for agencies",
     ],
   },
   {
     icon: Code2,
     slug: "integrations",
     title: "Integrations & API",
-    description: "Connect RegLayer to your existing development workflow. Auto-create tickets from violations, get CI/CD notifications, and build custom integrations via REST API.",
+    description: "REST API, GitHub Actions, Slack, webhooks, and more.",
+    color: "text-neutral-700 bg-neutral-100 dark:text-neutral-300 dark:bg-neutral-800",
     items: [
-      "Slack: real-time scan notifications in your channels",
-      "Jira & Linear: auto-create tickets from violations with priority mapping",
-      "GitHub & GitLab: create issues and integrate with CI/CD pipelines",
-      "Webhooks: POST events (scan.completed, score.degraded, etc.) to any URL",
-      "REST API: programmatic scanning, results fetching, and bulk operations",
-      "API keys with scoped permissions and configurable rate limits",
-      "GitHub Actions workflow example for pre-deploy accessibility checks",
-      "Zapier: connect to 5,000+ apps with no-code automation",
+      "REST API with scoped API keys",
+      "GitHub Actions CI workflow",
+      "Slack notifications",
+      "Webhook events to any URL",
     ],
   },
 ];
@@ -113,58 +102,58 @@ export default function DocsPage() {
       <PublicHeader />
 
       <div className="mx-auto max-w-5xl px-4 sm:px-6 py-12">
-        <div className="flex items-center gap-3 mb-8">
-          <BookOpen className="h-8 w-8 text-neutral-700 dark:text-neutral-300" />
-          <div>
-            <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">{t("docs.title")}</h1>
-            <p className="text-neutral-500 dark:text-neutral-400 text-sm">
-              {t("docs.subtitle")}
-            </p>
-          </div>
+        <div className="mb-10">
+          <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">{t("docs.title")}</h1>
+          <p className="text-neutral-500 dark:text-neutral-400 mt-1">
+            {t("docs.subtitle")}
+          </p>
         </div>
 
-        <div className="grid gap-8 sm:grid-cols-2">
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {sections.map((section) => (
             <Link
               key={section.title}
               href={`/docs/${section.slug}`}
-              className="rounded-xl border border-neutral-200 dark:border-neutral-800 p-6 hover:border-neutral-400 dark:hover:border-neutral-600 hover:shadow-md transition-all group"
+              className="group rounded-xl border border-neutral-200 dark:border-neutral-800 p-5 hover:border-neutral-300 dark:hover:border-neutral-700 hover:shadow-lg transition-all"
             >
-              <div className="flex items-center gap-3 mb-3">
-                <section.icon className="h-5 w-5 text-neutral-700 dark:text-neutral-300" />
-                <h2 className="text-lg font-semibold text-neutral-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{section.title}</h2>
+              <div className={`inline-flex h-9 w-9 items-center justify-center rounded-lg mb-3 ${section.color}`}>
+                <section.icon className="h-4.5 w-4.5" />
               </div>
-              <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4 leading-relaxed">
+              <h2 className="text-base font-semibold text-neutral-900 dark:text-white mb-1.5 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{section.title}</h2>
+              <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-3 leading-relaxed">
                 {section.description}
               </p>
-              <ul className="space-y-2">
+              <ul className="space-y-1.5">
                 {section.items.map((item) => (
-                  <li key={item} className="flex items-start gap-2 text-sm text-neutral-600 dark:text-neutral-300">
-                    <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-neutral-400 shrink-0" />
+                  <li key={item} className="flex items-start gap-2 text-[13px] text-neutral-600 dark:text-neutral-300">
+                    <span className="mt-1.5 h-1 w-1 rounded-full bg-neutral-300 dark:bg-neutral-600 shrink-0" />
                     {item}
                   </li>
                 ))}
               </ul>
+              <div className="mt-4 text-xs font-medium text-blue-600 dark:text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                Read docs →
+              </div>
             </Link>
           ))}
         </div>
 
-        <div className="mt-12 rounded-xl border border-neutral-200 dark:border-neutral-800 p-6 text-center">
-          <p className="text-neutral-600 dark:text-neutral-300 mb-3">
-            Need more help? Check the API Reference or reach out to our team.
+        <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4 rounded-xl border border-neutral-200 dark:border-neutral-800 p-6">
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">
+            Need more help?
           </p>
-          <div className="flex items-center justify-center gap-4">
+          <div className="flex gap-3">
             <Link
               href="/api-reference"
-              className="text-sm font-medium text-blue-600 hover:underline"
+              className="rounded-lg border border-neutral-200 dark:border-neutral-700 px-4 py-2 text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
             >
-              API Reference →
+              API Reference
             </Link>
             <Link
               href="/contact"
-              className="text-sm font-medium text-blue-600 hover:underline"
+              className="rounded-lg bg-neutral-900 dark:bg-white px-4 py-2 text-sm font-medium text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors"
             >
-              Contact Support →
+              Contact Support
             </Link>
           </div>
         </div>
