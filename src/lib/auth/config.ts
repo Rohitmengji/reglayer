@@ -32,6 +32,9 @@ import { rateLimit } from "@/lib/rate-limit";
 import { cacheGet, cacheSet } from "@/lib/cache/redis";
 import { isSessionRevoked } from "@/lib/sso/guards";
 import { applyProvisioning } from "@/lib/sso/provision-execute";
+import { getEnforcementForEmail } from "@/lib/sso/resolve";
+import { evaluateEnforcement } from "@/lib/sso/enforcement";
+import { logger } from "@/lib/telemetry/logger";
 
 /**
  * Enterprise SSO provider (BoxyHQ Jackson, bridged via /api/auth/sso/*).
@@ -166,6 +169,61 @@ export const authOptions: NextAuthOptions = {
   },
   callbacks: {
     async signIn({ user, account, profile }) {
+      // SSO enforcement (#24) + break-glass (#23). Only runs when SSO is enabled
+      // and the provider is NOT the SSO one. If the user's verified email domain
+      // is governed by a LIVE connection with a non-OPTIONAL policy, a non-SSO
+      // login (password/Google) is blocked — EXCEPT for break-glass identities
+      // (workspace OWNER, master admin), whose bypass is logged. Done before the
+      // user upsert so a denied login leaves no trace. Fails OPEN: an enforcement
+      // lookup error must never lock the whole org out.
+      if (process.env.SSO_ENABLED === "true" && account?.provider && account.provider !== "boxyhq-saml" && user?.email) {
+        try {
+          const enf = await getEnforcementForEmail(user.email);
+          if (enf) {
+            // Service-account exemption (#24): automation on an enforced domain must
+            // never be locked out of a non-SSO login.
+            const exemptSvc = await prisma.serviceAccount.findFirst({
+              where: { workspaceId: enf.workspaceId, email: user.email, exemptFromSsoEnforcement: true },
+              select: { id: true },
+            });
+            if (exemptSvc) {
+              logger.warn("SSO enforcement: service-account exemption used", { email: user.email, workspaceId: enf.workspaceId });
+            } else {
+              const dbUser = await prisma.user.findUnique({
+                where: { email: user.email },
+                select: { isMasterAdmin: true, memberships: { where: { workspaceId: enf.workspaceId }, select: { role: true } } },
+              });
+              // The env-seeded master account (role: "master") may have no User row —
+              // it's the platform break-glass identity, so honor it explicitly.
+              const isMaster = (dbUser?.isMasterAdmin ?? false) || (user as { role?: string }).role === "master";
+              const decision = evaluateEnforcement({
+                provider: account.provider,
+                policy: enf.policy,
+                isWorkspaceOwner: dbUser?.memberships?.some((m) => m.role === "OWNER") ?? false,
+                isMasterAdmin: isMaster,
+              });
+              if (!decision.allow) {
+                logger.warn("SSO enforcement: non-SSO login blocked", {
+                  email: user.email,
+                  workspaceId: enf.workspaceId,
+                  provider: account.provider,
+                });
+                return false;
+              }
+              if (decision.breakGlass) {
+                logger.warn("SSO break-glass: privileged non-SSO login on an enforced domain", {
+                  email: user.email,
+                  workspaceId: enf.workspaceId,
+                  provider: account.provider,
+                });
+              }
+            }
+          }
+        } catch (err) {
+          logger.error("SSO enforcement check failed — allowing login (fail-open)", { error: String(err) });
+        }
+      }
+
       // Ensure user exists in the database
       if (user?.email) {
         try {

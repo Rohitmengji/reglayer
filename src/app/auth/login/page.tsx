@@ -71,7 +71,14 @@ export default function LoginPage() {
     setLoading(false);
 
     if (result?.error) {
-      setError(t("login.invalidCredentials"));
+      // NextAuth returns "AccessDenied" when the signIn callback blocks a non-SSO
+      // login on an SSO-enforced domain (#24) — point the user at SSO instead of
+      // implying their password was wrong.
+      setError(
+        result.error === "AccessDenied"
+          ? 'Your organization requires single sign-on — use "Continue with SSO" below.'
+          : t("login.invalidCredentials")
+      );
     } else {
       router.push("/dashboard");
     }
