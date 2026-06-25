@@ -30,6 +30,34 @@ const patchSchema = z
   })
   .refine((d) => Object.keys(d).length > 0, { message: "No fields to update" });
 
+export async function GET(request: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  const guard = await requireSsoAdmin(request);
+  if (!guard.ok) return guard.response;
+  const { id } = await ctx.params;
+
+  const connection = await prisma.sSOConnection.findFirst({
+    where: { id, workspaceId: guard.ctx.workspaceId, deletedAt: null },
+    select: {
+      id: true,
+      label: true,
+      protocol: true,
+      defaultRole: true,
+      rolloutStage: true,
+      enforcementPolicy: true,
+      healthStatus: true,
+      certificateExpiresAt: true,
+      disabledAt: true,
+      lastSSOLoginAt: true,
+      createdAt: true,
+      domains: { where: { deletedAt: null }, select: { id: true, domain: true, verificationStatus: true, isPrimary: true } },
+      roleMappings: { select: { id: true, idpGroup: true, role: true } },
+      attributeMappings: { select: { id: true, sourceAttr: true, targetField: true } },
+    },
+  });
+  if (!connection) return NextResponse.json({ error: "Connection not found" }, { status: 404 });
+  return NextResponse.json({ connection });
+}
+
 export async function PATCH(request: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const guard = await requireSsoAdmin(request);
   if (!guard.ok) return guard.response;

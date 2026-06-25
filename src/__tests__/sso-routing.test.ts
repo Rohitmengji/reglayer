@@ -86,6 +86,10 @@ describe("resolveProvisionedRole (precedence)", () => {
   it("group mapping does not downgrade existing role", () => {
     expect(resolveProvisionedRole({ existingRole: "OWNER", idpGroups: ["eng-admins"], roleMappings: mappings, defaultRole: "MEMBER" })).toBe("OWNER");
   });
+  it("matches groups case-insensitively (IdP casing drift must not drop to default)", () => {
+    expect(resolveProvisionedRole({ idpGroups: ["ENG-Admins"], roleMappings: mappings, defaultRole: "MEMBER" })).toBe("ADMIN");
+    expect(resolveProvisionedRole({ idpGroups: ["eng-admins"], roleMappings: [{ idpGroup: "ENG-ADMINS", role: "ADMIN" }], defaultRole: "VIEWER" })).toBe("ADMIN");
+  });
 });
 
 describe("mapAttributes", () => {

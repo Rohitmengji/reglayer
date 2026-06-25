@@ -116,9 +116,12 @@ export interface RolePrecedenceInput {
 export function resolveProvisionedRole(input: RolePrecedenceInput): WorkspaceRole {
   if (input.inviteRole) return input.inviteRole;
 
-  const groups = input.idpGroups ?? [];
+  // Case-insensitive match: IdPs are inconsistent about group-name casing, and a
+  // drift between the stored mapping and the asserted group must NOT silently
+  // drop a user to the default role. (Storage also lowercases idpGroup.)
+  const groups = (input.idpGroups ?? []).map((g) => g.toLowerCase());
   const matched = (input.roleMappings ?? [])
-    .filter((m) => groups.includes(m.idpGroup))
+    .filter((m) => groups.includes(m.idpGroup.toLowerCase()))
     .map((m) => m.role);
   const mapped = matched.length
     ? matched.reduce((a, b) => (ROLE_RANK[a] >= ROLE_RANK[b] ? a : b))
