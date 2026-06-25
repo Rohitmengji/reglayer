@@ -788,6 +788,10 @@ model SSOConnection {
   certificateExpiresAt DateTime?
   warningThresholdDays Int               @default(30)
   lastValidatedAt      DateTime?
+  // Public IdP endpoints kept for self-healing health probes (#43). NOT secrets —
+  // OIDC client secret lives only in Jackson, never here.
+  metadataUrl      String?
+  oidcDiscoveryUrl String?
   // SCIM forward-compat (unused in v1; reserved so SCIM adds no migration pain)
   scimEnabled    Boolean                 @default(false)
   scimEndpoint   String?
