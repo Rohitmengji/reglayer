@@ -23,8 +23,39 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [ssoLoading, setSsoLoading] = useState(false);
   const router = useRouter();
   const { t } = useI18n();
+
+  // Enterprise SSO: only offered when the email's domain is a VERIFIED, active
+  // SSO domain (server decides — discovery returns a bare boolean, review #10/#14).
+  async function handleSso() {
+    setError(null);
+    if (!email) {
+      setError("Enter your work email to continue with SSO.");
+      return;
+    }
+    setSsoLoading(true);
+    try {
+      const res = await fetch("/api/auth/sso/discovery", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = (await res.json()) as { available?: boolean };
+      if (data.available) {
+        // login_hint is the only client-supplied input; the tenant is resolved
+        // server-side in the authorize bridge.
+        await signIn("boxyhq-saml", { callbackUrl: "/dashboard" }, { login_hint: email });
+      } else {
+        setError("Single sign-on isn't set up for this email domain.");
+        setSsoLoading(false);
+      }
+    } catch {
+      setError("Couldn't start SSO. Please try again.");
+      setSsoLoading(false);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -138,6 +169,17 @@ export default function LoginPage() {
               />
             </svg>
             {t("login.continueGoogle")}
+          </Button>
+
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-3 w-full"
+            onClick={handleSso}
+            disabled={ssoLoading}
+          >
+            {ssoLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            Continue with SSO
           </Button>
 
           <p className="mt-6 text-center text-sm text-neutral-500 dark:text-neutral-400">

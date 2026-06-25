@@ -29,6 +29,9 @@ model User {
   persona              String?
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
+  // Set to "now" to revoke a user's existing sessions (deprovision / sign-out-everywhere).
+  // The jwt callback rejects tokens issued before this timestamp.
+  sessionsRevokedAt    DateTime?
 
   // Relations
   memberships    WorkspaceMember[]
@@ -102,6 +105,8 @@ model Workspace {
   guardPolicies GuardPolicy[]
   auditRequests AuditRequest[]
   complianceRules ComplianceRule[]
+  ssoConnections SSOConnection[]
+  serviceAccounts ServiceAccount[]
 
   @@map("workspaces")
 }
@@ -705,6 +710,212 @@ model ComplianceRule {
 
   @@index([workspaceId])
   @@map("compliance_rules")
+}
+
+/// Enterprise SSO — multi-tenant. Our routing/provisioning metadata; the actual
+/// IdP config lives in BoxyHQ Jackson's own tables keyed by (tenant=workspaceId, product).
+/// SSO is ADDITIVE in v1 (never enforced) so a broken IdP can't lock anyone out.
+enum SsoProtocol {
+  SAML
+  OIDC
+}
+
+enum SsoRolloutStage {
+  DISABLED
+  INTERNAL
+  BETA
+  GA
+}
+
+enum DomainVerificationStatus {
+  PENDING
+  VERIFIED
+  FAILED
+}
+
+enum DomainVerificationMethod {
+  DNS_TXT
+  EMAIL
+}
+
+enum SsoHealthStatus {
+  ACTIVE
+  WARNING
+  EXPIRED_CERT
+  INVALID_METADATA
+  VALIDATION_FAILED
+  DISABLED
+}
+
+enum SsoEnforcementPolicy {
+  OPTIONAL
+  ENFORCED
+  ENFORCED_VERIFIED_DOMAINS
+}
+
+enum SsoAttributeTarget {
+  firstName
+  lastName
+  fullName
+  department
+  title
+  location
+  employeeId
+}
+
+enum SsoConnectionChangeType {
+  CREATED
+  UPDATED
+  DELETED
+  ENABLED
+  DISABLED
+  DOMAIN_VERIFIED
+  ROLE_MAPPING_CHANGED
+}
+
+model SSOConnection {
+  id                String               @id @default(cuid())
+  workspaceId       String
+  product           String               @default("reglayer")
+  label             String
+  protocol          SsoProtocol
+  defaultRole       Role                 @default(MEMBER)
+  rolloutStage      SsoRolloutStage      @default(DISABLED)
+  // v1 is always OPTIONAL (additive); ENFORCED ships only at GA with a break-glass path
+  enforcementPolicy SsoEnforcementPolicy @default(OPTIONAL)
+  // Reliability / health (#21, #22)
+  healthStatus         SsoHealthStatus   @default(ACTIVE)
+  certificateExpiresAt DateTime?
+  warningThresholdDays Int               @default(30)
+  lastValidatedAt      DateTime?
+  // SCIM forward-compat (unused in v1; reserved so SCIM adds no migration pain)
+  scimEnabled    Boolean                 @default(false)
+  scimEndpoint   String?
+  scimSecretHash String?
+  lastLoginAt    DateTime?
+  lastSSOLoginAt DateTime?
+  createdBy      String?
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+  disabledAt     DateTime? // soft-disable
+  deletedAt      DateTime? // soft-delete — releases owned domains
+
+  workspace         Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  domains           SsoDomain[]
+  roleMappings      SsoRoleMapping[]
+  attributeMappings SsoAttributeMapping[]
+  auditEvents       SsoConnectionAudit[]
+  verifiedDomains   VerifiedDomain[]
+
+  @@index([workspaceId])
+  @@map("sso_connections")
+}
+
+model SsoDomain {
+  id                 String                    @id @default(cuid())
+  connectionId       String
+  workspaceId        String // denormalized for routing + uniqueness
+  domain             String // always stored lowercased
+  isPrimary          Boolean                   @default(false)
+  verificationStatus DomainVerificationStatus  @default(PENDING)
+  verificationMethod DomainVerificationMethod?
+  verificationToken  String
+  verifiedAt         DateTime?
+  verifiedBy         String?
+  createdAt          DateTime                  @default(now())
+  deletedAt          DateTime?
+
+  connection         SSOConnection             @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  // Global uniqueness of VERIFIED, non-deleted domains is enforced at the app layer
+  // (transaction-guarded check) AND a Postgres partial unique index added via raw SQL
+  // (CREATE UNIQUE INDEX ... WHERE verification_status='VERIFIED' AND deleted_at IS NULL),
+  // since Prisma can't express partial-unique declaratively.
+  @@index([connectionId])
+  @@index([domain, verificationStatus, deletedAt])
+  @@map("sso_domains")
+}
+
+/// Race-safe, migration-safe global uniqueness for verified SSO domains (review #2).
+/// One row per currently-verified domain with a NATIVE @@unique — replaces the
+/// fragile raw partial-index. Insert on verify (catch P2002 → already claimed),
+/// delete on soft-delete/transfer. Routing/provisioning treat presence here as
+/// the source of truth for "this domain belongs to exactly one workspace".
+model VerifiedDomain {
+  id           String        @id @default(cuid())
+  domain       String        @unique // lowercased; exactly one workspace per verified domain
+  workspaceId  String
+  connectionId String
+  verifiedAt   DateTime      @default(now())
+
+  connection   SSOConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@map("sso_verified_domains")
+}
+
+/// IdP group → workspace role (#25). Schema now, wired in the provisioning phase.
+model SsoRoleMapping {
+  id           String        @id @default(cuid())
+  connectionId String
+  idpGroup     String
+  role         Role
+  createdAt    DateTime      @default(now())
+
+  connection   SSOConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@unique([connectionId, idpGroup])
+  @@index([connectionId])
+  @@map("sso_role_mappings")
+}
+
+/// IdP attribute → user profile field (#26). Schema now, wired in the provisioning phase.
+model SsoAttributeMapping {
+  id           String             @id @default(cuid())
+  connectionId String
+  sourceAttr   String
+  targetField  SsoAttributeTarget
+  createdAt    DateTime           @default(now())
+
+  connection   SSOConnection      @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@unique([connectionId, targetField])
+  @@index([connectionId])
+  @@map("sso_attribute_mappings")
+}
+
+/// Tamper-evident change history for SSO config (#32): who/when/before/after/why.
+model SsoConnectionAudit {
+  id           String                  @id @default(cuid())
+  connectionId String
+  actor        String?
+  changeType   SsoConnectionChangeType
+  before       Json?
+  after        Json?
+  reason       String?
+  createdAt    DateTime                @default(now())
+
+  connection   SSOConnection           @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@index([connectionId, createdAt])
+  @@map("sso_connection_audit")
+}
+
+/// Service accounts exempt from SSO enforcement (#24), so automation never gets locked out.
+model ServiceAccount {
+  id                       String    @id @default(cuid())
+  workspaceId              String
+  email                    String
+  label                    String
+  exemptFromSsoEnforcement Boolean   @default(true)
+  createdBy                String?
+  createdAt                DateTime  @default(now())
+
+  workspace                Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, email])
+  @@index([workspaceId])
+  @@map("service_accounts")
 }
 
 // ─────────────────────────────────────────────

@@ -151,6 +151,13 @@ export const FEATURE_CATALOG: FeatureDefinition[] = [
     category: "enterprise",
     plans: ["ENTERPRISE"],
   },
+  {
+    id: "sso",
+    name: "Single Sign-On (SAML/OIDC)",
+    description: "Connect your IdP (Okta, Entra, Google Workspace…) for multi-tenant SSO",
+    category: "enterprise",
+    plans: ["ENTERPRISE"],
+  },
 ];
 
 /**

@@ -23,12 +23,51 @@
  */
 
 import type { NextAuthOptions } from "next-auth";
+import type { OAuthConfig } from "next-auth/providers/oauth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/database/prisma";
 import { rateLimit } from "@/lib/rate-limit";
 import { cacheGet, cacheSet } from "@/lib/cache/redis";
+import { isSessionRevoked } from "@/lib/sso/guards";
+import { applyProvisioning } from "@/lib/sso/provision-execute";
+
+/**
+ * Enterprise SSO provider (BoxyHQ Jackson, bridged via /api/auth/sso/*).
+ *
+ * Gated behind SSO_ENABLED so the whole auth path stays OFF until ops flips it
+ * after a real-IdP round-trip (review #38 — feature-flagged for safe rollback;
+ * pricing stays "coming soon" until then). The tenant is resolved SERVER-side in
+ * the authorize bridge from the verified domain — `login_hint` is the only thing
+ * the client supplies (review #14).
+ */
+interface BoxyHqProfile {
+  id: string;
+  email: string;
+  name?: string | null;
+  groups?: string[];
+  requested?: Record<string, string>;
+}
+
+function boxyhqSsoProvider(): OAuthConfig<BoxyHqProfile> {
+  const baseUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
+  return {
+    id: "boxyhq-saml",
+    name: "Enterprise SSO",
+    type: "oauth",
+    version: "2.0",
+    checks: ["pkce", "state"],
+    authorization: { url: `${baseUrl}/api/auth/sso/authorize`, params: { scope: "" } },
+    token: `${baseUrl}/api/auth/sso/token`,
+    userinfo: `${baseUrl}/api/auth/sso/userinfo`,
+    clientId: "dummy",
+    clientSecret: "dummy",
+    profile(profile) {
+      return { id: profile.id, email: profile.email, name: profile.name ?? null };
+    },
+  };
+}
 
 /**
  * Login attempts per IP+email per 5 minutes. Deliberately generous — it only
@@ -39,6 +78,7 @@ const LOGIN_RATE_LIMIT = { limit: 30, windowSec: 300 };
 
 export const authOptions: NextAuthOptions = {
   providers: [
+    ...(process.env.SSO_ENABLED === "true" ? [boxyhqSsoProvider()] : []),
     ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
       ? [
           GoogleProvider({
@@ -125,7 +165,7 @@ export const authOptions: NextAuthOptions = {
     signIn: "/auth/login",
   },
   callbacks: {
-    async signIn({ user }) {
+    async signIn({ user, account, profile }) {
       // Ensure user exists in the database
       if (user?.email) {
         try {
@@ -134,6 +174,28 @@ export const authOptions: NextAuthOptions = {
             update: { name: user.name || undefined, image: user.image || undefined },
             create: { email: user.email, name: user.name || null, image: user.image || null },
           });
+
+          // Enterprise SSO JIT provisioning (review #4/#5/#15). The tenant
+          // (= SSOConnection.id) is carried in the userinfo `requested.tenant`
+          // Jackson echoes back — never trusted from the client. Failure never
+          // blocks sign-in (additive v1, #20): authz is re-validated everywhere
+          // (#35), so an unprovisioned SSO user simply has no workspace access.
+          if (account?.provider === "boxyhq-saml") {
+            const p = profile as BoxyHqProfile | undefined;
+            const tenant = p?.requested?.tenant;
+            if (tenant) {
+              try {
+                await applyProvisioning({
+                  connectionId: tenant,
+                  email: user.email,
+                  name: user.name ?? null,
+                  groups: p?.groups ?? [],
+                });
+              } catch {
+                // Provisioning failures must not lock a user out of authentication.
+              }
+            }
+          }
 
           // Early access: auto-add first 100 users to default workspace until July 31, 2026
           const EARLY_ACCESS_DEADLINE = new Date("2026-07-31T23:59:59Z");
@@ -195,10 +257,12 @@ export const authOptions: NextAuthOptions = {
       // (the legacy `role` string was only ever set for seeded accounts).
       if (token.email) {
         const cacheKey = `auth:ctx:${token.email}`;
-        const cached = await cacheGet<{ isMasterAdmin: boolean; workspaceRole: string | null }>(cacheKey);
+        const cached = await cacheGet<{ isMasterAdmin: boolean; workspaceRole: string | null; revokedAtSec: number | null }>(cacheKey);
+        let revokedAtSec: number | null = null;
         if (cached) {
           token.isMasterAdmin = cached.isMasterAdmin;
           token.workspaceRole = cached.workspaceRole;
+          revokedAtSec = cached.revokedAtSec ?? null;
         } else {
           try {
             const dbUser = await prisma.user.findUnique({
@@ -210,11 +274,30 @@ export const authOptions: NextAuthOptions = {
             });
             token.isMasterAdmin = dbUser?.isMasterAdmin ?? false;
             token.workspaceRole = dbUser?.memberships?.[0]?.role ?? null;
-            await cacheSet(cacheKey, { isMasterAdmin: token.isMasterAdmin, workspaceRole: token.workspaceRole }, 60);
+            // sessionsRevokedAt (review #1) is an ADDITIVE column read SEPARATELY so a
+            // not-yet-migrated DB can never break core RBAC resolution — revocation is
+            // simply inert (revokedAtSec=null) until the column exists.
+            try {
+              const rev = await prisma.user.findUnique({ where: { email: token.email }, select: { sessionsRevokedAt: true } });
+              revokedAtSec = rev?.sessionsRevokedAt ? Math.floor(rev.sessionsRevokedAt.getTime() / 1000) : null;
+            } catch {
+              revokedAtSec = null;
+            }
+            await cacheSet(cacheKey, { isMasterAdmin: token.isMasterAdmin, workspaceRole: token.workspaceRole, revokedAtSec }, 60);
           } catch {
             token.isMasterAdmin = token.isMasterAdmin ?? false;
             token.workspaceRole = token.workspaceRole ?? null;
           }
+        }
+        // Session revocation (review #1): a token issued before the user's
+        // sessionsRevokedAt immediately loses elevated context. Defaults to
+        // not-revoked (revokedAtSec=null) so normal users and lookup errors are
+        // never affected. Full hard sign-out wants Auth.js v5 DB sessions
+        // (review #11) — tracked follow-up.
+        const iat = (token as { iat?: number }).iat;
+        if (isSessionRevoked(typeof iat === "number" ? iat : undefined, revokedAtSec)) {
+          token.isMasterAdmin = false;
+          token.workspaceRole = null;
         }
       }
       return token;
