@@ -15,6 +15,7 @@ import { prisma } from "@/lib/database/prisma";
 import { getSsoBackend } from "@/lib/sso/backend";
 import { recordSsoAudit } from "@/lib/sso/audit";
 import { requireSsoAdmin } from "@/lib/sso/admin-guard";
+import { parseCertNotAfterFromSamlMetadata } from "@/lib/sso/cert-health";
 import { logger } from "@/lib/telemetry/logger";
 
 export const runtime = "nodejs";
@@ -87,6 +88,11 @@ export async function POST(request: NextRequest) {
   const input = parsed.data;
   const { workspaceId, userId } = guard.ctx;
 
+  // Parse the IdP signing-cert expiry up front (SAML metadata only) so health
+  // monitoring + expiry alerts work without re-fetching from Jackson (#21).
+  const certificateExpiresAt =
+    input.protocol === "SAML" && input.rawMetadata ? parseCertNotAfterFromSamlMetadata(input.rawMetadata) : null;
+
   // 1. Create the row first — the Jackson tenant IS the connection id (multi-IdP, #27).
   const connection = await prisma.sSOConnection.create({
     data: {
@@ -95,6 +101,7 @@ export async function POST(request: NextRequest) {
       protocol: input.protocol,
       defaultRole: input.defaultRole ?? "MEMBER",
       createdBy: userId,
+      ...(certificateExpiresAt ? { certificateExpiresAt } : {}),
     },
     select: { id: true, label: true, protocol: true, rolloutStage: true, defaultRole: true },
   });

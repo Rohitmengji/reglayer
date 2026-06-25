@@ -50,6 +50,9 @@ export function ConnectionCard({ connection, onDeleted }: { connection: SsoConne
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   const id = connection.id;
+  // Show the expiry DATE (parsing a fixed string is pure); urgency is conveyed by
+  // the healthStatus badge (WARNING/EXPIRED_CERT), which the health cron maintains.
+  const certExpiry = connection.certificateExpiresAt ? new Date(connection.certificateExpiresAt) : null;
 
   async function patch(body: Record<string, unknown>, pending: string, ok: string): Promise<boolean> {
     const toastId = toast.loading(pending);
@@ -163,6 +166,11 @@ export function ConnectionCard({ connection, onDeleted }: { connection: SsoConne
                 <Badge variant={connection.healthStatus === "ACTIVE" ? "success" : "serious"}>{connection.healthStatus}</Badge>
                 {disabled && <Badge variant="destructive">Disabled</Badge>}
               </div>
+              {certExpiry && (
+                <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+                  IdP certificate expires {certExpiry.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}
+                </p>
+              )}
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
