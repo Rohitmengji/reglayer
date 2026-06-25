@@ -269,13 +269,20 @@ export const authOptions: NextAuthOptions = {
               where: { email: token.email },
               select: {
                 isMasterAdmin: true,
-                sessionsRevokedAt: true,
                 memberships: { select: { role: true }, orderBy: { joinedAt: "asc" }, take: 1 },
               },
             });
             token.isMasterAdmin = dbUser?.isMasterAdmin ?? false;
             token.workspaceRole = dbUser?.memberships?.[0]?.role ?? null;
-            revokedAtSec = dbUser?.sessionsRevokedAt ? Math.floor(dbUser.sessionsRevokedAt.getTime() / 1000) : null;
+            // sessionsRevokedAt (review #1) is an ADDITIVE column read SEPARATELY so a
+            // not-yet-migrated DB can never break core RBAC resolution — revocation is
+            // simply inert (revokedAtSec=null) until the column exists.
+            try {
+              const rev = await prisma.user.findUnique({ where: { email: token.email }, select: { sessionsRevokedAt: true } });
+              revokedAtSec = rev?.sessionsRevokedAt ? Math.floor(rev.sessionsRevokedAt.getTime() / 1000) : null;
+            } catch {
+              revokedAtSec = null;
+            }
             await cacheSet(cacheKey, { isMasterAdmin: token.isMasterAdmin, workspaceRole: token.workspaceRole, revokedAtSec }, 60);
           } catch {
             token.isMasterAdmin = token.isMasterAdmin ?? false;
