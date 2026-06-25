@@ -102,6 +102,9 @@ export async function POST(request: NextRequest) {
       defaultRole: input.defaultRole ?? "MEMBER",
       createdBy: userId,
       ...(certificateExpiresAt ? { certificateExpiresAt } : {}),
+      // Public endpoints kept for self-healing health probes (#43).
+      ...(input.protocol === "SAML" && input.metadataUrl ? { metadataUrl: input.metadataUrl } : {}),
+      ...(input.protocol === "OIDC" && input.oidcDiscoveryUrl ? { oidcDiscoveryUrl: input.oidcDiscoveryUrl } : {}),
     },
     select: { id: true, label: true, protocol: true, rolloutStage: true, defaultRole: true },
   });

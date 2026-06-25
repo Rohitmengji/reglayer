@@ -168,7 +168,7 @@ export async function GET(request: NextRequest) {
 
     // Piggyback the daily SSO certificate/health sweep so it runs on Vercel Hobby
     // (single scheduled cron). Best-effort + isolated — never affects scan results.
-    let ssoHealth: { checked: number; warning: number; expired: number; alerts: number } | null = null;
+    let ssoHealth: { checked: number; warning: number; expired: number; invalid: number; alerts: number } | null = null;
     try {
       const { runSsoHealthChecks } = await import("@/lib/sso/health");
       ssoHealth = await runSsoHealthChecks();
