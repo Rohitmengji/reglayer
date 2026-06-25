@@ -33,13 +33,19 @@ export async function POST(request: NextRequest) {
   const domain = domainFromEmail(parsed.data.email);
   if (!domain || isPublicDomain(domain)) return NextResponse.json({ available: false });
 
-  // VerifiedDomain is the single source of truth for "this domain → one workspace".
-  const verified = await prisma.verifiedDomain.findUnique({
-    where: { domain },
-    select: { connection: { select: { disabledAt: true, deletedAt: true, rolloutStage: true } } },
-  });
+  try {
+    // VerifiedDomain is the single source of truth for "this domain → one workspace".
+    const verified = await prisma.verifiedDomain.findUnique({
+      where: { domain },
+      select: { connection: { select: { disabledAt: true, deletedAt: true, rolloutStage: true } } },
+    });
 
-  const c = verified?.connection;
-  const available = !!c && c.disabledAt === null && c.deletedAt === null && c.rolloutStage !== "DISABLED";
-  return NextResponse.json({ available });
+    const c = verified?.connection;
+    const available = !!c && c.disabledAt === null && c.deletedAt === null && c.rolloutStage !== "DISABLED";
+    return NextResponse.json({ available });
+  } catch {
+    // SSO not provisioned (e.g. tables not yet migrated) or a transient DB error
+    // must NEVER 500 the public login page — degrade to "SSO not available".
+    return NextResponse.json({ available: false });
+  }
 }

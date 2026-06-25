@@ -25,6 +25,12 @@ const ROLLOUT_OPTIONS = [
   { value: "GA", label: "GA" },
 ];
 
+// Two meaningful choices; an existing ENFORCED_VERIFIED_DOMAINS value displays as "Required".
+const ENFORCEMENT_OPTIONS = [
+  { value: "OPTIONAL", label: "Optional" },
+  { value: "ENFORCED", label: "Required (SSO only)" },
+];
+
 function rolloutBadge(stage: RolloutStage): "success" | "default" | "secondary" {
   if (stage === "GA") return "success";
   if (stage === "DISABLED") return "secondary";
@@ -34,6 +40,7 @@ function rolloutBadge(stage: RolloutStage): "success" | "default" | "secondary" 
 export function ConnectionCard({ connection, onDeleted }: { connection: SsoConnectionView; onDeleted: () => void }) {
   const [domains, setDomains] = useState<SsoDomainView[]>(connection.domains);
   const [rolloutStage, setRolloutStage] = useState<RolloutStage>(connection.rolloutStage);
+  const [enforcement, setEnforcement] = useState<string>(connection.enforcementPolicy === "OPTIONAL" ? "OPTIONAL" : "ENFORCED");
   const [disabled, setDisabled] = useState<boolean>(!!connection.disabledAt);
   const [newDomain, setNewDomain] = useState("");
   const [addingDomain, setAddingDomain] = useState(false);
@@ -62,6 +69,11 @@ export function ConnectionCard({ connection, onDeleted }: { connection: SsoConne
 
   async function changeRollout(stage: string) {
     if (await patch({ rolloutStage: stage }, "Updating rollout…", "Rollout updated")) setRolloutStage(stage as RolloutStage);
+  }
+  async function changeEnforcement(policy: string) {
+    if (await patch({ enforcementPolicy: policy }, "Updating enforcement…", policy === "OPTIONAL" ? "SSO set to optional" : "SSO set to required")) {
+      setEnforcement(policy);
+    }
   }
   async function toggleDisabled() {
     const next = !disabled;
@@ -155,6 +167,7 @@ export function ConnectionCard({ connection, onDeleted }: { connection: SsoConne
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
             <ModernSelect options={ROLLOUT_OPTIONS} value={rolloutStage} onChange={changeRollout} />
+            <ModernSelect options={ENFORCEMENT_OPTIONS} value={enforcement} onChange={changeEnforcement} />
             <button
               type="button"
               onClick={toggleDisabled}
