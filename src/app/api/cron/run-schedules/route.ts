@@ -166,9 +166,20 @@ export async function GET(request: NextRequest) {
       durationMs: Date.now() - startTime,
     });
 
+    // Piggyback the daily SSO certificate/health sweep so it runs on Vercel Hobby
+    // (single scheduled cron). Best-effort + isolated — never affects scan results.
+    let ssoHealth: { checked: number; warning: number; expired: number; alerts: number } | null = null;
+    try {
+      const { runSsoHealthChecks } = await import("@/lib/sso/health");
+      ssoHealth = await runSsoHealthChecks();
+    } catch (e) {
+      log.error("SSO health sweep failed", { error: e instanceof Error ? e.message : "Unknown" });
+    }
+
     return NextResponse.json({
       executedAt: new Date().toISOString(),
       processed: results.length,
+      ssoHealth,
       succeeded,
       failed,
       deferredForFairness,
