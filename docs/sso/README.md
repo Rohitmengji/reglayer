@@ -3,6 +3,8 @@
 How an Enterprise workspace connects its identity provider (IdP) so its people
 sign in to RegLayer with SAML 2.0 or OIDC. Per-IdP walkthroughs:
 
+- **[STATUS.md](./STATUS.md) — build status & how to finish/test (start here if returning)**
+- [Production runbook (standalone Jackson)](./service-backend.md)
 - [Okta](./okta.md)
 - [Microsoft Entra ID (Azure AD)](./entra.md)
 - [Google Workspace](./google-workspace.md)
