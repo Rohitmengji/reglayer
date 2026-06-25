@@ -1,0 +1,35 @@
+# Standalone BoxyHQ Jackson — the PRODUCTION SSO backend for RegLayer.
+#
+# Why: @boxyhq/saml-jackson is a devDependency (its tree carries high-severity
+# vulns we won't ship), so production runs Jackson as its own container and the
+# app talks to it over HTTPS via SSO_BACKEND=service. See
+# docs/sso/service-backend.md for the full runbook.
+#
+# Pin `image` to a specific boxyhq/jackson tag in production (latest shown for
+# clarity). The REST surface RegLayer uses (/api/oauth/*, /api/v1/sso with an
+# `Authorization: Api-Key` header) is stable across recent versions.
+services:
+  jackson:
+    image: boxyhq/jackson:latest
+    restart: unless-stopped
+    ports:
+      - "5225:5225"
+    environment:
+      # --- storage (its own DB, or a dedicated schema in your Postgres) ---
+      DB_ENGINE: sql
+      DB_TYPE: postgres
+      DB_URL: ${JACKSON_DB_URL}
+      # --- identity of this Jackson ---
+      EXTERNAL_URL: ${JACKSON_EXTERNAL_URL}        # public https URL of THIS service
+      SAML_AUDIENCE: ${SAML_AUDIENCE:-https://saml.reglayer.dev}  # MUST match the app's SP Entity ID
+      # --- management API auth (RegLayer sends `Api-Key <key>`) ---
+      JACKSON_API_KEYS: ${JACKSON_API_KEY}
+      # --- Jackson's own admin UI (optional; lock down or omit in prod) ---
+      NEXTAUTH_URL: ${JACKSON_EXTERNAL_URL}
+      NEXTAUTH_SECRET: ${JACKSON_NEXTAUTH_SECRET}
+      NEXTAUTH_ADMIN_CREDENTIALS: ${JACKSON_ADMIN_CREDENTIALS}    # email:password
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5225/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
