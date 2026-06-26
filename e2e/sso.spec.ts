@@ -58,8 +58,9 @@ test.describe("Enterprise SSO — mocksaml SAML round-trip (dev)", () => {
     await page.getByRole("button", { name: /continue with sso/i }).click();
 
     // 2. Server resolves the verified domain → Jackson builds a signed
-    //    SAMLRequest → browser is redirected to the IdP.
-    await page.waitForURL(/mocksaml\.com/, { timeout: 20000 });
+    //    SAMLRequest → browser is redirected to the IdP. Anchor the host so the
+    //    match can't be satisfied by an arbitrary host appearing as a substring.
+    await page.waitForURL(/^https:\/\/mocksaml\.com\//, { timeout: 20000 });
 
     // 3. mocksaml's canned IdP. Align the asserted identity with our verified
     //    domain where the form allows it, then submit to POST the assertion back.
