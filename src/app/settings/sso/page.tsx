@@ -33,7 +33,7 @@ function SsoSettingsInner() {
   const { t } = useI18n();
   const [connections, setConnections] = useState<SsoConnectionView[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<"none" | "forbidden" | "error">("none");
+  const [loadError, setLoadError] = useState<"none" | "forbidden" | "error" | "not_provisioned">("none");
   const [reloadKey, setReloadKey] = useState(0);
   const reload = useCallback(() => {
     setLoading(true);
@@ -56,6 +56,7 @@ function SsoSettingsInner() {
     fetch("/api/sso/connections")
       .then((res) => {
         if (res.status === 403) throw new Error("forbidden");
+        if (res.status === 503) throw new Error("not_provisioned");
         if (!res.ok) throw new Error("error");
         return res.json();
       })
@@ -65,7 +66,11 @@ function SsoSettingsInner() {
         setLoadError("none");
       })
       .catch((e) => {
-        if (!cancelled) setLoadError(e.message === "forbidden" ? "forbidden" : "error");
+        if (!cancelled) {
+          setLoadError(
+            e.message === "forbidden" ? "forbidden" : e.message === "not_provisioned" ? "not_provisioned" : "error",
+          );
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -127,7 +132,7 @@ function SsoSettingsInner() {
             </h1>
             <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">{t("sso.subtitle")}</p>
           </div>
-          {loadError !== "forbidden" && !showAdd && (
+          {loadError !== "forbidden" && loadError !== "not_provisioned" && !showAdd && (
             <button
               onClick={() => setShowAdd(true)}
               className="flex items-center gap-2 rounded-lg bg-neutral-900 dark:bg-white px-4 py-2.5 text-sm font-medium text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors self-start sm:self-auto shrink-0"
@@ -137,7 +142,7 @@ function SsoSettingsInner() {
           )}
         </div>
 
-        {showAdd && loadError !== "forbidden" && (
+        {showAdd && loadError !== "forbidden" && loadError !== "not_provisioned" && (
           <Card>
             <CardHeader>
               <CardTitle className="text-base">{t("sso.newConnection")}</CardTitle>
@@ -271,6 +276,14 @@ function SsoSettingsInner() {
               <Lock className="mx-auto mb-3 h-10 w-10 text-neutral-300 dark:text-neutral-600" aria-hidden="true" />
               <p className="text-sm font-medium text-neutral-700 dark:text-neutral-200">{t("sso.adminsOnly")}</p>
               <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">{t("sso.adminsOnlyDesc")}</p>
+            </CardContent>
+          </Card>
+        ) : loadError === "not_provisioned" ? (
+          <Card>
+            <CardContent className="py-10 text-center">
+              <ShieldCheck className="mx-auto mb-3 h-10 w-10 text-neutral-300 dark:text-neutral-600" aria-hidden="true" />
+              <p className="text-sm font-medium text-neutral-700 dark:text-neutral-200">{t("sso.notProvisioned")}</p>
+              <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400 max-w-sm mx-auto">{t("sso.notProvisionedDesc")}</p>
             </CardContent>
           </Card>
         ) : loadError === "error" ? (

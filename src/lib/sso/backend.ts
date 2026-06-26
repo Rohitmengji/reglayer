@@ -58,6 +58,24 @@ export function ssoBackendMode(): SsoBackendMode {
   return process.env.SSO_BACKEND === "service" ? "service" : "embedded";
 }
 
+/**
+ * Whether getSsoBackend() can return a USABLE backend in this environment — i.e.
+ * whether SSO can function at all. A pure env check (no import side effects) so
+ * the admin UI/API can degrade to an honest "not provisioned" state instead of
+ * 502ing on first use when SSO isn't wired.
+ *
+ * - service mode: needs SSO_JACKSON_URL + SSO_JACKSON_API_KEY.
+ * - embedded mode: @boxyhq/saml-jackson is a devDependency, so it's present in
+ *   dev/test but ABSENT from a production bundle (npm ci --omit=dev) — so the
+ *   embedded engine can never load in prod, only locally.
+ */
+export function ssoBackendAvailable(): boolean {
+  if (ssoBackendMode() === "service") {
+    return !!(process.env.SSO_JACKSON_URL && process.env.SSO_JACKSON_API_KEY);
+  }
+  return process.env.NODE_ENV !== "production";
+}
+
 export async function getSsoBackend(): Promise<SsoBackend> {
   const mode = ssoBackendMode();
   if (mode === "embedded") {

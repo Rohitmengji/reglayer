@@ -2291,6 +2291,8 @@ export const pt = {
   "sso.adminsOnly": "Apenas proprietários e administradores",
   "sso.adminsOnlyDesc": "Você precisa da função Proprietário ou Administrador para gerenciar o SSO deste espaço de trabalho.",
   "sso.loadError": "Não foi possível carregar as conexões SSO",
+  "sso.notProvisioned": "O SSO ainda não está disponível",
+  "sso.notProvisionedDesc": "O início de sessão único está incluído no seu plano, mas ainda não foi aprovisionado para a sua conta. Contacte o suporte para o ativar.",
   "sso.emptyTitle": "Ainda não há conexões SSO",
   "sso.emptyDesc": "Adicione uma conexão para sua equipe entrar pelo seu provedor de identidade.",
   "sso.enable": "Ativar",

@@ -2291,6 +2291,8 @@ export const it = {
   "sso.adminsOnly": "Solo proprietari e amministratori",
   "sso.adminsOnlyDesc": "Devi avere il ruolo Proprietario o Amministratore per gestire l’SSO di questo workspace.",
   "sso.loadError": "Impossibile caricare le connessioni SSO",
+  "sso.notProvisioned": "L’SSO non è ancora disponibile",
+  "sso.notProvisionedDesc": "Il single sign-on è incluso nel tuo piano ma non è ancora stato provisionato per il tuo account. Contatta il supporto per abilitarlo.",
   "sso.emptyTitle": "Ancora nessuna connessione SSO",
   "sso.emptyDesc": "Aggiungi una connessione per consentire al tuo team di accedere tramite il tuo provider di identità.",
   "sso.enable": "Attiva",
