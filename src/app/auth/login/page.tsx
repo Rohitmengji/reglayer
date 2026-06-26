@@ -4,21 +4,28 @@
  * RegLayer — Login Page
  *
  * WHY: Authentication gateway. Users must sign in to use the platform.
- * WHAT: Google OAuth button + email/password form. Links to request-access for new users.
- * HOW: Uses next-auth signIn() for both providers. Redirects to /dashboard on success.
+ * WHAT: Email/password + Google OAuth + an Enterprise SSO entry point. The SSO
+ *       flow is a focused two-step: click "Continue with SSO" → enter your work
+ *       email → we resolve your org's verified domain and redirect to its IdP.
+ * HOW: next-auth signIn() for every provider. Discovery returns a bare boolean
+ *      (non-revealing, review #10/#14); the tenant is resolved server-side in the
+ *      authorize bridge, never supplied by the client.
  */
 
 import { signIn } from "next-auth/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
+import { Loader2, ArrowLeft, Lock } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 
+type Mode = "password" | "sso";
+
 export default function LoginPage() {
+  const [mode, setMode] = useState<Mode>("password");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -27,11 +34,29 @@ export default function LoginPage() {
   const router = useRouter();
   const { t } = useI18n();
 
-  // Enterprise SSO: only offered when the email's domain is a VERIFIED, active
-  // SSO domain (server decides — discovery returns a bare boolean, review #10/#14).
-  async function handleSso() {
+  // Move focus to the SSO email field when the step opens (id-based so we don't
+  // depend on the Input component forwarding a ref, and avoids the autoFocus lint).
+  useEffect(() => {
+    if (mode === "sso") document.getElementById("sso-email")?.focus();
+  }, [mode]);
+
+  function openSso() {
     setError(null);
-    if (!email) {
+    setMode("sso");
+  }
+
+  function backToPassword() {
+    setError(null);
+    setSsoLoading(false);
+    setMode("password");
+  }
+
+  // Step 2 of the SSO flow: resolve the email's domain → redirect to the IdP.
+  async function handleSso(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    const work = email.trim();
+    if (!work) {
       setError(t("login.ssoEmailRequired"));
       return;
     }
@@ -40,14 +65,15 @@ export default function LoginPage() {
       const res = await fetch("/api/auth/sso/discovery", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: work }),
       });
       const data = (await res.json()) as { available?: boolean };
       if (data.available) {
         // login_hint is the only client-supplied input; the tenant is resolved
-        // server-side in the authorize bridge.
-        await signIn("boxyhq-saml", { callbackUrl: "/dashboard" }, { login_hint: email });
+        // server-side in the authorize bridge. This navigates away (redirect).
+        await signIn("boxyhq-saml", { callbackUrl: "/dashboard" }, { login_hint: work });
       } else {
+        // Non-revealing miss: don't dead-end — let them fix the email or go back.
         setError(t("login.ssoNotAvailable"));
         setSsoLoading(false);
       }
@@ -96,105 +122,128 @@ export default function LoginPage() {
             </svg>
           </div>
           <CardTitle className="text-xl">{t("login.title")}</CardTitle>
-          <CardDescription>
-            {t("login.subtitle")}
-          </CardDescription>
+          <CardDescription>{t("login.subtitle")}</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <label htmlFor="email" className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                {t("login.email")}
-              </label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="admin@reglayer.dev"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label htmlFor="password" className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                  {t("login.password")}
-                </label>
-                <Link href="/auth/forgot-password" className="text-xs text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300">
-                  Forgot password?
-                </Link>
+          {mode === "sso" ? (
+            /* ── Focused SSO step ─────────────────────────────── */
+            <div className="space-y-5">
+              <button
+                type="button"
+                onClick={backToPassword}
+                className="inline-flex items-center gap-1.5 text-sm text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200 transition-colors"
+              >
+                <ArrowLeft className="h-4 w-4" aria-hidden="true" /> {t("login.ssoBack")}
+              </button>
+
+              <div className="text-center">
+                <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-neutral-100 dark:bg-neutral-800">
+                  <Lock className="h-5 w-5 text-neutral-700 dark:text-neutral-200" aria-hidden="true" />
+                </div>
+                <h2 className="text-base font-semibold text-neutral-900 dark:text-white">{t("login.ssoStepTitle")}</h2>
+                <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">{t("login.ssoStepSubtitle")}</p>
               </div>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
+
+              <form onSubmit={handleSso} className="space-y-4">
+                <div className="space-y-2">
+                  <label htmlFor="sso-email" className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                    {t("login.ssoEmailLabel")}
+                  </label>
+                  <Input
+                    id="sso-email"
+                    type="email"
+                    placeholder="you@yourcompany.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
+                </div>
+                {error && (
+                  <p className="text-sm text-red-600" role="alert" aria-live="polite">{error}</p>
+                )}
+                <Button type="submit" className="w-full" disabled={ssoLoading}>
+                  {ssoLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  {ssoLoading ? t("login.ssoRedirecting") : t("login.ssoContinue")}
+                </Button>
+              </form>
             </div>
-            {error && (
-              <p className="text-sm text-red-600">{error}</p>
-            )}
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : null}
-              {t("login.signIn")}
-            </Button>
-          </form>
+          ) : (
+            /* ── Default: email/password + Google + SSO entry ─── */
+            <>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <label htmlFor="email" className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                    {t("login.email")}
+                  </label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="admin@reglayer.dev"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label htmlFor="password" className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                      {t("login.password")}
+                    </label>
+                    <Link href="/auth/forgot-password" className="text-xs text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300">
+                      Forgot password?
+                    </Link>
+                  </div>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                </div>
+                {error && <p className="text-sm text-red-600" role="alert" aria-live="polite">{error}</p>}
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  {t("login.signIn")}
+                </Button>
+              </form>
 
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-neutral-200 dark:border-neutral-700" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-white dark:bg-neutral-900 px-2 text-neutral-500 dark:text-neutral-400">{t("login.orContinueWith")}</span>
-            </div>
-          </div>
+              <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-neutral-200 dark:border-neutral-700" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-white dark:bg-neutral-900 px-2 text-neutral-500 dark:text-neutral-400">{t("login.orContinueWith")}</span>
+                </div>
+              </div>
 
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
-          >
-            <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
-              <path
-                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                fill="#4285F4"
-              />
-              <path
-                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                fill="#34A853"
-              />
-              <path
-                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                fill="#FBBC05"
-              />
-              <path
-                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                fill="#EA4335"
-              />
-            </svg>
-            {t("login.continueGoogle")}
-          </Button>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
+              >
+                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
+                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+                </svg>
+                {t("login.continueGoogle")}
+              </Button>
 
-          <Button
-            type="button"
-            variant="outline"
-            className="mt-3 w-full"
-            onClick={handleSso}
-            disabled={ssoLoading}
-          >
-            {ssoLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            {t("login.continueSSO")}
-          </Button>
+              <Button type="button" variant="outline" className="mt-3 w-full" onClick={openSso}>
+                <Lock className="mr-2 h-4 w-4" aria-hidden="true" />
+                {t("login.continueSSO")}
+              </Button>
 
-          <p className="mt-6 text-center text-sm text-neutral-500 dark:text-neutral-400">
-            Don&apos;t have an account?{" "}
-            <Link href="/auth/register" className="font-medium text-neutral-900 dark:text-white hover:underline">
-              Sign up free
-            </Link>
-          </p>
+              <p className="mt-6 text-center text-sm text-neutral-500 dark:text-neutral-400">
+                Don&apos;t have an account?{" "}
+                <Link href="/auth/register" className="font-medium text-neutral-900 dark:text-white hover:underline">
+                  Sign up free
+                </Link>
+              </p>
+            </>
+          )}
         </CardContent>
       </Card>
     </div>

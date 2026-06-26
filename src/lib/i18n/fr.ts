@@ -1083,6 +1083,12 @@ export const fr = {
   "login.ssoNotAvailable": "L’authentification unique n’est pas configurée pour ce domaine de messagerie.",
   "login.ssoError": "Impossible de démarrer SSO. Veuillez réessayer.",
   "login.ssoRequired": "Votre organisation exige l’authentification unique — utilisez « Continuer avec SSO » ci-dessous.",
+  "login.ssoStepTitle": "Authentification unique",
+  "login.ssoStepSubtitle": "Saisissez votre e-mail professionnel et nous vous redirigerons vers la connexion de votre organisation.",
+  "login.ssoEmailLabel": "E-mail professionnel",
+  "login.ssoContinue": "Continuer",
+  "login.ssoBack": "Retour aux options de connexion",
+  "login.ssoRedirecting": "Redirection…",
 
   // Request Access
   "requestAccess.title": "Bienvenue sur RegLayer",
