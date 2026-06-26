@@ -7,6 +7,33 @@ high-severity vulnerabilities we refuse to ship (`npm audit --omit=dev
 app talks to it over HTTPS — `SSO_BACKEND=service`. The app code is identical
 either way; only the backend behind the `SsoBackend` seam changes.
 
+## 0. Quickstart for THIS stack (Vercel app + Neon DB)
+
+The app runs on **Vercel (serverless)**, which **cannot host the long-running
+Jackson container** — so Jackson has to live somewhere else. Pick one:
+
+- **Fastest — [BoxyHQ Cloud](https://boxyhq.com) (hosted Jackson).** No container
+  to run: sign up, create a tenant/product, grab the base URL + an API key, and
+  skip to step 2. Recommended unless you want to self-host.
+- **Self-host the container** on a platform that runs Docker (Render / Railway /
+  Fly.io / a small VPS) using `deploy/jackson/docker-compose.yml`. Not Vercel.
+
+**Give Jackson its OWN database** — a separate **Neon database or branch**, *not*
+the app's `neondb`. (Your dev and prod already share one Neon DB; don't also pile
+Jackson's `jackson_*` tables onto it.) Point `JACKSON_DB_URL` there.
+
+End to end:
+1. Stand up Jackson (hosted or container) at an HTTPS URL; set its
+   `SAML_AUDIENCE` to exactly `https://saml.reglayer.dev` (the SP Entity ID).
+2. In Vercel → Project → Settings → Environment Variables (Production), add
+   `SSO_ENABLED=true`, `SSO_BACKEND=service`, `SSO_JACKSON_URL=<jackson https url>`,
+   `SSO_JACKSON_API_KEY=<jackson api key>`. Redeploy.
+3. `npx prisma db push` against the **app's** Neon DB (additive; one time).
+4. Smoke-test (step 4 below). Expect `✅ PASS`.
+5. Configure a connection in `/settings/sso` (per-IdP guides linked below).
+
+Detailed reference for each step follows.
+
 ## 1. Deploy Jackson
 
 Manifest: [`deploy/jackson/docker-compose.yml`](../../deploy/jackson/docker-compose.yml),
