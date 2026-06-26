@@ -14,6 +14,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { FeatureGate } from "@/components/ui/feature-gate";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ModernSelect } from "@/components/ui/modern-select";
+import { useI18n } from "@/components/i18n-provider";
 import { ShieldCheck, Plus, AlertTriangle, RotateCcw, Lock } from "lucide-react";
 import { ConnectionCard } from "./connection-card";
 import type { SsoConnectionView } from "./types";
@@ -29,6 +30,7 @@ const DEFAULT_ROLE_OPTIONS = [
 ];
 
 function SsoSettingsInner() {
+  const { t } = useI18n();
   const [connections, setConnections] = useState<SsoConnectionView[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<"none" | "forbidden" | "error">("none");
@@ -85,7 +87,7 @@ function SsoSettingsInner() {
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     setCreating(true);
-    const toastId = toast.loading("Creating connection…");
+    const toastId = toast.loading(t("sso.toastCreating"));
     try {
       const body: Record<string, unknown> = { label: label.trim(), protocol, defaultRole };
       if (protocol === "SAML") {
@@ -103,10 +105,10 @@ function SsoSettingsInner() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        toast.error(data.error || "Failed to create connection", { id: toastId });
+        toast.error(data.error || t("sso.toastCreateFailed"), { id: toastId });
         return;
       }
-      toast.success("Connection created", { id: toastId });
+      toast.success(t("sso.toastCreated"), { id: toastId });
       resetForm();
       setShowAdd(false);
       reload();
@@ -121,18 +123,16 @@ function SsoSettingsInner() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="flex items-center gap-2 text-2xl font-bold text-neutral-900 dark:text-white">
-              <ShieldCheck className="h-6 w-6" aria-hidden="true" /> Single Sign-On
+              <ShieldCheck className="h-6 w-6" aria-hidden="true" /> {t("sso.title")}
             </h1>
-            <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-              Connect your identity provider (Okta, Entra, Google Workspace…) so your team signs in with SAML or OIDC.
-            </p>
+            <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">{t("sso.subtitle")}</p>
           </div>
           {loadError !== "forbidden" && !showAdd && (
             <button
               onClick={() => setShowAdd(true)}
               className="flex items-center gap-2 rounded-lg bg-neutral-900 dark:bg-white px-4 py-2.5 text-sm font-medium text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors self-start sm:self-auto shrink-0"
             >
-              <Plus className="h-4 w-4" aria-hidden="true" /> Add connection
+              <Plus className="h-4 w-4" aria-hidden="true" /> {t("sso.addConnection")}
             </button>
           )}
         </div>
@@ -140,18 +140,18 @@ function SsoSettingsInner() {
         {showAdd && loadError !== "forbidden" && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">New SSO connection</CardTitle>
+              <CardTitle className="text-base">{t("sso.newConnection")}</CardTitle>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleCreate} className="space-y-4">
                 <div className="space-y-3">
                   <div>
-                    <label htmlFor="sso-label" className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1">Connection name</label>
+                    <label htmlFor="sso-label" className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1">{t("sso.connectionName")}</label>
                     <input
                       id="sso-label"
                       type="text"
                       required
-                      placeholder="e.g. Acme Okta"
+                      placeholder={t("sso.connectionNamePlaceholder")}
                       value={label}
                       onChange={(e) => setLabel(e.target.value)}
                       className="w-full rounded-lg border border-neutral-200 dark:border-neutral-700 px-3 py-2 text-sm dark:bg-neutral-800 dark:text-neutral-100"
@@ -159,11 +159,11 @@ function SsoSettingsInner() {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1">Protocol</label>
+                      <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1">{t("sso.protocol")}</label>
                       <ModernSelect options={PROTOCOL_OPTIONS} value={protocol} onChange={setProtocol} />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1">Default role</label>
+                      <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1">{t("sso.defaultRole")}</label>
                       <ModernSelect options={DEFAULT_ROLE_OPTIONS} value={defaultRole} onChange={setDefaultRole} />
                     </div>
                   </div>
@@ -172,10 +172,10 @@ function SsoSettingsInner() {
                 {protocol === "SAML" ? (
                   <div className="space-y-3">
                     <div>
-                      <label htmlFor="sso-metadata" className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1">IdP metadata XML</label>
+                      <label htmlFor="sso-metadata" className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1">{t("sso.metadataXml")}</label>
                       <textarea
                         id="sso-metadata"
-                        placeholder="Paste IdP SAML metadata XML…"
+                        placeholder={t("sso.metadataXmlPlaceholder")}
                         value={rawMetadata}
                         onChange={(e) => setRawMetadata(e.target.value)}
                         rows={4}
@@ -184,7 +184,7 @@ function SsoSettingsInner() {
                     </div>
                     <div>
                       <label htmlFor="sso-metadata-url" className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-                        Or provide a metadata URL
+                        {t("sso.orMetadataUrl")}
                       </label>
                       <input
                         id="sso-metadata-url"
@@ -199,7 +199,7 @@ function SsoSettingsInner() {
                 ) : (
                   <div className="space-y-3">
                     <div>
-                      <label htmlFor="sso-discovery" className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1">OIDC discovery URL</label>
+                      <label htmlFor="sso-discovery" className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1">{t("sso.oidcDiscoveryUrl")}</label>
                       <input
                         id="sso-discovery"
                         type="url"
@@ -212,24 +212,24 @@ function SsoSettingsInner() {
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label htmlFor="sso-client-id" className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1">Client ID</label>
+                        <label htmlFor="sso-client-id" className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1">{t("sso.clientId")}</label>
                         <input
                           id="sso-client-id"
                           type="text"
                           required
-                          placeholder="Client ID"
+                          placeholder={t("sso.clientId")}
                           value={oidcClientId}
                           onChange={(e) => setOidcClientId(e.target.value)}
                           className="w-full rounded-lg border border-neutral-200 dark:border-neutral-700 px-3 py-2 text-sm dark:bg-neutral-800 dark:text-neutral-100"
                         />
                       </div>
                       <div>
-                        <label htmlFor="sso-client-secret" className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1">Client secret</label>
+                        <label htmlFor="sso-client-secret" className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1">{t("sso.clientSecret")}</label>
                         <input
                           id="sso-client-secret"
                           type="password"
                           required
-                          placeholder="Client secret"
+                          placeholder={t("sso.clientSecret")}
                           value={oidcClientSecret}
                           onChange={(e) => setOidcClientSecret(e.target.value)}
                           className="w-full rounded-lg border border-neutral-200 dark:border-neutral-700 px-3 py-2 text-sm dark:bg-neutral-800 dark:text-neutral-100"
@@ -245,19 +245,17 @@ function SsoSettingsInner() {
                     disabled={creating}
                     className="rounded-lg bg-neutral-900 dark:bg-white px-4 py-2.5 text-sm font-medium text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 disabled:opacity-50 transition-colors"
                   >
-                    {creating ? "Creating…" : "Create connection"}
+                    {creating ? t("sso.creating") : t("sso.createConnection")}
                   </button>
                   <button
                     type="button"
                     onClick={() => { setShowAdd(false); resetForm(); }}
                     className="rounded-lg border border-neutral-200 dark:border-neutral-700 px-4 py-2.5 text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
                   >
-                    Cancel
+                    {t("sso.cancel")}
                   </button>
                 </div>
-                <p className="text-xs text-neutral-400">
-                  After creating, add &amp; verify a domain and raise the rollout stage to start routing logins.
-                </p>
+                <p className="text-xs text-neutral-400">{t("sso.afterCreateHint")}</p>
               </form>
             </CardContent>
           </Card>
@@ -265,26 +263,26 @@ function SsoSettingsInner() {
 
         {loading ? (
           <Card>
-            <CardContent className="py-10 text-center text-sm text-neutral-500">Loading connections…</CardContent>
+            <CardContent className="py-10 text-center text-sm text-neutral-500">{t("sso.loadingConnections")}</CardContent>
           </Card>
         ) : loadError === "forbidden" ? (
           <Card>
             <CardContent className="py-10 text-center">
               <Lock className="mx-auto mb-3 h-10 w-10 text-neutral-300 dark:text-neutral-600" aria-hidden="true" />
-              <p className="text-sm font-medium text-neutral-700 dark:text-neutral-200">Owners and admins only</p>
-              <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">You need the Owner or Admin role to manage SSO for this workspace.</p>
+              <p className="text-sm font-medium text-neutral-700 dark:text-neutral-200">{t("sso.adminsOnly")}</p>
+              <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">{t("sso.adminsOnlyDesc")}</p>
             </CardContent>
           </Card>
         ) : loadError === "error" ? (
           <Card>
             <CardContent className="py-10 text-center">
               <AlertTriangle className="mx-auto mb-3 h-10 w-10 text-amber-500" aria-hidden="true" />
-              <p className="text-sm font-medium text-neutral-700 dark:text-neutral-200">Couldn&apos;t load SSO connections</p>
+              <p className="text-sm font-medium text-neutral-700 dark:text-neutral-200">{t("sso.loadError")}</p>
               <button
                 onClick={reload}
                 className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
               >
-                <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" /> Retry
+                <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" /> {t("common.retry")}
               </button>
             </CardContent>
           </Card>
@@ -292,15 +290,13 @@ function SsoSettingsInner() {
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-16 px-6">
               <ShieldCheck className="mb-4 h-12 w-12 text-neutral-300 dark:text-neutral-600" aria-hidden="true" />
-              <p className="text-base font-semibold text-neutral-800 dark:text-neutral-200">No SSO connections yet</p>
-              <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400 text-center max-w-xs">
-                Add a connection to let your team sign in through your identity provider.
-              </p>
+              <p className="text-base font-semibold text-neutral-800 dark:text-neutral-200">{t("sso.emptyTitle")}</p>
+              <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400 text-center max-w-xs">{t("sso.emptyDesc")}</p>
               <button
                 onClick={() => setShowAdd(true)}
                 className="mt-6 inline-flex items-center gap-2 rounded-lg bg-neutral-900 dark:bg-white px-5 py-2.5 text-sm font-medium text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors"
               >
-                <Plus className="h-4 w-4" aria-hidden="true" /> Add your first connection
+                <Plus className="h-4 w-4" aria-hidden="true" /> {t("sso.addFirstConnection")}
               </button>
             </CardContent>
           </Card>

@@ -14,6 +14,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ModernSelect } from "@/components/ui/modern-select";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useI18n } from "@/components/i18n-provider";
 import { ShieldCheck, Globe, CheckCircle2, Clock, Trash2, Users2, ChevronDown, ChevronRight } from "lucide-react";
 import { RoleMappingEditor } from "./role-mapping-editor";
 import type { RolloutStage, SsoConnectionView, SsoDomainView } from "./types";
@@ -38,6 +39,7 @@ function rolloutBadge(stage: RolloutStage): "success" | "default" | "secondary" 
 }
 
 export function ConnectionCard({ connection, onDeleted }: { connection: SsoConnectionView; onDeleted: () => void }) {
+  const { t } = useI18n();
   const [domains, setDomains] = useState<SsoDomainView[]>(connection.domains);
   const [rolloutStage, setRolloutStage] = useState<RolloutStage>(connection.rolloutStage);
   const [enforcement, setEnforcement] = useState<string>(connection.enforcementPolicy === "OPTIONAL" ? "OPTIONAL" : "ENFORCED");
@@ -66,21 +68,21 @@ export function ConnectionCard({ connection, onDeleted }: { connection: SsoConne
       return true;
     }
     const d = await res.json().catch(() => ({}));
-    toast.error(d.error || "Update failed", { id: toastId });
+    toast.error(d.error || t("sso.toastUpdateFailed"), { id: toastId });
     return false;
   }
 
   async function changeRollout(stage: string) {
-    if (await patch({ rolloutStage: stage }, "Updating rollout…", "Rollout updated")) setRolloutStage(stage as RolloutStage);
+    if (await patch({ rolloutStage: stage }, t("sso.toastRollout"), t("sso.toastRolloutDone"))) setRolloutStage(stage as RolloutStage);
   }
   async function changeEnforcement(policy: string) {
-    if (await patch({ enforcementPolicy: policy }, "Updating enforcement…", policy === "OPTIONAL" ? "SSO set to optional" : "SSO set to required")) {
+    if (await patch({ enforcementPolicy: policy }, t("sso.toastEnforcement"), policy === "OPTIONAL" ? t("sso.toastSetOptional") : t("sso.toastSetRequired"))) {
       setEnforcement(policy);
     }
   }
   async function toggleDisabled() {
     const next = !disabled;
-    if (await patch({ disabled: next }, next ? "Disabling…" : "Enabling…", next ? "Connection disabled" : "Connection enabled")) setDisabled(next);
+    if (await patch({ disabled: next }, next ? t("sso.toastDisabling") : t("sso.toastEnabling"), next ? t("sso.toastDisabled") : t("sso.toastEnabled"))) setDisabled(next);
   }
 
   async function addDomain(e: React.FormEvent) {
@@ -88,7 +90,7 @@ export function ConnectionCard({ connection, onDeleted }: { connection: SsoConne
     const domain = newDomain.trim();
     if (!domain) return;
     setAddingDomain(true);
-    const toastId = toast.loading("Adding domain…");
+    const toastId = toast.loading(t("sso.toastAddingDomain"));
     try {
       const res = await fetch(`/api/sso/connections/${id}/domains`, {
         method: "POST",
@@ -97,10 +99,10 @@ export function ConnectionCard({ connection, onDeleted }: { connection: SsoConne
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        toast.error(data.error ? `${data.error}${data.reason ? ` (${data.reason})` : ""}` : "Failed to add domain", { id: toastId });
+        toast.error(data.error ? `${data.error}${data.reason ? ` (${data.reason})` : ""}` : t("sso.toastAddDomainFailed"), { id: toastId });
         return;
       }
-      toast.success("Domain added — publish the TXT record, then verify", { id: toastId });
+      toast.success(t("sso.toastDomainAdded"), { id: toastId });
       setDomains((ds) => (ds.some((d) => d.id === data.domain.id) ? ds : [...ds, { ...data.domain, isPrimary: false }]));
       setTxtHint({ domain: data.domain.domain, txtRecord: data.txtRecord });
       setNewDomain("");
@@ -111,20 +113,20 @@ export function ConnectionCard({ connection, onDeleted }: { connection: SsoConne
 
   async function verifyDomain(domainId: string) {
     setVerifying(domainId);
-    const toastId = toast.loading("Checking DNS TXT record…");
+    const toastId = toast.loading(t("sso.toastCheckingDns"));
     try {
       const res = await fetch(`/api/sso/domains/${domainId}/verify`, { method: "POST" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        toast.error(data.error || "Verification error", { id: toastId });
+        toast.error(data.error || t("sso.toastVerifyError"), { id: toastId });
         return;
       }
       if (data.verified) {
         setDomains((ds) => ds.map((d) => (d.id === domainId ? { ...d, verificationStatus: "VERIFIED" } : d)));
         setTxtHint(null);
-        toast.success("Domain verified", { id: toastId });
+        toast.success(t("sso.toastDomainVerified"), { id: toastId });
       } else {
-        toast.error("TXT record not found yet — publish it and retry", { id: toastId });
+        toast.error(t("sso.toastTxtNotFound"), { id: toastId });
         if (data.expectedTxtRecord) {
           setTxtHint({ domain: domains.find((d) => d.id === domainId)?.domain ?? "", txtRecord: data.expectedTxtRecord });
         }
@@ -135,14 +137,14 @@ export function ConnectionCard({ connection, onDeleted }: { connection: SsoConne
   }
 
   async function doDelete() {
-    const toastId = toast.loading("Deleting connection…");
+    const toastId = toast.loading(t("sso.toastDeleting"));
     const res = await fetch(`/api/sso/connections/${id}`, { method: "DELETE" });
     if (res.ok) {
-      toast.success("Connection deleted", { id: toastId });
+      toast.success(t("sso.toastDeleted"), { id: toastId });
       onDeleted();
     } else {
       const d = await res.json().catch(() => ({}));
-      toast.error(d.error || "Failed to delete", { id: toastId });
+      toast.error(d.error || t("sso.toastDeleteFailed"), { id: toastId });
     }
     setDeleteOpen(false);
   }
@@ -164,11 +166,11 @@ export function ConnectionCard({ connection, onDeleted }: { connection: SsoConne
                 <Badge variant="outline">{connection.protocol}</Badge>
                 <Badge variant={rolloutBadge(rolloutStage)}>{rolloutStage}</Badge>
                 <Badge variant={connection.healthStatus === "ACTIVE" ? "success" : "serious"}>{connection.healthStatus}</Badge>
-                {disabled && <Badge variant="destructive">Disabled</Badge>}
+                {disabled && <Badge variant="destructive">{t("sso.disabledBadge")}</Badge>}
               </div>
               {certExpiry && (
                 <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-                  IdP certificate expires {certExpiry.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}
+                  {t("sso.certExpires", { date: certExpiry.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) })}
                 </p>
               )}
             </div>
@@ -181,13 +183,13 @@ export function ConnectionCard({ connection, onDeleted }: { connection: SsoConne
               onClick={toggleDisabled}
               className="rounded-lg border border-neutral-200 dark:border-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
             >
-              {disabled ? "Enable" : "Disable"}
+              {disabled ? t("sso.enable") : t("sso.disable")}
             </button>
             <button
               type="button"
               onClick={() => setDeleteOpen(true)}
               className="rounded-md p-2 text-neutral-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
-              title="Delete connection"
+              title={t("sso.deleteConnectionTooltip")}
             >
               <Trash2 className="h-4 w-4" />
             </button>
@@ -196,17 +198,17 @@ export function ConnectionCard({ connection, onDeleted }: { connection: SsoConne
 
         {!hasVerifiedDomain && (
           <p className="rounded-lg bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
-            No verified domain yet — this connection can&apos;t route any logins until a domain is verified and the rollout stage is above Disabled.
+            {t("sso.noVerifiedDomain")}
           </p>
         )}
 
         {/* Domains */}
         <div className="space-y-2">
           <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
-            <Globe className="h-3.5 w-3.5" /> Domains
+            <Globe className="h-3.5 w-3.5" /> {t("sso.domains")}
           </p>
           {domains.length === 0 ? (
-            <p className="text-xs text-neutral-400">No domains added.</p>
+            <p className="text-xs text-neutral-400">{t("sso.noDomains")}</p>
           ) : (
             <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
               {domains.map((d) => (
@@ -215,12 +217,12 @@ export function ConnectionCard({ connection, onDeleted }: { connection: SsoConne
                   <div className="flex items-center gap-2 shrink-0">
                     {d.verificationStatus === "VERIFIED" ? (
                       <Badge variant="success">
-                        <CheckCircle2 className="mr-1 h-3 w-3" /> Verified
+                        <CheckCircle2 className="mr-1 h-3 w-3" /> {t("sso.verified")}
                       </Badge>
                     ) : (
                       <>
                         <Badge variant="outline">
-                          <Clock className="mr-1 h-3 w-3" /> Pending
+                          <Clock className="mr-1 h-3 w-3" /> {t("sso.pending")}
                         </Badge>
                         <button
                           type="button"
@@ -228,7 +230,7 @@ export function ConnectionCard({ connection, onDeleted }: { connection: SsoConne
                           disabled={verifying === d.id}
                           className="rounded-md border border-neutral-200 dark:border-neutral-700 px-2 py-1 text-xs font-medium text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-50 transition-colors"
                         >
-                          {verifying === d.id ? "Checking…" : "Verify"}
+                          {verifying === d.id ? t("sso.checking") : t("sso.verify")}
                         </button>
                       </>
                     )}
@@ -240,9 +242,7 @@ export function ConnectionCard({ connection, onDeleted }: { connection: SsoConne
 
           {txtHint && (
             <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900 px-3 py-2">
-              <p className="text-xs text-neutral-600 dark:text-neutral-300">
-                Add this DNS <span className="font-semibold">TXT</span> record on <span className="font-mono">{txtHint.domain}</span>, then click Verify:
-              </p>
+              <p className="text-xs text-neutral-600 dark:text-neutral-300">{t("sso.publishTxt", { domain: txtHint.domain })}</p>
               <code className="mt-1 block break-all rounded bg-neutral-900 px-2 py-1 text-xs text-neutral-100 dark:bg-black">{txtHint.txtRecord}</code>
             </div>
           )}
@@ -250,7 +250,7 @@ export function ConnectionCard({ connection, onDeleted }: { connection: SsoConne
           <form onSubmit={addDomain} className="flex gap-2 pt-1">
             <input
               type="text"
-              placeholder="acme.com"
+              placeholder={t("sso.domainPlaceholder")}
               value={newDomain}
               onChange={(e) => setNewDomain(e.target.value)}
               className="flex-1 rounded-lg border border-neutral-200 dark:border-neutral-700 px-3 py-1.5 text-sm dark:bg-neutral-800 dark:text-neutral-100"
@@ -260,7 +260,7 @@ export function ConnectionCard({ connection, onDeleted }: { connection: SsoConne
               disabled={addingDomain}
               className="rounded-lg border border-neutral-200 dark:border-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-50 transition-colors"
             >
-              {addingDomain ? "Adding…" : "Add domain"}
+              {addingDomain ? t("sso.adding") : t("sso.addDomain")}
             </button>
           </form>
         </div>
@@ -273,7 +273,7 @@ export function ConnectionCard({ connection, onDeleted }: { connection: SsoConne
             className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
           >
             {showMappings ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-            <Users2 className="h-3.5 w-3.5" /> Role mappings
+            <Users2 className="h-3.5 w-3.5" /> {t("sso.roleMappings")}
           </button>
           {showMappings && (
             <div className="pt-2">
@@ -285,9 +285,9 @@ export function ConnectionCard({ connection, onDeleted }: { connection: SsoConne
 
       <ConfirmDialog
         open={deleteOpen}
-        title="Delete SSO connection"
-        description={`Delete "${connection.label}"? Its verified domains are released and it will stop routing logins. This cannot be undone.`}
-        confirmLabel="Delete"
+        title={t("sso.deleteDialogTitle")}
+        description={t("sso.deleteDialogDesc", { label: connection.label })}
+        confirmLabel={t("sso.delete")}
         variant="danger"
         onConfirm={doDelete}
         onCancel={() => setDeleteOpen(false)}
