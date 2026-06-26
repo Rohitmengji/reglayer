@@ -165,7 +165,8 @@ export const ENTERPRISE_FEATURES: EnterpriseFeature[] = [
     status: "coming-soon",
     category: "governance",
     icon: Lock,
-    evidence: "Only Credentials + Google OAuth today; SAML/OIDC not implemented — coming soon.",
+    evidence:
+      "Multi-tenant SAML/OIDC engine IS built + dev-verified (full mocksaml browser round-trip, e2e/sso.spec.ts). Kept coming-soon until a standalone Jackson SERVICE backend is provisioned for prod: the embedded @boxyhq engine is a devDependency (absent from the prod bundle) and SSO_BACKEND/SSO_JACKSON_URL/_API_KEY are unset, so getSsoBackend() can't run in prod. Flip to available only after the service backend is live + a real-IdP round-trip is verified. See docs/sso/service-backend.md.",
   },
   {
     id: "account-manager",

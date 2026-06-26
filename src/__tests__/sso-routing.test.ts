@@ -77,14 +77,24 @@ describe("resolveProvisionedRole (precedence)", () => {
   it("uses IdP group mapping over default", () => {
     expect(resolveProvisionedRole({ idpGroups: ["eng-admins"], roleMappings: mappings, defaultRole: "MEMBER" })).toBe("ADMIN");
   });
-  it("picks the highest-rank matched group", () => {
-    expect(resolveProvisionedRole({ idpGroups: ["eng-admins", "leads"], roleMappings: mappings, defaultRole: "VIEWER" })).toBe("OWNER");
+  it("picks the highest matched group but never mints OWNER (caps at ADMIN)", () => {
+    // leads→OWNER ranks highest, but SSO must never auto-provision OWNER.
+    expect(resolveProvisionedRole({ idpGroups: ["eng-admins", "leads"], roleMappings: mappings, defaultRole: "VIEWER" })).toBe("ADMIN");
+  });
+  it("never mints OWNER from a connection defaultRole (caps at ADMIN)", () => {
+    expect(resolveProvisionedRole({ defaultRole: "OWNER" })).toBe("ADMIN");
+  });
+  it("never mints OWNER from an invite role (caps at ADMIN)", () => {
+    expect(resolveProvisionedRole({ inviteRole: "OWNER", defaultRole: "VIEWER" })).toBe("ADMIN");
   });
   it("falls back to default when no mapping matches", () => {
     expect(resolveProvisionedRole({ idpGroups: ["unknown"], roleMappings: mappings, defaultRole: "MEMBER" })).toBe("MEMBER");
   });
   it("group mapping does not downgrade existing role", () => {
     expect(resolveProvisionedRole({ existingRole: "OWNER", idpGroups: ["eng-admins"], roleMappings: mappings, defaultRole: "MEMBER" })).toBe("OWNER");
+  });
+  it("preserves an EXISTING owner even when a rogue OWNER mapping matches (never-downgrade ≠ minting)", () => {
+    expect(resolveProvisionedRole({ existingRole: "OWNER", idpGroups: ["leads"], roleMappings: mappings, defaultRole: "MEMBER" })).toBe("OWNER");
   });
   it("matches groups case-insensitively (IdP casing drift must not drop to default)", () => {
     expect(resolveProvisionedRole({ idpGroups: ["ENG-Admins"], roleMappings: mappings, defaultRole: "MEMBER" })).toBe("ADMIN");

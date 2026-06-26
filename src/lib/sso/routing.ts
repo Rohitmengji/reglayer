@@ -110,11 +110,26 @@ export interface RolePrecedenceInput {
 }
 
 /**
+ * SSO must NEVER mint an owner. Ownership is granted only via explicit
+ * owner-transfer tooling — never an IdP group, a connection default, or an
+ * invite. The admin write endpoints already reject OWNER, but this executor is
+ * where the role is actually applied at sign-in, so the invariant is enforced
+ * here too (defense in depth: a row written outside the API — seed, migration,
+ * direct DB, or a future endpoint that forgets the cap — must still never
+ * escalate a login to OWNER). Preserving an EXISTING owner via never-downgrade
+ * is a separate concern and is intentionally NOT capped.
+ */
+const MAX_SSO_ROLE: WorkspaceRole = "ADMIN";
+const capSso = (r: WorkspaceRole): WorkspaceRole =>
+  ROLE_RANK[r] > ROLE_RANK[MAX_SSO_ROLE] ? MAX_SSO_ROLE : r;
+
+/**
  * Precedence: explicit invite > existing membership (never downgrade) > IdP-group
- * mapping > connection default. SSO never lowers a role a user already holds.
+ * mapping > connection default. SSO never lowers a role a user already holds, and
+ * never raises one to OWNER (see capSso).
  */
 export function resolveProvisionedRole(input: RolePrecedenceInput): WorkspaceRole {
-  if (input.inviteRole) return input.inviteRole;
+  if (input.inviteRole) return capSso(input.inviteRole);
 
   // Case-insensitive match: IdPs are inconsistent about group-name casing, and a
   // drift between the stored mapping and the asserted group must NOT silently
@@ -127,9 +142,11 @@ export function resolveProvisionedRole(input: RolePrecedenceInput): WorkspaceRol
     ? matched.reduce((a, b) => (ROLE_RANK[a] >= ROLE_RANK[b] ? a : b))
     : undefined;
 
-  const candidate = mapped ?? input.defaultRole;
+  // Cap the SSO-derived role at ADMIN before applying precedence — a rogue
+  // OWNER mapping/default must never reach a real membership.
+  const candidate = capSso(mapped ?? input.defaultRole);
   if (input.existingRole && ROLE_RANK[input.existingRole] >= ROLE_RANK[candidate]) {
-    return input.existingRole; // never downgrade
+    return input.existingRole; // never downgrade (preserves an existing OWNER)
   }
   return candidate;
 }
