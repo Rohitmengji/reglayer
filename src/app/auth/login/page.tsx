@@ -32,7 +32,7 @@ export default function LoginPage() {
   async function handleSso() {
     setError(null);
     if (!email) {
-      setError("Enter your work email to continue with SSO.");
+      setError(t("login.ssoEmailRequired"));
       return;
     }
     setSsoLoading(true);
@@ -48,11 +48,11 @@ export default function LoginPage() {
         // server-side in the authorize bridge.
         await signIn("boxyhq-saml", { callbackUrl: "/dashboard" }, { login_hint: email });
       } else {
-        setError("Single sign-on isn't set up for this email domain.");
+        setError(t("login.ssoNotAvailable"));
         setSsoLoading(false);
       }
     } catch {
-      setError("Couldn't start SSO. Please try again.");
+      setError(t("login.ssoError"));
       setSsoLoading(false);
     }
   }
@@ -76,7 +76,7 @@ export default function LoginPage() {
       // implying their password was wrong.
       setError(
         result.error === "AccessDenied"
-          ? 'Your organization requires single sign-on — use "Continue with SSO" below.'
+          ? t("login.ssoRequired")
           : t("login.invalidCredentials")
       );
     } else {
@@ -186,7 +186,7 @@ export default function LoginPage() {
             disabled={ssoLoading}
           >
             {ssoLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            Continue with SSO
+            {t("login.continueSSO")}
           </Button>
 
           <p className="mt-6 text-center text-sm text-neutral-500 dark:text-neutral-400">

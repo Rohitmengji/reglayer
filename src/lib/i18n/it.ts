@@ -1078,6 +1078,11 @@ export const it = {
   "login.signIn": "Accedi",
   "login.orContinueWith": "Oppure continua con",
   "login.continueGoogle": "Continua con Google",
+  "login.continueSSO": "Continua con SSO",
+  "login.ssoEmailRequired": "Inserisci la tua email aziendale per continuare con SSO.",
+  "login.ssoNotAvailable": "Il Single Sign-On non è configurato per questo dominio email.",
+  "login.ssoError": "Impossibile avviare SSO. Riprova.",
+  "login.ssoRequired": "La tua organizzazione richiede il Single Sign-On — usa «Continua con SSO» qui sotto.",
 
   // Request Access
   "requestAccess.title": "Benvenuto su RegLayer",

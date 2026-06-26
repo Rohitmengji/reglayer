@@ -1078,6 +1078,11 @@ export const pt = {
   "login.signIn": "Entrar",
   "login.orContinueWith": "Ou continuar com",
   "login.continueGoogle": "Continuar com Google",
+  "login.continueSSO": "Continuar com SSO",
+  "login.ssoEmailRequired": "Insira seu e-mail corporativo para continuar com SSO.",
+  "login.ssoNotAvailable": "O logon único não está configurado para este domínio de e-mail.",
+  "login.ssoError": "Não foi possível iniciar o SSO. Tente novamente.",
+  "login.ssoRequired": "Sua organização exige logon único — use «Continuar com SSO» abaixo.",
 
   // Request Access
   "requestAccess.title": "Bem-vindo ao RegLayer",
