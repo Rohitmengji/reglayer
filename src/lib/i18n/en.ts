@@ -1089,6 +1089,10 @@ export const en = {
   "login.ssoContinue": "Continue",
   "login.ssoBack": "Back to sign-in options",
   "login.ssoRedirecting": "Redirecting…",
+  "login.ssoAssertionFailed": "We couldn’t verify the response from your identity provider. Please try signing in again.",
+  "login.ssoOidcFailed": "Sign-in with your identity provider didn’t complete. Please try again.",
+  "login.errorConfiguration": "Sign-in is temporarily unavailable. Please try again later.",
+  "login.errorSignin": "We couldn’t complete your sign-in. Please try again.",
 
   // Request Access
   "requestAccess.title": "Welcome to RegLayer",

@@ -103,4 +103,17 @@ test.describe("Enterprise SSO — mocksaml SAML round-trip (dev)", () => {
     await expect(page).toHaveURL(AUTHED);
     await expect(page).not.toHaveURL(/\/auth\/login/);
   });
+
+  test("surfaces a server ?error= code instead of a silent dead-end", async ({ page }) => {
+    // A failed SSO round-trip redirects back with ?error=<code>; the page must
+    // show it (it used to be silent) and then strip the stale param from the URL.
+    await page.goto("/auth/login?error=sso_not_available");
+    await expect(page.getByText(/single sign-on isn't set up/i)).toBeVisible({ timeout: 10000 });
+    await expect(page).toHaveURL(/\/auth\/login$/);
+  });
+
+  test("maps an unknown ?error= code to the generic fallback (never silent)", async ({ page }) => {
+    await page.goto("/auth/login?error=some_unrecognized_code");
+    await expect(page.getByText(/couldn.t complete your sign-in/i)).toBeVisible({ timeout: 10000 });
+  });
 });
