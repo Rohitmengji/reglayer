@@ -1089,6 +1089,10 @@ export const it = {
   "login.ssoContinue": "Continua",
   "login.ssoBack": "Torna alle opzioni di accesso",
   "login.ssoRedirecting": "Reindirizzamento…",
+  "login.ssoAssertionFailed": "Non è stato possibile verificare la risposta del tuo provider di identità. Riprova ad accedere.",
+  "login.ssoOidcFailed": "L’accesso con il tuo provider di identità non è stato completato. Riprova.",
+  "login.errorConfiguration": "L’accesso è temporaneamente non disponibile. Riprova più tardi.",
+  "login.errorSignin": "Non è stato possibile completare l’accesso. Riprova.",
 
   // Request Access
   "requestAccess.title": "Benvenuto su RegLayer",

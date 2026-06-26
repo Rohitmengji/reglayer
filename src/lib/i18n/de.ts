@@ -1089,6 +1089,10 @@ export const de = {
   "login.ssoContinue": "Weiter",
   "login.ssoBack": "Zurück zu den Anmeldeoptionen",
   "login.ssoRedirecting": "Weiterleitung …",
+  "login.ssoAssertionFailed": "Die Antwort Ihres Identitätsanbieters konnte nicht überprüft werden. Bitte melden Sie sich erneut an.",
+  "login.ssoOidcFailed": "Die Anmeldung bei Ihrem Identitätsanbieter wurde nicht abgeschlossen. Bitte versuchen Sie es erneut.",
+  "login.errorConfiguration": "Die Anmeldung ist vorübergehend nicht verfügbar. Bitte versuchen Sie es später erneut.",
+  "login.errorSignin": "Ihre Anmeldung konnte nicht abgeschlossen werden. Bitte versuchen Sie es erneut.",
 
   // Request Access
   "requestAccess.title": "Willkommen bei RegLayer",

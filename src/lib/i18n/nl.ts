@@ -1089,6 +1089,10 @@ export const nl = {
   "login.ssoContinue": "Doorgaan",
   "login.ssoBack": "Terug naar aanmeldopties",
   "login.ssoRedirecting": "Doorsturen…",
+  "login.ssoAssertionFailed": "We konden het antwoord van je identiteitsprovider niet verifiëren. Probeer opnieuw in te loggen.",
+  "login.ssoOidcFailed": "Het aanmelden bij je identiteitsprovider is niet voltooid. Probeer het opnieuw.",
+  "login.errorConfiguration": "Aanmelden is tijdelijk niet beschikbaar. Probeer het later opnieuw.",
+  "login.errorSignin": "We konden je aanmelding niet voltooien. Probeer het opnieuw.",
 
   // Request Access
   "requestAccess.title": "Welkom bij RegLayer",

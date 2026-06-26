@@ -21,8 +21,34 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Loader2, ArrowLeft, Lock } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
+import type { TranslationKey } from "@/lib/i18n/translations";
 
 type Mode = "password" | "sso";
+
+/**
+ * Map the ?error= codes that bounce a user back to /auth/login onto friendly,
+ * non-revealing messages. Anything unmapped falls back to a generic message so a
+ * failure is NEVER silent. Sources: the SSO bridge (src/app/api/auth/sso/*) and
+ * NextAuth provider/callback errors.
+ */
+const LOGIN_ERROR_KEYS: Record<string, TranslationKey> = {
+  sso_not_available: "login.ssoNotAvailable",
+  sso_error: "login.ssoError",
+  sso_invalid_request: "login.ssoError",
+  sso_assertion_failed: "login.ssoAssertionFailed",
+  sso_oidc_failed: "login.ssoOidcFailed",
+  CredentialsSignin: "login.invalidCredentials",
+  // The only AccessDenied our code emits is a non-SSO login blocked on an
+  // SSO-enforced domain — nudge them to the SSO button.
+  AccessDenied: "login.ssoRequired",
+  Configuration: "login.errorConfiguration",
+  OAuthSignin: "login.errorSignin",
+  OAuthCallback: "login.errorSignin",
+  OAuthCreateAccount: "login.errorSignin",
+  Callback: "login.errorSignin",
+  Verification: "login.errorSignin",
+  SessionRequired: "login.errorSignin",
+};
 
 export default function LoginPage() {
   const [mode, setMode] = useState<Mode>("password");
@@ -39,6 +65,22 @@ export default function LoginPage() {
   useEffect(() => {
     if (mode === "sso") document.getElementById("sso-email")?.focus();
   }, [mode]);
+
+  // Surface a server/NextAuth error handed back via ?error= — otherwise an SSO
+  // round-trip failure is a silent dead-end. Seed the message once, then strip
+  // the param so a refresh doesn't resurface a stale error.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("error");
+    if (!code) return;
+    // One-time sync of an external source (the URL) into local state on mount;
+    // the param is stripped immediately below so it can't re-fire or resurface.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setError(t(LOGIN_ERROR_KEYS[code] ?? "login.errorSignin"));
+    params.delete("error");
+    const qs = params.toString();
+    window.history.replaceState(null, "", qs ? `${window.location.pathname}?${qs}` : window.location.pathname);
+  }, [t]);
 
   function openSso() {
     setError(null);
@@ -128,14 +170,6 @@ export default function LoginPage() {
           {mode === "sso" ? (
             /* ── Focused SSO step ─────────────────────────────── */
             <div className="space-y-5">
-              <button
-                type="button"
-                onClick={backToPassword}
-                className="inline-flex items-center gap-1.5 text-sm text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200 transition-colors"
-              >
-                <ArrowLeft className="h-4 w-4" aria-hidden="true" /> {t("login.ssoBack")}
-              </button>
-
               <div className="text-center">
                 <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-neutral-100 dark:bg-neutral-800">
                   <Lock className="h-5 w-5 text-neutral-700 dark:text-neutral-200" aria-hidden="true" />
@@ -166,6 +200,14 @@ export default function LoginPage() {
                   {ssoLoading ? t("login.ssoRedirecting") : t("login.ssoContinue")}
                 </Button>
               </form>
+
+              <button
+                type="button"
+                onClick={backToPassword}
+                className="mt-4 mx-auto flex items-center gap-1.5 text-sm text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200 transition-colors"
+              >
+                <ArrowLeft className="h-4 w-4" aria-hidden="true" /> {t("login.ssoBack")}
+              </button>
             </div>
           ) : (
             /* ── Default: email/password + Google + SSO entry ─── */
