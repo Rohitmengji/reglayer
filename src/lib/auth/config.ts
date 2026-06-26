@@ -60,10 +60,36 @@ function boxyhqSsoProvider(): OAuthConfig<BoxyHqProfile> {
     name: "Enterprise SSO",
     type: "oauth",
     version: "2.0",
-    checks: ["pkce", "state"],
+    checks: ["state"],
     authorization: { url: `${baseUrl}/api/auth/sso/authorize`, params: { scope: "" } },
-    token: `${baseUrl}/api/auth/sso/token`,
-    userinfo: `${baseUrl}/api/auth/sso/userinfo`,
+    token: {
+      url: `${baseUrl}/api/auth/sso/token`,
+      async request({ params, provider }: { params: Record<string, unknown>; provider: { callbackUrl: string } }) {
+        const { getSsoBackend } = await import("@/lib/sso/backend");
+        const backend = await getSsoBackend();
+        const { accessToken, expiresIn } = await backend.exchangeCode({
+          code: params.code as string,
+          redirectUri: provider.callbackUrl,
+          codeVerifier: params.code_verifier as string | undefined,
+        });
+        return { tokens: { access_token: accessToken, token_type: "bearer", expires_in: expiresIn } };
+      },
+    },
+    userinfo: {
+      url: `${baseUrl}/api/auth/sso/userinfo`,
+      request: (async ({ tokens }: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+        const { getSsoBackend } = await import("@/lib/sso/backend");
+        const backend = await getSsoBackend();
+        const info = await backend.userInfo(tokens.access_token!);
+        return {
+          id: info.id,
+          email: info.email,
+          name: info.name ?? null,
+          groups: info.groups ?? [],
+          requested: info.requested,
+        };
+      }) as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+    },
     clientId: "dummy",
     clientSecret: "dummy",
     profile(profile) {
@@ -166,6 +192,7 @@ export const authOptions: NextAuthOptions = {
   },
   pages: {
     signIn: "/auth/login",
+    signOut: "/auth/signout",
   },
   callbacks: {
     async signIn({ user, account, profile }) {
