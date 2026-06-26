@@ -290,15 +290,15 @@ function SsoSettingsInner() {
           </Card>
         ) : connections.length === 0 && !showAdd ? (
           <Card>
-            <CardContent className="py-12 text-center">
-              <ShieldCheck className="mx-auto mb-3 h-10 w-10 text-neutral-300 dark:text-neutral-600" aria-hidden="true" />
-              <p className="text-sm font-medium text-neutral-700 dark:text-neutral-200">No SSO connections yet</p>
-              <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400 max-w-sm mx-auto">
+            <CardContent className="flex flex-col items-center justify-center py-16 px-6">
+              <ShieldCheck className="mb-4 h-12 w-12 text-neutral-300 dark:text-neutral-600" aria-hidden="true" />
+              <p className="text-base font-semibold text-neutral-800 dark:text-neutral-200">No SSO connections yet</p>
+              <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400 text-center max-w-xs">
                 Add a connection to let your team sign in through your identity provider.
               </p>
               <button
                 onClick={() => setShowAdd(true)}
-                className="mt-4 inline-flex items-center gap-2 rounded-lg bg-neutral-900 dark:bg-white px-4 py-2 text-sm font-medium text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors"
+                className="mt-6 inline-flex items-center gap-2 rounded-lg bg-neutral-900 dark:bg-white px-5 py-2.5 text-sm font-medium text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors"
               >
                 <Plus className="h-4 w-4" aria-hidden="true" /> Add your first connection
               </button>
