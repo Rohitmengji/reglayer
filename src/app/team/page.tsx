@@ -114,7 +114,19 @@ function TeamPageInner() {
         toast.error(data.error || "Failed to invite member", { id: toastId });
         return;
       }
-      toast.success(`${inviteEmail} invited as ${inviteRole}`, { id: toastId });
+      if (data.emailSent) {
+        toast.success(`Invitation sent to ${inviteEmail}`, { id: toastId });
+      } else {
+        // Member is added, but they weren't emailed (SMTP not configured). Tell
+        // the admin so they can share access manually — especially for new users
+        // who must set a password via "Forgot password" before they can sign in.
+        toast.warning(
+          data.isNewUser
+            ? `${inviteEmail} added — email not configured. Ask them to set a password via "Forgot password" to sign in.`
+            : `${inviteEmail} added — email not configured, so no invite was sent.`,
+          { id: toastId, duration: 8000 }
+        );
+      }
       setMembers([...members, data]);
       setInviteEmail("");
       setShowInvite(false);

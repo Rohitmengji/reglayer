@@ -11,6 +11,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { canManageUser } from "@/lib/auth/rbac";
 import { prisma } from "@/lib/database/prisma";
+import { sendTeamInviteEmail, isEmailConfigured } from "@/lib/email/service";
 import { applyRateLimit } from "@/lib/rate-limit-middleware";
 import { logger } from "@/lib/telemetry/logger";
 import bcrypt from "bcryptjs";
@@ -126,7 +127,7 @@ export async function POST(request: NextRequest) {
   // Verify current user is OWNER or ADMIN
   const currentUser = await prisma.user.findUnique({
     where: { email: session.user.email },
-    include: { memberships: true },
+    include: { memberships: { include: { workspace: { select: { name: true } } } } },
   });
 
   if (!currentUser || currentUser.memberships.length === 0) {
@@ -155,8 +156,11 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Find or create the invited user
+  // Find or create the invited user. A freshly-created user has no password —
+  // the invite email routes them through the reset flow to set one (their only
+  // way in), so we track isNewUser to tailor that email.
   let invitedUser = await prisma.user.findUnique({ where: { email } });
+  const isNewUser = !invitedUser;
   if (!invitedUser) {
     invitedUser = await prisma.user.create({
       data: { email, name: email.split("@")[0] },
@@ -187,6 +191,22 @@ export async function POST(request: NextRequest) {
     include: { user: { select: { id: true, name: true, email: true } } },
   });
 
+  // Notify the invitee. Email failure must NOT fail the invite — the membership
+  // already exists — so this is best-effort and we report the outcome back.
+  let emailSent = false;
+  if (isEmailConfigured()) {
+    const result = await sendTeamInviteEmail(email, {
+      workspaceName: membership.workspace.name,
+      inviterName: currentUser.name || currentUser.email || "A teammate",
+      role,
+      isNewUser,
+    }).catch((err) => {
+      log.error("Failed to send invite email", { action: "POST", error: err instanceof Error ? err.message : String(err) });
+      return { success: false };
+    });
+    emailSent = result.success === true;
+  }
+
   return NextResponse.json({
     id: newMember.id,
     userId: newMember.user.id,
@@ -194,6 +214,8 @@ export async function POST(request: NextRequest) {
     email: newMember.user.email,
     role: newMember.role,
     joinedAt: newMember.joinedAt,
+    isNewUser,
+    emailSent,
   }, { status: 201 });
   } catch (err) {
     log.error("Failed to invite member", { action: "POST", error: err instanceof Error ? err.message : String(err) });
