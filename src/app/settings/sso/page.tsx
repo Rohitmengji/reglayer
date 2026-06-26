@@ -117,22 +117,22 @@ function SsoSettingsInner() {
 
   return (
     <AppShell>
-      <div className="space-y-6">
+      <div className="space-y-6 max-w-3xl">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="flex items-center gap-2 text-2xl font-bold text-neutral-900 dark:text-white">
-              <ShieldCheck className="h-6 w-6" /> Single Sign-On
+              <ShieldCheck className="h-6 w-6" aria-hidden="true" /> Single Sign-On
             </h1>
             <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
               Connect your identity provider (Okta, Entra, Google Workspace…) so your team signs in with SAML or OIDC.
             </p>
           </div>
-          {loadError !== "forbidden" && (
+          {loadError !== "forbidden" && !showAdd && (
             <button
-              onClick={() => setShowAdd((s) => !s)}
-              className="flex items-center gap-2 rounded-lg bg-neutral-900 dark:bg-white px-4 py-2.5 text-sm font-medium text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors"
+              onClick={() => setShowAdd(true)}
+              className="flex items-center gap-2 rounded-lg bg-neutral-900 dark:bg-white px-4 py-2.5 text-sm font-medium text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors self-start sm:self-auto shrink-0"
             >
-              <Plus className="h-4 w-4" /> Add connection
+              <Plus className="h-4 w-4" aria-hidden="true" /> Add connection
             </button>
           )}
         </div>
@@ -143,81 +143,114 @@ function SsoSettingsInner() {
               <CardTitle className="text-base">New SSO connection</CardTitle>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleCreate} className="space-y-3">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <input
-                    type="text"
-                    required
-                    placeholder="Connection name (e.g. Acme Okta)"
-                    value={label}
-                    onChange={(e) => setLabel(e.target.value)}
-                    className="rounded-lg border border-neutral-200 dark:border-neutral-700 px-3 py-2 text-sm dark:bg-neutral-800 dark:text-neutral-100"
-                  />
-                  <ModernSelect options={PROTOCOL_OPTIONS} value={protocol} onChange={setProtocol} />
-                  <ModernSelect options={DEFAULT_ROLE_OPTIONS} value={defaultRole} onChange={setDefaultRole} />
+              <form onSubmit={handleCreate} className="space-y-4">
+                <div className="space-y-3">
+                  <div>
+                    <label htmlFor="sso-label" className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1">Connection name</label>
+                    <input
+                      id="sso-label"
+                      type="text"
+                      required
+                      placeholder="e.g. Acme Okta"
+                      value={label}
+                      onChange={(e) => setLabel(e.target.value)}
+                      className="w-full rounded-lg border border-neutral-200 dark:border-neutral-700 px-3 py-2 text-sm dark:bg-neutral-800 dark:text-neutral-100"
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1">Protocol</label>
+                      <ModernSelect options={PROTOCOL_OPTIONS} value={protocol} onChange={setProtocol} />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1">Default role</label>
+                      <ModernSelect options={DEFAULT_ROLE_OPTIONS} value={defaultRole} onChange={setDefaultRole} />
+                    </div>
+                  </div>
                 </div>
 
                 {protocol === "SAML" ? (
-                  <>
-                    <textarea
-                      placeholder="Paste IdP SAML metadata XML…"
-                      value={rawMetadata}
-                      onChange={(e) => setRawMetadata(e.target.value)}
-                      rows={4}
-                      className="w-full rounded-lg border border-neutral-200 dark:border-neutral-700 px-3 py-2 text-sm font-mono dark:bg-neutral-800 dark:text-neutral-100"
-                    />
-                    <p className="text-xs text-neutral-400">…or provide a metadata URL instead:</p>
-                    <input
-                      type="url"
-                      placeholder="https://idp.example.com/app/metadata"
-                      value={metadataUrl}
-                      onChange={(e) => setMetadataUrl(e.target.value)}
-                      className="w-full rounded-lg border border-neutral-200 dark:border-neutral-700 px-3 py-2 text-sm dark:bg-neutral-800 dark:text-neutral-100"
-                    />
-                  </>
+                  <div className="space-y-3">
+                    <div>
+                      <label htmlFor="sso-metadata" className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1">IdP metadata XML</label>
+                      <textarea
+                        id="sso-metadata"
+                        placeholder="Paste IdP SAML metadata XML…"
+                        value={rawMetadata}
+                        onChange={(e) => setRawMetadata(e.target.value)}
+                        rows={4}
+                        className="w-full rounded-lg border border-neutral-200 dark:border-neutral-700 px-3 py-2 text-sm font-mono dark:bg-neutral-800 dark:text-neutral-100 resize-y"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="sso-metadata-url" className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+                        Or provide a metadata URL
+                      </label>
+                      <input
+                        id="sso-metadata-url"
+                        type="url"
+                        placeholder="https://idp.example.com/app/metadata"
+                        value={metadataUrl}
+                        onChange={(e) => setMetadataUrl(e.target.value)}
+                        className="w-full rounded-lg border border-neutral-200 dark:border-neutral-700 px-3 py-2 text-sm dark:bg-neutral-800 dark:text-neutral-100"
+                      />
+                    </div>
+                  </div>
                 ) : (
                   <div className="space-y-3">
-                    <input
-                      type="url"
-                      required
-                      placeholder="OIDC discovery URL (…/.well-known/openid-configuration)"
-                      value={oidcDiscoveryUrl}
-                      onChange={(e) => setOidcDiscoveryUrl(e.target.value)}
-                      className="w-full rounded-lg border border-neutral-200 dark:border-neutral-700 px-3 py-2 text-sm dark:bg-neutral-800 dark:text-neutral-100"
-                    />
+                    <div>
+                      <label htmlFor="sso-discovery" className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1">OIDC discovery URL</label>
+                      <input
+                        id="sso-discovery"
+                        type="url"
+                        required
+                        placeholder="https://…/.well-known/openid-configuration"
+                        value={oidcDiscoveryUrl}
+                        onChange={(e) => setOidcDiscoveryUrl(e.target.value)}
+                        className="w-full rounded-lg border border-neutral-200 dark:border-neutral-700 px-3 py-2 text-sm dark:bg-neutral-800 dark:text-neutral-100"
+                      />
+                    </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <input
-                        type="text"
-                        required
-                        placeholder="Client ID"
-                        value={oidcClientId}
-                        onChange={(e) => setOidcClientId(e.target.value)}
-                        className="rounded-lg border border-neutral-200 dark:border-neutral-700 px-3 py-2 text-sm dark:bg-neutral-800 dark:text-neutral-100"
-                      />
-                      <input
-                        type="password"
-                        required
-                        placeholder="Client secret"
-                        value={oidcClientSecret}
-                        onChange={(e) => setOidcClientSecret(e.target.value)}
-                        className="rounded-lg border border-neutral-200 dark:border-neutral-700 px-3 py-2 text-sm dark:bg-neutral-800 dark:text-neutral-100"
-                      />
+                      <div>
+                        <label htmlFor="sso-client-id" className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1">Client ID</label>
+                        <input
+                          id="sso-client-id"
+                          type="text"
+                          required
+                          placeholder="Client ID"
+                          value={oidcClientId}
+                          onChange={(e) => setOidcClientId(e.target.value)}
+                          className="w-full rounded-lg border border-neutral-200 dark:border-neutral-700 px-3 py-2 text-sm dark:bg-neutral-800 dark:text-neutral-100"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="sso-client-secret" className="block text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1">Client secret</label>
+                        <input
+                          id="sso-client-secret"
+                          type="password"
+                          required
+                          placeholder="Client secret"
+                          value={oidcClientSecret}
+                          onChange={(e) => setOidcClientSecret(e.target.value)}
+                          className="w-full rounded-lg border border-neutral-200 dark:border-neutral-700 px-3 py-2 text-sm dark:bg-neutral-800 dark:text-neutral-100"
+                        />
+                      </div>
                     </div>
                   </div>
                 )}
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1">
                   <button
                     type="submit"
                     disabled={creating}
-                    className="rounded-lg bg-neutral-900 dark:bg-white px-4 py-2 text-sm font-medium text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 disabled:opacity-50 transition-colors"
+                    className="rounded-lg bg-neutral-900 dark:bg-white px-4 py-2.5 text-sm font-medium text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 disabled:opacity-50 transition-colors"
                   >
                     {creating ? "Creating…" : "Create connection"}
                   </button>
                   <button
                     type="button"
-                    onClick={() => setShowAdd(false)}
-                    className="rounded-lg border border-neutral-200 dark:border-neutral-700 px-4 py-2 text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
+                    onClick={() => { setShowAdd(false); resetForm(); }}
+                    className="rounded-lg border border-neutral-200 dark:border-neutral-700 px-4 py-2.5 text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
                   >
                     Cancel
                   </button>
@@ -237,39 +270,47 @@ function SsoSettingsInner() {
         ) : loadError === "forbidden" ? (
           <Card>
             <CardContent className="py-10 text-center">
-              <Lock className="mx-auto mb-3 h-10 w-10 text-neutral-300 dark:text-neutral-600" />
-              <p className="text-sm text-neutral-700 dark:text-neutral-200">Owners and admins only</p>
+              <Lock className="mx-auto mb-3 h-10 w-10 text-neutral-300 dark:text-neutral-600" aria-hidden="true" />
+              <p className="text-sm font-medium text-neutral-700 dark:text-neutral-200">Owners and admins only</p>
               <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">You need the Owner or Admin role to manage SSO for this workspace.</p>
             </CardContent>
           </Card>
         ) : loadError === "error" ? (
           <Card>
             <CardContent className="py-10 text-center">
-              <AlertTriangle className="mx-auto mb-3 h-10 w-10 text-amber-500" />
-              <p className="text-sm text-neutral-700 dark:text-neutral-200">Couldn&apos;t load SSO connections</p>
+              <AlertTriangle className="mx-auto mb-3 h-10 w-10 text-amber-500" aria-hidden="true" />
+              <p className="text-sm font-medium text-neutral-700 dark:text-neutral-200">Couldn&apos;t load SSO connections</p>
               <button
                 onClick={reload}
                 className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
               >
-                <RotateCcw className="h-3.5 w-3.5" /> Retry
+                <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" /> Retry
               </button>
             </CardContent>
           </Card>
-        ) : connections.length === 0 ? (
+        ) : connections.length === 0 && !showAdd ? (
           <Card>
-            <CardContent className="py-10 text-center">
-              <ShieldCheck className="mx-auto mb-3 h-10 w-10 text-neutral-300 dark:text-neutral-600" />
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">No SSO connections yet.</p>
-              <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">Add a connection to let your team sign in through your identity provider.</p>
+            <CardContent className="flex flex-col items-center justify-center py-16 px-6">
+              <ShieldCheck className="mb-4 h-12 w-12 text-neutral-300 dark:text-neutral-600" aria-hidden="true" />
+              <p className="text-base font-semibold text-neutral-800 dark:text-neutral-200">No SSO connections yet</p>
+              <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400 text-center max-w-xs">
+                Add a connection to let your team sign in through your identity provider.
+              </p>
+              <button
+                onClick={() => setShowAdd(true)}
+                className="mt-6 inline-flex items-center gap-2 rounded-lg bg-neutral-900 dark:bg-white px-5 py-2.5 text-sm font-medium text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 transition-colors"
+              >
+                <Plus className="h-4 w-4" aria-hidden="true" /> Add your first connection
+              </button>
             </CardContent>
           </Card>
-        ) : (
+        ) : connections.length > 0 ? (
           <div className="space-y-4">
             {connections.map((c) => (
               <ConnectionCard key={c.id} connection={c} onDeleted={reload} />
             ))}
           </div>
-        )}
+        ) : null}
       </div>
     </AppShell>
   );

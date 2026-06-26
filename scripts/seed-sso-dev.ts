@@ -37,7 +37,7 @@ async function main() {
       console.log(`removed prior seed connection ${prior.connectionId}`);
     }
     if (remove) {
-      console.log("✅ removed.");
+      console.log("✅ removed. (Connection in Jackson's own tables is harmless and unreferenced.)");
       return;
     }
 
