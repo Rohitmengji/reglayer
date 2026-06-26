@@ -1083,6 +1083,12 @@ export const pt = {
   "login.ssoNotAvailable": "O logon único não está configurado para este domínio de e-mail.",
   "login.ssoError": "Não foi possível iniciar o SSO. Tente novamente.",
   "login.ssoRequired": "Sua organização exige logon único — use «Continuar com SSO» abaixo.",
+  "login.ssoStepTitle": "Início de sessão único",
+  "login.ssoStepSubtitle": "Introduza o seu e-mail profissional e iremos encaminhá-lo para o início de sessão da sua organização.",
+  "login.ssoEmailLabel": "E-mail profissional",
+  "login.ssoContinue": "Continuar",
+  "login.ssoBack": "Voltar às opções de início de sessão",
+  "login.ssoRedirecting": "A redirecionar…",
 
   // Request Access
   "requestAccess.title": "Bem-vindo ao RegLayer",

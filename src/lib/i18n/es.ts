@@ -1083,6 +1083,12 @@ export const es = {
   "login.ssoNotAvailable": "El inicio de sesión único no está configurado para este dominio de correo.",
   "login.ssoError": "No se pudo iniciar SSO. Inténtalo de nuevo.",
   "login.ssoRequired": "Tu organización requiere inicio de sesión único: usa «Continuar con SSO» más abajo.",
+  "login.ssoStepTitle": "Inicio de sesión único",
+  "login.ssoStepSubtitle": "Introduce tu correo de trabajo y te llevaremos al inicio de sesión de tu organización.",
+  "login.ssoEmailLabel": "Correo de trabajo",
+  "login.ssoContinue": "Continuar",
+  "login.ssoBack": "Volver a las opciones de inicio de sesión",
+  "login.ssoRedirecting": "Redirigiendo…",
 
   // Request Access
   "requestAccess.title": "Bienvenido a RegLayer",

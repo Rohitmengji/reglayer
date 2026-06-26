@@ -56,11 +56,13 @@ test.describe("Enterprise SSO — mocksaml SAML round-trip (dev)", () => {
     });
   });
 
-  test("discovery gates the SSO button to verified domains only", async ({ page }) => {
+  test("discovery gates the SSO step to verified domains only", async ({ page }) => {
     await page.goto("/auth/login");
-    // An unknown domain must NOT start SSO — it surfaces the not-available copy.
-    await page.fill("#email", "nobody@unverified-domain.example");
+    // Open the focused SSO step, then submit an unknown domain — it must NOT
+    // start SSO; it surfaces the non-revealing not-available copy and stays put.
     await page.getByRole("button", { name: /continue with sso/i }).click();
+    await page.fill("#sso-email", "nobody@unverified-domain.example");
+    await page.getByRole("button", { name: /^continue$/i }).click();
     await expect(page.getByText(/single sign-on isn't set up/i)).toBeVisible({ timeout: 15000 });
     await expect(page).toHaveURL(/\/auth\/login/);
   });
@@ -76,10 +78,11 @@ test.describe("Enterprise SSO — mocksaml SAML round-trip (dev)", () => {
   });
 
   test("full SAML login: login → mocksaml → authenticated", async ({ page }) => {
-    // 1. Enter an SSO-enabled email and start the flow.
+    // 1. Open the SSO step, enter an SSO-enabled work email, and continue.
     await page.goto("/auth/login");
-    await page.fill("#email", SSO_EMAIL);
     await page.getByRole("button", { name: /continue with sso/i }).click();
+    await page.fill("#sso-email", SSO_EMAIL);
+    await page.getByRole("button", { name: /^continue$/i }).click();
 
     // 2. Server resolves the verified domain → Jackson builds a signed
     //    SAMLRequest → browser is redirected to the IdP. Anchor the host so the

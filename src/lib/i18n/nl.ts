@@ -1083,6 +1083,12 @@ export const nl = {
   "login.ssoNotAvailable": "Single sign-on is niet ingesteld voor dit e-maildomein.",
   "login.ssoError": "Kan SSO niet starten. Probeer het opnieuw.",
   "login.ssoRequired": "Je organisatie vereist single sign-on — gebruik hieronder ‘Doorgaan met SSO’.",
+  "login.ssoStepTitle": "Eenmalige aanmelding",
+  "login.ssoStepSubtitle": "Voer je werk-e-mailadres in en we brengen je naar de aanmelding van je organisatie.",
+  "login.ssoEmailLabel": "Werk-e-mail",
+  "login.ssoContinue": "Doorgaan",
+  "login.ssoBack": "Terug naar aanmeldopties",
+  "login.ssoRedirecting": "Doorsturen…",
 
   // Request Access
   "requestAccess.title": "Welkom bij RegLayer",

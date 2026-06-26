@@ -1083,6 +1083,12 @@ export const de = {
   "login.ssoNotAvailable": "Single Sign-On ist für diese E-Mail-Domain nicht eingerichtet.",
   "login.ssoError": "SSO konnte nicht gestartet werden. Bitte versuchen Sie es erneut.",
   "login.ssoRequired": "Ihre Organisation erfordert Single Sign-On – verwenden Sie unten „Mit SSO fortfahren“.",
+  "login.ssoStepTitle": "Single Sign-On",
+  "login.ssoStepSubtitle": "Geben Sie Ihre geschäftliche E-Mail-Adresse ein und wir leiten Sie zur Anmeldung Ihrer Organisation weiter.",
+  "login.ssoEmailLabel": "Geschäftliche E-Mail",
+  "login.ssoContinue": "Weiter",
+  "login.ssoBack": "Zurück zu den Anmeldeoptionen",
+  "login.ssoRedirecting": "Weiterleitung …",
 
   // Request Access
   "requestAccess.title": "Willkommen bei RegLayer",
