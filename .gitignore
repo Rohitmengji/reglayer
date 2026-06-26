@@ -53,3 +53,5 @@ visual-audit/
 
 # claude code local state (settings, worktrees, transcripts) — never commit
 .claude/
+# Local agent config
+.github/agents/
