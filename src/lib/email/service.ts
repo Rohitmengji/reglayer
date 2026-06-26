@@ -304,3 +304,77 @@ export async function sendRegressionAlert(to: string, data: {
     text: `Regression detected on ${data.url}\nScore: ${data.previousScore}% → ${data.currentScore}% (${data.scoreDelta})\nNew violations: ${data.newViolations.length}\nFixed: ${data.fixedViolations.length}\nView details: ${data.reportUrl}`,
   });
 }
+
+/** Escape user-controlled text before interpolating into email HTML. */
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/**
+ * Team-invitation email.
+ *
+ * WHY: invited members were silently added with no notification — and brand-new
+ * users are created without a password, so they had no way to discover or access
+ * the account. This closes that loop. For a new user we point them at the
+ * password-reset flow to set an initial password (their only way in); existing
+ * users just get a sign-in link.
+ */
+export interface TeamInviteData {
+  workspaceName: string;
+  inviterName: string;
+  role: string;
+  isNewUser: boolean;
+}
+
+/** Pure builder for the invite email payload — unit-tested independently of SMTP. */
+export function buildTeamInviteEmail(to: string, data: TeamInviteData): EmailPayload {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://reglayer.vercel.app";
+  const loginUrl = `${appUrl}/auth/login`;
+  const setupUrl = `${appUrl}/auth/forgot-password`;
+  const workspace = escapeHtml(data.workspaceName);
+  const inviter = escapeHtml(data.inviterName);
+  const roleLabel = escapeHtml(data.role.charAt(0) + data.role.slice(1).toLowerCase());
+
+  const cta = data.isNewUser
+    ? `
+          <p style="color: #525252; font-size: 14px; line-height: 1.6;">
+            An account was created for you. To get started, set your password:
+          </p>
+          <a href="${setupUrl}" style="display: inline-block; background: #171717; color: #fff; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-size: 14px; font-weight: 500; margin: 8px 0;">Set your password</a>
+          <p style="color: #737373; font-size: 13px; line-height: 1.6;">
+            On that page, enter <strong>${escapeHtml(to)}</strong> to receive a one-time code, choose a password, then sign in at
+            <a href="${loginUrl}" style="color: #2563eb;">${loginUrl}</a>.
+          </p>`
+    : `
+          <a href="${loginUrl}" style="display: inline-block; background: #171717; color: #fff; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-size: 14px; font-weight: 500; margin: 8px 0;">Open RegLayer</a>`;
+
+  return {
+    to,
+    subject: `You've been added to ${data.workspaceName} on RegLayer`,
+    html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 520px; margin: 0 auto; padding: 40px 20px;">
+          <h2 style="color: #0a0a0a; margin-bottom: 8px;">You've been added to ${workspace}</h2>
+          <p style="color: #525252; font-size: 14px; line-height: 1.6;">
+            <strong>${inviter}</strong> added you to the <strong>${workspace}</strong> workspace on RegLayer as <strong>${roleLabel}</strong>.
+          </p>
+          ${cta}
+          <p style="color: #a3a3a3; font-size: 12px; margin-top: 24px;">
+            If you weren't expecting this, you can safely ignore this email.
+          </p>
+        </div>
+      `,
+    text: data.isNewUser
+      ? `${data.inviterName} added you to ${data.workspaceName} on RegLayer as ${roleLabel}. An account was created for you — set your password at ${setupUrl} (enter ${to} to get a one-time code), then sign in at ${loginUrl}.`
+      : `${data.inviterName} added you to ${data.workspaceName} on RegLayer as ${roleLabel}. Sign in at ${loginUrl}.`,
+  };
+}
+
+/** Send a team-invitation email (best-effort; no-op return if SMTP unconfigured). */
+export async function sendTeamInviteEmail(to: string, data: TeamInviteData) {
+  return sendEmail(buildTeamInviteEmail(to, data));
+}
