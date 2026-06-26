@@ -1078,6 +1078,11 @@ export const es = {
   "login.signIn": "Iniciar sesión",
   "login.orContinueWith": "O continuar con",
   "login.continueGoogle": "Continuar con Google",
+  "login.continueSSO": "Continuar con SSO",
+  "login.ssoEmailRequired": "Introduce tu correo de trabajo para continuar con SSO.",
+  "login.ssoNotAvailable": "El inicio de sesión único no está configurado para este dominio de correo.",
+  "login.ssoError": "No se pudo iniciar SSO. Inténtalo de nuevo.",
+  "login.ssoRequired": "Tu organización requiere inicio de sesión único: usa «Continuar con SSO» más abajo.",
 
   // Request Access
   "requestAccess.title": "Bienvenido a RegLayer",

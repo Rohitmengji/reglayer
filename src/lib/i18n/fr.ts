@@ -1078,6 +1078,11 @@ export const fr = {
   "login.signIn": "Se connecter",
   "login.orContinueWith": "Ou continuer avec",
   "login.continueGoogle": "Continuer avec Google",
+  "login.continueSSO": "Continuer avec SSO",
+  "login.ssoEmailRequired": "Saisissez votre e-mail professionnel pour continuer avec SSO.",
+  "login.ssoNotAvailable": "L’authentification unique n’est pas configurée pour ce domaine de messagerie.",
+  "login.ssoError": "Impossible de démarrer SSO. Veuillez réessayer.",
+  "login.ssoRequired": "Votre organisation exige l’authentification unique — utilisez « Continuer avec SSO » ci-dessous.",
 
   // Request Access
   "requestAccess.title": "Bienvenue sur RegLayer",

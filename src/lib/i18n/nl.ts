@@ -1078,6 +1078,11 @@ export const nl = {
   "login.signIn": "Inloggen",
   "login.orContinueWith": "Of doorgaan met",
   "login.continueGoogle": "Doorgaan met Google",
+  "login.continueSSO": "Doorgaan met SSO",
+  "login.ssoEmailRequired": "Voer je zakelijke e-mailadres in om door te gaan met SSO.",
+  "login.ssoNotAvailable": "Single sign-on is niet ingesteld voor dit e-maildomein.",
+  "login.ssoError": "Kan SSO niet starten. Probeer het opnieuw.",
+  "login.ssoRequired": "Je organisatie vereist single sign-on — gebruik hieronder ‘Doorgaan met SSO’.",
 
   // Request Access
   "requestAccess.title": "Welkom bij RegLayer",
