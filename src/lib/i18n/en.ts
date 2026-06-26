@@ -2386,6 +2386,8 @@ export const en = {
   "sso.adminsOnly": "Owners and admins only",
   "sso.adminsOnlyDesc": "You need the Owner or Admin role to manage SSO for this workspace.",
   "sso.loadError": "Couldn’t load SSO connections",
+  "sso.notProvisioned": "SSO isn’t available yet",
+  "sso.notProvisionedDesc": "Single sign-on is included in your plan but hasn’t been provisioned for your account yet. Contact support to enable it.",
   "sso.emptyTitle": "No SSO connections yet",
   "sso.emptyDesc": "Add a connection to let your team sign in through your identity provider.",
   "sso.enable": "Enable",

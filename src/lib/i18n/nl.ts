@@ -2291,6 +2291,8 @@ export const nl = {
   "sso.adminsOnly": "Alleen eigenaren en beheerders",
   "sso.adminsOnlyDesc": "Je hebt de rol Eigenaar of Beheerder nodig om SSO voor deze werkruimte te beheren.",
   "sso.loadError": "Kan SSO-verbindingen niet laden",
+  "sso.notProvisioned": "SSO is nog niet beschikbaar",
+  "sso.notProvisionedDesc": "Single sign-on zit in je abonnement maar is nog niet ingericht voor je account. Neem contact op met support om het in te schakelen.",
   "sso.emptyTitle": "Nog geen SSO-verbindingen",
   "sso.emptyDesc": "Voeg een verbinding toe zodat je team via je identity provider kan inloggen.",
   "sso.enable": "Inschakelen",

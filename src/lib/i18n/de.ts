@@ -2329,6 +2329,8 @@ export const de = {
   "sso.adminsOnly": "Nur Eigentümer und Admins",
   "sso.adminsOnlyDesc": "Sie benötigen die Rolle „Eigentümer“ oder „Admin“, um SSO für diesen Workspace zu verwalten.",
   "sso.loadError": "SSO-Verbindungen konnten nicht geladen werden",
+  "sso.notProvisioned": "SSO ist noch nicht verfügbar",
+  "sso.notProvisionedDesc": "Single Sign-On ist in Ihrem Tarif enthalten, wurde aber noch nicht für Ihr Konto bereitgestellt. Kontaktieren Sie den Support, um es zu aktivieren.",
   "sso.emptyTitle": "Noch keine SSO-Verbindungen",
   "sso.emptyDesc": "Fügen Sie eine Verbindung hinzu, damit sich Ihr Team über Ihren Identitätsanbieter anmelden kann.",
   "sso.enable": "Aktivieren",

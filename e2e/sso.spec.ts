@@ -17,15 +17,29 @@
  *   3. npx next dev                            # (or let Playwright start it)
  *   4. RUN_SSO_E2E=1 npx playwright test e2e/sso.spec.ts
  */
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 
 const RUN = process.env.RUN_SSO_E2E === "1";
 // Must be an address under the seeded verified domain (example.com by default).
 const SSO_EMAIL = process.env.SSO_E2E_EMAIL || "test@example.com";
+const MASTER_EMAIL = process.env.SEED_MASTER_EMAIL || "master@reglayer.dev";
+const MASTER_PASSWORD = process.env.SEED_MASTER_PASSWORD || "reglayer2024";
 
 const AUTHED = /\/(dashboard|test|compliance|settings|onboarding|scans)/;
 
+/** Inline credentials login (avoids a flaky helper-module import quirk under Playwright). */
+async function loginAsMaster(page: Page) {
+  await page.goto("/auth/login");
+  await page.fill("#email", MASTER_EMAIL);
+  await page.fill('input[type="password"], #password', MASTER_PASSWORD);
+  await page.getByRole("button", { name: /sign in/i }).click();
+  await page.waitForURL(AUTHED, { timeout: 15000 });
+}
+
 test.describe("Enterprise SSO — mocksaml SAML round-trip (dev)", () => {
+  // Serial: these hit the external mocksaml IdP and share workspace/DB state via
+  // JIT provisioning, so running them concurrently races (timeouts under load).
+  test.describe.configure({ mode: "serial" });
   test.skip(
     !RUN,
     "Opt-in: RUN_SSO_E2E=1 + SSO_ENABLED + seeded dev connection (scripts/seed-sso-dev.ts). Hits external mocksaml.com; excluded from CI.",
@@ -49,6 +63,16 @@ test.describe("Enterprise SSO — mocksaml SAML round-trip (dev)", () => {
     await page.getByRole("button", { name: /continue with sso/i }).click();
     await expect(page.getByText(/single sign-on isn't set up/i)).toBeVisible({ timeout: 15000 });
     await expect(page).toHaveURL(/\/auth\/login/);
+  });
+
+  test("admin API is operational in dev: authed GET /api/sso/connections → 200", async ({ page }) => {
+    // Proves the requireSsoAdmin operational gate PASSES when a backend is
+    // available (embedded, dev) — i.e. the admin surface works, not a 503/502.
+    await loginAsMaster(page);
+    const res = await page.request.get("/api/sso/connections");
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(Array.isArray(data.connections)).toBe(true);
   });
 
   test("full SAML login: login → mocksaml → authenticated", async ({ page }) => {
