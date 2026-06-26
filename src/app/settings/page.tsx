@@ -18,9 +18,12 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { PageLoading } from "@/components/ui/page-loading";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Key, GitBranch, Bell, Copy, Eye, EyeOff, Sparkles, Zap, SlidersHorizontal, AlertTriangle, User, Download, Pencil, X } from "lucide-react";
+import { Plus, Trash2, Key, GitBranch, Bell, Copy, Eye, EyeOff, Sparkles, Zap, SlidersHorizontal, AlertTriangle, User, Download, Pencil, X, Shield } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 import { signOut } from "next-auth/react";
+import Link from "next/link";
+import { useFeatures } from "@/hooks/use-features";
+import { useSession } from "next-auth/react";
 
 interface ApiKeyRecord {
   id: string;
@@ -37,6 +40,11 @@ export default function SettingsPage() {
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<Tab>((searchParams.get("tab") as Tab) || "plan");
   const { t } = useI18n();
+  const { hasFeature } = useFeatures();
+  const { data: session } = useSession();
+  const userRole = session?.user?.workspaceRole;
+  const isMasterAdmin = session?.user?.isMasterAdmin;
+  const canManageSso = isMasterAdmin || userRole === "OWNER" || userRole === "ADMIN";
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: "plan", label: t("settings.tabPlan"), icon: <Sparkles className="h-4 w-4" /> },
@@ -74,6 +82,15 @@ export default function SettingsPage() {
               <span className="hidden sm:inline">{tab.label}</span>
             </button>
           ))}
+          {hasFeature("sso") && canManageSso && (
+            <Link
+              href="/settings/sso"
+              className="flex items-center justify-center sm:justify-start gap-2 px-2 py-3 sm:px-4 sm:py-2.5 text-sm font-medium transition-colors text-neutral-500 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-white"
+            >
+              <Shield className="h-4 w-4" />
+              <span className="hidden sm:inline">SSO</span>
+            </Link>
+          )}
         </div>
 
         {/* Tab Content */}
