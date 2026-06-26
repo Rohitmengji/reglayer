@@ -14,6 +14,7 @@
  */
 
 import { prisma } from "@/lib/database/prisma";
+import { computeViolationVelocity } from "@/lib/intelligence/velocity";
 
 export interface AnalyticsReport {
   period: { start: string; end: string; days: number };
@@ -194,6 +195,10 @@ export async function generateAnalytics(
     urlMap.set(scan.url, existing);
   }
 
+  // Real fix/introduction velocity — diff each URL's scan series over time
+  // (scans are fetched createdAt-asc, so each URL group is already chronological).
+  const velocity = computeViolationVelocity(Array.from(urlMap.values()), days / 7);
+
   const urlBreakdown = Array.from(urlMap.entries())
     .map(([url, urlScans]) => {
       const urlScores = urlScans.map((s) => s.score ?? 0);
@@ -234,9 +239,11 @@ export async function generateAnalytics(
     topViolations,
     velocityMetrics: {
       scansPerDay: Math.round(scansPerDay * 10) / 10,
-      violationsFixedPerWeek: 0, // TODO: track fixes over time
+      violationsFixedPerWeek: velocity.violationsFixedPerWeek,
+      // "violations found per week" (the label the UI shows) — total found / weeks,
+      // distinct from velocity.violationsIntroducedPerWeek (net rises only).
       newViolationsPerWeek: Math.round(weeklyViolations * 10) / 10,
-      netChangePerWeek: Math.round(weeklyViolations * 10) / 10,
+      netChangePerWeek: velocity.netChangePerWeek,
     },
     urlBreakdown,
   };
