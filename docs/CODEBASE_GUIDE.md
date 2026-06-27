@@ -290,6 +290,21 @@ All API routes live in `src/app/api/`. Each `route.ts` exports HTTP method handl
 | Route | Methods | Purpose |
 |-------|---------|---------|
 | `a11y/contrast/route.ts` | POST | WCAG contrast ratio + AA/AAA pass flags, plus a **hue-preserving accessible-color fix** when the pair fails (deterministic — no LLM). Engine: pure `src/lib/a11y/contrast.ts` (`analyzeContrast`, `suggestAccessibleColor`); public client-side UI at `/tools/contrast` (`src/app/tools/contrast/page.tsx`). |
+| `a11y/alt-text/route.ts` | POST | Grade alt-text quality (1.1.1). Engine: `src/lib/a11y/alt-text.ts`. |
+| `a11y/link-text/route.ts` | POST | Lint link text incl. same-text→different-href (2.4.4). Engine: `src/lib/a11y/link-text.ts`. |
+| `a11y/headings/route.ts` | POST | Heading-outline validator (1.3.1/2.4.10). Engine: `src/lib/a11y/heading-outline.ts`. |
+| `a11y/lang-tag/route.ts` | POST | BCP-47 language-tag validator (3.1.1/3.1.2). Engine: `src/lib/a11y/lang-tag.ts`. |
+| `a11y/readability/route.ts` | POST | Flesch reading-level analysis (3.1.5). Engine: `src/lib/a11y/readability.ts`. |
+| `a11y/touch-target/route.ts` | POST | Touch-target size (2.5.8/2.5.5). Engine: `src/lib/a11y/touch-target.ts`. |
+| `a11y/focus-order/route.ts` | POST | Keyboard focus-order / tabindex linter (2.4.3). Engine: `src/lib/a11y/focus-order.ts`. |
+| `a11y/color-vision/route.ts` | POST | Color-vision-deficiency simulator (1.4.1; Machado 2009). Engine: `src/lib/a11y/color-vision.ts`. |
+| `a11y/palette/route.ts` | POST | Accessible tonal-ramp generator + `bestTextColor`. Engine: `src/lib/a11y/palette.ts`. |
+
+### Compliance
+
+| Route | Methods | Purpose |
+|-------|---------|---------|
+| `compliance/regulations/route.ts` | POST | Which accessibility laws (EAA/ADA/508/EN 301 549/AODA/UK) apply to a business profile, required WCAG level, and deadlines. Engine: `src/lib/compliance/regulations.ts`. |
 
 ### User & Team Management
 
