@@ -6,7 +6,8 @@
  *      DNS-TXT dance. Creates a GA SAML connection against mocksaml.com and
  *      pre-verifies a test domain.
  * WHAT: workspace → ENTERPRISE; SSOConnection (registered in embedded Jackson);
- *      VerifiedDomain for `example.com`. Idempotent.
+ *      VerifiedDomain for `example.com`. Idempotent — re-running cleans the prior
+ *      seed (app rows AND its Jackson registration) before creating a fresh one.
  * HOW:  npx tsx scripts/seed-sso-dev.ts
  *      Then sign in via "Continue with SSO" with any email @example.com.
  * CLEANUP: npx tsx scripts/seed-sso-dev.ts --remove
@@ -23,6 +24,7 @@ import { controllers } from "@boxyhq/saml-jackson";
 const DOMAIN = "example.com";
 const METADATA_URL = "https://mocksaml.com/api/saml/metadata";
 const PRODUCT = "reglayer";
+const LABEL = "Dev mocksaml";
 
 async function main() {
   const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL! }) });
@@ -30,14 +32,32 @@ async function main() {
   const callback = `${appUrl}/api/auth/callback/boxyhq-saml`;
   const remove = process.argv.includes("--remove");
 
+  // Boot Jackson up front — cleanup needs it too, not just registration.
+  const jackson = await controllers({
+    externalUrl: appUrl,
+    samlPath: "/api/auth/sso/acs",
+    oidcPath: "/api/auth/sso/oidc",
+    samlAudience: process.env.SAML_AUDIENCE ?? "https://saml.reglayer.dev",
+    db: { engine: "sql", type: "postgres", url: process.env.DATABASE_URL! },
+  });
+
   try {
-    const prior = await prisma.verifiedDomain.findUnique({ where: { domain: DOMAIN }, select: { connectionId: true } });
-    if (prior) {
-      await prisma.sSOConnection.deleteMany({ where: { id: prior.connectionId } }); // cascades domains/verified
-      console.log(`removed prior seed connection ${prior.connectionId}`);
+    // Remove every prior dev seed — BOTH the app rows AND their Jackson
+    // registration. Jackson enforces IdP EntityID uniqueness across tenants, so a
+    // leftover registration (e.g. from a re-run or a killed process) would block
+    // re-seeding with "EntityID already exists for different tenant". The tenant
+    // IS the SSOConnection id, so we can delete each Jackson connection by tenant.
+    const priors = await prisma.sSOConnection.findMany({ where: { label: LABEL }, select: { id: true } });
+    for (const p of priors) {
+      await jackson.connectionAPIController.deleteConnections({ tenant: p.id, product: PRODUCT }).catch(() => {});
+    }
+    if (priors.length) {
+      await prisma.sSOConnection.deleteMany({ where: { label: LABEL } }); // cascades domains/verified
+      console.log(`removed ${priors.length} prior seed connection(s) + their Jackson registration(s)`);
     }
     if (remove) {
-      console.log("✅ removed. (Connection in Jackson's own tables is harmless and unreferenced.)");
+      await jackson.close?.();
+      console.log("✅ removed (app rows + Jackson connections).");
       return;
     }
 
@@ -47,19 +67,12 @@ async function main() {
     console.log(`workspace "${ws.name}" (${ws.id}) → ENTERPRISE`);
 
     const conn = await prisma.sSOConnection.create({
-      data: { workspaceId: ws.id, label: "Dev mocksaml", protocol: "SAML", defaultRole: "MEMBER", rolloutStage: "GA", metadataUrl: METADATA_URL },
+      data: { workspaceId: ws.id, label: LABEL, protocol: "SAML", defaultRole: "MEMBER", rolloutStage: "GA", metadataUrl: METADATA_URL },
       select: { id: true },
     });
 
     console.log("registering with embedded Jackson…");
     const xml = await fetch(METADATA_URL).then((r) => r.text());
-    const jackson = await controllers({
-      externalUrl: appUrl,
-      samlPath: "/api/auth/sso/acs",
-      oidcPath: "/api/auth/sso/oidc",
-      samlAudience: process.env.SAML_AUDIENCE ?? "https://saml.reglayer.dev",
-      db: { engine: "sql", type: "postgres", url: process.env.DATABASE_URL! },
-    });
     await jackson.connectionAPIController.createSAMLConnection({
       tenant: conn.id,
       product: PRODUCT,
