@@ -243,6 +243,36 @@ const OPENAPI_SPEC = {
         },
       },
     },
+    "/api/a11y/contrast": {
+      post: {
+        operationId: "analyzeContrast",
+        tags: ["Accessibility"],
+        summary: "Analyze WCAG color contrast + suggest an accessible fix",
+        description:
+          "Returns the contrast ratio and AA/AAA pass flags for a foreground/background pair. When it fails the requested level, returns the nearest HUE-PRESERVING color that passes — or, when no color can satisfy the target against that background, the highest-contrast fallback (flagged meetsTarget=false).",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["foreground", "background"],
+                properties: {
+                  foreground: { type: "string", description: "#rgb, #rrggbb, bare hex, or rgb()/rgba()" },
+                  background: { type: "string", description: "#rgb, #rrggbb, bare hex, or rgb()/rgba()" },
+                  level: { type: "string", enum: ["AA", "AAA"], default: "AA" },
+                  largeText: { type: "boolean", default: false },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "200": { description: "Contrast report + optional hue-preserving fix suggestion", content: { "application/json": { schema: { type: "object" } } } },
+          "400": { description: "Unparseable color or invalid input" },
+        },
+      },
+    },
     "/api/auth-configs": {
       get: {
         operationId: "listAuthConfigs",
