@@ -95,6 +95,7 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/cookie-policy") ||
     pathname.startsWith("/features") ||
     pathname.startsWith("/standards") ||
+    pathname.startsWith("/tools") ||
     pathname.startsWith("/docs") ||
     pathname.startsWith("/api-reference") ||
     pathname.startsWith("/contact") ||

@@ -285,6 +285,12 @@ All API routes live in `src/app/api/`. Each `route.ts` exports HTTP method handl
 |-------|---------|---------|
 | `ai/explain/route.ts` | POST | AI explanation of a specific violation (uses OpenAI) |
 
+### Accessibility Tools
+
+| Route | Methods | Purpose |
+|-------|---------|---------|
+| `a11y/contrast/route.ts` | POST | WCAG contrast ratio + AA/AAA pass flags, plus a **hue-preserving accessible-color fix** when the pair fails (deterministic — no LLM). Engine: pure `src/lib/a11y/contrast.ts` (`analyzeContrast`, `suggestAccessibleColor`); public client-side UI at `/tools/contrast` (`src/app/tools/contrast/page.tsx`). |
+
 ### User & Team Management
 
 | Route | Methods | Purpose |
