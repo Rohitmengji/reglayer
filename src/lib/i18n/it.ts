@@ -1805,6 +1805,7 @@ export const it = {
   "violations.verifyFixAria": "Verifica la correzione con una nuova scansione",
   "violations.rescanning": "Nuova scansione in corso...",
   "violations.history": "Cronologia",
+  "violations.contrastFix": "Colore del testo accessibile suggerito",
   "violations.toggleHistoryAria": "Mostra o nascondi la cronologia degli stati",
   "violations.affectedElementsSingular": "{count} elemento interessato",
   "violations.affectedElementsPlural": "{count} elementi interessati",

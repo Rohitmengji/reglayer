@@ -38,6 +38,7 @@ import { useViolationStatus } from "@/hooks/use-violation-status";
 import type { ViolationStatus } from "@/generated/prisma/client";
 import { useI18n } from "@/components/i18n-provider";
 import type { TranslationKey } from "@/lib/i18n/translations";
+import { analyzeContrastViolation } from "@/lib/a11y/contrast-violation";
 
 // ─────────────── Types ───────────────
 
@@ -179,6 +180,18 @@ export function EnhancedViolationCard({ violation, onStatusChange }: EnhancedVio
     [t]
   );
 
+  // For color-contrast violations, derive the exact accessible fix from axe's
+  // failureSummary (the colors live in there) — turns "fails" into "use #xxxxxx".
+  const contrastFix = useMemo(() => {
+    if (violation.ruleId !== "color-contrast") return null;
+    const els = Array.isArray(violation.affectedElements) ? violation.affectedElements : [];
+    for (const el of els) {
+      const fix = analyzeContrastViolation(el.failureSummary);
+      if (fix?.report.suggestion?.meetsTarget) return fix;
+    }
+    return null;
+  }, [violation.ruleId, violation.affectedElements]);
+
   const meta = STATUS_META[state.status] ?? STATUS_META.OPEN;
   const StatusIcon = meta.icon;
   const statusLabel = t(meta.labelKey);
@@ -258,6 +271,24 @@ export function EnhancedViolationCard({ violation, onStatusChange }: EnhancedVio
             {elements.length > 2 && (
               <p className="text-xs text-neutral-500">{t("violationCard.moreElements", { count: String(elements.length - 2) })}</p>
             )}
+          </div>
+        )}
+
+        {/* Deterministic accessible-color fix (color-contrast violations only) */}
+        {contrastFix && contrastFix.report.suggestion && (
+          <div className="rounded-md border border-green-200 dark:border-green-900 bg-green-50 dark:bg-green-950/20 px-3 py-2">
+            <p className="text-xs font-medium text-green-800 dark:text-green-300">{t("violations.contrastFix")}</p>
+            <div className="mt-1.5 flex flex-wrap items-center gap-2">
+              <span
+                className="h-5 w-5 shrink-0 rounded border border-neutral-300 dark:border-neutral-600"
+                style={{ background: contrastFix.report.suggestion.recommended.hex }}
+                aria-hidden="true"
+              />
+              <code className="font-mono text-xs font-semibold text-neutral-900 dark:text-white">{contrastFix.report.suggestion.recommended.hex}</code>
+              <span className="text-xs text-neutral-500 dark:text-neutral-400">
+                {contrastFix.foreground} → {contrastFix.report.suggestion.recommended.hex} · {contrastFix.report.suggestion.recommended.ratio}:1
+              </span>
+            </div>
           </div>
         )}
 

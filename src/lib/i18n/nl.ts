@@ -1805,6 +1805,7 @@ export const nl = {
   "violations.verifyFixAria": "Oplossing verifiëren via een nieuwe scan",
   "violations.rescanning": "Opnieuw scannen...",
   "violations.history": "Geschiedenis",
+  "violations.contrastFix": "Voorgestelde toegankelijke tekstkleur",
   "violations.toggleHistoryAria": "Statusgeschiedenis tonen of verbergen",
   "violations.affectedElementsSingular": "{count} betrokken element",
   "violations.affectedElementsPlural": "{count} betrokken elementen",

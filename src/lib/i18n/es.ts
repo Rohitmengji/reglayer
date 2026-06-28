@@ -1825,6 +1825,7 @@ export const es = {
   "violations.verifyFixAria": "Verificar la corrección mediante un nuevo análisis",
   "violations.rescanning": "Volviendo a analizar...",
   "violations.history": "Historial",
+  "violations.contrastFix": "Color de texto accesible sugerido",
   "violations.toggleHistoryAria": "Mostrar u ocultar el historial de estado",
   "violations.affectedElementsSingular": "{count} elemento afectado",
   "violations.affectedElementsPlural": "{count} elementos afectados",
