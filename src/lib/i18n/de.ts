@@ -2168,6 +2168,7 @@ export const de = {
   "violations.verifyFixAria": "Behebung durch erneuten Scan überprüfen",
   "violations.rescanning": "Erneuter Scan läuft...",
   "violations.history": "Verlauf",
+  "violations.contrastFix": "Empfohlene barrierefreie Textfarbe",
   "violations.toggleHistoryAria": "Statusverlauf umschalten",
   "violations.affectedElementsSingular": "{count} betroffenes Element",
   "violations.affectedElementsPlural": "{count} betroffene Elemente",

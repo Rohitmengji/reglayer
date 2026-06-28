@@ -1374,6 +1374,7 @@ export const en = {
   "violations.verifyFixAria": "Verify fix by re-scanning",
   "violations.rescanning": "Re-scanning...",
   "violations.history": "History",
+  "violations.contrastFix": "Suggested accessible text color",
   "violations.toggleHistoryAria": "Toggle status history",
   "violations.affectedElementsSingular": "{count} affected element",
   "violations.affectedElementsPlural": "{count} affected elements",
