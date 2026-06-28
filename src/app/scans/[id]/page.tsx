@@ -17,6 +17,7 @@ import { useScanStore } from "@/stores/scanStore";
 import { ScoreCard } from "@/components/dashboard/score-card";
 import { ViolationCard } from "@/components/scanner/violation-card";
 import { CustomRulesCard } from "@/components/scanner/custom-rules-card";
+import { PageStructureCard } from "@/components/scanner/page-structure-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -321,6 +322,9 @@ export default function ScanDetailPage({
             </CardContent>
           </Card>
         )}
+
+        {/* Page structure & content — heading outline, readability, <html lang> */}
+        <PageStructureCard capture={scan.metadata.pageStructure} />
 
         {/* AI Visual Review — vision model looks at the page for issues axe can't see */}
         <Card>
