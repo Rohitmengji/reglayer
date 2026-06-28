@@ -35,6 +35,7 @@ import { sendRegressionAlert } from "@/lib/email/service";
 import { dispatchToIntegrations } from "@/lib/integrations/dispatcher";
 import { dispatchWebhookEvent, redeliverFailedWebhooks } from "@/lib/integrations/webhookDispatcher";
 import { prisma } from "@/lib/database/prisma";
+import { validateScanUrl } from "@/lib/validations/ssrf";
 import { logger } from "@/lib/telemetry/logger";
 
 const log = logger.withContext({ module: "cron:run-schedules" });
@@ -230,6 +231,17 @@ async function executeScheduledScan(params: {
   const { scheduleId, scheduleName, url, cron, workspaceId, ownerEmail } = params;
 
   try {
+    // Defense-in-depth SSRF guard. The create endpoint validates the URL, but a
+    // public host can re-point at an internal IP after the fact (TOCTOU), and
+    // schedules created before that guard existed were never checked. Use the
+    // synchronous literal/range check (resolvesToInternalIp fails open and the
+    // runner has a tight time budget). A throw here routes to the catch below,
+    // which marks the schedule failed + audits it like any other scan failure.
+    const ssrfError = validateScanUrl(url);
+    if (ssrfError) {
+      throw new Error(`Refusing to scan internal/unsafe URL: ${ssrfError}`);
+    }
+
     log.info("Executing scheduled scan", { scheduleId, url, scheduleName });
 
     // 1. Perform the scan

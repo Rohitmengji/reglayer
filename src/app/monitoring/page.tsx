@@ -53,9 +53,12 @@ interface Schedule {
   lastScanAt: string | null;
 }
 
+// Only cadences the cron runner can actually deliver. Vercel Hobby fires ONE
+// daily cron, and PLAN_MIN_INTERVAL caps every plan that can schedule at daily
+// (PRO/ENTERPRISE) — so sub-daily presets ("Every hour", "Every 6 hours") would
+// be rejected with a 403 for everyone. They were removed rather than shown as
+// dead options; re-add only behind a sub-daily-capable backend + plan tier.
 const CRON_PRESETS = [
-  { label: "Every hour", value: "0 * * * *", description: "Runs at the top of every hour" },
-  { label: "Every 6 hours", value: "0 */6 * * *", description: "4 times a day" },
   { label: "Daily (9 AM)", value: "0 9 * * *", description: "Every day at 9:00 AM UTC" },
   { label: "Weekly (Mon)", value: "0 9 * * 1", description: "Every Monday at 9:00 AM UTC" },
   { label: "Monthly (1st)", value: "0 9 1 * *", description: "First of each month at 9:00 AM UTC" },
@@ -119,27 +122,47 @@ export default function MonitoringPage() {
   }
 
   async function handleToggle(id: string) {
+    setError(null);
     try {
       const res = await fetch("/api/schedules", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "toggle", id }),
       });
-      if (res.ok) fetchSchedules();
-    } catch {}
+      if (res.ok) {
+        fetchSchedules();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || "Failed to update schedule. Please try again.");
+      }
+    } catch {
+      setError("Failed to update schedule. Please try again.");
+    }
   }
 
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   async function handleDelete(id: string) {
+    setError(null);
     try {
       const res = await fetch("/api/schedules", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "delete", id }),
       });
-      if (res.ok) fetchSchedules();
-    } catch {}
+      if (res.ok) {
+        fetchSchedules();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || "Failed to delete schedule. Please try again.");
+      }
+    } catch {
+      setError("Failed to delete schedule. Please try again.");
+    } finally {
+      // Always close the confirm dialog — on success the row is gone, on failure
+      // the error banner explains why (the dialog must not linger over it).
+      setDeleteTarget(null);
+    }
   }
 
   function cronToHuman(cron: string): string {
@@ -180,9 +203,13 @@ export default function MonitoringPage() {
         </div>
 
         {error && (
-          <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/20 px-4 py-3 text-sm text-red-700 dark:text-red-300 flex items-center gap-2">
+          <div
+            role="alert"
+            aria-live="assertive"
+            className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/20 px-4 py-3 text-sm text-red-700 dark:text-red-300 flex items-center gap-2"
+          >
             <AlertTriangle className="h-4 w-4 shrink-0" />
-            Something went wrong. Please try again.
+            <span>{error || "Something went wrong. Please try again."}</span>
           </div>
         )}
 
@@ -201,10 +228,11 @@ export default function MonitoringPage() {
             <CardContent>
               <form onSubmit={handleCreate} className="space-y-4 max-w-lg">
                 <div>
-                  <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1 block">
+                  <label htmlFor="schedule-name" className="text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1 block">
                     Schedule Name
                   </label>
                   <Input
+                    id="schedule-name"
                     type="text"
                     placeholder="e.g., Production Homepage"
                     value={formName}
@@ -213,12 +241,13 @@ export default function MonitoringPage() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1 block">
+                  <label htmlFor="schedule-url" className="text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1 block">
                     URL to Monitor
                   </label>
                   <div className="relative">
-                    <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-500 dark:text-neutral-400" />
+                    <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-500 dark:text-neutral-400" aria-hidden="true" />
                     <Input
+                      id="schedule-url"
                       type="url"
                       placeholder="https://example.com"
                       value={formUrl}
@@ -229,14 +258,15 @@ export default function MonitoringPage() {
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1.5 block">
+                  <label id="freq-label" className="text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1.5 block">
                     Scan Frequency
                   </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div role="group" aria-labelledby="freq-label" className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {CRON_PRESETS.map((preset) => (
                       <button
                         key={preset.value}
                         type="button"
+                        aria-pressed={formCron === preset.value}
                         onClick={() => setFormCron(preset.value)}
                         className={`text-left rounded-lg border px-3 py-2.5 transition-all ${
                           formCron === preset.value
@@ -322,8 +352,8 @@ export default function MonitoringPage() {
 
                       {/* Details */}
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-sm font-semibold text-neutral-900 dark:text-white truncate">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <h3 className="text-sm font-semibold text-neutral-900 dark:text-white truncate min-w-0">
                             {schedule.name}
                           </h3>
                           <Badge variant="secondary" className="text-[10px] shrink-0">
@@ -338,11 +368,11 @@ export default function MonitoringPage() {
                         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2">
                           {schedule.lastScore !== null ? (
                             <>
-                              <span className="flex items-center gap-1 text-[11px] text-neutral-500">
+                              <span className="flex items-center gap-1 text-[11px] text-neutral-500 dark:text-neutral-400">
                                 <Activity className="h-3 w-3" />
-                                Score: <strong className={schedule.lastScore >= 80 ? "text-emerald-600" : schedule.lastScore >= 60 ? "text-amber-600" : "text-red-600"}>{schedule.lastScore}</strong>
+                                Score: <strong className={schedule.lastScore >= 80 ? "text-emerald-600 dark:text-emerald-400" : schedule.lastScore >= 60 ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400"}>{schedule.lastScore}</strong>
                               </span>
-                              <span className="flex items-center gap-1 text-[11px] text-neutral-500">
+                              <span className="flex items-center gap-1 text-[11px] text-neutral-500 dark:text-neutral-400">
                                 <AlertTriangle className="h-3 w-3" />
                                 {schedule.lastViolations} violations
                               </span>
@@ -371,19 +401,21 @@ export default function MonitoringPage() {
                             : "text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
                         }`}
                         title={schedule.enabled ? "Pause" : "Resume"}
+                        aria-label={schedule.enabled ? `Pause monitoring ${schedule.name}` : `Resume monitoring ${schedule.name}`}
                       >
                         {schedule.enabled ? (
-                          <PauseCircle className="h-4 w-4" />
+                          <PauseCircle className="h-4 w-4" aria-hidden="true" />
                         ) : (
-                          <PlayCircle className="h-4 w-4" />
+                          <PlayCircle className="h-4 w-4" aria-hidden="true" />
                         )}
                       </button>
                       <button
                         onClick={() => setDeleteTarget(schedule.id)}
                         className="p-2 rounded-md text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                         title="Delete"
+                        aria-label={`Delete monitoring schedule ${schedule.name}`}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-4 w-4" aria-hidden="true" />
                       </button>
                     </div>
                   </div>
