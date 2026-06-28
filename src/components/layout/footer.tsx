@@ -49,7 +49,7 @@ export function Footer() {
               <li><Link href="/features" className="inline-block py-1 text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white">Features</Link></li>
               <li><Link href="/pricing" className="inline-block py-1 text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white">Pricing</Link></li>
               <li><Link href="/standards" className="inline-block py-1 text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white">Standards</Link></li>
-              <li><Link href="/tools/contrast" className="inline-block py-1 text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white">Contrast Checker</Link></li>
+              <li><Link href="/tools" className="inline-block py-1 text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white">Accessibility Tools</Link></li>
             </ul>
           </div>
           <div>
