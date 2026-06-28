@@ -11,6 +11,7 @@ import { useMemo, useState } from "react";
 import { PublicHeader } from "@/components/layout/public-header";
 import { Footer } from "@/components/layout/footer";
 import { useI18n } from "@/components/i18n-provider";
+import { ToolsBackLink } from "@/components/tools/tools-back-link";
 import { simulateColorVision } from "@/lib/a11y/color-vision";
 import { parseColor, toHex } from "@/lib/a11y/contrast";
 
@@ -44,6 +45,7 @@ export default function ColorVisionToolPage() {
     <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950">
       <PublicHeader />
       <main className="mx-auto max-w-3xl px-4 py-12 sm:py-16">
+        <div className="mb-4"><ToolsBackLink /></div>
         <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">{t("tools.colorVision.title")}</h1>
         <p className="mt-2 text-neutral-600 dark:text-neutral-400">{t("tools.colorVision.subtitle")}</p>
 
