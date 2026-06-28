@@ -63,6 +63,10 @@ export async function GET() {
 
       return {
         ...s,
+        // Flatten the monitored URL onto the schedule. The client `Schedule`
+        // shape (and the cards) read a flat `url`; the Prisma include nests it
+        // under `site`, so without this the URL renders blank on every card.
+        url: s.site?.url ?? "",
         lastScore: lastScan?.score ?? null,
         lastViolations: lastScan?.totalViolations ?? null,
         lastScanAt: lastScan?.completedAt ?? null,
@@ -120,7 +124,7 @@ export async function POST(request: NextRequest) {
       if (!schedule) {
         return NextResponse.json({ error: "Schedule not found" }, { status: 404 });
       }
-      return NextResponse.json({ schedule });
+      return NextResponse.json({ schedule: { ...schedule, url: schedule.site?.url ?? "" } });
     }
 
     // Delete schedule (workspace-scoped — a foreign id is a no-op → 404)
@@ -167,7 +171,10 @@ export async function POST(request: NextRequest) {
       workspaceId,
     });
 
-    return NextResponse.json({ schedule }, { status: 201 });
+    return NextResponse.json(
+      { schedule: { ...schedule, url: schedule.site?.url ?? "" } },
+      { status: 201 }
+    );
   } catch (error) {
     logger.error("Failed to process schedule request", {
       service: "schedules-api",
