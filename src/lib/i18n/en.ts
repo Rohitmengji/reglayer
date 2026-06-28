@@ -1375,6 +1375,7 @@ export const en = {
   "violations.rescanning": "Re-scanning...",
   "violations.history": "History",
   "violations.contrastFix": "Suggested accessible text color",
+  "violations.langFix": "Suggested language tag",
   "violations.toggleHistoryAria": "Toggle status history",
   "violations.affectedElementsSingular": "{count} affected element",
   "violations.affectedElementsPlural": "{count} affected elements",

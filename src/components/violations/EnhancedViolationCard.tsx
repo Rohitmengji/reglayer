@@ -39,6 +39,7 @@ import type { ViolationStatus } from "@/generated/prisma/client";
 import { useI18n } from "@/components/i18n-provider";
 import type { TranslationKey } from "@/lib/i18n/translations";
 import { analyzeContrastViolation } from "@/lib/a11y/contrast-violation";
+import { analyzeLangTagViolation, LANG_VALIDITY_RULES } from "@/lib/a11y/lang-tag-violation";
 
 // ─────────────── Types ───────────────
 
@@ -192,6 +193,18 @@ export function EnhancedViolationCard({ violation, onStatusChange }: EnhancedVio
     return null;
   }, [violation.ruleId, violation.affectedElements]);
 
+  // For a present-but-invalid lang attribute, derive the corrected BCP-47 tag
+  // from the element snippet (axe persists e.g. `<html lang="en_US">`).
+  const langFix = useMemo(() => {
+    if (!LANG_VALIDITY_RULES.has(violation.ruleId)) return null;
+    const els = Array.isArray(violation.affectedElements) ? violation.affectedElements : [];
+    for (const el of els) {
+      const fix = analyzeLangTagViolation(el.html);
+      if (fix) return fix;
+    }
+    return null;
+  }, [violation.ruleId, violation.affectedElements]);
+
   const meta = STATUS_META[state.status] ?? STATUS_META.OPEN;
   const StatusIcon = meta.icon;
   const statusLabel = t(meta.labelKey);
@@ -288,6 +301,18 @@ export function EnhancedViolationCard({ violation, onStatusChange }: EnhancedVio
               <span className="text-xs text-neutral-500 dark:text-neutral-400">
                 {contrastFix.foreground} → {contrastFix.report.suggestion.recommended.hex} · {contrastFix.report.suggestion.recommended.ratio}:1
               </span>
+            </div>
+          </div>
+        )}
+
+        {/* Corrected BCP-47 language tag (lang-validity violations only) */}
+        {langFix && (
+          <div className="rounded-md border border-green-200 dark:border-green-900 bg-green-50 dark:bg-green-950/20 px-3 py-2">
+            <p className="text-xs font-medium text-green-800 dark:text-green-300">{t("violations.langFix")}</p>
+            <div className="mt-1.5 flex flex-wrap items-center gap-2 font-mono text-xs">
+              <code className="text-neutral-400 line-through">{langFix.value}</code>
+              <span className="text-neutral-400" aria-hidden="true">→</span>
+              <code className="font-semibold text-neutral-900 dark:text-white">{langFix.suggestion}</code>
             </div>
           </div>
         )}

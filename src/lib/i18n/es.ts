@@ -1826,6 +1826,7 @@ export const es = {
   "violations.rescanning": "Volviendo a analizar...",
   "violations.history": "Historial",
   "violations.contrastFix": "Color de texto accesible sugerido",
+  "violations.langFix": "Etiqueta de idioma sugerida",
   "violations.toggleHistoryAria": "Mostrar u ocultar el historial de estado",
   "violations.affectedElementsSingular": "{count} elemento afectado",
   "violations.affectedElementsPlural": "{count} elementos afectados",

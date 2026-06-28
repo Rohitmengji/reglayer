@@ -1806,6 +1806,7 @@ export const pt = {
   "violations.rescanning": "A analisar novamente...",
   "violations.history": "Histórico",
   "violations.contrastFix": "Cor de texto acessível sugerida",
+  "violations.langFix": "Etiqueta de idioma sugerida",
   "violations.toggleHistoryAria": "Mostrar ou ocultar o histórico de estado",
   "violations.affectedElementsSingular": "{count} elemento afetado",
   "violations.affectedElementsPlural": "{count} elementos afetados",

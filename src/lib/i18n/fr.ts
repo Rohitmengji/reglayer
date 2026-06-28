@@ -2130,6 +2130,7 @@ export const fr = {
   "violations.rescanning": "Nouvelle analyse...",
   "violations.history": "Historique",
   "violations.contrastFix": "Couleur de texte accessible suggérée",
+  "violations.langFix": "Balise de langue suggérée",
   "violations.toggleHistoryAria": "Afficher ou masquer l'historique du statut",
   "violations.affectedElementsSingular": "{count} élément affecté",
   "violations.affectedElementsPlural": "{count} éléments affectés",
