@@ -81,6 +81,9 @@ export function mapPrismaScanToResult(scan: ScanWithViolations): ScanResult {
       ...(meta.deepScan
         ? { deepScan: meta.deepScan as import("@/lib/scanner/accessibility/deepScan").DeepScanReport }
         : {}),
+      ...(meta.pageStructure
+        ? { pageStructure: meta.pageStructure as import("@/lib/a11y/page-insights").PageStructureCapture }
+        : {}),
     },
   };
 }

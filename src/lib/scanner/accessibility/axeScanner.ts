@@ -47,6 +47,8 @@ import { SCAN_DEFAULTS } from "@/lib/constants";
 import { launchBrowser, isServerless, getViewport } from "@/lib/scanner/browser/launch";
 import { applyAuthToContext } from "@/lib/scanner/auth";
 import { runDeepPasses, type DeepScanReport, type AxeViolationLike, type EvaluablePage } from "./deepScan";
+import type { PageStructureCapture } from "@/lib/a11y/page-insights";
+import { analyzeReadability } from "@/lib/a11y/readability";
 import fs from "fs";
 import path from "path";
 
@@ -119,6 +121,12 @@ export interface AxeScanResult {
    * extra context (states revealed, keyboard heuristics, coverage notes).
    */
   deepScan?: DeepScanReport;
+  /**
+   * Lightweight page-structure snapshot (heading list, <html lang>, body-text
+   * sample) captured in-page during the axe run. Powers the post-scan "page
+   * structure & content" insights. Best-effort — absent if capture failed.
+   */
+  pageStructure?: PageStructureCapture;
 }
 
 export interface AxeViolation {
@@ -328,6 +336,49 @@ export async function runAccessibilityScan(
     const pageTitle = await page.title();
 
     /**
+     * Lightweight page-structure capture (heading list, <html lang>) + readability
+     * for the post-scan content/structure insights. One size-capped in-page
+     * evaluate. The body-text sample is used to compute the readability numbers
+     * HERE and then DISCARDED — we never persist raw page text (it can carry PII
+     * on authenticated pages, bloats crawl metadata, and would leak via account
+     * export). Bounded by a 3s timeout and a try/catch: a hang or failure must
+     * never stall or fail the scan (page.evaluate ignores setDefaultTimeout).
+     */
+    let pageStructure: PageStructureCapture | undefined;
+    let captureTimer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const captureTimeout = new Promise<never>((_, reject) => {
+        captureTimer = setTimeout(() => reject(new Error("pageStructure capture timeout")), 3000);
+      });
+      const raw = (await Promise.race([
+        page.evaluate(() => {
+          const headings = Array.from(document.querySelectorAll("h1,h2,h3,h4,h5,h6"))
+            .slice(0, 100)
+            .map((h) => ({
+              level: Number(h.tagName.charAt(1)),
+              text: (h.textContent || "").replace(/\s+/g, " ").trim().slice(0, 150),
+            }));
+          const textSample = ((document.body && document.body.innerText) || "")
+            .replace(/\s+/g, " ")
+            .trim()
+            .slice(0, 12000);
+          return { lang: document.documentElement.getAttribute("lang"), headings, textSample };
+        }),
+        captureTimeout,
+      ])) as { lang: string | null; headings: { level: number; text: string }[]; textSample: string };
+
+      pageStructure = {
+        lang: raw.lang,
+        headings: raw.headings,
+        readability: raw.textSample.trim().length > 0 ? analyzeReadability(raw.textSample) : null,
+      };
+    } catch {
+      // Non-fatal — the insights panel simply won't render for this scan.
+    } finally {
+      if (captureTimer) clearTimeout(captureTimer);
+    }
+
+    /**
      * Optional viewport screenshot, captured from THIS page before the browser
      * closes (no extra navigation). Used as live "watch the crawl" evidence and
      * for single-scan visual records. JPEG q40 keeps each frame ~40-90 KB.
@@ -406,6 +457,7 @@ export async function runAccessibilityScan(
       ...(authResult && { authResult }),
       ...(screenshot && { screenshot }),
       ...(deepScan && { deepScan }),
+      ...(pageStructure && { pageStructure }),
     };
   } finally {
     if (browser) {

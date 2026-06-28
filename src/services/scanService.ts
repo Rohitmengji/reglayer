@@ -286,6 +286,9 @@ export async function persistScan(
         ...((scan.metadata.deepScan
           ? { deepScan: scan.metadata.deepScan }
           : {}) as Record<string, unknown>),
+        ...((scan.metadata.pageStructure
+          ? { pageStructure: scan.metadata.pageStructure }
+          : {}) as Record<string, unknown>),
         ...(scope?.metadata ?? {}),
       },
       violations: {

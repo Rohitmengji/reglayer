@@ -86,6 +86,8 @@ export interface ScanMetadata {
   axeCoreVersion: string;
   /** Deep Scan report (states revealed, keyboard heuristics). Present when deep scan ran. */
   deepScan?: import("@/lib/scanner/accessibility/deepScan").DeepScanReport;
+  /** Page-structure snapshot (headings, <html lang>, text sample) for content/structure insights. */
+  pageStructure?: import("@/lib/a11y/page-insights").PageStructureCapture;
 }
 
 export interface ComplianceRule {
