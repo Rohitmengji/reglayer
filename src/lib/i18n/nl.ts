@@ -1806,6 +1806,7 @@ export const nl = {
   "violations.rescanning": "Opnieuw scannen...",
   "violations.history": "Geschiedenis",
   "violations.contrastFix": "Voorgestelde toegankelijke tekstkleur",
+  "violations.langFix": "Voorgestelde taalcode",
   "violations.toggleHistoryAria": "Statusgeschiedenis tonen of verbergen",
   "violations.affectedElementsSingular": "{count} betrokken element",
   "violations.affectedElementsPlural": "{count} betrokken elementen",

@@ -2169,6 +2169,7 @@ export const de = {
   "violations.rescanning": "Erneuter Scan läuft...",
   "violations.history": "Verlauf",
   "violations.contrastFix": "Empfohlene barrierefreie Textfarbe",
+  "violations.langFix": "Empfohlenes Sprachkennzeichen",
   "violations.toggleHistoryAria": "Statusverlauf umschalten",
   "violations.affectedElementsSingular": "{count} betroffenes Element",
   "violations.affectedElementsPlural": "{count} betroffene Elemente",
