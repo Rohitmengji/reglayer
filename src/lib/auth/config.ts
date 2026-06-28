@@ -34,6 +34,7 @@ import { isSessionRevoked } from "@/lib/sso/guards";
 import { applyProvisioning } from "@/lib/sso/provision-execute";
 import { getEnforcementForEmail } from "@/lib/sso/resolve";
 import { evaluateEnforcement } from "@/lib/sso/enforcement";
+import { emailIsVerified } from "./profile-refresh";
 import { logger } from "@/lib/telemetry/logger";
 
 /**
@@ -254,9 +255,12 @@ export const authOptions: NextAuthOptions = {
       // Ensure user exists in the database
       if (user?.email) {
         try {
+          // Only refresh name/image from a VERIFIED-email provider — never let an
+          // unverified assertion overwrite an existing account's identity (#audit).
+          const refreshProfile = emailIsVerified(account?.provider, profile);
           const dbUser = await prisma.user.upsert({
             where: { email: user.email },
-            update: { name: user.name || undefined, image: user.image || undefined },
+            update: refreshProfile ? { name: user.name || undefined, image: user.image || undefined } : {},
             create: { email: user.email, name: user.name || null, image: user.image || null },
           });
 
