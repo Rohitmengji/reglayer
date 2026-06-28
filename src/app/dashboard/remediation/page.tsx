@@ -142,6 +142,24 @@ function RemediationPageInner() {
     };
   }, []);
 
+  // Preload from the scan the user arrived from: "Auto-fix what we can" on
+  // /scans/[id] links here with ?scanId=<id>, so we immediately select + analyze
+  // THAT scan (prefilling its URL + fixability) — no empty form, no re-entry.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const scanId = params.get("scanId");
+    const urlParam = params.get("url");
+    if (scanId) {
+      void analyzeScan(scanId);
+    } else if (urlParam && /^https?:\/\/.+\..+/.test(urlParam)) {
+      // One-time sync of an external source (the URL param) into state on mount.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setUrl(urlParam);
+    }
+    // Run once on mount; analyzeScan is stable enough for this preload.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function analyzeScan(scanId: string) {
     setSelectedScanId(scanId);
     setFixability(null);
