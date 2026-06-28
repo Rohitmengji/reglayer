@@ -28,6 +28,7 @@ import { prisma } from "@/lib/database/prisma";
 import { PLAN_LIMITS, type PlanType } from "@/lib/credits/plan-limits";
 import { logger } from "@/lib/telemetry/logger";
 import { requireWorkspacePermission } from "@/lib/auth/api-guard";
+import { validateScanUrl, resolvesToInternalIp } from "@/lib/validations/ssrf";
 
 const createScheduleSchema = z.object({
   name: z.string().min(1).max(100),
@@ -55,8 +56,13 @@ export async function GET() {
   // Enrich with recent execution results
   const enriched = await Promise.all(
     schedules.map(async (s) => {
+      // Only a SCORED completed scan counts as the "last result" — a COMPLETED
+      // row with a null score (legacy / no-score completion) would otherwise be
+      // surfaced as lastScore=null, which the card reads as "Awaiting first scan"
+      // while silently dropping its real violation count + date. Match the
+      // score:{not:null} filter the trends/defenseFile queries already use.
       const lastScan = await prisma.scan.findFirst({
-        where: { siteId: s.siteId, status: "COMPLETED" },
+        where: { siteId: s.siteId, status: "COMPLETED", score: { not: null } },
         orderBy: { completedAt: "desc" },
         select: { score: true, totalViolations: true, completedAt: true },
       });
@@ -141,6 +147,22 @@ export async function POST(request: NextRequest) {
     if (!parseResult.success) {
       return NextResponse.json(
         { error: "Invalid request", details: parseResult.error.flatten().fieldErrors },
+        { status: 400 }
+      );
+    }
+
+    // SSRF guard — z.url() only checks format. Every other scan-initiating
+    // endpoint (scan/crawl/remediate/journey/...) validates the destination so
+    // a user can't make the server probe cloud-metadata, loopback, or RFC1918
+    // hosts; scheduled scans must do the same since the cron runner fetches this
+    // URL server-side. (Defense-in-depth re-checked at execution in run-schedules.)
+    const ssrfError = validateScanUrl(parseResult.data.url);
+    if (ssrfError) {
+      return NextResponse.json({ error: ssrfError }, { status: 400 });
+    }
+    if (await resolvesToInternalIp(parseResult.data.url)) {
+      return NextResponse.json(
+        { error: "Scanning private/internal IP addresses is not allowed" },
         { status: 400 }
       );
     }
