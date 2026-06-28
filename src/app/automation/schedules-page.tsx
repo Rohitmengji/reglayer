@@ -64,12 +64,15 @@ function relativeTime(date: string | Date): string {
   return `in ${days} days`;
 }
 
+// Only daily-or-coarser cadences — the Vercel Hobby cron runner fires once a day
+// and PLAN_MIN_INTERVAL caps every plan at daily, so sub-daily presets ("Every 6
+// hours", "Twice daily") always 403'd. The custom-cron builder below can only
+// produce a single daily time × selected days, so it can't make a sub-daily cron
+// either; every selectable option here is now deliverable.
 const CRON_PRESETS = [
   { label: "Daily at 9:00 AM", value: "0 9 * * *" },
   { label: "Every Monday at 9:00 AM", value: "0 9 * * 1" },
   { label: "Every weekday at 8:00 AM", value: "0 8 * * 1,2,3,4,5" },
-  { label: "Every 6 hours", value: "0 */6 * * *" },
-  { label: "Twice daily (9am & 5pm)", value: "0 9,17 * * *" },
   { label: "Every Sunday at midnight", value: "0 0 * * 0" },
 ];
 

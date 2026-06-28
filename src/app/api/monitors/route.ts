@@ -11,6 +11,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
 import { requireWorkspacePermission } from "@/lib/auth/api-guard";
+import { validateScanUrl, resolvesToInternalIp } from "@/lib/validations/ssrf";
 import { z } from "zod";
 
 const alertRuleSchema = z.object({
@@ -99,6 +100,21 @@ export async function POST(request: NextRequest) {
 
   const { name, url, condition, threshold, notifyVia, webhookUrl, enabled } = parsed.data;
 
+  // SSRF guard — a monitor creates a recurring Schedule the cron runner fetches
+  // server-side, so the URL must be validated against internal/private addresses
+  // exactly like /api/schedules and every other scan trigger. z.url() only checks
+  // format, not destination.
+  const ssrfError = validateScanUrl(url);
+  if (ssrfError) {
+    return NextResponse.json({ error: ssrfError }, { status: 400 });
+  }
+  if (await resolvesToInternalIp(url)) {
+    return NextResponse.json(
+      { error: "Scanning private/internal IP addresses is not allowed" },
+      { status: 400 }
+    );
+  }
+
   // Create or find site (scoped to this workspace)
   let site = await prisma.site.findFirst({ where: { url, workspaceId: workspaceId } });
   if (!site) {
@@ -111,7 +127,10 @@ export async function POST(request: NextRequest) {
   const schedule = await prisma.schedule.create({
     data: {
       name,
-      cron: "0 */6 * * *", // every 6 hours by default
+      // Daily — the Vercel Hobby cron runner fires once a day, so a sub-daily
+      // cadence (the old "0 */6 * * *") was never actually delivered. Use the
+      // real cadence rather than advertise one the runner can't honor.
+      cron: "0 9 * * *",
       enabled,
       workspaceId: workspaceId,
       siteId: site.id,
