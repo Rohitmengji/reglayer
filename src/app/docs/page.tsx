@@ -101,7 +101,7 @@ export default function DocsPage() {
     <div className="min-h-screen bg-white dark:bg-neutral-950">
       <PublicHeader />
 
-      <div className="mx-auto max-w-5xl px-4 sm:px-6 py-12">
+      <main className="mx-auto max-w-5xl px-4 sm:px-6 py-12">
         <div className="mb-10">
           <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">{t("docs.title")}</h1>
           <p className="text-neutral-500 dark:text-neutral-400 mt-1">
@@ -157,7 +157,7 @@ export default function DocsPage() {
             </Link>
           </div>
         </div>
-      </div>
+      </main>
       <Footer />
     </div>
   );

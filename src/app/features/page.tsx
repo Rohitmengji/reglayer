@@ -32,7 +32,7 @@ export default function FeaturesPage() {
     <div className="min-h-screen bg-white dark:bg-neutral-950">
       <PublicHeader />
 
-      <div className="mx-auto max-w-5xl px-4 sm:px-6 py-8 sm:py-12">
+      <main className="mx-auto max-w-5xl px-4 sm:px-6 py-8 sm:py-12">
         <div className="text-center mb-16">
           <h1 className="text-3xl sm:text-4xl font-bold text-neutral-900 dark:text-white mb-4">
             {t("features.title")}
@@ -65,7 +65,7 @@ export default function FeaturesPage() {
             {t("features.cta")}
           </Link>
         </div>
-      </div>
+      </main>
       <Footer />
     </div>
   );
