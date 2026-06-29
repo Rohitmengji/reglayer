@@ -4,15 +4,12 @@
  * Supports EN, DE, FR, ES, IT, NL, PT for EU market coverage.
  * Interpolation: Use {variable} in translation strings.
  * Example: t("dashboard.resetsIn", { days: 5 }) → "Resets in 5 day(s)"
+ *
+ * PERF: Only English is eagerly imported (default locale). Other locales are
+ * loaded on-demand via dynamic import to reduce the initial bundle by ~600KB.
  */
 
 import { en } from "./en";
-import { de } from "./de";
-import { fr } from "./fr";
-import { es } from "./es";
-import { it } from "./it";
-import { nl } from "./nl";
-import { pt } from "./pt";
 
 export type Locale = "en" | "de" | "fr" | "es" | "it" | "nl" | "pt";
 
@@ -28,14 +25,40 @@ export const SUPPORTED_LOCALES: { code: Locale; name: string; flag: string }[] =
 
 export const DEFAULT_LOCALE: Locale = "en";
 
-const translations: Record<Locale, Record<string, string>> = { en, de, fr, es, it, nl, pt };
+// Cache loaded translations to avoid re-importing
+const loaded: Partial<Record<Locale, Record<string, string>>> = { en };
+
+const loaders: Record<Locale, () => Promise<{ [key: string]: Record<string, string> }>> = {
+  en: () => Promise.resolve({ en }),
+  de: () => import("./de"),
+  fr: () => import("./fr"),
+  es: () => import("./es"),
+  it: () => import("./it"),
+  nl: () => import("./nl"),
+  pt: () => import("./pt"),
+};
+
+/** Load a locale's translations (async, cached). */
+export async function loadLocale(locale: Locale): Promise<Record<string, string>> {
+  if (loaded[locale]) return loaded[locale]!;
+  const mod = await loaders[locale]();
+  const dict = mod[locale] ?? mod.default ?? Object.values(mod)[0];
+  loaded[locale] = dict as Record<string, string>;
+  return loaded[locale]!;
+}
+
+/** Synchronous access — returns loaded translations or falls back to English. */
+export function getLoadedTranslations(locale: Locale): Record<string, string> {
+  return loaded[locale] ?? en;
+}
 
 export type TranslationKey = keyof typeof en;
 
 export function getTranslation(locale: Locale, key: TranslationKey, params?: Record<string, string | number>): string {
-  const raw = translations[locale]?.[key as string] ?? translations.en[key as string] ?? (key as string);
+  const dict = loaded[locale] ?? en;
+  const raw = (dict as Record<string, string>)[key as string] ?? (en as Record<string, string>)[key as string] ?? (key as string);
   if (!params) return raw;
-  return raw.replace(/\{(\w+)\}/g, (_, k) => String(params[k] ?? `{${k}}`));
+  return raw.replace(/\{(\w+)\}/g, (_: string, k: string) => String(params[k] ?? `{${k}}`));
 }
 
 export function detectLocale(): Locale {
