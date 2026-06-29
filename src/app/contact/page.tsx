@@ -94,17 +94,18 @@ export default function ContactPage() {
     <div className="min-h-screen bg-white dark:bg-neutral-950">
       <PublicHeader />
 
-      <div className="mx-auto max-w-4xl px-4 sm:px-6 py-12">
+      <main className="mx-auto max-w-4xl px-4 sm:px-6 py-12">
         <h1 className="text-3xl font-bold text-neutral-900 dark:text-white mb-2">{t("contact.title")}</h1>
         <p className="text-neutral-500 dark:text-neutral-400 mb-10">{t("contact.subtitle")}</p>
 
         <div className="grid gap-10 md:grid-cols-2">
           {/* Contact Info */}
-          <div className="space-y-6">
+          <section aria-labelledby="contact-info-heading" className="space-y-6">
+            <h2 id="contact-info-heading" className="sr-only">Contact information</h2>
             <div className="flex items-start gap-3">
               <Mail className="h-5 w-5 text-neutral-600 dark:text-neutral-400 mt-0.5" aria-hidden="true" />
               <div>
-                <h2 className="font-medium text-neutral-900 dark:text-white">{t("contact.email")}</h2>
+                <h3 className="font-medium text-neutral-900 dark:text-white">{t("contact.email")}</h3>
                 <p className="text-sm text-neutral-600 dark:text-neutral-300">
                   General: <a href="mailto:hello@reglayer.dev" className="text-blue-600 dark:text-blue-400 hover:underline">hello@reglayer.dev</a>
                 </p>
@@ -120,7 +121,7 @@ export default function ContactPage() {
             <div className="flex items-start gap-3">
               <MessageSquare className="h-5 w-5 text-neutral-600 dark:text-neutral-400 mt-0.5" aria-hidden="true" />
               <div>
-                <h2 className="font-medium text-neutral-900 dark:text-white">{t("contact.responseTime")}</h2>
+                <h3 className="font-medium text-neutral-900 dark:text-white">{t("contact.responseTime")}</h3>
                 <p className="text-sm text-neutral-600 dark:text-neutral-300">{t("contact.responseTimeDesc")}</p>
               </div>
             </div>
@@ -128,17 +129,18 @@ export default function ContactPage() {
             <div className="flex items-start gap-3">
               <MapPin className="h-5 w-5 text-neutral-600 dark:text-neutral-400 mt-0.5" aria-hidden="true" />
               <div>
-                <h2 className="font-medium text-neutral-900 dark:text-white">{t("contact.location")}</h2>
+                <h3 className="font-medium text-neutral-900 dark:text-white">{t("contact.location")}</h3>
                 <p className="text-sm text-neutral-600 dark:text-neutral-300">
                   RegLayer<br />
                   Remote-first team
                 </p>
               </div>
             </div>
-          </div>
+          </section>
 
           {/* Contact Form */}
-          <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 p-6">
+          <section aria-labelledby="contact-form-heading" className="rounded-xl border border-neutral-200 dark:border-neutral-800 p-6">
+            <h2 id="contact-form-heading" className="sr-only">{t("contact.send")}</h2>
             {status === "success" ? (
               <div className="text-center py-8">
                 <div className="inline-flex items-center justify-center h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/30 mb-4">
@@ -184,6 +186,7 @@ export default function ContactPage() {
                     name="name"
                     type="text"
                     required
+                    aria-required="true"
                     minLength={2}
                     maxLength={100}
                     autoComplete="name"
@@ -200,6 +203,7 @@ export default function ContactPage() {
                     name="email"
                     type="email"
                     required
+                    aria-required="true"
                     maxLength={200}
                     autoComplete="email"
                     className="w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-900 dark:focus:ring-white"
@@ -249,6 +253,7 @@ export default function ContactPage() {
                     id="message"
                     name="message"
                     required
+                    aria-required="true"
                     minLength={10}
                     maxLength={5000}
                     rows={4}
@@ -267,9 +272,9 @@ export default function ContactPage() {
                 </p>
               </form>
             )}
-          </div>
+          </section>
         </div>
-      </div>
+      </main>
       <Footer />
     </div>
   );
