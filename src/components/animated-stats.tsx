@@ -61,7 +61,7 @@ function AnimatedStat({ value, label, icon, inView }: Stat & { inView: boolean }
   const Icon = icon ? iconMap[icon] : null;
 
   return (
-    <div className="relative group text-center p-5 sm:p-6 rounded-2xl border border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 hover:border-neutral-200 dark:hover:border-neutral-700 hover:shadow-md transition-all duration-300 h-full flex flex-col items-center justify-center min-h-[140px]">
+    <div className="relative group text-center p-5 sm:p-6 rounded-2xl border border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 hover:border-neutral-200 dark:hover:border-neutral-700 hover:shadow-md transition-all duration-300 h-full flex flex-col items-center justify-center min-h-35">
       {Icon && (
         <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-neutral-100 dark:bg-neutral-800 group-hover:bg-neutral-900 dark:group-hover:bg-white transition-colors duration-300">
           <Icon className="h-4.5 w-4.5 text-neutral-600 dark:text-neutral-400 group-hover:text-white dark:group-hover:text-neutral-900 transition-colors duration-300" />
