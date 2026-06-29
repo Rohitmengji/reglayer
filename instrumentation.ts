@@ -10,6 +10,16 @@ import * as Sentry from "@sentry/nextjs";
 export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {
     await import("./sentry.server.config");
+
+    // Warm up DB connection pool on server start to avoid cold-start latency
+    // on the first user request. Neon serverless can take 3-5s on cold start.
+    if (process.env.DATABASE_URL) {
+      import("@/lib/database/prisma").then(({ prisma }) => {
+        prisma.$executeRawUnsafe("SELECT 1").catch(() => {
+          // Non-fatal: warmup failure just means first request will be slow
+        });
+      });
+    }
   }
 
   if (process.env.NEXT_RUNTIME === "edge") {

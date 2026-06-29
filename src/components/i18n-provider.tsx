@@ -23,7 +23,7 @@
  */
 
 import { createContext, useContext, useCallback, useEffect, useSyncExternalStore } from "react";
-import { type Locale, type TranslationKey, getTranslation, detectLocale, DEFAULT_LOCALE } from "@/lib/i18n/translations";
+import { type Locale, type TranslationKey, getTranslation, detectLocale, DEFAULT_LOCALE, loadLocale } from "@/lib/i18n/translations";
 
 interface I18nContextValue {
   locale: Locale;
@@ -63,11 +63,19 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.lang = locale;
   }, [locale]);
 
+  // Load translations for the detected locale on mount (non-English locales are lazy-loaded)
+  useEffect(() => {
+    if (locale !== "en") {
+      loadLocale(locale).then(() => listeners.forEach((l) => l()));
+    }
+  }, [locale]);
+
   const setLocale = useCallback((newLocale: Locale) => {
     currentLocale = newLocale;
     localStorage.setItem("reglayer-locale", newLocale);
     document.documentElement.lang = newLocale;
-    listeners.forEach((l) => l());
+    // Load the locale translations if not already loaded, then notify subscribers
+    loadLocale(newLocale).then(() => listeners.forEach((l) => l()));
   }, []);
 
   const t = useCallback((key: TranslationKey, params?: Record<string, string | number>): string => {

@@ -34,7 +34,6 @@ import { AppShell } from "@/components/layout/app-shell";
 import { ScanForm } from "@/components/scanner/scan-form";
 import { ScoreCard } from "@/components/dashboard/score-card";
 import { ViolationCard } from "@/components/scanner/violation-card";
-import { DashboardAnalytics } from "@/components/dashboard/dashboard-analytics";
 import { OnboardingFlow } from "@/components/onboarding/onboarding-flow";
 import { SinceLastVisit } from "@/components/dashboard/since-last-visit";
 import { RoleOnboarding } from "@/components/onboarding/role-onboarding";
@@ -45,6 +44,12 @@ import { useI18n } from "@/components/i18n-provider";
 import { Download, Activity, Target, AlertTriangle, Globe, TrendingUp, TrendingDown, Sparkles, Zap, RotateCcw } from "lucide-react";
 import Link from "next/link";
 import type { ScanResult, ComplianceReport } from "@/lib/types";
+
+// Heavy components lazy-loaded to keep initial dashboard bundle lean.
+const DashboardAnalytics = dynamic(
+  () => import("@/components/dashboard/dashboard-analytics").then((m) => m.DashboardAnalytics),
+  { ssr: false, loading: () => null }
+);
 
 // Charts pull in recharts (~100KB gz) — load them lazily so the dashboard's
 // initial bundle stays lean. Both render null while empty, so a null loading
