@@ -55,3 +55,6 @@ visual-audit/
 .claude/
 # Local agent config
 .github/agents/
+
+# Playwright visual regression snapshots (generated locally, not committed)
+e2e/__snapshots__/
