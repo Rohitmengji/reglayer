@@ -99,6 +99,13 @@ export const FEATURE_CATALOG: FeatureDefinition[] = [
     plans: ["PRO", "ENTERPRISE"],
   },
   {
+    id: "multiRegionScan",
+    name: "Multi-Region Scanning",
+    description: "Scan from multiple geographic regions to detect geo-specific accessibility differences",
+    category: "compliance",
+    plans: ["PRO", "ENTERPRISE"],
+  },
+  {
     id: "manualTesting",
     name: "AI-Guided Manual Testing",
     description: "Human-in-the-loop verification of the WCAG criteria automation can't determine",
