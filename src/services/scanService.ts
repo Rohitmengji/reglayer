@@ -275,6 +275,7 @@ export async function persistScan(
       pageTitle: scan.metadata.pageTitle || null,
       duration: scan.metadata.scanDuration,
       screenshot: scan.screenshot || null,
+      region: scan.metadata.region || null,
       startedAt: new Date(scan.timestamp),
       completedAt: new Date(),
       userId,

@@ -37,6 +37,8 @@ export interface ScanOptions {
    * one-shot scan can't see. Slower — gate behind a paid plan.
    */
   deep?: boolean;
+  /** Scan region — simulates scanning from a specific geographic location */
+  region?: string;
 }
 
 export interface ScanResult {
@@ -84,6 +86,8 @@ export interface ScanMetadata {
   pageTitle: string;
   browserEngine: string;
   axeCoreVersion: string;
+  /** Scan region — which geographic location the scan was run from */
+  region?: string;
   /** Deep Scan report (states revealed, keyboard heuristics). Present when deep scan ran. */
   deepScan?: import("@/lib/scanner/accessibility/deepScan").DeepScanReport;
   /** Page-structure snapshot (headings, <html lang>, text sample) for content/structure insights. */

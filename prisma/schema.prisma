@@ -204,6 +204,7 @@ model Scan {
   screenshot    String?    // base64 or URL
   metadata      Json?      // additional scan metadata
   errorMessage  String?
+  region        String?    // scan region (us-east, eu-west, etc.)
 
   startedAt     DateTime?
   completedAt   DateTime?

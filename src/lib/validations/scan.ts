@@ -37,6 +37,7 @@ export const scanRequestSchema = z.object({
       tags: z.array(z.string()).optional(),
       auth: authConfigSchema.optional(),
       deep: z.boolean().optional(),
+      region: z.string().max(20).optional(),
     })
     .optional(),
 });

@@ -46,6 +46,7 @@ import type { ScanOptions } from "@/lib/types";
 import { SCAN_DEFAULTS } from "@/lib/constants";
 import { launchBrowser, isServerless, getViewport } from "@/lib/scanner/browser/launch";
 import { applyAuthToContext } from "@/lib/scanner/auth";
+import { getRegionConfig } from "@/lib/scanner/regions";
 import { runDeepPasses, type DeepScanReport, type AxeViolationLike, type EvaluablePage } from "./deepScan";
 import type { PageStructureCapture } from "@/lib/a11y/page-insights";
 import { analyzeReadability } from "@/lib/a11y/readability";
@@ -171,6 +172,23 @@ export async function runAccessibilityScan(
     const viewport = getViewport();
     if (!isServerless()) {
       await page.setViewportSize(viewport);
+    }
+
+    // Apply region-specific browser configuration (locale, timezone, geo headers)
+    const regionConfig = options?.region ? getRegionConfig(options.region) : undefined;
+    if (regionConfig && !isServerless()) {
+      // Set locale and timezone on the browser context
+      await page.context().setGeolocation(regionConfig.geolocation);
+      await page.context().grantPermissions(["geolocation"]);
+      // Set extra HTTP headers to simulate regional traffic
+      await page.setExtraHTTPHeaders({
+        "Accept-Language": regionConfig.acceptLanguage,
+      });
+      // Emulate timezone via CDP (Playwright)
+      const cdp = await page.context().newCDPSession(page);
+      await cdp.send("Emulation.setTimezoneOverride", { timezoneId: regionConfig.timezone });
+      await cdp.send("Emulation.setLocaleOverride", { locale: regionConfig.locale });
+      await cdp.detach();
     }
 
     // Apply authentication before navigation (if configured)

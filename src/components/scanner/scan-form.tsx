@@ -34,6 +34,7 @@ import { useI18n } from "@/components/i18n-provider";
 import { useFeatures } from "@/hooks/use-features";
 import { toast } from "sonner";
 import { ScanAuthSection } from "@/components/scanner/scan-auth-section";
+import { SCAN_REGIONS } from "@/lib/scanner/regions";
 import type { AuthConfig } from "@/lib/validations/auth";
 
 const SCAN_STAGES = [
@@ -64,6 +65,7 @@ export function ScanForm({ onScanComplete }: ScanFormProps) {
   const [errorInfo, setErrorInfo] = useState<{ message: string; retryable: boolean } | null>(null);
   const [authConfig, setAuthConfig] = useState<AuthConfig | undefined>(undefined);
   const [deep, setDeep] = useState(false);
+  const [region, setRegion] = useState("");
   const slowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const stageTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const abortRef = useRef<AbortController | null>(null);
@@ -138,6 +140,7 @@ export function ScanForm({ onScanComplete }: ScanFormProps) {
       const options: Record<string, unknown> = {};
       if (authConfig && authConfig.method !== "none") options.auth = authConfig;
       if (deep && deepScanEnabled) options.deep = true;
+      if (region) options.region = region;
       if (Object.keys(options).length > 0) scanBody.options = options;
 
       const res = await fetch("/api/scan", {
@@ -257,6 +260,30 @@ export function ScanForm({ onScanComplete }: ScanFormProps) {
           </span>
         </label>
         )}
+
+        {/* Region picker */}
+        <div className="rounded-lg border border-neutral-200 dark:border-neutral-800 px-3 py-2.5">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-neutral-900 dark:text-white">
+              Scan Region
+            </span>
+            <select
+              value={region}
+              onChange={(e) => setRegion(e.target.value)}
+              disabled={isScanning}
+              className="rounded-md border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-2 py-1 text-xs text-neutral-700 dark:text-neutral-300 focus:outline-none focus:ring-1 focus:ring-neutral-900 dark:focus:ring-white"
+              aria-label="Scan region"
+            >
+              <option value="">Auto (nearest)</option>
+              {SCAN_REGIONS.map((r) => (
+                <option key={r.id} value={r.id}>{r.flag} {r.name}</option>
+              ))}
+            </select>
+          </div>
+          <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+            Simulate scanning from a specific region to detect geo-specific content differences.
+          </p>
+        </div>
 
         {/* Scanning progress */}
         {isScanning && (
