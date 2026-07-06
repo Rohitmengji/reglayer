@@ -8,7 +8,7 @@
   "crons": [
     {
       "path": "/api/cron/run-schedules",
-      "schedule": "0 6 * * *"
+      "schedule": "*/5 * * * *"
     }
   ],
   "functions": {
@@ -30,6 +30,36 @@
     "src/app/api/crawl/route.ts": {
       "maxDuration": 60,
       "memory": 2048,
+      "includeFiles": "node_modules/@sparticuz/chromium/bin/**"
+    },
+    "src/app/api/journey/route.ts": {
+      "maxDuration": 60,
+      "memory": 2048,
+      "includeFiles": "node_modules/@sparticuz/chromium/bin/**"
+    },
+    "src/app/api/screen-reader/route.ts": {
+      "maxDuration": 60,
+      "memory": 2048,
+      "includeFiles": "node_modules/@sparticuz/chromium/bin/**"
+    },
+    "src/app/api/demo-scan/route.ts": {
+      "maxDuration": 60,
+      "memory": 2048,
+      "includeFiles": "node_modules/@sparticuz/chromium/bin/**"
+    },
+    "src/app/api/scans/[id]/visual/route.ts": {
+      "maxDuration": 60,
+      "memory": 2048,
+      "includeFiles": "node_modules/@sparticuz/chromium/bin/**"
+    },
+    "src/app/api/scan/multi-region/route.ts": {
+      "maxDuration": 60,
+      "memory": 2048,
+      "includeFiles": "node_modules/@sparticuz/chromium/bin/**"
+    },
+    "src/app/api/auth-configs/[id]/test/route.ts": {
+      "maxDuration": 60,
+      "memory": 1024,
       "includeFiles": "node_modules/@sparticuz/chromium/bin/**"
     }
   }

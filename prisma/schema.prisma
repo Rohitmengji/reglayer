@@ -1123,3 +1123,386 @@ model VendorObservation {
   @@index([workspaceId, observedAt])
   @@map("vendor_observations")
 }
+
+// ─────────────────────────────────────────────
+// Compliance Autopilot
+// ─────────────────────────────────────────────
+// Ties together scheduled scanning, evidence chain proofs, compliance reports,
+// and certificate management into a single subscription-worthy feature.
+// One Autopilot per (workspace, site) — the recurring compliance engine.
+
+model ComplianceAutopilot {
+  id              String    @id @default(cuid())
+  workspaceId     String
+  siteId          String
+  enabled         Boolean   @default(true)
+
+  // Auto-issue evidence chain proof after each successful scan
+  autoProof       Boolean   @default(true)
+  // Auto-revoke certificate if score drops below threshold
+  autoRevoke      Boolean   @default(true)
+  revokeThreshold Int       @default(70) // Score below which cert is revoked
+
+  // Scheduled report delivery
+  reportEnabled   Boolean   @default(true)
+  reportFrequency String    @default("monthly") // weekly | monthly | quarterly
+  reportRecipients String[] // Email addresses to receive reports
+  lastReportSentAt DateTime?
+  nextReportAt    DateTime?
+
+  // Streak tracking
+  consecutivePasses Int     @default(0) // Scans in a row ≥ revokeThreshold
+  longestStreak     Int     @default(0)
+  lastScanScore     Int?
+  lastScanAt        DateTime?
+
+  // Certificate management
+  certificateId   String?   // Active ComplianceProof id serving as cert
+  certificateRevokedAt DateTime?
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([workspaceId, siteId])
+  @@index([enabled, nextReportAt])
+  @@map("compliance_autopilots")
+}
+
+// ─────────────────────────────────────────────
+// Accessibility Compliance Warranty (ACW)
+// ─────────────────────────────────────────────
+// A legally-backed compliance warranty: RegLayer stands behind its monitoring with
+// financial coverage. If a warranted site receives a demand letter while actively
+// monitored with a score above the floor, RegLayer provides defense-file assembly,
+// demand-letter triage, and legal cost coverage up to the tier limit.
+//
+// Standalone (no cascading deletes from Site/Workspace) so warranty history and
+// claims survive site deletion — legal records must be immutable.
+
+enum WarrantyTier {
+  SHIELD       // $25k coverage, basic
+  FORTRESS     // $50k coverage, demand-letter response included
+  VAULT        // $100k coverage, full legal coordination
+}
+
+enum WarrantyStatus {
+  ACTIVE       // All eligibility conditions met, coverage in force
+  SUSPENDED    // Score dropped below floor or monitoring gap detected
+  CANCELLED    // Manually cancelled by customer or admin
+  EXPIRED      // Contract period ended without renewal
+  PENDING      // Enrolled but waiting for initial qualifying period (30 days)
+}
+
+enum ClaimStatus {
+  SUBMITTED    // Customer submitted a claim
+  UNDER_REVIEW // RegLayer reviewing eligibility
+  APPROVED     // Claim accepted, coverage activated
+  DENIED       // Claim denied (eligibility not met at time of incident)
+  RESOLVED     // Claim fully processed and closed
+}
+
+model WarrantyPolicy {
+  id              String          @id @default(cuid())
+  workspaceId     String
+  siteId          String
+  tier            WarrantyTier
+  status          WarrantyStatus  @default(PENDING)
+
+  // Coverage parameters
+  coverageLimit   Int             // Maximum coverage in USD cents
+  scoreFloor      Int             @default(75) // Minimum score to maintain warranty
+  monitoringGap   Int             @default(48) // Max hours without a scan before suspension
+
+  // Contract dates
+  enrolledAt      DateTime        @default(now())
+  activatedAt     DateTime?       // When PENDING → ACTIVE (after qualifying period)
+  suspendedAt     DateTime?       // Last suspension timestamp
+  expiresAt       DateTime?       // Contract end date (null = auto-renew)
+  cancelledAt     DateTime?
+
+  // Pricing (stored for audit trail — actual billing via Stripe)
+  monthlyPremium  Int             // Monthly premium in USD cents
+  annualDiscount  Int             @default(0) // Discount percentage for annual commitment
+
+  // Eligibility snapshot (updated on every scan)
+  lastEligibilityCheck DateTime?
+  currentScore         Int?
+  consecutiveDaysAboveFloor Int   @default(0)
+  totalMonitoredDays   Int        @default(0)
+
+  // Suspension history counter
+  suspensionCount Int             @default(0)
+
+  claims          WarrantyClaim[]
+
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@unique([workspaceId, siteId])
+  @@index([status])
+  @@index([siteId])
+  @@map("warranty_policies")
+}
+
+model WarrantyClaim {
+  id              String       @id @default(cuid())
+  policyId        String
+  policy          WarrantyPolicy @relation(fields: [policyId], references: [id])
+  status          ClaimStatus  @default(SUBMITTED)
+
+  // Incident details
+  incidentDate    DateTime     // When the demand letter / complaint was received
+  claimType       String       // "demand_letter" | "lawsuit" | "regulatory_complaint"
+  description     String       @db.Text
+  demandLetterUrl String?      // Uploaded document reference
+
+  // Coverage decision
+  coveredAmount   Int?         // Approved coverage amount in USD cents
+  denialReason    String?
+  reviewedAt      DateTime?
+  reviewedBy      String?      // Admin user ID
+
+  // Generated defense artifacts (references to existing systems)
+  defenseFileId   String?      // Reference to generated defense file
+  triageReportId  String?      // Reference to demand-letter triage output
+
+  // Resolution
+  resolvedAt      DateTime?
+  resolutionNotes String?      @db.Text
+  actualPayout    Int?         // Final payout in USD cents
+
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([policyId, status])
+  @@map("warranty_claims")
+}
+
+// ─────────────────────────────────────────────
+// Adversarial Accessibility Agents (Red Team)
+// ─────────────────────────────────────────────
+// Autonomous AI agents that ATTEMPT to use a site while simulating specific
+// disabilities. Each agent has a GOAL (e.g. "complete checkout") and operates
+// under CONSTRAINTS (e.g. keyboard-only, screen-reader-only). Reports where
+// and why it fails — finding the 70% of barriers that rule-based scanning misses.
+
+enum AgentPersona {
+  KEYBOARD    // No mouse — Tab, Enter, Arrow, Escape only
+  SCREEN_READER // Only accessibility tree (no visual content)
+  MOTOR       // Slow input, large targets only, no drag, timeouts extended
+  LOW_VISION  // 200% zoom, high contrast, text reflow
+  COGNITIVE   // Tracks complexity, step count, decision load, timeouts
+}
+
+enum AgentRunStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED      // Agent infrastructure error (not a site barrier)
+  TIMEOUT     // Exceeded time budget
+}
+
+enum StepOutcome {
+  PASSED
+  FAILED      // Barrier encountered — the agent got stuck
+  SKIPPED     // Agent chose an alternate path
+  TIMEOUT     // Step-level timeout
+}
+
+model AgentRun {
+  id            String         @id @default(cuid())
+  workspaceId   String
+  siteId        String
+  persona       AgentPersona
+  goal          String         // Natural language: "Complete a purchase"
+  startUrl      String         // Where the agent begins
+  status        AgentRunStatus @default(QUEUED)
+
+  // Results
+  goalAchieved  Boolean        @default(false)
+  totalSteps    Int            @default(0)
+  failedAtStep  Int?           // Step index where the agent got stuck
+  failureReason String?        @db.Text // Diagnostic: why the agent couldn't proceed
+  duration      Int?           // Total run time in ms
+  barriers      Json?          // Array of detected barriers with element/reason
+
+  // Scheduling
+  scheduledBy   String?        // "manual" | "cron" | schedule ID
+  startedAt     DateTime?
+  completedAt   DateTime?
+
+  steps         AgentStep[]
+
+  createdAt     DateTime       @default(now())
+
+  @@index([workspaceId, persona, createdAt])
+  @@index([siteId, status])
+  @@map("agent_runs")
+}
+
+model AgentStep {
+  id          String       @id @default(cuid())
+  runId       String
+  run         AgentRun     @relation(fields: [runId], references: [id], onDelete: Cascade)
+  stepIndex   Int
+  action      String       // "navigate" | "click" | "type" | "press" | "wait"
+  target      String?      // Selector or description of what the agent interacted with
+  reasoning   String?      // LLM's reasoning for choosing this action
+  outcome     StepOutcome
+  annotation  String?      // What went wrong (if FAILED)
+  duration    Int?         // Step time in ms
+  screenshot  String?      // Base64 or URL of screenshot at this step
+
+  createdAt   DateTime     @default(now())
+
+  @@index([runId, stepIndex])
+  @@map("agent_steps")
+}
+
+// ─────────────────────────────────────────────
+// Dependency Accessibility Intelligence
+// ─────────────────────────────────────────────
+// Tracks which npm packages / third-party libraries are present on scanned sites,
+// correlates version changes with accessibility regressions across tenants, and
+// generates advisories warning users BEFORE they update a risky dependency.
+// "Snyk for Accessibility" — powered by cross-tenant outcome data.
+
+model DependencyObservation {
+  id          String   @id @default(cuid())
+  workspaceId String?
+  siteId      String?
+  scanId      String?
+  package     String   // e.g. "@radix-ui/react-dialog", "react", "next"
+  version     String   // e.g. "1.1.0"
+  source      String   // "script_tag" | "meta" | "package_json" | "dom_pattern"
+  score       Int?     // Site score at the time of this observation
+  observedAt  DateTime @default(now())
+
+  @@index([package, version, observedAt])
+  @@index([workspaceId, observedAt])
+  @@index([siteId, package])
+  @@map("dependency_observations")
+}
+
+enum AdvisoryLevel {
+  INFO        // Informational — minor pattern change detected
+  WARNING     // Moderate regression risk (10-25% of sites affected)
+  CRITICAL    // High regression risk (>25% of sites affected)
+}
+
+model DependencyAdvisory {
+  id              String        @id @default(cuid())
+  package         String        // Package name
+  fromVersion     String        // Version before regression
+  toVersion       String        // Version that caused regression
+  level           AdvisoryLevel
+  title           String        // e.g. "Focus trap removed in dialog"
+  description     String        @db.Text
+  affectedCriteria String[]     // WCAG criteria affected: ["2.4.3", "2.1.2"]
+  regressionRate  Float         // 0-1: fraction of sites that regressed
+  sitesAffected   Int           // Count of sites that experienced regression
+  sitesTotal      Int           // Total sites that updated
+  avgScoreDrop    Float         // Average score decrease
+  fixSuggestion   String?       @db.Text // Proven fix from Fix Genome
+  fixSuccessRate  Float?        // 0-1: how often the suggested fix works
+  publishedAt     DateTime      @default(now())
+  resolvedAt      DateTime?     // When the package author fixed it (if ever)
+
+  @@unique([package, fromVersion, toVersion])
+  @@index([package, publishedAt])
+  @@index([level, publishedAt])
+  @@map("dependency_advisories")
+}
+
+// ─────────────────────────────────────────────
+// Accessibility Proof of Impact (ROI Certificates)
+// ─────────────────────────────────────────────
+// Cryptographically-verified certificate proving the BUSINESS IMPACT of
+// accessibility work: users unblocked, revenue enabled, risk reduced.
+// Shareable publicly, verifiable without login, anchored in the Evidence Chain.
+
+model ImpactCertificate {
+  id              String   @id @default(cuid())
+  workspaceId     String
+  siteId          String
+  periodStart     DateTime
+  periodEnd       DateTime
+
+  // Before-state snapshot
+  scoreBefore     Int
+  violationsBefore Int
+  riskExposureBefore Int  // USD cents
+  personasPassingBefore Int // Out of 5
+
+  // After-state snapshot
+  scoreAfter      Int
+  violationsAfter Int
+  riskExposureAfter Int   // USD cents
+  personasPassingAfter Int
+
+  // Computed impact metrics
+  usersUnblocked      Int      // Estimated users who can now access
+  revenueEnabled      Int      // USD cents — additional addressable revenue
+  riskReduced         Int      // USD cents — litigation exposure delta
+  violationsFixed     Int
+  scoreImprovement    Int      // Points gained
+  industryPercentile  Int?     // 0-100: where this site ranks in its industry
+
+  // Evidence
+  proofChainLength    Int      // Number of evidence chain proofs in period
+  monitoringDays      Int      // Consecutive days monitored
+  scansInPeriod       Int
+  evidenceHash        String   // SHA-256 over the certificate data (verifiable)
+
+  // Methodology inputs (stored for audit transparency)
+  trafficEstimate     Int?     // Monthly unique visitors (user-provided or estimated)
+  disabilityPrevalence Float   @default(0.15) // 15% global average
+  avgConversionRate   Float?   // Site's conversion rate (user-provided)
+  avgOrderValue       Int?     // USD cents (user-provided)
+  industry            String?
+
+  // Sharing
+  isPublic            Boolean  @default(false)
+  publicSlug          String?  @unique // Short URL for sharing
+
+  createdAt           DateTime @default(now())
+
+  @@index([workspaceId, periodEnd])
+  @@index([siteId, periodEnd])
+  @@index([publicSlug])
+  @@map("impact_certificates")
+}
+
+// ─── BoxyHQ Jackson SSO Tables ───────────────────────────────────────────────
+// These tables are managed by the Jackson SSO service (docker-compose).
+// They MUST be modeled here so `prisma db push` does not attempt to drop them.
+
+model jackson_store {
+  key           String          @id(map: "PK_87b6fc1475fbd1228d2f53c6f4a") @db.VarChar(1500)
+  value         String
+  iv            String?         @db.VarChar(64)
+  tag           String?         @db.VarChar(64)
+  createdAt     DateTime        @default(now()) @db.Timestamp(6)
+  modifiedAt    DateTime?       @db.Timestamp(6)
+  namespace     String?         @db.VarChar(256)
+  jackson_index jackson_index[]
+
+  @@index([namespace], map: "_jackson_store_namespace")
+}
+
+model jackson_index {
+  id            Int           @id(map: "PK_a95aa83f01e3c73e126856b7820") @default(autoincrement())
+  key           String        @db.VarChar(1500)
+  storeKey      String        @db.VarChar(1500)
+  jackson_store jackson_store @relation(fields: [storeKey], references: [key], onDelete: Cascade, onUpdate: NoAction, map: "FK_937b040fb2592b4671cbde09e83")
+
+  @@index([key], map: "_jackson_index_key")
+  @@index([key, storeKey], map: "_jackson_index_key_store")
+}
+
+model jackson_ttl {
+  key       String @id(map: "PK_7c9bcdfb4d82e873e19935ec806") @db.VarChar(1500)
+  expiresAt BigInt
+
+  @@index([expiresAt], map: "_jackson_ttl_expires_at")
+}

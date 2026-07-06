@@ -76,6 +76,7 @@ const navSections: NavSection[] = [
         activePaths: ["/test", "/scans", "/crawl", "/manual-testing"],
       },
       { name: "Violations", key: "nav.violations", href: "/violations", icon: AlertTriangle },
+      { name: "Red Team", key: "nav.redteam", href: "/red-team", icon: Shield },
       { name: "Analysis", key: "nav.analysis", href: "/analysis?tab=screen-reader", icon: BarChart3 },
       { name: "Automation", key: "nav.automation", href: "/automation?tab=remediation", icon: Zap },
       { name: "Blog", key: "nav.blog", href: "/blog", icon: BookOpen },
@@ -93,6 +94,7 @@ const navSections: NavSection[] = [
         anyFeatures: ["trends", "executive"],
         activePaths: ["/reports", "/trends", "/executive"],
       },
+      { name: "Warranty", key: "nav.warranty", href: "/warranty", icon: Shield },
     ],
   },
   {

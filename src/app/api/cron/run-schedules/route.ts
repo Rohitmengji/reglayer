@@ -34,6 +34,7 @@ import { getDueSchedules, claimSchedule, markScheduleExecuted, markScheduleFaile
 import { sendRegressionAlert } from "@/lib/email/service";
 import { dispatchToIntegrations } from "@/lib/integrations/dispatcher";
 import { dispatchWebhookEvent, redeliverFailedWebhooks } from "@/lib/integrations/webhookDispatcher";
+import { runAutopilot } from "@/lib/autopilot/orchestrator";
 import { prisma } from "@/lib/database/prisma";
 import { validateScanUrl } from "@/lib/validations/ssrf";
 import { logger } from "@/lib/telemetry/logger";
@@ -296,7 +297,19 @@ async function executeScheduledScan(params: {
     // 6. Mark schedule as executed + calculate next run
     await markScheduleExecuted(scheduleId, cron);
 
-    // 7. Audit trail
+    // 7. Compliance Autopilot: auto-issue proof, update streak, manage cert, check reports.
+    //    Best-effort — failures here never block the scan result.
+    if (site) {
+      runAutopilot({
+        scanId: scan.id,
+        siteId: site.id,
+        workspaceId,
+        url,
+        score: scan.summary.score,
+      }).catch(() => {/* non-blocking */});
+    }
+
+    // 8. Audit trail
     await prisma.auditLog.create({
       data: {
         action: "schedule.executed",
