@@ -17,6 +17,7 @@ import {
 } from "@/lib/scanner/design-system/scanner";
 import { z } from "zod";
 import { applyRateLimit } from "@/lib/rate-limit-middleware";
+import { validateScanUrl, resolvesToInternalIp } from "@/lib/validations/ssrf";
 
 /**
  * Design System Compliance Scanner API
@@ -90,6 +91,15 @@ export async function POST(request: NextRequest) {
   }
 
   const { storybookUrl, components: providedComponents } = parsed.data;
+
+  // SSRF guard: validate the user-supplied Storybook URL before any server-side fetch.
+  const ssrfError = validateScanUrl(storybookUrl);
+  if (ssrfError) {
+    return NextResponse.json({ error: ssrfError }, { status: 400 });
+  }
+  if (await resolvesToInternalIp(storybookUrl)) {
+    return NextResponse.json({ error: "URL resolves to a private/internal address" }, { status: 400 });
+  }
 
   let componentResults: ComponentResult[];
 

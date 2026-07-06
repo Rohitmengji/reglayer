@@ -11,6 +11,7 @@
  */
 
 import { prisma } from "@/lib/database/prisma";
+import { validateScanUrl, resolvesToInternalIp } from "@/lib/validations/ssrf";
 import type { ScanResult } from "@/lib/types";
 
 export interface AlertRule {
@@ -196,29 +197,15 @@ async function checkCondition(rule: AlertRule, scan: ScanResult): Promise<string
 }
 
 async function dispatchWebhook(url: string, payload: Record<string, unknown>): Promise<void> {
-  // SSRF protection — block internal/private targets and require HTTPS
-  let parsed: URL;
-  try {
-    parsed = new URL(url);
-  } catch {
-    return; // Invalid URL, skip
-  }
-  const hostname = parsed.hostname.toLowerCase();
-  if (
-    hostname === "localhost" ||
-    hostname === "metadata.google.internal" ||
-    /^(127\.|10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|169\.254\.)/.test(hostname)
-  ) {
-    return; // Skip internal URLs silently
-  }
-  if (parsed.protocol !== "https:") {
-    return; // Require HTTPS
-  }
+  // Centralized SSRF guard: covers IPv6, IPv4-mapped, DNS rebinding.
+  if (validateScanUrl(url) !== null) return;
+  if (await resolvesToInternalIp(url)) return;
 
   await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
+    redirect: "manual",
     signal: AbortSignal.timeout(10000),
   });
 }

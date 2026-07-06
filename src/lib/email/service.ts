@@ -378,3 +378,71 @@ export function buildTeamInviteEmail(to: string, data: TeamInviteData): EmailPay
 export async function sendTeamInviteEmail(to: string, data: TeamInviteData) {
   return sendEmail(buildTeamInviteEmail(to, data));
 }
+
+/**
+ * Compliance Autopilot — monthly/weekly scheduled report email.
+ */
+export async function sendComplianceReportEmail(data: {
+  to: string;
+  siteName: string;
+  siteUrl: string;
+  period: string;
+  currentScore: number;
+  averageScore: number;
+  totalScans: number;
+  totalViolations: number;
+  proofsIssued: number;
+  scoreImproved: boolean;
+  reportUrl: string;
+}) {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://reglayer.vercel.app";
+  const trendIcon = data.scoreImproved ? "📈" : "📉";
+  const trendColor = data.scoreImproved ? "#059669" : "#dc2626";
+
+  return sendEmail({
+    to: data.to,
+    subject: `Compliance Report: ${data.siteName} — ${data.period}`,
+    html: `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 560px; margin: 0 auto; padding: 40px 20px;">
+        <div style="margin-bottom: 24px;">
+          <h2 style="color: #0a0a0a; margin: 0 0 4px;">Compliance Report</h2>
+          <p style="color: #737373; margin: 0; font-size: 14px;">${escapeHtml(data.siteName)} — ${escapeHtml(data.period)}</p>
+        </div>
+
+        <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
+          <div style="text-align: center; margin-bottom: 16px;">
+            <div style="font-size: 48px; font-weight: 800; color: ${trendColor};">${data.currentScore}%</div>
+            <div style="font-size: 13px; color: #6b7280;">${trendIcon} Current Accessibility Score</div>
+          </div>
+
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 8px 0; border-top: 1px solid #e5e7eb; font-size: 13px; color: #6b7280;">Average Score</td>
+              <td style="padding: 8px 0; border-top: 1px solid #e5e7eb; font-size: 13px; font-weight: 600; color: #111827; text-align: right;">${data.averageScore}%</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; border-top: 1px solid #e5e7eb; font-size: 13px; color: #6b7280;">Scans Completed</td>
+              <td style="padding: 8px 0; border-top: 1px solid #e5e7eb; font-size: 13px; font-weight: 600; color: #111827; text-align: right;">${data.totalScans}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; border-top: 1px solid #e5e7eb; font-size: 13px; color: #6b7280;">Open Violations</td>
+              <td style="padding: 8px 0; border-top: 1px solid #e5e7eb; font-size: 13px; font-weight: 600; color: #111827; text-align: right;">${data.totalViolations}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; border-top: 1px solid #e5e7eb; font-size: 13px; color: #6b7280;">Evidence Proofs Issued</td>
+              <td style="padding: 8px 0; border-top: 1px solid #e5e7eb; font-size: 13px; font-weight: 600; color: #111827; text-align: right;">${data.proofsIssued}</td>
+            </tr>
+          </table>
+        </div>
+
+        <a href="${escapeHtml(data.reportUrl)}" style="display: inline-block; background: #171717; color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 500;">View Full Report</a>
+
+        <p style="color: #a3a3a3; font-size: 12px; margin-top: 24px; line-height: 1.5;">
+          This report was sent by RegLayer Compliance Autopilot.
+          <a href="${appUrl}/settings" style="color: #6b7280;">Manage report settings</a>
+        </p>
+      </div>
+    `,
+    text: `Compliance Report: ${data.siteName} (${data.period})\n\nCurrent Score: ${data.currentScore}%\nAverage Score: ${data.averageScore}%\nScans: ${data.totalScans}\nViolations: ${data.totalViolations}\nProofs Issued: ${data.proofsIssued}\n\nView full report: ${data.reportUrl}`,
+  });
+}
