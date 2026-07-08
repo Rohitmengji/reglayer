@@ -14,6 +14,7 @@ const createSchema = z.object({
   siteId: z.string().min(1),
   workspaceId: z.string().min(1),
   name: z.string().min(1).max(100),
+  regressionOnly: z.boolean().default(false),
   minScore: z.number().min(0).max(100).default(80),
   maxCritical: z.number().int().min(0).default(0),
   maxSerious: z.number().int().min(0).default(3),

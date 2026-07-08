@@ -199,6 +199,7 @@ export const nl = {
   "nav.executive": "Directie",
   "nav.agency": "Bureau",
   "nav.warranty": "Garantie",
+  "nav.competitive": "Concurrentie",
   "nav.risk": "Risicoscore",
   "nav.vault": "Bewijskluis",
   "nav.regulations": "Regelgeving",

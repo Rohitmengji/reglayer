@@ -199,6 +199,7 @@ export const it = {
   "nav.executive": "Direzione",
   "nav.agency": "Agenzia",
   "nav.warranty": "Garanzia",
+  "nav.competitive": "Concorrenza",
   "nav.risk": "Punteggio rischio",
   "nav.vault": "Archivio prove",
   "nav.regulations": "Regolamenti",

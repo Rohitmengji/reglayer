@@ -107,6 +107,7 @@ model Workspace {
   complianceRules ComplianceRule[]
   ssoConnections SSOConnection[]
   serviceAccounts ServiceAccount[]
+  competitors  Competitor[]
 
   @@map("workspaces")
 }
@@ -656,7 +657,12 @@ model GuardPolicy {
   name                String
   enabled             Boolean   @default(true)
 
-  // Absolute thresholds
+  // Regression-Only Mode: when true, the gate ONLY fails on NET-NEW violations
+  // introduced since the baseline — pre-existing issues are ignored.
+  // This is what makes the gate usable for teams inheriting legacy violations.
+  regressionOnly      Boolean   @default(false)
+
+  // Absolute thresholds (skipped when regressionOnly=true)
   minScore            Float     @default(80)
   maxCritical         Int       @default(0)
   maxSerious          Int       @default(3)
@@ -1471,6 +1477,49 @@ model ImpactCertificate {
   @@index([siteId, periodEnd])
   @@index([publicSlug])
   @@map("impact_certificates")
+}
+
+// ─────────────────────────────────────────────
+// Competitive Intelligence
+// ─────────────────────────────────────────────
+
+model Competitor {
+  id          String   @id @default(cuid())
+  url         String   // competitor's homepage URL
+  name        String?  // display name (auto-detected or user-provided)
+  industry    String?  // optional industry tag
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  addedBy     String?  // userId who added this competitor
+  createdAt   DateTime @default(now())
+
+  snapshots   CompetitorSnapshot[]
+
+  @@unique([workspaceId, url])
+  @@index([workspaceId])
+  @@map("competitors")
+}
+
+model CompetitorSnapshot {
+  id             String   @id @default(cuid())
+  competitorId   String
+  competitor     Competitor @relation(fields: [competitorId], references: [id], onDelete: Cascade)
+
+  url            String   // the page scanned (may differ if competitor has multiple pages)
+  score          Float    // accessibility score 0-100
+  totalViolations Int     @default(0)
+  critical       Int      @default(0)
+  serious        Int      @default(0)
+  moderate       Int      @default(0)
+  minor          Int      @default(0)
+  pageTitle      String?
+  topIssues      Json?    // top 5 rule IDs with counts
+  wcagLevel      String?  // highest passing level (A, AA, AAA)
+
+  scannedAt      DateTime @default(now())
+
+  @@index([competitorId, scannedAt])
+  @@map("competitor_snapshots")
 }
 
 // ─── BoxyHQ Jackson SSO Tables ───────────────────────────────────────────────
