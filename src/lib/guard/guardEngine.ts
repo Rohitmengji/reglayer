@@ -19,6 +19,8 @@ export interface GuardPolicy {
   workspaceId: string;
   name: string;
   enabled: boolean;
+  // Regression-only mode: only fail on NET-NEW violations (skip absolute thresholds)
+  regressionOnly: boolean;
   // Absolute thresholds
   minScore: number;
   maxCritical: number;
@@ -93,38 +95,42 @@ export async function evaluateGuard(
     const checks: GuardCheck[] = [];
     const score = scan.score ?? 0;
 
-    // Check 1: Minimum score
-    checks.push({
-      name: "Minimum Score",
-      passed: score >= policy.minScore,
-      actual: score,
-      threshold: policy.minScore,
-      message: score >= policy.minScore
-        ? `Score ${score.toFixed(0)} meets minimum ${policy.minScore}`
-        : `Score ${score.toFixed(0)} below minimum ${policy.minScore}`,
-    });
+    // In regressionOnly mode, skip absolute thresholds entirely.
+    // Only fail on NEW violations introduced since baseline.
+    if (!policy.regressionOnly) {
+      // Check 1: Minimum score
+      checks.push({
+        name: "Minimum Score",
+        passed: score >= policy.minScore,
+        actual: score,
+        threshold: policy.minScore,
+        message: score >= policy.minScore
+          ? `Score ${score.toFixed(0)} meets minimum ${policy.minScore}`
+          : `Score ${score.toFixed(0)} below minimum ${policy.minScore}`,
+      });
 
-    // Check 2: Max critical violations
-    checks.push({
-      name: "Critical Violations",
-      passed: scan.critical <= policy.maxCritical,
-      actual: scan.critical,
-      threshold: policy.maxCritical,
-      message: scan.critical <= policy.maxCritical
-        ? `${scan.critical} critical (max ${policy.maxCritical})`
-        : `${scan.critical} critical exceeds max ${policy.maxCritical}`,
-    });
+      // Check 2: Max critical violations
+      checks.push({
+        name: "Critical Violations",
+        passed: scan.critical <= policy.maxCritical,
+        actual: scan.critical,
+        threshold: policy.maxCritical,
+        message: scan.critical <= policy.maxCritical
+          ? `${scan.critical} critical (max ${policy.maxCritical})`
+          : `${scan.critical} critical exceeds max ${policy.maxCritical}`,
+      });
 
-    // Check 3: Max serious violations
-    checks.push({
-      name: "Serious Violations",
-      passed: scan.serious <= policy.maxSerious,
-      actual: scan.serious,
-      threshold: policy.maxSerious,
-      message: scan.serious <= policy.maxSerious
-        ? `${scan.serious} serious (max ${policy.maxSerious})`
-        : `${scan.serious} serious exceeds max ${policy.maxSerious}`,
-    });
+      // Check 3: Max serious violations
+      checks.push({
+        name: "Serious Violations",
+        passed: scan.serious <= policy.maxSerious,
+        actual: scan.serious,
+        threshold: policy.maxSerious,
+        message: scan.serious <= policy.maxSerious
+          ? `${scan.serious} serious (max ${policy.maxSerious})`
+          : `${scan.serious} serious exceeds max ${policy.maxSerious}`,
+      });
+    }
 
     // Regression checks (only if baseline exists)
     let scoreDelta: number | null = null;
@@ -206,8 +212,12 @@ export async function evaluateGuard(
 
     const allPassed = checks.every((c) => c.passed);
 
+    // In regressionOnly mode with no baseline: first scan always passes and becomes baseline.
+    const regressionNoBaseline = policy.regressionOnly && !policy.baselineScanId;
+    const passed = regressionNoBaseline ? true : allPassed;
+
     // Auto-promote baseline on pass
-    if (allPassed && policy.autoPromoteBaseline) {
+    if (passed && policy.autoPromoteBaseline) {
       await prisma.guardPolicy.update({
         where: { id: policy.id },
         data: {
@@ -221,7 +231,7 @@ export async function evaluateGuard(
     const site = await prisma.site.findUnique({ where: { id: siteId }, select: { url: true } });
 
     verdicts.push({
-      passed: allPassed,
+      passed,
       policyId: policy.id,
       policyName: policy.name,
       siteUrl: site?.url ?? "",
@@ -231,9 +241,11 @@ export async function evaluateGuard(
       checks,
       newViolations,
       fixedViolations,
-      summary: allPassed
-        ? `✅ Guard passed: ${checks.length} checks OK`
-        : `❌ Guard failed: ${checks.filter((c) => !c.passed).map((c) => c.name).join(", ")}`,
+      summary: regressionNoBaseline
+        ? `✅ First scan — baseline established (regressionOnly mode)`
+        : passed
+          ? `✅ Guard passed: ${checks.length} checks OK${policy.regressionOnly ? " (regression-only mode)" : ""}`
+          : `❌ Guard failed: ${checks.filter((c) => !c.passed).map((c) => c.name).join(", ")}`,
     });
   }
 

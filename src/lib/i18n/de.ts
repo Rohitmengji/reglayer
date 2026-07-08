@@ -199,6 +199,7 @@ export const de = {
   "nav.executive": "Führungsebene",
   "nav.agency": "Agentur",
   "nav.warranty": "Garantie",
+  "nav.competitive": "Wettbewerb",
   "nav.risk": "Risikowert",
   "nav.vault": "Beweisspeicher",
   "nav.regulations": "Vorschriften",
