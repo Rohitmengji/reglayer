@@ -116,6 +116,11 @@ RegLayer is a **web accessibility compliance platform** built with:
 - **WHAT**: Configures Playwright for smoke testing against the running app
 - **HOW**: `npm run test:e2e` launches a browser and tests critical paths
 
+### `action.yml`
+- **WHY**: GitHub Action for CI/CD accessibility gating
+- **WHAT**: Composite action that scans a URL via `POST /api/ci/scan` and returns pass/fail
+- **HOW**: Users add `uses: Rohitmengji/reglayer@main` to their workflow. Inputs: `api-key`, `url`, `fail-on-score`, `fail-on-critical`, `fail-on-serious`. Outputs: `passed`, `score`, `violations`, `critical`, `report-url`. Emits GitHub annotations for violations
+
 ---
 
 ## Database Layer (Prisma)
@@ -147,8 +152,11 @@ RegLayer is a **web accessibility compliance platform** built with:
 | `RumEventRecord` (`rum_events`) | Durable Real User Monitoring events (type, selector, page, session, viewport) |
 | `FixOutcomeRecord` (`fix_outcomes`) | Crowd-verified remediation outcome (success/failure) keyed by `ruleId` + normalized `fingerprint`; standalone, no enforced relations. Powers the Fix Genome [#169] |
 | `VendorObservation` (`vendor_observations`) | One row per (scan, vendor): vendor, category, violationCount, riskScore, observedAt; standalone. Powers the Vendor Accessibility Liability Graph [#170] |
+| `Competitor` (`competitors`) | A competitor URL tracked by a workspace for accessibility benchmarking. Unique per (workspaceId, url), max 10 per workspace |
+| `CompetitorSnapshot` (`competitor_snapshots`) | Point-in-time accessibility score for a competitor: score, violation counts by severity, top issues. Links to `Competitor` |
+| `jackson_store` / `jackson_index` / `jackson_ttl` | BoxyHQ Jackson SSO tables — modeled in Prisma to prevent `db push` from dropping them. Managed by the Jackson service |
 
-> **Counts**: 34 models, 10 enums. Standalone records (`FixOutcomeRecord`, `VendorObservation`, `RumEventRecord`) deliberately omit enforced relations so an outcome/observation survives deletion of its source scan and best-effort recorders never break the primary flow.
+> **Counts**: 37 models, 10 enums. Standalone records (`FixOutcomeRecord`, `VendorObservation`, `RumEventRecord`) deliberately omit enforced relations so an outcome/observation survives deletion of its source scan and best-effort recorders never break the primary flow.
 
 #### Key Relationships:
 ```
@@ -157,6 +165,7 @@ Workspace → Site → Scan → Violation
 Workspace → Schedule (references Site)
 Workspace → Webhook
 Workspace → ApiKey
+Workspace → Competitor → CompetitorSnapshot
 ```
 
 ---
@@ -242,12 +251,17 @@ All pages live in `src/app/` following Next.js App Router conventions. Each `pag
 | `report/[id]/page.tsx` | `/report/:id` | Public shareable scan report (standalone, no sidebar) |
 | `certificate/[id]/page.tsx` | `/certificate/:id` | Compliance certificate (shareable badge) |
 | `demand-letter/page.tsx` | `/demand-letter` | Demand-Letter Triage: paste an ADA demand letter (or enter claims) and get a per-claim verdict + dollar exposure-delta against your scan/proof history |
+| `competitive/page.tsx` | `/competitive` | **Competitive Intelligence** — add/remove competitors, scan them, view leaderboard with your rank, score trends |
+| `radar/page.tsx` | `/radar` | **Regulatory Radar** — per-regulation readiness scores, failing WCAG criteria, enforcement countdown timers, effort estimates |
+| `chaos/page.tsx` | `/chaos` | **Chaos Engineering** — simulated regression results, Detection Score, WCAG principle coverage rings, gap recommendations |
+| `warranty/page.tsx` | `/warranty` | Compliance warranty dashboard: policies, eligibility, claims |
 
-### Public Pages (No Auth Required) — Verification
+### Public Pages (No Auth Required) — Verification & Marketing
 
 | Page | Route | Purpose |
 |------|-------|---------|
 | `verify/[proofId]/page.tsx` | `/verify/:proofId` | **Login-free** public verification of an Anchored Evidence Chain proof — recomputes the proof hash and walks the workspace chain so any third party can confirm tamper-evidence without trusting RegLayer |
+| `leaderboard/page.tsx` | `/leaderboard` | **Public Accessibility Leaderboard** — SEO-optimized page ranking sites by score. CTA to scan. ISR (revalidates hourly) |
 
 ---
 
@@ -377,6 +391,19 @@ These routes back the five newly-shipped moat features. Every one follows the sa
 | `genome/recommend/route.ts` | GET | Fix Genome recommendations — `?ruleId=&scope=global\|workspace&by=rule\|fingerprint`; aggregates cross-tenant `FixOutcomeRecord`s into a confidence-rated "this fix works X% of the time" answer [#169] |
 | `vendor-graph/route.ts` | GET | Vendor Accessibility Liability Graph — `?vendor=&scope=global\|workspace&splitDays=`; reach-weighted liability scoring + regression-over-time detection [#170] |
 | `vendor-risk/route.ts` | GET | Per-scan third-party vendor risk. Now `assertScanAccess`-gated (closed a cross-tenant IDOR) and best-effort records observations into the VALG |
+
+### Competitive Intelligence & Benchmarking
+
+| Route | Methods | Purpose |
+|-------|---------|---------|
+| `competitive/route.ts` | GET, POST, DELETE | **Competitive Intelligence** — list/add/remove competitor URLs for accessibility benchmarking. Max 10 per workspace |
+| `competitive/scan/route.ts` | POST | Scan a single competitor or all competitors. Uses the same scan pipeline but stores results as `CompetitorSnapshot`s |
+| `competitive/history/route.ts` | GET | Score history for a competitor over time (90-day window) |
+| `regulations/radar/route.ts` | GET | **Regulatory Radar** — cross-references workspace violations against WCAG criteria required by each regulation (EAA, ADA, AODA, Section 508, etc.). Returns per-regulation readiness scores, failing criteria, effort estimates |
+| `chaos/route.ts` | GET | **Chaos Engineering** — simulates 12 accessibility regression scenarios against workspace monitors. Returns Detection Score and coverage gaps |
+| `ci/scan/route.ts` | POST | **CI/CD Accessibility Gate** — API-key auth, scans URL, persists results, evaluates guard policies, returns pass/fail with GitHub annotations. Designed for GitHub Actions |
+| `leaderboard/route.ts` | GET | **Public** (no auth) — accessibility leaderboard ranking sites by score. 1-hour CDN cache. Only URLs scanned 2+ times |
+| `score/lookup/route.ts` | GET | **Public** (no auth) — score lookup for any URL. Returns grade (A+ to F), violation breakdown, badge URL |
 
 ---
 
@@ -763,6 +790,16 @@ Built on **BoxyHQ Jackson** bridged into NextAuth v4 (JWT, no adapter). Per-tena
 | `remediation/engine.ts` | AI-powered code fix generation |
 | `rum/collector.ts` | Real User Monitoring event collection |
 | `screen-reader/narration-engine.ts` | Generates screen reader narration for pages |
+| `competitive/service.ts` | **Competitive Intelligence** — list/add/remove/scan competitors, batch scan, benchmark leaderboard computation, score history. Pure `server-only` service using Prisma |
+| `regulations/radarService.ts` | **Regulatory Radar** — cross-references workspace violations against WCAG criteria required by each regulation. Maps axe rule IDs → WCAG criteria → regulation requirements. Computes per-regulation readiness scores, failing criteria, and effort estimates |
+| `regulations/deadlineEngine.ts` | Regulation deadline database — static catalog of 7 regulations (EAA, ADA, AODA, EN 301 549, Section 508, UK PSBAR, DDA Australia) with deadlines, applicability rules, and penalties |
+| `chaos/engine.ts` | **Chaos Engineering** — catalog of 12 accessibility regression scenarios. Simulates each against workspace monitors to compute Detection Score and coverage gaps. Pure computation, no actual injection |
+| `warranty/eligibility.ts` | Warranty eligibility engine — score floors, qualifying periods, suspension logic |
+| `warranty/pricing.ts` | Warranty premium calculation — base rates, score adjustments, geography multipliers |
+| `impact/calculator.ts` | Impact certificate calculator — estimates accessibility ROI based on traffic, disability prevalence, conversion rates |
+| `agents/runner.ts` | Adversarial agent runner — executes multi-agent accessibility testing personas |
+| `autopilot/orchestrator.ts` | Autopilot orchestrator — automated scan → fix → verify workflows |
+| `dependencies/correlator.ts` | Dependency correlator — links npm dependency versions to known accessibility issues |
 
 ---
 
@@ -1002,4 +1039,4 @@ Structural pieces added after the main snapshot (fold into the tables above when
 
 ---
 
-*Generated for RegLayer codebase comprehension. Last updated: June 2026.*
+*Generated for RegLayer codebase comprehension. Last updated: July 2026.*
