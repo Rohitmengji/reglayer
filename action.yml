@@ -1,0 +1,132 @@
+name: "RegLayer Accessibility Gate"
+description: "Scan your deployed URL for accessibility issues and gate PRs on compliance thresholds"
+author: "RegLayer"
+
+branding:
+  icon: "shield"
+  color: "blue"
+
+inputs:
+  api-key:
+    description: "Your RegLayer API key (from Settings → API Keys)"
+    required: true
+  url:
+    description: "The URL to scan for accessibility issues"
+    required: true
+  fail-on-score:
+    description: "Fail if accessibility score drops below this threshold (0-100)"
+    required: false
+    default: "80"
+  fail-on-critical:
+    description: "Fail if critical violations exceed this count"
+    required: false
+    default: "0"
+  fail-on-serious:
+    description: "Fail if serious violations exceed this count"
+    required: false
+    default: "3"
+  reglayer-url:
+    description: "RegLayer instance URL (default: https://reglayer.com)"
+    required: false
+    default: "https://reglayer.com"
+
+outputs:
+  passed:
+    description: "Whether the accessibility gate passed (true/false)"
+    value: ${{ steps.scan.outputs.passed }}
+  score:
+    description: "The accessibility score (0-100)"
+    value: ${{ steps.scan.outputs.score }}
+  violations:
+    description: "Total number of violations found"
+    value: ${{ steps.scan.outputs.violations }}
+  critical:
+    description: "Number of critical violations"
+    value: ${{ steps.scan.outputs.critical }}
+  report-url:
+    description: "Link to the full scan report on RegLayer"
+    value: ${{ steps.scan.outputs.report_url }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Run RegLayer Accessibility Scan
+      id: scan
+      shell: bash
+      env:
+        REGLAYER_API_KEY: ${{ inputs.api-key }}
+        SCAN_URL: ${{ inputs.url }}
+        FAIL_SCORE: ${{ inputs.fail-on-score }}
+        FAIL_CRITICAL: ${{ inputs.fail-on-critical }}
+        FAIL_SERIOUS: ${{ inputs.fail-on-serious }}
+        REGLAYER_URL: ${{ inputs.reglayer-url }}
+      run: |
+        echo "🛡️ RegLayer Accessibility Gate"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "Scanning: $SCAN_URL"
+        echo ""
+
+        # Call RegLayer CI endpoint
+        RESPONSE=$(curl -s -w "\n%{http_code}" \
+          -X POST "${REGLAYER_URL}/api/ci/scan" \
+          -H "Authorization: Bearer ${REGLAYER_API_KEY}" \
+          -H "Content-Type: application/json" \
+          -d "{
+            \"url\": \"${SCAN_URL}\",
+            \"failOnScore\": ${FAIL_SCORE},
+            \"failOnCritical\": ${FAIL_CRITICAL},
+            \"failOnSerious\": ${FAIL_SERIOUS}
+          }")
+
+        HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+        BODY=$(echo "$RESPONSE" | sed '$d')
+
+        if [ "$HTTP_CODE" != "200" ]; then
+          echo "❌ RegLayer API error (HTTP $HTTP_CODE)"
+          echo "$BODY"
+          echo "passed=false" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+
+        # Parse response
+        PASSED=$(echo "$BODY" | jq -r '.passed')
+        SCORE=$(echo "$BODY" | jq -r '.score')
+        TOTAL=$(echo "$BODY" | jq -r '.violations.total')
+        CRITICAL=$(echo "$BODY" | jq -r '.violations.critical')
+        SERIOUS=$(echo "$BODY" | jq -r '.violations.serious')
+        REPORT_URL=$(echo "$BODY" | jq -r '.reportUrl // empty')
+        SCAN_ID=$(echo "$BODY" | jq -r '.scanId // empty')
+
+        # Set outputs
+        echo "passed=${PASSED}" >> $GITHUB_OUTPUT
+        echo "score=${SCORE}" >> $GITHUB_OUTPUT
+        echo "violations=${TOTAL}" >> $GITHUB_OUTPUT
+        echo "critical=${CRITICAL}" >> $GITHUB_OUTPUT
+        echo "report_url=${REGLAYER_URL}${REPORT_URL}" >> $GITHUB_OUTPUT
+
+        # Display results
+        echo ""
+        echo "📊 Results"
+        echo "━━━━━━━━━━"
+        echo "  Score:      ${SCORE}/100"
+        echo "  Violations: ${TOTAL}"
+        echo "  Critical:   ${CRITICAL}"
+        echo "  Serious:    ${SERIOUS}"
+        if [ -n "$REPORT_URL" ]; then
+          echo "  Report:     ${REGLAYER_URL}${REPORT_URL}"
+        fi
+        echo ""
+
+        # Write GitHub Actions annotations from violations
+        echo "$BODY" | jq -r '.annotations[]? | "::\(.level) title=\(.title)::\(.message)"'
+
+        # Determine pass/fail
+        if [ "$PASSED" = "true" ]; then
+          echo "✅ Accessibility gate PASSED"
+        else
+          echo "❌ Accessibility gate FAILED"
+          echo ""
+          echo "Failures:"
+          echo "$BODY" | jq -r '.failures[]? | "  • \(.)"'
+          exit 1
+        fi
