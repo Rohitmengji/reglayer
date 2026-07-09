@@ -200,6 +200,7 @@ export const de = {
   "nav.agency": "Agentur",
   "nav.warranty": "Garantie",
   "nav.competitive": "Wettbewerb",
+  "nav.radar": "Radar",
   "nav.risk": "Risikowert",
   "nav.vault": "Beweisspeicher",
   "nav.regulations": "Vorschriften",
