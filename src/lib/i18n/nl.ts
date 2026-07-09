@@ -201,6 +201,7 @@ export const nl = {
   "nav.warranty": "Garantie",
   "nav.competitive": "Concurrentie",
   "nav.radar": "Radar",
+  "nav.chaos": "Chaos",
   "nav.risk": "Risicoscore",
   "nav.vault": "Bewijskluis",
   "nav.regulations": "Regelgeving",
