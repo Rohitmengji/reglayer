@@ -201,6 +201,7 @@ export const de = {
   "nav.warranty": "Garantie",
   "nav.competitive": "Wettbewerb",
   "nav.radar": "Radar",
+  "nav.chaos": "Chaos",
   "nav.risk": "Risikowert",
   "nav.vault": "Beweisspeicher",
   "nav.regulations": "Vorschriften",
