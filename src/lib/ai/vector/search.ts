@@ -130,30 +130,33 @@ export async function embedScanViolations(scanId: string): Promise<number> {
 
   if (violations.length === 0) return 0;
 
-  // Build embedding texts for all violations
-  const texts = violations.map(buildViolationEmbeddingText);
-
-  // Batch embed (single API call for all texts)
-  const result = await embed({
-    input: texts,
-    metadata: { feature: "violation-embedding" },
-  });
-
-  if (!result || result.embeddings.length !== violations.length) return 0;
-
-  // Store embeddings via batch raw SQL
+  // Process in batches of 100 (OpenAI limit is 2048, but smaller batches are safer)
+  const BATCH_SIZE = 100;
   let stored = 0;
-  for (let i = 0; i < violations.length; i++) {
-    const vectorStr = `[${result.embeddings[i].join(",")}]`;
-    try {
-      await prisma.$executeRaw`
-        UPDATE violations
-        SET embedding = ${vectorStr}::vector
-        WHERE id = ${violations[i].id}
-      `;
-      stored++;
-    } catch {
-      // Skip individual failures — don't block the batch
+
+  for (let batchStart = 0; batchStart < violations.length; batchStart += BATCH_SIZE) {
+    const batch = violations.slice(batchStart, batchStart + BATCH_SIZE);
+    const texts = batch.map(buildViolationEmbeddingText);
+
+    const result = await embed({
+      input: texts,
+      metadata: { feature: "violation-embedding" },
+    });
+
+    if (!result || result.embeddings.length !== batch.length) continue;
+
+    for (let i = 0; i < batch.length; i++) {
+      const vectorStr = `[${result.embeddings[i].join(",")}]`;
+      try {
+        await prisma.$executeRaw`
+          UPDATE violations
+          SET embedding = ${vectorStr}::vector
+          WHERE id = ${batch[i].id}
+        `;
+        stored++;
+      } catch {
+        // Skip individual failures — don't block the batch
+      }
     }
   }
 
@@ -205,21 +208,23 @@ export async function searchViolations(
     : Prisma.sql``;
 
   const results = await prisma.$queryRaw<ViolationSearchResult[]>`
-    SELECT
-      v.id,
-      v."ruleId",
-      v.impact::text,
-      v.description,
-      v.help,
-      v."wcagCriteria",
-      v."scanId",
-      1 - (v.embedding <=> ${queryVector}::vector) AS similarity
-    FROM violations v
-    WHERE v.embedding IS NOT NULL
-      ${scanFilter}
-    HAVING 1 - (v.embedding <=> ${queryVector}::vector) >= ${minSimilarity}
-    ORDER BY v.embedding <=> ${queryVector}::vector
-    LIMIT ${limit}
+    SELECT * FROM (
+      SELECT
+        v.id,
+        v."ruleId",
+        v.impact::text,
+        v.description,
+        v.help,
+        v."wcagCriteria",
+        v."scanId",
+        1 - (v.embedding <=> ${queryVector}::vector) AS similarity
+      FROM violations v
+      WHERE v.embedding IS NOT NULL
+        ${scanFilter}
+      ORDER BY v.embedding <=> ${queryVector}::vector
+      LIMIT ${limit}
+    ) sub
+    WHERE sub.similarity >= ${minSimilarity}
   `;
 
   return results;

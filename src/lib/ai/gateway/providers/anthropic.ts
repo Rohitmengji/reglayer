@@ -18,15 +18,23 @@
 import { createAnthropic } from "@ai-sdk/anthropic";
 import type { LanguageModel } from "ai";
 
+// Cache the provider instance
+let cachedProvider: ReturnType<typeof createAnthropic> | null = null;
+
+function getProvider() {
+  if (!cachedProvider) {
+    cachedProvider = createAnthropic({
+      apiKey: process.env.ANTHROPIC_API_KEY ?? "",
+    });
+  }
+  return cachedProvider;
+}
+
 /**
  * Create an Anthropic language model instance for the given model ID.
  */
 export function createAnthropicModel(
   providerModelId: string,
 ): LanguageModel {
-  const anthropic = createAnthropic({
-    apiKey: process.env.ANTHROPIC_API_KEY ?? "",
-  });
-
-  return anthropic(providerModelId);
+  return getProvider()(providerModelId);
 }

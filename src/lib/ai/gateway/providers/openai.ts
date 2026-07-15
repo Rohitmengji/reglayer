@@ -22,25 +22,28 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import type { LanguageModel, EmbeddingModel } from "ai";
 
+// Cache the provider instance — avoid recreating on every call
+let cachedProvider: ReturnType<typeof createOpenAI> | null = null;
+
+function getProvider() {
+  if (!cachedProvider) {
+    cachedProvider = createOpenAI({
+      apiKey: process.env.OPENAI_API_KEY ?? "",
+    });
+  }
+  return cachedProvider;
+}
+
 /**
  * Create an OpenAI language model instance for the given model ID.
  */
 export function createOpenAIModel(providerModelId: string): LanguageModel {
-  const openai = createOpenAI({
-    apiKey: process.env.OPENAI_API_KEY ?? "",
-  });
-
-  return openai(providerModelId);
+  return getProvider()(providerModelId);
 }
 
 /**
  * Create an OpenAI embedding model instance for the given model ID.
- * Used by the gateway's embed() function.
  */
 export function createOpenAIEmbeddingModel(providerModelId: string): EmbeddingModel {
-  const openai = createOpenAI({
-    apiKey: process.env.OPENAI_API_KEY ?? "",
-  });
-
-  return openai.embedding(providerModelId);
+  return getProvider().embedding(providerModelId);
 }

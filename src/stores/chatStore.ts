@@ -98,8 +98,34 @@ export const useChatStore = create<ChatState>()(
       name: "reglayer-chat",
       partialize: (state) => ({
         messages: state.messages,
-        // Don't persist isStreaming — always start as false
       }),
+      storage: {
+        getItem: (name) => {
+          try {
+            const str = localStorage.getItem(name);
+            return str ? JSON.parse(str) : null;
+          } catch {
+            return null;
+          }
+        },
+        setItem: (name, value) => {
+          try {
+            localStorage.setItem(name, JSON.stringify(value));
+          } catch {
+            // QuotaExceededError — clear old messages and retry
+            try {
+              const trimmed = {
+                ...value,
+                state: { ...value.state, messages: value.state.messages.slice(-20) },
+              };
+              localStorage.setItem(name, JSON.stringify(trimmed));
+            } catch {
+              // Storage completely full — skip persistence
+            }
+          }
+        },
+        removeItem: (name) => { localStorage.removeItem(name); },
+      },
     },
   ),
 );

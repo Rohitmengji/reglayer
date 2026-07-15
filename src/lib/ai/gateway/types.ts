@@ -72,7 +72,13 @@ export interface MultimodalMessage {
   content: (TextContent | ImageContent)[];
 }
 
-export type Message = TextMessage | MultimodalMessage;
+export interface ToolMessage {
+  role: "tool";
+  content: string;
+  toolCallId: string;
+}
+
+export type Message = TextMessage | MultimodalMessage | ToolMessage;
 
 // ── Completion Request ────────────────────────────────────────────────────────
 

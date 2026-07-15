@@ -82,8 +82,16 @@ export async function buildRAGContext(
     };
   }
 
-  // 3. Build context string from retrieved violations
-  const contextStr = violations
+  // 3. Deduplicate by ruleId (same violation from multiple scans wastes tokens)
+  const seen = new Set<string>();
+  const uniqueViolations = violations.filter((v) => {
+    if (seen.has(v.ruleId)) return false;
+    seen.add(v.ruleId);
+    return true;
+  });
+
+  // 4. Build context string from retrieved violations
+  const contextStr = uniqueViolations
     .map((v, i) => {
       return [
         `[${i + 1}] Rule: ${v.ruleId}`,
