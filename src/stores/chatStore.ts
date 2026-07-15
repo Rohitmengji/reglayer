@@ -36,12 +36,14 @@ export interface ChatMessage {
 interface ChatState {
   messages: ChatMessage[];
   isStreaming: boolean;
+  panelOpen: boolean;
 
   // Actions
   addMessage: (role: "user" | "assistant", content: string) => string;
   updateMessage: (id: string, content: string) => void;
   appendToMessage: (id: string, chunk: string) => void;
   setStreaming: (streaming: boolean) => void;
+  setPanelOpen: (open: boolean) => void;
   clearMessages: () => void;
 }
 
@@ -57,6 +59,7 @@ export const useChatStore = create<ChatState>()(
     (set) => ({
       messages: [],
       isStreaming: false,
+      panelOpen: false,
 
       addMessage: (role, content) => {
         const id = generateMessageId();
@@ -86,6 +89,8 @@ export const useChatStore = create<ChatState>()(
         })),
 
       setStreaming: (streaming) => set({ isStreaming: streaming }),
+
+      setPanelOpen: (open) => set({ panelOpen: open }),
 
       clearMessages: () => set({ messages: [], isStreaming: false }),
     }),

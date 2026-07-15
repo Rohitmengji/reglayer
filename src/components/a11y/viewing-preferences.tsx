@@ -27,12 +27,16 @@ import {
   A11Y_CHANGE_EVENT,
   type ViewingPreferences,
 } from "@/lib/a11y/preferences";
+import { useChatStore } from "@/stores/chatStore";
 
 export function ViewingPreferences() {
   const { t } = useI18n();
+  const chatPanelOpen = useChatStore((s) => s.panelOpen);
   const [prefs, setPrefs] = useState<ViewingPreferences>(readPreferences);
   const [open, setOpen] = useState(false);
+  const [scrolling, setScrolling] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const scrollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Apply on mount + whenever another surface changes prefs.
   useEffect(() => {
@@ -44,6 +48,22 @@ export function ViewingPreferences() {
     }
     window.addEventListener(A11Y_CHANGE_EVENT, onChange);
     return () => window.removeEventListener(A11Y_CHANGE_EVENT, onChange);
+  }, []);
+
+  // Hide while user is scrolling, reappear after 800ms idle.
+  useEffect(() => {
+    const mainEl = document.getElementById("main-content");
+    if (!mainEl) return;
+    function onScroll() {
+      setScrolling(true);
+      if (scrollTimer.current) clearTimeout(scrollTimer.current);
+      scrollTimer.current = setTimeout(() => setScrolling(false), 800);
+    }
+    mainEl.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      mainEl.removeEventListener("scroll", onScroll);
+      if (scrollTimer.current) clearTimeout(scrollTimer.current);
+    };
   }, []);
 
   // Close panel on outside click.
@@ -66,7 +86,7 @@ export function ViewingPreferences() {
     prefs.contrast !== "normal" || prefs.motion !== "normal" || prefs.text !== "normal";
 
   return (
-    <div ref={ref} className="fixed bottom-4 right-4 z-9998 print:hidden">
+    <div ref={ref} className={`fixed bottom-20 right-6 z-9998 print:hidden transition-opacity duration-200${chatPanelOpen || scrolling ? " opacity-0 pointer-events-none" : ""}`}>
       {open && (
         <div className="absolute bottom-14 right-0 w-72 rounded-xl border border-neutral-200 bg-white shadow-2xl dark:border-neutral-700 dark:bg-neutral-900 animate-in slide-in-from-bottom-2 fade-in duration-150">
           <div className="flex items-center justify-between border-b border-neutral-100 px-4 py-3 dark:border-neutral-800">
