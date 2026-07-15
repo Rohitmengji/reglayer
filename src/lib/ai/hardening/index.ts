@@ -9,25 +9,38 @@
 
 import "server-only";
 
+import { getRedis } from "@/lib/cache/redis";
+
 // ── Circuit Breaker ───────────────────────────────────────────────────────────
 // Prevents hammering a provider that's down. After 3 consecutive failures,
 // the circuit "opens" and returns errors immediately for 30 seconds.
+// Uses Redis so state is shared across all serverless isolates.
+// Falls back to in-memory when Redis is unavailable (dev/single-instance).
 
-interface CircuitState {
-  failures: number;
-  lastFailure: number;
-  isOpen: boolean;
+const FAILURE_THRESHOLD = 3;
+const RECOVERY_SEC = 30;
+
+/** In-memory fallback for when Redis is not configured. */
+const localCircuits = new Map<string, { failures: number; lastFailure: number; isOpen: boolean }>();
+
+function circuitKey(provider: string): string {
+  return `circuit:${provider}:failures`;
 }
 
-const circuits = new Map<string, CircuitState>();
-const FAILURE_THRESHOLD = 3;
-const RECOVERY_MS = 30_000;
-
-export function isCircuitOpen(provider: string): boolean {
-  const state = circuits.get(provider);
+export async function isCircuitOpen(provider: string): Promise<boolean> {
+  const redis = getRedis();
+  if (redis) {
+    try {
+      const val = await redis.get<number>(circuitKey(provider));
+      return (val ?? 0) >= FAILURE_THRESHOLD;
+    } catch {
+      return false;
+    }
+  }
+  // Fallback: in-memory
+  const state = localCircuits.get(provider);
   if (!state || !state.isOpen) return false;
-  // Check if recovery period has passed
-  if (Date.now() - state.lastFailure > RECOVERY_MS) {
+  if (Date.now() - state.lastFailure > RECOVERY_SEC * 1000) {
     state.isOpen = false;
     state.failures = 0;
     return false;
@@ -35,19 +48,37 @@ export function isCircuitOpen(provider: string): boolean {
   return true;
 }
 
-export function recordSuccess(provider: string): void {
-  circuits.set(provider, { failures: 0, lastFailure: 0, isOpen: false });
+export async function recordSuccess(provider: string): Promise<void> {
+  const redis = getRedis();
+  if (redis) {
+    try { await redis.del(circuitKey(provider)); } catch { /* best-effort */ }
+    return;
+  }
+  localCircuits.set(provider, { failures: 0, lastFailure: 0, isOpen: false });
 }
 
-export function recordFailure(provider: string): void {
-  const state = circuits.get(provider) ?? { failures: 0, lastFailure: 0, isOpen: false };
+export async function recordFailure(provider: string): Promise<void> {
+  const redis = getRedis();
+  if (redis) {
+    try {
+      const count = await redis.incr(circuitKey(provider));
+      // Set TTL = RECOVERY_SEC so the circuit auto-closes after the window.
+      await redis.expire(circuitKey(provider), RECOVERY_SEC);
+      if (count >= FAILURE_THRESHOLD) {
+        console.log(`[circuit-breaker] OPEN for ${provider} after ${count} failures (Redis-backed)`);
+      }
+    } catch { /* best-effort */ }
+    return;
+  }
+  // Fallback: in-memory
+  const state = localCircuits.get(provider) ?? { failures: 0, lastFailure: 0, isOpen: false };
   state.failures++;
   state.lastFailure = Date.now();
   if (state.failures >= FAILURE_THRESHOLD) {
     state.isOpen = true;
     console.log(`[circuit-breaker] OPEN for ${provider} after ${state.failures} failures`);
   }
-  circuits.set(provider, state);
+  localCircuits.set(provider, state);
 }
 
 // ── PII Detection ─────────────────────────────────────────────────────────────
@@ -87,13 +118,15 @@ const cache = new Map<string, CacheEntry>();
 const CACHE_TTL_MS = 60_000; // 1 minute
 const MAX_CACHE_SIZE = 100;
 
-function getCacheKey(messages: string): string {
-  // Simple hash: first 200 chars of the stringified messages
-  return messages.slice(0, 200);
+function getCacheKey(messages: string, userId?: string): string {
+  // Include userId to prevent cross-user cache collisions.
+  // Without this, two users with identical opening messages get each other's responses.
+  const prefix = userId ? `${userId}:` : "";
+  return prefix + messages.slice(0, 200);
 }
 
-export function getCachedResponse(messages: string): string | null {
-  const key = getCacheKey(messages);
+export function getCachedResponse(messages: string, userId?: string): string | null {
+  const key = getCacheKey(messages, userId);
   const entry = cache.get(key);
   if (!entry) return null;
   if (Date.now() - entry.timestamp > CACHE_TTL_MS) {
@@ -103,11 +136,11 @@ export function getCachedResponse(messages: string): string | null {
   return entry.response;
 }
 
-export function setCachedResponse(messages: string, response: string): void {
+export function setCachedResponse(messages: string, response: string, userId?: string): void {
   if (cache.size >= MAX_CACHE_SIZE) {
     // Evict oldest entry
     const firstKey = cache.keys().next().value;
     if (firstKey) cache.delete(firstKey);
   }
-  cache.set(getCacheKey(messages), { response, timestamp: Date.now() });
+  cache.set(getCacheKey(messages, userId), { response, timestamp: Date.now() });
 }
