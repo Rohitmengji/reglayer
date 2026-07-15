@@ -1560,3 +1560,30 @@ model jackson_ttl {
 
   @@index([expiresAt], map: "_jackson_ttl_expires_at")
 }
+
+// ─────────────────────────────────────────────
+// AI Observability — Usage & Cost Tracking
+// ─────────────────────────────────────────────
+
+model AiEvent {
+  id            String   @id @default(cuid())
+  type          String   // "ai.completion" | "ai.embedding"
+  feature       String   // "chat" | "violation-explainer" | "visual-scan" etc.
+  model         String   // "gpt-4o-mini" | "claude-haiku" etc.
+  provider      String   // "openai" | "anthropic"
+  inputTokens   Int      @default(0)
+  outputTokens  Int      @default(0)
+  totalTokens   Int      @default(0)
+  costUsd       Float    @default(0) // total cost in USD
+  latencyMs     Int      @default(0)
+  success       Boolean  @default(true)
+  error         String?
+  userId        String?
+  workspaceId   String?
+  createdAt     DateTime @default(now())
+
+  @@index([workspaceId, createdAt])
+  @@index([feature, createdAt])
+  @@index([userId, createdAt])
+  @@map("ai_events")
+}
