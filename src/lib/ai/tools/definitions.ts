@@ -63,92 +63,120 @@ function logToolCall(tool: string, params: unknown, durationMs: number, success:
   );
 }
 
+// ── Tool Context ──────────────────────────────────────────────────────────────
+// Tools receive the user's workspace context for multi-tenant isolation.
+// This ensures a user can only query their own workspace's data.
+
+export interface ToolContext {
+  workspaceId: string | null;
+  userId: string;
+}
+
 // ── Tool: Get Recent Scans ───────────────────────────────────────────────────
 
-export const getRecentScans = {
-  description: "Get the user's most recent accessibility scans with scores and violation counts. Use this when the user asks about their scan history, recent results, or compliance status.",
-  parameters: z.object({
-    limit: z.number().int().min(1).max(20).optional().describe("Number of scans to return (default 5)"),
-  }),
-  execute: async ({ limit }: { limit?: number }) => {
-    const start = Date.now();
-    try {
-      const take = limit ?? 5;
-      const scans = await withTimeout(
-        () => prisma.scan.findMany({
-          orderBy: { createdAt: "desc" },
-          take,
-          select: {
-            id: true, url: true, score: true, totalViolations: true,
-            critical: true, serious: true, status: true, createdAt: true,
-          },
-        }),
-        "getRecentScans",
-      );
+function makeGetRecentScans(ctx: ToolContext) {
+  return {
+    description: "Get the user's most recent accessibility scans with scores and violation counts. Use this when the user asks about their scan history, recent results, or compliance status.",
+    parameters: z.object({
+      limit: z.number().int().min(1).max(20).optional().describe("Number of scans to return (default 5)"),
+    }),
+    execute: async ({ limit }: { limit?: number }) => {
+      const start = Date.now();
+      try {
+        const take = limit ?? 5;
+        const where = ctx.workspaceId ? { workspaceId: ctx.workspaceId } : { userId: ctx.userId };
+        const scans = await withTimeout(
+          () => prisma.scan.findMany({
+            where,
+            orderBy: { createdAt: "desc" },
+            take,
+            select: {
+              id: true, url: true, score: true, totalViolations: true,
+              critical: true, serious: true, status: true, createdAt: true,
+            },
+          }),
+          "getRecentScans",
+        );
 
-      logToolCall("getRecentScans", { limit }, Date.now() - start, true);
+        logToolCall("getRecentScans", { limit, workspaceId: ctx.workspaceId }, Date.now() - start, true);
 
-      if (scans.length === 0) return "No scans found. The user hasn't scanned any sites yet.";
+        if (scans.length === 0) return "No scans found. The user hasn't scanned any sites yet.";
 
-      return truncateResult(JSON.stringify({
-        scans: scans.map((s) => ({
-          id: s.id, url: s.url, score: s.score,
-          violations: s.totalViolations, critical: s.critical, serious: s.serious,
-          status: s.status, date: s.createdAt.toISOString().split("T")[0],
-        })),
-        total: scans.length,
-      }));
-    } catch (error) {
-      logToolCall("getRecentScans", { limit }, Date.now() - start, false);
-      return `Error fetching scans: ${error instanceof Error ? error.message : "unknown error"}`;
-    }
-  },
-};
+        return truncateResult(JSON.stringify({
+          scans: scans.map((s) => ({
+            id: s.id, url: s.url, score: s.score,
+            violations: s.totalViolations, critical: s.critical, serious: s.serious,
+            status: s.status, date: s.createdAt.toISOString().split("T")[0],
+          })),
+          total: scans.length,
+        }));
+      } catch (error) {
+        logToolCall("getRecentScans", { limit }, Date.now() - start, false);
+        return `Error fetching scans: ${error instanceof Error ? error.message : "unknown error"}`;
+      }
+    },
+  };
+}
 
 // ── Tool: Get Violations for a Scan ──────────────────────────────────────────
 
-export const getViolations = {
-  description: "Get the detailed list of accessibility violations from a specific scan. Use this when the user asks about specific issues, wants to see violation details, or asks about a particular scan's problems.",
-  parameters: z.object({
-    scanId: z.string().describe("The scan ID to get violations for"),
-    impact: z.enum(["critical", "serious", "moderate", "minor"]).optional().describe("Filter by impact severity"),
-  }),
-  execute: async ({ scanId, impact }: { scanId: string; impact?: string }) => {
-    const start = Date.now();
-    try {
-      const violations = await withTimeout(
-        () => prisma.violation.findMany({
-          where: { scanId, ...(impact ? { impact: impact as Impact } : {}) },
-          select: {
-            ruleId: true, impact: true, description: true,
-            help: true, wcagCriteria: true, status: true,
+function makeGetViolations(ctx: ToolContext) {
+  return {
+    description: "Get the detailed list of accessibility violations from a specific scan. Use this when the user asks about specific issues, wants to see violation details, or asks about a particular scan's problems.",
+    parameters: z.object({
+      scanId: z.string().describe("The scan ID to get violations for"),
+      impact: z.enum(["critical", "serious", "moderate", "minor"]).optional().describe("Filter by impact severity"),
+    }),
+    execute: async ({ scanId, impact }: { scanId: string; impact?: string }) => {
+      const start = Date.now();
+      try {
+        // Verify the scan belongs to this user's workspace
+        const scan = await prisma.scan.findFirst({
+          where: {
+            id: scanId,
+            ...(ctx.workspaceId ? { workspaceId: ctx.workspaceId } : { userId: ctx.userId }),
           },
-          take: 15,
-        }),
-        "getViolations",
-      );
+          select: { id: true },
+        });
 
-      logToolCall("getViolations", { scanId, impact }, Date.now() - start, true);
+        if (!scan) {
+          return `Scan ${scanId} not found or you don't have access to it.`;
+        }
 
-      if (violations.length === 0) {
-        return `No violations found for scan ${scanId}${impact ? ` with ${impact} impact` : ""}.`;
+        const violations = await withTimeout(
+          () => prisma.violation.findMany({
+            where: { scanId, ...(impact ? { impact: impact as Impact } : {}) },
+            select: {
+              ruleId: true, impact: true, description: true,
+              help: true, wcagCriteria: true, status: true,
+            },
+            take: 15,
+          }),
+          "getViolations",
+        );
+
+        logToolCall("getViolations", { scanId, impact, workspaceId: ctx.workspaceId }, Date.now() - start, true);
+
+        if (violations.length === 0) {
+          return `No violations found for scan ${scanId}${impact ? ` with ${impact} impact` : ""}.`;
+        }
+
+        return truncateResult(JSON.stringify({
+          violations: violations.map((v) => ({
+            ruleId: v.ruleId, impact: v.impact,
+            description: v.description.slice(0, 150),
+            help: v.help.slice(0, 100),
+            wcag: v.wcagCriteria, status: v.status,
+          })),
+          count: violations.length,
+        }));
+      } catch (error) {
+        logToolCall("getViolations", { scanId, impact }, Date.now() - start, false);
+        return `Error fetching violations: ${error instanceof Error ? error.message : "unknown error"}`;
       }
-
-      return truncateResult(JSON.stringify({
-        violations: violations.map((v) => ({
-          ruleId: v.ruleId, impact: v.impact,
-          description: v.description.slice(0, 150),
-          help: v.help.slice(0, 100),
-          wcag: v.wcagCriteria, status: v.status,
-        })),
-        count: violations.length,
-      }));
-    } catch (error) {
-      logToolCall("getViolations", { scanId, impact }, Date.now() - start, false);
-      return `Error fetching violations: ${error instanceof Error ? error.message : "unknown error"}`;
-    }
-  },
-};
+    },
+  };
+}
 
 // ── Tool: Explain WCAG Criterion ─────────────────────────────────────────────
 
@@ -225,62 +253,75 @@ export const explainWcag = {
 
 // ── Tool: Get Compliance Summary ─────────────────────────────────────────────
 
-export const getComplianceStatus = {
-  description: "Get an overview of the user's overall compliance status across all monitored sites. Use this when the user asks 'how compliant are we?', 'what's our accessibility score?', or wants a status overview.",
-  parameters: z.object({}),
-  execute: async () => {
-    const start = Date.now();
-    try {
-      const [scanCount, siteCount, recentScans] = await withTimeout(
-        () => Promise.all([
-          prisma.scan.count(),
-          prisma.scan.groupBy({ by: ["url"], _count: true }).then((r) => r.length),
-          prisma.scan.findMany({
-            orderBy: { createdAt: "desc" },
-            take: 10,
-            select: { score: true, totalViolations: true, critical: true, serious: true },
-          }),
-        ]),
-        "getComplianceStatus",
-      );
+function makeGetComplianceStatus(ctx: ToolContext) {
+  return {
+    description: "Get an overview of the user's overall compliance status across all monitored sites. Use this when the user asks 'how compliant are we?', 'what's our accessibility score?', or wants a status overview.",
+    parameters: z.object({}),
+    execute: async () => {
+      const start = Date.now();
+      try {
+        const where = ctx.workspaceId ? { workspaceId: ctx.workspaceId } : { userId: ctx.userId };
+        const [scanCount, siteCount, recentScans] = await withTimeout(
+          () => Promise.all([
+            prisma.scan.count({ where }),
+            prisma.scan.groupBy({ by: ["url"], where, _count: true }).then((r) => r.length),
+            prisma.scan.findMany({
+              where,
+              orderBy: { createdAt: "desc" },
+              take: 10,
+              select: { score: true, totalViolations: true, critical: true, serious: true },
+            }),
+          ]),
+          "getComplianceStatus",
+        );
 
-      logToolCall("getComplianceStatus", {}, Date.now() - start, true);
+        logToolCall("getComplianceStatus", { workspaceId: ctx.workspaceId }, Date.now() - start, true);
 
-      if (recentScans.length === 0) return "No scans found. No compliance data available yet.";
+        if (recentScans.length === 0) return "No scans found. No compliance data available yet.";
 
-      const avgScore = recentScans.reduce((sum, s) => sum + (s.score ?? 0), 0) / recentScans.length;
-      const totalViolations = recentScans.reduce((sum, s) => sum + s.totalViolations, 0);
-      const criticalCount = recentScans.reduce((sum, s) => sum + s.critical, 0);
-      const seriousCount = recentScans.reduce((sum, s) => sum + s.serious, 0);
+        const avgScore = recentScans.reduce((sum, s) => sum + (s.score ?? 0), 0) / recentScans.length;
+        const totalViolations = recentScans.reduce((sum, s) => sum + s.totalViolations, 0);
+        const criticalCount = recentScans.reduce((sum, s) => sum + s.critical, 0);
+        const seriousCount = recentScans.reduce((sum, s) => sum + s.serious, 0);
 
-      return JSON.stringify({
-        overview: {
-          totalScans: scanCount,
-          monitoredSites: siteCount,
-          averageScore: Math.round(avgScore * 10) / 10,
-          recentViolations: totalViolations,
-          criticalIssues: criticalCount,
-          seriousIssues: seriousCount,
-        },
-      });
-    } catch (error) {
-      logToolCall("getComplianceStatus", {}, Date.now() - start, false);
-      return `Error fetching compliance status: ${error instanceof Error ? error.message : "unknown error"}`;
-    }
-  },
-};
+        return JSON.stringify({
+          overview: {
+            totalScans: scanCount,
+            monitoredSites: siteCount,
+            averageScore: Math.round(avgScore * 10) / 10,
+            recentViolations: totalViolations,
+            criticalIssues: criticalCount,
+            seriousIssues: seriousCount,
+          },
+        });
+      } catch (error) {
+        logToolCall("getComplianceStatus", {}, Date.now() - start, false);
+        return `Error fetching compliance status: ${error instanceof Error ? error.message : "unknown error"}`;
+      }
+    },
+  };
+}
 
 // ── Tool Registry ────────────────────────────────────────────────────────────
 
 /**
- * All available tools for the AI chat.
- * The AI SDK accepts this object directly in streamText({ tools }).
+ * Create workspace-scoped tools for a specific user session.
+ *
+ * WHY A FACTORY (not a static export):
+ *   Multi-tenant isolation. Each request creates tools scoped to the user's
+ *   workspace. A user in Workspace A can never query Workspace B's scans —
+ *   the WHERE clause is baked into the tool at creation time.
+ *
+ *   This is how enterprise AI platforms (Glean, Harvey) handle tenant isolation
+ *   in tool calling — tools are instantiated per-request with permissions.
  */
-export const chatTools = {
-  getRecentScans,
-  getViolations,
-  explainWcag,
-  getComplianceStatus,
-};
+export function createChatTools(ctx: ToolContext) {
+  return {
+    getRecentScans: makeGetRecentScans(ctx),
+    getViolations: makeGetViolations(ctx),
+    explainWcag,
+    getComplianceStatus: makeGetComplianceStatus(ctx),
+  };
+}
 
-export type ChatToolName = keyof typeof chatTools;
+export type ChatToolName = keyof ReturnType<typeof createChatTools>;

@@ -34,8 +34,9 @@ import { z } from "zod";
 import { stream, getDefaultModelId, isAIAvailable } from "@/lib/ai/gateway";
 import { getPrompt } from "@/lib/ai/prompts/registry";
 import { buildRAGContext, buildRAGMessages } from "@/lib/ai/rag/service";
-import { chatTools } from "@/lib/ai/tools/definitions";
+import { createChatTools } from "@/lib/ai/tools/definitions";
 import { rateLimit, RATE_LIMITS, rateLimitHeaders } from "@/lib/rate-limit";
+import { prisma } from "@/lib/database/prisma";
 import { toTextStream } from "ai";
 
 // Force Node.js runtime for streaming (Edge doesn't support all Node APIs)
@@ -120,12 +121,28 @@ export async function POST(request: NextRequest) {
     messages.push(systemMsg, ...recentMessages);
   }
 
-  // 7. Call the AI Gateway stream with tools
+  // 7. Resolve workspace for multi-tenant tool scoping
+  const user = await prisma.user.findUnique({
+    where: { email: session.user.email },
+    select: { id: true },
+  });
+  const membership = user ? await prisma.workspaceMember.findFirst({
+    where: { userId: user.id },
+    select: { workspaceId: true },
+    orderBy: { joinedAt: "asc" },
+  }) : null;
+
+  const tools = createChatTools({
+    workspaceId: membership?.workspaceId ?? null,
+    userId: user?.id ?? session.user.email,
+  });
+
+  // 8. Call the AI Gateway stream with workspace-scoped tools
   const prompt = getPrompt(ragContext.augmented ? "chat-rag" : "chat-system");
   const result = stream({
     model: modelId,
     messages,
-    tools: chatTools,
+    tools,
     temperature: prompt.defaultTemperature,
     maxTokens: prompt.defaultMaxTokens,
     metadata: {
