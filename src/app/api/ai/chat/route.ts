@@ -35,6 +35,7 @@ import { stream, getDefaultModelId, isAIAvailable } from "@/lib/ai/gateway";
 import { getPrompt } from "@/lib/ai/prompts/registry";
 import { buildRAGContext, buildRAGMessages } from "@/lib/ai/rag/service";
 import { createChatTools } from "@/lib/ai/tools/definitions";
+import { containsPII, sanitizeForLLM } from "@/lib/ai/hardening";
 import { rateLimit, RATE_LIMITS, rateLimitHeaders } from "@/lib/rate-limit";
 import { prisma } from "@/lib/database/prisma";
 import { toTextStream } from "ai";
@@ -100,14 +101,21 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // 5. Build RAG-augmented messages
+  // 5. PII safety net — redact sensitive patterns before sending to external LLM
+  const sanitizedMessages = parsed.data.messages.map((m) =>
+    m.role === "user" && containsPII(m.content)
+      ? { ...m, content: sanitizeForLLM(m.content) }
+      : m,
+  );
+
+  // 6. Build RAG-augmented messages
   // Extract the latest user message for semantic search
-  const userMessages = parsed.data.messages.filter((m) => m.role === "user");
+  const userMessages = sanitizedMessages.filter((m) => m.role === "user");
   const latestUserMessage = userMessages[userMessages.length - 1]?.content ?? "";
 
   // Retrieve relevant violations and build augmented context
   const ragContext = await buildRAGContext(latestUserMessage);
-  const messages = buildRAGMessages(parsed.data.messages, ragContext);
+  const messages = buildRAGMessages(sanitizedMessages, ragContext);
 
   // 6. Token budget protection — prevent context window overflow
   // Approximate token count: ~4 chars per token for English text
