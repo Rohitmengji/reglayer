@@ -58,6 +58,14 @@ export async function buildRAGContext(
   userMessage: string,
   options?: { scanId?: string },
 ): Promise<RAGContext> {
+  // Fast path: skip RAG for short/generic messages that won't benefit from retrieval.
+  // This eliminates ~1-2s of embed + vector search latency on greetings/generic questions.
+  const trimmed = userMessage.trim().toLowerCase();
+  if (trimmed.length < 15 || /^(hi|hello|hey|thanks|ok|yes|no|what can|how are|who are)\b/.test(trimmed)) {
+    const standardPrompt = getPrompt("chat-system");
+    return { violations: [], augmented: false, systemPrompt: standardPrompt.system };
+  }
+
   // 1. Search for relevant violations
   let violations: ViolationSearchResult[] = [];
 
