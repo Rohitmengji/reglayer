@@ -31,7 +31,33 @@
  * - NEVER default to Sonnet/Opus during budget period — 10-50x more expensive
  */
 
-import type { ModelConfig, ModelId, Provider } from "../types";
+import type { ModelConfig, ModelId, Provider, EmbeddingModelId } from "../types";
+
+// ── Embedding Model Pricing ───────────────────────────────────────────────────
+
+const EMBEDDING_PRICING: Record<EmbeddingModelId, { perMillion: number; dimensions: number }> = {
+  "text-embedding-3-small": { perMillion: 0.02, dimensions: 1536 },
+  "text-embedding-3-large": { perMillion: 0.13, dimensions: 3072 },
+};
+
+/**
+ * Get embedding model pricing and dimensions.
+ */
+export function getEmbeddingConfig(modelId: EmbeddingModelId) {
+  return EMBEDDING_PRICING[modelId];
+}
+
+/**
+ * Calculate the cost of an embedding call.
+ */
+export function calculateEmbeddingCost(
+  modelId: EmbeddingModelId,
+  totalTokens: number,
+): { inputCost: number; outputCost: number; totalCost: number } {
+  const config = EMBEDDING_PRICING[modelId];
+  const totalCost = (totalTokens * config.perMillion) / 1_000_000;
+  return { inputCost: totalCost, outputCost: 0, totalCost };
+}
 
 // ── Model Definitions ─────────────────────────────────────────────────────────
 

@@ -38,10 +38,12 @@
 
 import "server-only";
 
-import { generateText, streamText, type ModelMessage, type LanguageModel } from "ai";
+import { generateText, streamText, embed as aiEmbed, embedMany as aiEmbedMany, type ModelMessage, type LanguageModel } from "ai";
 import type {
   CompletionRequest,
   CompletionResponse,
+  EmbedRequest,
+  EmbedResponse,
   GatewayEvent,
   GatewayEventHandler,
   Message,
@@ -49,8 +51,8 @@ import type {
   ModelId,
   Provider,
 } from "./types";
-import { calculateCost, getModelConfig } from "./providers/registry";
-import { createOpenAIModel } from "./providers/openai";
+import { calculateCost, getModelConfig, calculateEmbeddingCost } from "./providers/registry";
+import { createOpenAIModel, createOpenAIEmbeddingModel } from "./providers/openai";
 import { createAnthropicModel } from "./providers/anthropic";
 
 // ── Event Subscribers ─────────────────────────────────────────────────────────
@@ -351,4 +353,96 @@ export function getDefaultModelId(): ModelId | null {
   if (process.env.OPENAI_API_KEY) return "gpt-4o-mini";
   if (process.env.ANTHROPIC_API_KEY) return "claude-haiku";
   return null;
+}
+
+/**
+ * Generate embeddings for text input(s).
+ *
+ * WHY THIS EXISTS:
+ *   Embeddings convert text into numerical vectors (arrays of floats) that
+ *   capture semantic meaning. "color contrast" and "foreground-background
+ *   ratio" produce similar vectors even though they share no words.
+ *
+ *   These vectors are stored in pgvector and searched with cosine similarity
+ *   to power semantic search across violations, documents, and scans.
+ *
+ * COST: text-embedding-3-small is $0.02/M tokens — embedding 10K violations
+ *       costs ~$0.10. Negligible compared to chat completions.
+ *
+ * Returns null if no OpenAI API key is configured (embeddings are OpenAI-only
+ * for now — Anthropic doesn't offer an embedding model).
+ */
+export async function embed(
+  request: EmbedRequest,
+): Promise<EmbedResponse | null> {
+  if (!process.env.OPENAI_API_KEY) return null;
+
+  const startTime = Date.now();
+  const modelId = request.model ?? "text-embedding-3-small";
+
+  try {
+    const embeddingModel = createOpenAIEmbeddingModel(modelId);
+    const inputs = Array.isArray(request.input) ? request.input : [request.input];
+
+    let embeddings: number[][];
+    let totalTokens: number;
+
+    if (inputs.length === 1) {
+      const result = await aiEmbed({ model: embeddingModel, value: inputs[0] });
+      embeddings = [result.embedding];
+      totalTokens = result.usage?.tokens ?? 0;
+    } else {
+      const result = await aiEmbedMany({ model: embeddingModel, values: inputs });
+      embeddings = result.embeddings;
+      totalTokens = result.usage?.tokens ?? 0;
+    }
+
+    const latencyMs = Date.now() - startTime;
+    const cost = calculateEmbeddingCost(modelId, totalTokens);
+
+    emitEvent({
+      type: "ai.embedding",
+      timestamp: new Date(),
+      request: {
+        model: modelId as ModelId,
+        feature: request.metadata?.feature ?? "embedding",
+        workspaceId: request.metadata?.workspaceId,
+        userId: request.metadata?.userId,
+      },
+      response: {
+        model: modelId,
+        provider: "openai",
+        usage: { inputTokens: totalTokens, outputTokens: 0, totalTokens },
+        cost,
+        latencyMs,
+        success: true,
+      },
+    });
+
+    return { embeddings, usage: { totalTokens }, cost, latencyMs };
+  } catch (error) {
+    const latencyMs = Date.now() - startTime;
+
+    emitEvent({
+      type: "ai.embedding",
+      timestamp: new Date(),
+      request: {
+        model: modelId as ModelId,
+        feature: request.metadata?.feature ?? "embedding",
+        workspaceId: request.metadata?.workspaceId,
+        userId: request.metadata?.userId,
+      },
+      response: {
+        model: modelId,
+        provider: "openai",
+        usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
+        cost: { inputCost: 0, outputCost: 0, totalCost: 0 },
+        latencyMs,
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
+    });
+
+    throw error;
+  }
 }

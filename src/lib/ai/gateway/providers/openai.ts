@@ -20,21 +20,27 @@
  */
 
 import { createOpenAI } from "@ai-sdk/openai";
-import type { LanguageModel } from "ai";
+import type { LanguageModel, EmbeddingModel } from "ai";
 
 /**
  * Create an OpenAI language model instance for the given model ID.
- *
- * The Vercel AI SDK wraps the raw OpenAI client and exposes a `LanguageModel`
- * interface that the `generateText()` / `streamText()` functions consume.
- * This is the adapter pattern: different providers, same interface.
  */
 export function createOpenAIModel(providerModelId: string): LanguageModel {
   const openai = createOpenAI({
     apiKey: process.env.OPENAI_API_KEY ?? "",
-    // Compatibility: we don't set a custom base URL here. If you need Azure
-    // OpenAI or a proxy, add a `baseURL` option.
   });
 
   return openai(providerModelId);
+}
+
+/**
+ * Create an OpenAI embedding model instance for the given model ID.
+ * Used by the gateway's embed() function.
+ */
+export function createOpenAIEmbeddingModel(providerModelId: string): EmbeddingModel {
+  const openai = createOpenAI({
+    apiKey: process.env.OPENAI_API_KEY ?? "",
+  });
+
+  return openai.embedding(providerModelId);
 }
