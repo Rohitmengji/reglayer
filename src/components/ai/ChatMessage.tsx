@@ -14,7 +14,7 @@
 "use client";
 
 import type { ChatMessage as ChatMessageType } from "@/stores/chatStore";
-import { Bot, User } from "lucide-react";
+import { MessageSquare, User } from "lucide-react";
 
 interface ChatMessageProps {
   message: ChatMessageType;
@@ -30,19 +30,19 @@ export function ChatMessage({ message }: ChatMessageProps) {
         className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
           isUser
             ? "bg-accent text-white"
-            : "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300"
+            : "bg-accent/10 text-accent"
         }`}
       >
         {isUser ? (
-          <User className="h-4 w-4" />
+          <User className="h-3.5 w-3.5" />
         ) : (
-          <Bot className="h-4 w-4" />
+          <MessageSquare className="h-3.5 w-3.5" />
         )}
       </div>
 
       {/* Message content */}
       <div
-        className={`max-w-[85%] rounded-xl px-3.5 py-2.5 text-sm leading-relaxed ${
+        className={`max-w-[80%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
           isUser
             ? "bg-accent text-white"
             : "bg-neutral-100 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200"
@@ -67,10 +67,8 @@ export function ChatMessage({ message }: ChatMessageProps) {
  */
 function FormattedContent({ content }: { content: string }) {
   if (!content) {
-    // Streaming placeholder — show a blinking cursor
-    return (
-      <span className="inline-block h-4 w-1 animate-pulse bg-neutral-400 dark:bg-neutral-500" />
-    );
+    // Streaming placeholder — animated thinking dots
+    return <ThinkingIndicator />;
   }
 
   // Split by code blocks first (```...```)
@@ -125,5 +123,19 @@ function InlineFormat({ text }: { text: string }) {
         return <span key={i}>{part}</span>;
       })}
     </>
+  );
+}
+
+/**
+ * Animated thinking indicator — three bouncing dots.
+ * Shows while waiting for the first token from the LLM.
+ */
+function ThinkingIndicator() {
+  return (
+    <div className="flex items-center gap-1 py-1">
+      <span className="h-2 w-2 rounded-full bg-neutral-400 animate-bounce dark:bg-neutral-500" style={{ animationDelay: "0ms" }} />
+      <span className="h-2 w-2 rounded-full bg-neutral-400 animate-bounce dark:bg-neutral-500" style={{ animationDelay: "150ms" }} />
+      <span className="h-2 w-2 rounded-full bg-neutral-400 animate-bounce dark:bg-neutral-500" style={{ animationDelay: "300ms" }} />
+    </div>
   );
 }
