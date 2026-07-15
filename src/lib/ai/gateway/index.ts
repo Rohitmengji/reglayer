@@ -55,11 +55,12 @@ import { calculateCost, getModelConfig, calculateEmbeddingCost } from "./provide
 import { createOpenAIModel, createOpenAIEmbeddingModel } from "./providers/openai";
 import { createAnthropicModel } from "./providers/anthropic";
 import { consoleLogger } from "./logger";
+import { persistEventHandler } from "../observability/service";
 
 // ── Initialize Gateway ────────────────────────────────────────────────────────
 // Register default event handlers on module load.
 
-const eventHandlers: GatewayEventHandler[] = [consoleLogger];
+const eventHandlers: GatewayEventHandler[] = [consoleLogger, persistEventHandler];
 
 /**
  * Register a handler that fires after every AI completion.
