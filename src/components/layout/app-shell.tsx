@@ -31,12 +31,14 @@ import { Menu, X, MessageSquare } from "lucide-react";
 import { useIsEmbedded } from "./embedded-context";
 import { OnboardingChecklist } from "@/components/onboarding/checklist";
 import { ChatPanel } from "@/components/ai/ChatPanel";
+import { useChatStore } from "@/stores/chatStore";
 import { useI18n } from "@/components/i18n-provider";
 
 export function AppShell({ children, bare }: { children: React.ReactNode; bare?: boolean }) {
   const { t } = useI18n();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [chatOpen, setChatOpen] = useState(false);
+  const chatOpen = useChatStore((s) => s.panelOpen);
+  const setChatOpen = useChatStore((s) => s.setPanelOpen);
   const { data: session, status } = useSession();
   const router = useRouter();
   const pathname = usePathname();
@@ -182,7 +184,7 @@ export function AppShell({ children, bare }: { children: React.ReactNode; bare?:
       {/* AI Chat toggle button — floating bottom-right */}
       <button
         onClick={() => setChatOpen(true)}
-        className={`fixed bottom-6 right-6 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-accent text-white shadow-lg transition-all hover:bg-accent/90 hover:scale-105 ${chatOpen ? "hidden" : ""}`}
+        className={`fixed bottom-6 right-6 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-accent text-white shadow-lg transition-all hover:bg-accent/90 hover:scale-105 ${chatOpen ? "hidden" : ""}`}
         aria-label="Open AI Chat"
         title="Ask RegLayer AI"
       >

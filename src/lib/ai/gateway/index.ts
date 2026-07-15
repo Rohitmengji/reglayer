@@ -45,6 +45,7 @@ import type {
   GatewayEvent,
   GatewayEventHandler,
   Message,
+  TextMessage,
   ModelId,
   Provider,
 } from "./types";
@@ -107,7 +108,9 @@ function getLanguageModel(
 // supports features like tool results, which we'll need later.
 
 function toCoreMessages(messages: Message[]): ModelMessage[] {
-  return messages.map((msg): ModelMessage => {
+  return messages
+    .filter((msg) => !("role" in msg && msg.role === "system"))
+    .map((msg): ModelMessage => {
     if ("content" in msg && Array.isArray(msg.content)) {
       // Multimodal message (text + images)
       return {
@@ -131,6 +134,18 @@ function toCoreMessages(messages: Message[]): ModelMessage[] {
       content: msg.content as string,
     } as ModelMessage;
   });
+}
+
+/**
+ * Extract system message content from messages array.
+ * AI SDK v5 requires system messages as `instructions`, not in messages[].
+ */
+function extractSystemInstructions(messages: Message[]): string | undefined {
+  const systemMessages = messages.filter(
+    (msg): msg is TextMessage => "role" in msg && msg.role === "system",
+  );
+  if (systemMessages.length === 0) return undefined;
+  return systemMessages.map((m) => m.content).join("\n\n");
 }
 
 // ── Core Gateway Functions ────────────────────────────────────────────────────
@@ -176,6 +191,7 @@ export async function complete(
 
     const result = await generateText({
       model,
+      instructions: extractSystemInstructions(request.messages),
       messages: toCoreMessages(request.messages),
       temperature: request.temperature ?? 0.3,
       maxOutputTokens: request.maxTokens,
@@ -289,6 +305,7 @@ export function stream(request: CompletionRequest) {
 
   const result = streamText({
     model,
+    instructions: extractSystemInstructions(request.messages),
     messages: toCoreMessages(request.messages),
     temperature: request.temperature ?? 0.5,
     maxOutputTokens: request.maxTokens,
