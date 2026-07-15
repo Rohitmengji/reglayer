@@ -21,16 +21,9 @@
  * ---------------------------------------------------------
  */
 
-import OpenAI from "openai";
 import { aiExplanationSchema, type AIExplanation } from "../structuredOutput";
 import type { AccessibilityViolation } from "@/lib/types";
-import { withRetry } from "@/lib/retry";
-
-function getOpenAIClient() {
-  return new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY ?? "",
-  });
-}
+import { complete, isAIAvailable, getDefaultModelId } from "../gateway";
 
 /**
  * Generate a plain-language explanation of a violation.
@@ -38,15 +31,13 @@ function getOpenAIClient() {
 export async function explainViolation(
   violation: AccessibilityViolation
 ): Promise<AIExplanation | null> {
-  if (!process.env.OPENAI_API_KEY) {
-    return null;
-  }
+  const modelId = getDefaultModelId();
+  if (!modelId) return null;
 
   try {
-    const response = await withRetry(
-      () => getOpenAIClient().chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
+    const result = await complete({
+      model: modelId,
+      messages: [
         {
           role: "system",
           content: `You are an accessibility compliance expert. Explain web accessibility violations in clear, non-technical language. Respond with JSON matching this schema: { summary: string (max 500 chars), impact: string (max 300 chars), recommendation: string (max 500 chars), technicalDetail: string (max 1000 chars, optional), confidence: number 0-1 }`,
@@ -64,17 +55,15 @@ export async function explainViolation(
 - Failure: ${violation.nodes[0]?.failureSummary ?? "N/A"}`,
         },
       ],
-      response_format: { type: "json_object" },
+      jsonMode: true,
       temperature: 0.3,
-      max_tokens: 500,
-    }),
-      { maxAttempts: 3, baseDelayMs: 1000 }
-    );
+      maxTokens: 500,
+      metadata: { feature: "violation-explainer" },
+    });
 
-    const content = response.choices[0]?.message?.content;
-    if (!content) return null;
+    if (!result) return null;
 
-    const parsed = JSON.parse(content);
+    const parsed = JSON.parse(result.content);
     const validated = aiExplanationSchema.safeParse(parsed);
 
     return validated.success ? validated.data : null;
@@ -92,7 +81,7 @@ export async function explainAllViolations(
 ): Promise<Map<string, AIExplanation>> {
   const explanations = new Map<string, AIExplanation>();
 
-  if (!process.env.OPENAI_API_KEY) return explanations;
+  if (!isAIAvailable()) return explanations;
 
   // Process in batches of 3 to respect rate limits
   const batchSize = 3;

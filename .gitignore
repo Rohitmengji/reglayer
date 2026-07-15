@@ -32,8 +32,11 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# env files — NEVER commit secrets
+.env
+.env.*
+.env*.local
+!.env.example
 
 # vercel
 .vercel
@@ -43,7 +46,6 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
-.env*.local
 .vercel
 
 # personal scripts
@@ -58,3 +60,54 @@ visual-audit/
 
 # Playwright visual regression snapshots (generated locally, not committed)
 e2e/__snapshots__/
+
+# ── Internal documentation — architecture, strategy, and proprietary designs ─
+# These contain competitive intelligence (system design, roadmaps, security
+# architecture, AI platform plans). Keep local only.
+docs/
+
+# ── Security: sensitive files that must NEVER be committed ──────────────────
+# Private keys and certificates
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+
+# SSH keys
+id_rsa
+id_ed25519
+*.pub
+
+# API key files
+*-credentials.json
+*-service-account.json
+service-account*.json
+gcloud-*.json
+
+# IDE / editor secrets
+.idea/
+.vscode/settings.json
+.vscode/launch.json
+
+# OS metadata
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# Database files
+*.sqlite
+*.sqlite3
+*.db
+
+# Log files that may contain sensitive data
+*.log
+logs/
+
+# Backup files
+*.bak
+*.backup
+*.swp
+*.swo
+*~

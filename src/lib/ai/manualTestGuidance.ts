@@ -14,11 +14,11 @@
  * ---------------------------------------------------------
  */
 
-import OpenAI from "openai";
 import { z } from "zod";
 import type { ManualTestItem } from "@/lib/testing/manualTestPlan";
 import { consumeCredits } from "@/lib/credits";
 import type { AiAction } from "@/lib/credits/plan-limits";
+import { complete, getDefaultModelId } from "./gateway";
 
 // ── Schema ────────────────────────────────────────────────────────────────────
 
@@ -35,20 +35,13 @@ export interface GuidanceResult {
   aiGenerated: boolean;
 }
 
-// ── OpenAI client ─────────────────────────────────────────────────────────────
-
-function getOpenAIClient(): OpenAI | null {
-  if (!process.env.OPENAI_API_KEY) return null;
-  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-}
-
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 /**
  * Generate AI-guided testing instructions for a manual test item.
  *
- * - Consumes credits via consumeCredits() before calling OpenAI.
- * - Returns AI-generated guidance when OPENAI_API_KEY is available and credits suffice.
+ * - Consumes credits via consumeCredits() before calling the AI gateway.
+ * - Returns AI-generated guidance when a provider is available and credits suffice.
  * - Falls back to the item's existing static guidance on error or missing key.
  * - The fallback is marked aiGenerated:false and must NOT be cached.
  * - This module returns guidance only — never a verdict.
@@ -57,9 +50,9 @@ function getOpenAIClient(): OpenAI | null {
  * @param userId - The requesting user's ID (for credit consumption). Optional for fallback-only mode.
  */
 export async function generateGuidance(item: ManualTestItem, userId?: string): Promise<GuidanceResult> {
-  const client = getOpenAIClient();
+  const modelId = getDefaultModelId();
 
-  if (!client) {
+  if (!modelId) {
     return { guidance: item.guidance, aiGenerated: false };
   }
 
@@ -77,8 +70,8 @@ export async function generateGuidance(item: ManualTestItem, userId?: string): P
       ? `The accessibility tree shows ${item.evidence.steps.length} relevant element(s). ${item.evidence.note ?? ""}`
       : "No specific accessibility tree evidence available for this criterion.";
 
-    const response = await client.chat.completions.create({
-      model: "gpt-4o-mini",
+    const result = await complete({
+      model: modelId,
       messages: [
         {
           role: "system",
@@ -95,17 +88,20 @@ export async function generateGuidance(item: ManualTestItem, userId?: string): P
 Provide step-by-step instructions a tester can follow to determine pass/fail. Include what to look for, what tools to use (keyboard, browser devtools, screen reader), and what constitutes a pass vs fail for this specific criterion.`,
         },
       ],
-      response_format: { type: "json_object" },
+      jsonMode: true,
       temperature: 0.3,
-      max_tokens: 800,
+      maxTokens: 800,
+      metadata: {
+        feature: "manual-test-guidance",
+        userId,
+      },
     });
 
-    const content = response.choices[0]?.message?.content;
-    if (!content) {
+    if (!result) {
       return { guidance: item.guidance, aiGenerated: false };
     }
 
-    const parsed = JSON.parse(content);
+    const parsed = JSON.parse(result.content);
     const validated = manualTestGuidanceSchema.safeParse(parsed);
 
     if (validated.success) {
