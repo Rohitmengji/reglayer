@@ -17,6 +17,7 @@
  */
 export type PromptId =
   | "chat-system"
+  | "chat-rag"
   | "violation-explainer"
   | "compliance-summary"
   | "visual-scan"
