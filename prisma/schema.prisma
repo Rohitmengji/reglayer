@@ -241,6 +241,11 @@ model Violation {
   affectedElements Json    // array of { html, target, failureSummary }
   aiExplanation   String?  // cached AI explanation
 
+  // ── Embedding (pgvector) ──
+  // Stores the semantic vector for similarity search.
+  // Managed via raw SQL — Prisma doesn't support vector natively.
+  embedding       Unsupported("vector(1536)")?
+
   // ── Status Tracking (Fix Flow integration) ──
   status          ViolationStatus @default(OPEN)
   statusNote      String?         // required reason for WONT_FIX or ACCEPTABLE_RISK

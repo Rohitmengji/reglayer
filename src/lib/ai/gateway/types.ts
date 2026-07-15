@@ -38,6 +38,14 @@ export type ModelId =
 
 export type Provider = "openai" | "anthropic" | "google";
 
+// ── Embedding Model Identifiers ───────────────────────────────────────────────
+// Separate from chat models — embeddings use specialized models optimized for
+// vector similarity, not text generation.
+
+export type EmbeddingModelId =
+  | "text-embedding-3-small"
+  | "text-embedding-3-large";
+
 // ── Messages ──────────────────────────────────────────────────────────────────
 // Mirrors the standard chat message format used by OpenAI, Anthropic, and
 // Google. We don't support every exotic message type — just what we need now.
@@ -169,12 +177,34 @@ export interface ModelConfig {
   isAvailable: () => boolean;
 }
 
+// ── Embedding Request / Response ──────────────────────────────────────────────
+
+export interface EmbedRequest {
+  /** Which embedding model to use. */
+  model?: EmbeddingModelId;
+  /** The text(s) to embed. Single string or array for batch embedding. */
+  input: string | string[];
+  /** Caller metadata for cost tracking. */
+  metadata?: RequestMetadata;
+}
+
+export interface EmbedResponse {
+  /** The embedding vector(s). Single input → single vector, array → array. */
+  embeddings: number[][];
+  /** Token usage. */
+  usage: { totalTokens: number };
+  /** Cost in USD. */
+  cost: CostBreakdown;
+  /** Latency in milliseconds. */
+  latencyMs: number;
+}
+
 // ── Gateway Events ────────────────────────────────────────────────────────────
 // The gateway emits events for observability. Listeners (cost tracker, logger,
 // future analytics) subscribe without coupling to the gateway internals.
 
 export interface GatewayEvent {
-  type: "ai.completion";
+  type: "ai.completion" | "ai.embedding";
   timestamp: Date;
   request: {
     model: ModelId;
