@@ -16,15 +16,9 @@
  * ---------------------------------------------------------
  */
 
-import OpenAI from "openai";
 import { aiComplianceSummarySchema, type AIComplianceSummary } from "../structuredOutput";
 import type { ScanResult, ComplianceReport } from "@/lib/types";
-
-function getOpenAIClient() {
-  return new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY ?? "",
-  });
-}
+import { complete, getDefaultModelId } from "../gateway";
 
 /**
  * Generate an executive compliance summary.
@@ -33,15 +27,16 @@ export async function generateComplianceSummary(
   scan: ScanResult,
   compliance: ComplianceReport
 ): Promise<AIComplianceSummary | null> {
-  if (!process.env.OPENAI_API_KEY) return null;
+  const modelId = getDefaultModelId();
+  if (!modelId) return null;
 
   try {
     const failedRules = compliance.ruleResults
       .filter((r) => !r.passed)
       .map((r) => `${r.rule.name} (${r.rule.regulation})`);
 
-    const response = await getOpenAIClient().chat.completions.create({
-      model: "gpt-4o-mini",
+    const result = await complete({
+      model: modelId,
       messages: [
         {
           role: "system",
@@ -59,15 +54,15 @@ export async function generateComplianceSummary(
 - Top violations by impact: ${scan.violations.slice(0, 5).map((v) => `${v.impact}: ${v.help}`).join("; ")}`,
         },
       ],
-      response_format: { type: "json_object" },
+      jsonMode: true,
       temperature: 0.3,
-      max_tokens: 800,
+      maxTokens: 800,
+      metadata: { feature: "compliance-summary" },
     });
 
-    const content = response.choices[0]?.message?.content;
-    if (!content) return null;
+    if (!result) return null;
 
-    const parsed = JSON.parse(content);
+    const parsed = JSON.parse(result.content);
     const validated = aiComplianceSummarySchema.safeParse(parsed);
 
     return validated.success ? validated.data : null;

@@ -14,16 +14,10 @@
  *      axe score. Fallback/empty results are never cached.
  */
 
-import OpenAI from "openai";
 import { consumeCredits } from "@/lib/credits";
 import type { AiAction } from "@/lib/credits/plan-limits";
-import { withRetry } from "@/lib/retry";
+import { complete, getDefaultModelId } from "./gateway";
 import { normalizeVisualFindings, type VisualFinding } from "./visualFindings";
-
-function getOpenAIClient(): OpenAI | null {
-  if (!process.env.OPENAI_API_KEY) return null;
-  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-}
 
 const SYSTEM_PROMPT = `You are a senior accessibility auditor reviewing a SCREENSHOT of a web page.
 Report ONLY issues that are visually apparent and that an automated DOM/axe scanner CANNOT reliably detect. Focus on:
@@ -50,8 +44,8 @@ export async function analyzeScreenshotForA11y(
   screenshotBase64: string,
   opts?: { mime?: string; userId?: string },
 ): Promise<{ findings: VisualFinding[]; aiGenerated: boolean }> {
-  const client = getOpenAIClient();
-  if (!client || !screenshotBase64) {
+  const modelId = getDefaultModelId();
+  if (!modelId || !screenshotBase64) {
     return { findings: [], aiGenerated: false };
   }
 
@@ -64,31 +58,30 @@ export async function analyzeScreenshotForA11y(
 
   try {
     const mime = opts?.mime ?? "image/jpeg";
-    const response = await withRetry(
-      () =>
-        client.chat.completions.create({
-          model: "gpt-4o-mini",
-          messages: [
-            { role: "system", content: SYSTEM_PROMPT },
-            {
-              role: "user",
-              content: [
-                { type: "text", text: "Review this page screenshot for visually-apparent accessibility issues." },
-                { type: "image_url", image_url: { url: `data:${mime};base64,${screenshotBase64}` } },
-              ],
-            },
+    const result = await complete({
+      model: modelId,
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "Review this page screenshot for visually-apparent accessibility issues." },
+            { type: "image", data: screenshotBase64, mimeType: mime },
           ],
-          response_format: { type: "json_object" },
-          temperature: 0.2,
-          max_tokens: 700,
-        }),
-      { maxAttempts: 2, baseDelayMs: 1000 },
-    );
+        },
+      ],
+      jsonMode: true,
+      temperature: 0.2,
+      maxTokens: 700,
+      metadata: {
+        feature: "visual-scan",
+        userId: opts?.userId,
+      },
+    });
 
-    const content = response.choices[0]?.message?.content;
-    if (!content) return { findings: [], aiGenerated: false };
+    if (!result) return { findings: [], aiGenerated: false };
 
-    const findings = normalizeVisualFindings(JSON.parse(content));
+    const findings = normalizeVisualFindings(JSON.parse(result.content));
     return { findings, aiGenerated: true };
   } catch {
     return { findings: [], aiGenerated: false };
