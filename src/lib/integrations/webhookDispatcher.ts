@@ -72,12 +72,17 @@ async function deliverToHook(params: {
     return { status: "failed", statusCode: 0, error: "URL not allowed (SSRF guard)" };
   }
 
-  // Note: HMAC key is SHA256(original_secret). Receivers verify with:
-  // HMAC-SHA256(SHA256(signing_secret), payload_body)
-  const signature = crypto
-    .createHmac("sha256", secret || "")
-    .update(payloadStr)
-    .digest("hex");
+  // HMAC signature: only sign when a secret exists. Signing with an empty string
+  // produces a deterministic signature that any attacker can compute, giving a
+  // false sense of security to receivers who check the header.
+  const signatureHeader: Record<string, string> = {};
+  if (secret) {
+    const signature = crypto
+      .createHmac("sha256", secret)
+      .update(payloadStr)
+      .digest("hex");
+    signatureHeader["X-RegLayer-Signature"] = `sha256=${signature}`;
+  }
 
   try {
     const statusCode = await withRetry(async () => {
@@ -86,7 +91,7 @@ async function deliverToHook(params: {
         headers: {
           "Content-Type": "application/json",
           "X-RegLayer-Event": event,
-          "X-RegLayer-Signature": `sha256=${signature}`,
+          ...signatureHeader,
           "X-RegLayer-Delivery": deliveryId,
         },
         body: payloadStr,
