@@ -190,6 +190,19 @@ export async function searchViolations(
   const limit = options?.limit ?? 10;
   const minSimilarity = options?.minSimilarity ?? 0.5;
 
+  // Fast check: skip expensive embed + search if no violations have embeddings yet
+  try {
+    const hasEmbeddings = await prisma.$queryRaw<[{ count: bigint }]>`
+      SELECT COUNT(*) as count FROM violations WHERE embedding IS NOT NULL LIMIT 1
+    `;
+    if (!hasEmbeddings[0] || hasEmbeddings[0].count === BigInt(0)) {
+      return [];
+    }
+  } catch {
+    // pgvector not enabled or table doesn't have column — skip silently
+    return [];
+  }
+
   // 1. Embed the search query
   const result = await embed({
     input: query,
