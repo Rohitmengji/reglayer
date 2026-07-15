@@ -19,6 +19,7 @@
 import { aiComplianceSummarySchema, type AIComplianceSummary } from "../structuredOutput";
 import type { ScanResult, ComplianceReport } from "@/lib/types";
 import { complete, getDefaultModelId } from "../gateway";
+import { buildMessages, getPrompt } from "../prompts/registry";
 
 /**
  * Generate an executive compliance summary.
@@ -30,6 +31,8 @@ export async function generateComplianceSummary(
   const modelId = getDefaultModelId();
   if (!modelId) return null;
 
+  const prompt = getPrompt("compliance-summary");
+
   try {
     const failedRules = compliance.ruleResults
       .filter((r) => !r.passed)
@@ -37,27 +40,20 @@ export async function generateComplianceSummary(
 
     const result = await complete({
       model: modelId,
-      messages: [
-        {
-          role: "system",
-          content: `You are a compliance advisor. Generate executive summaries of accessibility compliance reports. Respond with JSON: { overallAssessment: string (max 1000 chars), topRisks: string[] (max 5), recommendations: string[] (max 5), regulatoryContext: string (max 500 chars, optional) }`,
-        },
-        {
-          role: "user",
-          content: `Generate compliance summary:
-- URL: ${scan.url}
-- Score: ${scan.summary.score}/100
-- Compliance: ${compliance.overallCompliance}%
-- Total Violations: ${scan.summary.totalViolations}
-- Critical: ${scan.summary.critical}, Serious: ${scan.summary.serious}
-- Failed Rules: ${failedRules.join(", ") || "None"}
-- Top violations by impact: ${scan.violations.slice(0, 5).map((v) => `${v.impact}: ${v.help}`).join("; ")}`,
-        },
-      ],
+      messages: buildMessages("compliance-summary", {
+        "scan.url": scan.url,
+        "scan.score": scan.summary.score,
+        "scan.compliance": compliance.overallCompliance,
+        "scan.totalViolations": scan.summary.totalViolations,
+        "scan.critical": scan.summary.critical,
+        "scan.serious": scan.summary.serious,
+        "scan.failedRules": failedRules.join(", ") || "None",
+        "scan.topViolations": scan.violations.slice(0, 5).map((v) => `${v.impact}: ${v.help}`).join("; "),
+      }),
       jsonMode: true,
-      temperature: 0.3,
-      maxTokens: 800,
-      metadata: { feature: "compliance-summary" },
+      temperature: prompt.defaultTemperature,
+      maxTokens: prompt.defaultMaxTokens,
+      metadata: { feature: prompt.feature },
     });
 
     if (!result) return null;

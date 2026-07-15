@@ -18,18 +18,7 @@ import { consumeCredits } from "@/lib/credits";
 import type { AiAction } from "@/lib/credits/plan-limits";
 import { complete, getDefaultModelId } from "./gateway";
 import { normalizeVisualFindings, type VisualFinding } from "./visualFindings";
-
-const SYSTEM_PROMPT = `You are a senior accessibility auditor reviewing a SCREENSHOT of a web page.
-Report ONLY issues that are visually apparent and that an automated DOM/axe scanner CANNOT reliably detect. Focus on:
-- text-in-image: meaningful text rendered inside an image/graphic (not real HTML text)
-- color-only: information conveyed by color alone (e.g. red/green status with no label/icon)
-- low-contrast: text that visually appears to have insufficient contrast against its background
-- focus-visibility: interactive elements that appear to lack a visible focus indicator
-- meaningful-image: images that look informative and would need descriptive alt text
-- layout: visual layout problems that impede readability (overlap, truncation, tiny targets)
-Do NOT report things a DOM scanner already catches (missing alt attributes, ARIA syntax, etc.).
-Respond with JSON: { "findings": [ { "category": <one of the above or "other">, "issue": string, "severity": "critical"|"serious"|"moderate"|"minor", "confidence": number 0-1 } ] }.
-Be conservative: only report what you can actually see. Max 8 findings. If nothing visually apparent, return an empty findings array.`;
+import { getPrompt } from "./prompts/registry";
 
 /**
  * Analyze a page screenshot for visually-apparent accessibility issues.
@@ -56,12 +45,14 @@ export async function analyzeScreenshotForA11y(
     }
   }
 
+  const prompt = getPrompt("visual-scan");
+
   try {
     const mime = opts?.mime ?? "image/jpeg";
     const result = await complete({
       model: modelId,
       messages: [
-        { role: "system", content: SYSTEM_PROMPT },
+        { role: "system", content: prompt.system },
         {
           role: "user",
           content: [
@@ -71,10 +62,10 @@ export async function analyzeScreenshotForA11y(
         },
       ],
       jsonMode: true,
-      temperature: 0.2,
-      maxTokens: 700,
+      temperature: prompt.defaultTemperature,
+      maxTokens: prompt.defaultMaxTokens,
       metadata: {
-        feature: "visual-scan",
+        feature: prompt.feature,
         userId: opts?.userId,
       },
     });
