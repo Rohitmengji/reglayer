@@ -29,6 +29,40 @@ import { z } from "zod";
 import { prisma } from "@/lib/database/prisma";
 import type { Impact } from "@/generated/prisma/client";
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+const TOOL_TIMEOUT_MS = 10_000;
+const MAX_RESULT_CHARS = 2000;
+
+/**
+ * Wrap a tool execution with a timeout. If the DB query hangs,
+ * the tool returns a graceful error instead of blocking the stream.
+ */
+async function withTimeout<T>(fn: () => Promise<T>, label: string): Promise<T> {
+  const timeout = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error(`Tool "${label}" timed out after ${TOOL_TIMEOUT_MS}ms`)), TOOL_TIMEOUT_MS),
+  );
+  return Promise.race([fn(), timeout]);
+}
+
+/**
+ * Truncate tool result to prevent context window overflow.
+ * Adds a note when truncated so the LLM knows data was cut.
+ */
+function truncateResult(result: string): string {
+  if (result.length <= MAX_RESULT_CHARS) return result;
+  return result.slice(0, MAX_RESULT_CHARS) + "\n...[truncated — ask for specific details to see more]";
+}
+
+/**
+ * Log tool execution for observability.
+ */
+function logToolCall(tool: string, params: unknown, durationMs: number, success: boolean) {
+  console.log(
+    `[ai-tool] ${success ? "OK" : "FAIL"} | ${tool} | ${durationMs}ms | params: ${JSON.stringify(params)}`,
+  );
+}
+
 // ── Tool: Get Recent Scans ───────────────────────────────────────────────────
 
 export const getRecentScans = {
@@ -37,39 +71,37 @@ export const getRecentScans = {
     limit: z.number().int().min(1).max(20).optional().describe("Number of scans to return (default 5)"),
   }),
   execute: async ({ limit }: { limit?: number }) => {
-    const take = limit ?? 5;
-    const scans = await prisma.scan.findMany({
-      orderBy: { createdAt: "desc" },
-      take,
-      select: {
-        id: true,
-        url: true,
-        score: true,
-        totalViolations: true,
-        critical: true,
-        serious: true,
-        status: true,
-        createdAt: true,
-      },
-    });
+    const start = Date.now();
+    try {
+      const take = limit ?? 5;
+      const scans = await withTimeout(
+        () => prisma.scan.findMany({
+          orderBy: { createdAt: "desc" },
+          take,
+          select: {
+            id: true, url: true, score: true, totalViolations: true,
+            critical: true, serious: true, status: true, createdAt: true,
+          },
+        }),
+        "getRecentScans",
+      );
 
-    if (scans.length === 0) {
-      return "No scans found. The user hasn't scanned any sites yet.";
+      logToolCall("getRecentScans", { limit }, Date.now() - start, true);
+
+      if (scans.length === 0) return "No scans found. The user hasn't scanned any sites yet.";
+
+      return truncateResult(JSON.stringify({
+        scans: scans.map((s) => ({
+          id: s.id, url: s.url, score: s.score,
+          violations: s.totalViolations, critical: s.critical, serious: s.serious,
+          status: s.status, date: s.createdAt.toISOString().split("T")[0],
+        })),
+        total: scans.length,
+      }));
+    } catch (error) {
+      logToolCall("getRecentScans", { limit }, Date.now() - start, false);
+      return `Error fetching scans: ${error instanceof Error ? error.message : "unknown error"}`;
     }
-
-    return JSON.stringify({
-      scans: scans.map((s) => ({
-        id: s.id,
-        url: s.url,
-        score: s.score,
-        violations: s.totalViolations,
-        critical: s.critical,
-        serious: s.serious,
-        status: s.status,
-        date: s.createdAt.toISOString().split("T")[0],
-      })),
-      total: scans.length,
-    });
   },
 };
 
@@ -82,39 +114,39 @@ export const getViolations = {
     impact: z.enum(["critical", "serious", "moderate", "minor"]).optional().describe("Filter by impact severity"),
   }),
   execute: async ({ scanId, impact }: { scanId: string; impact?: string }) => {
-    const violations = await prisma.violation.findMany({
-      where: {
-        scanId,
-        ...(impact ? { impact: impact as Impact } : {}),
-      },
-      select: {
-        id: true,
-        ruleId: true,
-        impact: true,
-        description: true,
-        help: true,
-        wcagCriteria: true,
-        tags: true,
-        status: true,
-      },
-      take: 20,
-    });
+    const start = Date.now();
+    try {
+      const violations = await withTimeout(
+        () => prisma.violation.findMany({
+          where: { scanId, ...(impact ? { impact: impact as Impact } : {}) },
+          select: {
+            ruleId: true, impact: true, description: true,
+            help: true, wcagCriteria: true, status: true,
+          },
+          take: 15,
+        }),
+        "getViolations",
+      );
 
-    if (violations.length === 0) {
-      return `No violations found for scan ${scanId}${impact ? ` with ${impact} impact` : ""}.`;
+      logToolCall("getViolations", { scanId, impact }, Date.now() - start, true);
+
+      if (violations.length === 0) {
+        return `No violations found for scan ${scanId}${impact ? ` with ${impact} impact` : ""}.`;
+      }
+
+      return truncateResult(JSON.stringify({
+        violations: violations.map((v) => ({
+          ruleId: v.ruleId, impact: v.impact,
+          description: v.description.slice(0, 150),
+          help: v.help.slice(0, 100),
+          wcag: v.wcagCriteria, status: v.status,
+        })),
+        count: violations.length,
+      }));
+    } catch (error) {
+      logToolCall("getViolations", { scanId, impact }, Date.now() - start, false);
+      return `Error fetching violations: ${error instanceof Error ? error.message : "unknown error"}`;
     }
-
-    return JSON.stringify({
-      violations: violations.map((v) => ({
-        ruleId: v.ruleId,
-        impact: v.impact,
-        description: v.description,
-        help: v.help,
-        wcag: v.wcagCriteria,
-        status: v.status,
-      })),
-      count: violations.length,
-    });
   },
 };
 
@@ -126,20 +158,54 @@ export const explainWcag = {
     criterion: z.string().describe("The WCAG success criterion number (e.g., '1.4.3', '2.1.1', '4.1.2')"),
   }),
   execute: async ({ criterion }: { criterion: string }) => {
-    // Common WCAG criteria lookup (no external API needed)
     const WCAG_MAP: Record<string, { name: string; level: string; summary: string }> = {
       "1.1.1": { name: "Non-text Content", level: "A", summary: "All non-text content has a text alternative that serves the equivalent purpose." },
+      "1.2.1": { name: "Audio-only and Video-only", level: "A", summary: "Alternatives provided for prerecorded audio-only and video-only content." },
+      "1.2.2": { name: "Captions (Prerecorded)", level: "A", summary: "Captions provided for all prerecorded audio content in synchronized media." },
+      "1.2.3": { name: "Audio Description or Media Alternative", level: "A", summary: "Alternative or audio description for prerecorded video content." },
       "1.3.1": { name: "Info and Relationships", level: "A", summary: "Information, structure, and relationships conveyed through presentation can be programmatically determined." },
+      "1.3.2": { name: "Meaningful Sequence", level: "A", summary: "Correct reading sequence can be programmatically determined." },
+      "1.3.3": { name: "Sensory Characteristics", level: "A", summary: "Instructions don't rely solely on shape, color, size, location, or sound." },
+      "1.3.4": { name: "Orientation", level: "AA", summary: "Content doesn't restrict display to a single orientation unless essential." },
+      "1.3.5": { name: "Identify Input Purpose", level: "AA", summary: "Input field purpose can be programmatically determined for autocomplete." },
       "1.4.1": { name: "Use of Color", level: "A", summary: "Color is not used as the only visual means of conveying information." },
-      "1.4.3": { name: "Contrast (Minimum)", level: "AA", summary: "Text and images of text have a contrast ratio of at least 4.5:1 (3:1 for large text)." },
+      "1.4.2": { name: "Audio Control", level: "A", summary: "Audio that plays automatically can be paused, stopped, or volume controlled." },
+      "1.4.3": { name: "Contrast (Minimum)", level: "AA", summary: "Text has a contrast ratio of at least 4.5:1 (3:1 for large text)." },
+      "1.4.4": { name: "Resize Text", level: "AA", summary: "Text can be resized up to 200% without loss of content or functionality." },
+      "1.4.5": { name: "Images of Text", level: "AA", summary: "Text is used to convey information rather than images of text." },
+      "1.4.10": { name: "Reflow", level: "AA", summary: "Content can be presented without scrolling in two dimensions at 320px/256px." },
       "1.4.11": { name: "Non-text Contrast", level: "AA", summary: "UI components and graphical objects have a contrast ratio of at least 3:1." },
-      "2.1.1": { name: "Keyboard", level: "A", summary: "All functionality is operable through a keyboard interface without specific timings." },
+      "1.4.12": { name: "Text Spacing", level: "AA", summary: "No loss of content when text spacing is adjusted (line height 1.5, etc.)." },
+      "1.4.13": { name: "Content on Hover or Focus", level: "AA", summary: "Additional content triggered by hover/focus is dismissible, hoverable, and persistent." },
+      "2.1.1": { name: "Keyboard", level: "A", summary: "All functionality is operable through a keyboard interface." },
+      "2.1.2": { name: "No Keyboard Trap", level: "A", summary: "Focus can be moved away from a component using only the keyboard." },
+      "2.2.1": { name: "Timing Adjustable", level: "A", summary: "Time limits can be turned off, adjusted, or extended." },
+      "2.2.2": { name: "Pause, Stop, Hide", level: "A", summary: "Moving, blinking, or auto-updating content can be paused, stopped, or hidden." },
+      "2.3.1": { name: "Three Flashes or Below Threshold", level: "A", summary: "Pages don't contain anything that flashes more than three times per second." },
       "2.4.1": { name: "Bypass Blocks", level: "A", summary: "A mechanism is available to bypass blocks of content repeated on multiple pages." },
+      "2.4.2": { name: "Page Titled", level: "A", summary: "Web pages have titles that describe topic or purpose." },
+      "2.4.3": { name: "Focus Order", level: "A", summary: "Focusable components receive focus in an order that preserves meaning." },
       "2.4.4": { name: "Link Purpose (In Context)", level: "A", summary: "The purpose of each link can be determined from the link text or its context." },
-      "2.4.7": { name: "Focus Visible", level: "AA", summary: "Any keyboard operable user interface has a mode of operation where the focus indicator is visible." },
+      "2.4.5": { name: "Multiple Ways", level: "AA", summary: "More than one way is available to locate a page within a set of pages." },
+      "2.4.6": { name: "Headings and Labels", level: "AA", summary: "Headings and labels describe topic or purpose." },
+      "2.4.7": { name: "Focus Visible", level: "AA", summary: "Keyboard focus indicator is visible." },
+      "2.5.1": { name: "Pointer Gestures", level: "A", summary: "Multipoint/path-based gestures have single-pointer alternatives." },
+      "2.5.2": { name: "Pointer Cancellation", level: "A", summary: "Functions triggered by pointer can be cancelled." },
+      "2.5.3": { name: "Label in Name", level: "A", summary: "Accessible name includes the visible label text." },
+      "2.5.4": { name: "Motion Actuation", level: "A", summary: "Functions triggered by motion have UI alternatives and can be disabled." },
       "3.1.1": { name: "Language of Page", level: "A", summary: "The default human language of each page can be programmatically determined." },
-      "4.1.1": { name: "Parsing", level: "A", summary: "Elements have complete start and end tags, are nested according to spec, and have unique IDs." },
-      "4.1.2": { name: "Name, Role, Value", level: "A", summary: "All UI components have accessible names, roles, states, and values that can be programmatically determined." },
+      "3.1.2": { name: "Language of Parts", level: "AA", summary: "Language of each passage or phrase can be programmatically determined." },
+      "3.2.1": { name: "On Focus", level: "A", summary: "Receiving focus doesn't trigger a change of context." },
+      "3.2.2": { name: "On Input", level: "A", summary: "Changing a setting doesn't automatically cause a change of context." },
+      "3.2.3": { name: "Consistent Navigation", level: "AA", summary: "Navigation mechanisms are consistent across pages." },
+      "3.2.4": { name: "Consistent Identification", level: "AA", summary: "Same-function components are identified consistently." },
+      "3.3.1": { name: "Error Identification", level: "A", summary: "Input errors are automatically detected and described to the user in text." },
+      "3.3.2": { name: "Labels or Instructions", level: "A", summary: "Labels or instructions provided when user input is required." },
+      "3.3.3": { name: "Error Suggestion", level: "AA", summary: "Suggestions for correction are provided when input errors are detected." },
+      "3.3.4": { name: "Error Prevention (Legal, Financial, Data)", level: "AA", summary: "Submissions are reversible, verifiable, or confirmable." },
+      "4.1.1": { name: "Parsing", level: "A", summary: "Elements have complete start and end tags, are nested correctly, have unique IDs." },
+      "4.1.2": { name: "Name, Role, Value", level: "A", summary: "All UI components have accessible names, roles, states, and values." },
+      "4.1.3": { name: "Status Messages", level: "AA", summary: "Status messages can be programmatically determined without receiving focus." },
     };
 
     const info = WCAG_MAP[criterion];
@@ -153,7 +219,7 @@ export const explainWcag = {
       });
     }
 
-    return `I don't have a built-in reference for SC ${criterion}. Check https://www.w3.org/TR/WCAG21/`;
+    return `SC ${criterion} is not in my built-in reference (I cover all Level A and AA criteria). Check https://www.w3.org/TR/WCAG21/#${criterion.replace(/\./g, "")}`;
   },
 };
 
@@ -163,35 +229,44 @@ export const getComplianceStatus = {
   description: "Get an overview of the user's overall compliance status across all monitored sites. Use this when the user asks 'how compliant are we?', 'what's our accessibility score?', or wants a status overview.",
   parameters: z.object({}),
   execute: async () => {
-    const [scanCount, siteCount, recentScans] = await Promise.all([
-      prisma.scan.count(),
-      prisma.scan.groupBy({ by: ["url"], _count: true }).then((r) => r.length),
-      prisma.scan.findMany({
-        orderBy: { createdAt: "desc" },
-        take: 10,
-        select: { score: true, totalViolations: true, critical: true, serious: true },
-      }),
-    ]);
+    const start = Date.now();
+    try {
+      const [scanCount, siteCount, recentScans] = await withTimeout(
+        () => Promise.all([
+          prisma.scan.count(),
+          prisma.scan.groupBy({ by: ["url"], _count: true }).then((r) => r.length),
+          prisma.scan.findMany({
+            orderBy: { createdAt: "desc" },
+            take: 10,
+            select: { score: true, totalViolations: true, critical: true, serious: true },
+          }),
+        ]),
+        "getComplianceStatus",
+      );
 
-    if (recentScans.length === 0) {
-      return "No scans found. No compliance data available yet.";
+      logToolCall("getComplianceStatus", {}, Date.now() - start, true);
+
+      if (recentScans.length === 0) return "No scans found. No compliance data available yet.";
+
+      const avgScore = recentScans.reduce((sum, s) => sum + (s.score ?? 0), 0) / recentScans.length;
+      const totalViolations = recentScans.reduce((sum, s) => sum + s.totalViolations, 0);
+      const criticalCount = recentScans.reduce((sum, s) => sum + s.critical, 0);
+      const seriousCount = recentScans.reduce((sum, s) => sum + s.serious, 0);
+
+      return JSON.stringify({
+        overview: {
+          totalScans: scanCount,
+          monitoredSites: siteCount,
+          averageScore: Math.round(avgScore * 10) / 10,
+          recentViolations: totalViolations,
+          criticalIssues: criticalCount,
+          seriousIssues: seriousCount,
+        },
+      });
+    } catch (error) {
+      logToolCall("getComplianceStatus", {}, Date.now() - start, false);
+      return `Error fetching compliance status: ${error instanceof Error ? error.message : "unknown error"}`;
     }
-
-    const avgScore = recentScans.reduce((sum, s) => sum + (s.score ?? 0), 0) / recentScans.length;
-    const totalViolations = recentScans.reduce((sum, s) => sum + s.totalViolations, 0);
-    const criticalCount = recentScans.reduce((sum, s) => sum + s.critical, 0);
-    const seriousCount = recentScans.reduce((sum, s) => sum + s.serious, 0);
-
-    return JSON.stringify({
-      overview: {
-        totalScans: scanCount,
-        monitoredSites: siteCount,
-        averageScore: Math.round(avgScore * 10) / 10,
-        recentViolations: totalViolations,
-        criticalIssues: criticalCount,
-        seriousIssues: seriousCount,
-      },
-    });
   },
 };
 
