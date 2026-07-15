@@ -6,6 +6,7 @@
  */
 
 import { Metadata } from "next";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Accessibility Leaderboard — Top Accessible Websites | RegLayer",
@@ -61,7 +62,7 @@ export default async function LeaderboardPage() {
             Real-time rankings of the most accessible websites, verified by automated WCAG scanning.
           </p>
           <p className="text-sm text-neutral-500 mt-4">
-            Powered by <a href="/" className="text-blue-600 hover:underline font-medium">RegLayer</a> — Web Accessibility Compliance Platform
+            Powered by <Link href="/" className="text-blue-600 hover:underline font-medium">RegLayer</Link> — Web Accessibility Compliance Platform
           </p>
         </div>
       </header>
