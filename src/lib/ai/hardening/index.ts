@@ -87,13 +87,15 @@ const cache = new Map<string, CacheEntry>();
 const CACHE_TTL_MS = 60_000; // 1 minute
 const MAX_CACHE_SIZE = 100;
 
-function getCacheKey(messages: string): string {
-  // Simple hash: first 200 chars of the stringified messages
-  return messages.slice(0, 200);
+function getCacheKey(messages: string, userId?: string): string {
+  // Include userId to prevent cross-user cache collisions.
+  // Without this, two users with identical opening messages get each other's responses.
+  const prefix = userId ? `${userId}:` : "";
+  return prefix + messages.slice(0, 200);
 }
 
-export function getCachedResponse(messages: string): string | null {
-  const key = getCacheKey(messages);
+export function getCachedResponse(messages: string, userId?: string): string | null {
+  const key = getCacheKey(messages, userId);
   const entry = cache.get(key);
   if (!entry) return null;
   if (Date.now() - entry.timestamp > CACHE_TTL_MS) {
@@ -103,11 +105,11 @@ export function getCachedResponse(messages: string): string | null {
   return entry.response;
 }
 
-export function setCachedResponse(messages: string, response: string): void {
+export function setCachedResponse(messages: string, response: string, userId?: string): void {
   if (cache.size >= MAX_CACHE_SIZE) {
     // Evict oldest entry
     const firstKey = cache.keys().next().value;
     if (firstKey) cache.delete(firstKey);
   }
-  cache.set(getCacheKey(messages), { response, timestamp: Date.now() });
+  cache.set(getCacheKey(messages, userId), { response, timestamp: Date.now() });
 }
