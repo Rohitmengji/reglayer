@@ -6,7 +6,7 @@
  */
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import {
   Radar,
   Shield,
@@ -132,26 +132,27 @@ export default function RadarPage() {
   const [industry, setIndustry] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({ geos: geo });
-      if (industry) params.set("industry", industry);
-      const res = await fetch(`/api/regulations/radar?${params}`);
-      if (res.ok) {
-        const result = await res.json();
-        setData(result);
-      }
-    } catch {
-      // Silently handle errors
-    } finally {
-      setLoading(false);
-    }
-  }, [geo, industry]);
-
   useEffect(() => {
+    let cancelled = false;
+    async function loadData() {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams({ geos: geo });
+        if (industry) params.set("industry", industry);
+        const res = await fetch(`/api/regulations/radar?${params}`);
+        if (!cancelled && res.ok) {
+          const result = await res.json();
+          setData(result);
+        }
+      } catch {
+        // Silently handle errors
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
     loadData();
-  }, [loadData]);
+    return () => { cancelled = true; };
+  }, [geo, industry]);
 
   return (
     <AppShell>

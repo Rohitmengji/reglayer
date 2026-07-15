@@ -6,7 +6,7 @@
  */
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import {
   Trophy,
   Plus,
@@ -76,7 +76,7 @@ export default function CompetitivePage() {
   const [addName, setAddName] = useState("");
   const [adding, setAdding] = useState(false);
 
-  const loadData = useCallback(async () => {
+  const loadData = async () => {
     try {
       const [compRes, benchRes] = await Promise.all([
         fetch("/api/competitive"),
@@ -95,11 +95,10 @@ export default function CompetitivePage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  };
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- loadData is reused by event handlers
+  useEffect(() => { loadData(); }, []);
 
   const handleAdd = async () => {
     if (!addUrl.trim()) return;
