@@ -37,6 +37,7 @@ import { dispatchWebhookEvent } from "@/lib/integrations/webhookDispatcher";
 import { sendScanCompleteEmail } from "@/lib/email/service";
 import { dispatchToIntegrations } from "@/lib/integrations/dispatcher";
 import { getOrCreateWorkspace } from "@/lib/database/workspace";
+import { embedScanViolations } from "@/lib/ai/vector/search";
 import type { ScanRequest, ScanResult, ComplianceReport } from "@/lib/types";
 
 export interface ScanServiceResult {
@@ -162,6 +163,14 @@ export async function performScan(
     // Send email notifications + integration dispatches (fire-and-forget)
     notifyScanComplete(scanResult, request.userEmail).catch((err) => {
       scanLogger.warn("Notification dispatch failed", {
+        error: err instanceof Error ? err.message : "Unknown",
+      });
+    });
+
+    // Embed violations for semantic search (fire-and-forget, non-blocking)
+    embedScanViolations(scanResult.id).catch((err) => {
+      scanLogger.warn("Violation embedding failed (non-blocking)", {
+        scanId: scanResult.id,
         error: err instanceof Error ? err.message : "Unknown",
       });
     });
