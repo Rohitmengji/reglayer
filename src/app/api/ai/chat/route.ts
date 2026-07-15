@@ -33,6 +33,7 @@ import { authOptions } from "@/lib/auth/config";
 import { z } from "zod";
 import { stream, getDefaultModelId, isAIAvailable } from "@/lib/ai/gateway";
 import { getPrompt } from "@/lib/ai/prompts/registry";
+import { buildRAGContext, buildRAGMessages } from "@/lib/ai/rag/service";
 import { toTextStream } from "ai";
 
 // Force Node.js runtime for streaming (Edge doesn't support all Node APIs)
@@ -87,21 +88,24 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // 4. Build messages with system prompt from registry
-  const prompt = getPrompt("chat-system");
-  const messages = [
-    { role: "system" as const, content: prompt.system },
-    ...parsed.data.messages,
-  ];
+  // 4. Build RAG-augmented messages
+  // Extract the latest user message for semantic search
+  const userMessages = parsed.data.messages.filter((m) => m.role === "user");
+  const latestUserMessage = userMessages[userMessages.length - 1]?.content ?? "";
+
+  // Retrieve relevant violations and build augmented context
+  const ragContext = await buildRAGContext(latestUserMessage);
+  const messages = buildRAGMessages(parsed.data.messages, ragContext);
 
   // 5. Call the AI Gateway stream
+  const prompt = getPrompt(ragContext.augmented ? "chat-rag" : "chat-system");
   const result = stream({
     model: modelId,
     messages,
     temperature: prompt.defaultTemperature,
     maxTokens: prompt.defaultMaxTokens,
     metadata: {
-      feature: prompt.feature,
+      feature: ragContext.augmented ? "chat-rag" : "chat",
       userId: session.user.email,
     },
   });
