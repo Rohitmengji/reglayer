@@ -19,6 +19,7 @@ import type { ManualTestItem } from "@/lib/testing/manualTestPlan";
 import { consumeCredits } from "@/lib/credits";
 import type { AiAction } from "@/lib/credits/plan-limits";
 import { complete, getDefaultModelId } from "./gateway";
+import { buildMessages, getPrompt } from "./prompts/registry";
 
 // ── Schema ────────────────────────────────────────────────────────────────────
 
@@ -65,6 +66,8 @@ export async function generateGuidance(item: ManualTestItem, userId?: string): P
     }
   }
 
+  const prompt = getPrompt("manual-test-guidance");
+
   try {
     const evidenceContext = item.evidence.kind === "narration" && item.evidence.steps
       ? `The accessibility tree shows ${item.evidence.steps.length} relevant element(s). ${item.evidence.note ?? ""}`
@@ -72,27 +75,19 @@ export async function generateGuidance(item: ManualTestItem, userId?: string): P
 
     const result = await complete({
       model: modelId,
-      messages: [
-        {
-          role: "system",
-          content: `You are an accessibility testing expert. Draft specific, actionable manual testing steps for a WCAG success criterion. Your guidance tells a human HOW to test — you never determine the verdict yourself. Respond with JSON: { "guidance": "string" }. Keep under 800 tokens. Be specific and practical.`,
-        },
-        {
-          role: "user",
-          content: `Draft manual testing guidance for:
-- Criterion: WCAG ${item.criterion} "${item.title}" (Level ${item.level})
-- Principle: ${item.principle}
-- Why manual testing is needed: ${item.why}
-- Evidence context: ${evidenceContext}
-
-Provide step-by-step instructions a tester can follow to determine pass/fail. Include what to look for, what tools to use (keyboard, browser devtools, screen reader), and what constitutes a pass vs fail for this specific criterion.`,
-        },
-      ],
+      messages: buildMessages("manual-test-guidance", {
+        "item.criterion": item.criterion,
+        "item.title": item.title,
+        "item.level": item.level,
+        "item.principle": item.principle,
+        "item.why": item.why,
+        "item.evidenceContext": evidenceContext,
+      }),
       jsonMode: true,
-      temperature: 0.3,
-      maxTokens: 800,
+      temperature: prompt.defaultTemperature,
+      maxTokens: prompt.defaultMaxTokens,
       metadata: {
-        feature: "manual-test-guidance",
+        feature: prompt.feature,
         userId,
       },
     });

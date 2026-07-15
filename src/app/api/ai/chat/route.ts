@@ -32,6 +32,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { z } from "zod";
 import { stream, getDefaultModelId, isAIAvailable } from "@/lib/ai/gateway";
+import { getPrompt } from "@/lib/ai/prompts/registry";
 import { toTextStream } from "ai";
 
 // Force Node.js runtime for streaming (Edge doesn't support all Node APIs)
@@ -50,28 +51,6 @@ const chatMessageSchema = z.object({
 const chatRequestSchema = z.object({
   messages: z.array(chatMessageSchema).min(1).max(50),
 });
-
-// ── System Prompt ─────────────────────────────────────────────────────────────
-// This is RegLayer's personality. It lives on the server — the client never
-// sees it. This is standard practice: ChatGPT's system prompt is server-side too.
-
-const SYSTEM_PROMPT = `You are RegLayer AI, an expert accessibility compliance assistant.
-
-Your expertise:
-- WCAG 2.1 and 2.2 (Levels A, AA, AAA)
-- European Accessibility Act (EAA)
-- EN 301 549
-- ADA (Americans with Disabilities Act)
-- Section 508
-
-When answering:
-- Be specific and actionable. Give code examples when relevant.
-- Reference exact WCAG success criteria (e.g., "WCAG 2.1 SC 1.4.3 Contrast").
-- Explain the business impact of accessibility violations.
-- Provide remediation steps with priority (critical → serious → moderate → minor).
-- If asked about something outside accessibility/compliance, politely redirect.
-- Keep responses concise but thorough. Use markdown formatting.
-- Never make up regulations or criteria that don't exist.`;
 
 // ── Handler ───────────────────────────────────────────────────────────────────
 
@@ -108,9 +87,10 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // 4. Build messages with system prompt (server-side only)
+  // 4. Build messages with system prompt from registry
+  const prompt = getPrompt("chat-system");
   const messages = [
-    { role: "system" as const, content: SYSTEM_PROMPT },
+    { role: "system" as const, content: prompt.system },
     ...parsed.data.messages,
   ];
 
@@ -118,10 +98,10 @@ export async function POST(request: NextRequest) {
   const result = stream({
     model: modelId,
     messages,
-    temperature: 0.5,
-    maxTokens: 2000,
+    temperature: prompt.defaultTemperature,
+    maxTokens: prompt.defaultMaxTokens,
     metadata: {
-      feature: "chat",
+      feature: prompt.feature,
       userId: session.user.email,
     },
   });

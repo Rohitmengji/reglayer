@@ -24,6 +24,7 @@
 import { aiExplanationSchema, type AIExplanation } from "../structuredOutput";
 import type { AccessibilityViolation } from "@/lib/types";
 import { complete, isAIAvailable, getDefaultModelId } from "../gateway";
+import { buildMessages, getPrompt } from "../prompts/registry";
 
 /**
  * Generate a plain-language explanation of a violation.
@@ -34,31 +35,25 @@ export async function explainViolation(
   const modelId = getDefaultModelId();
   if (!modelId) return null;
 
+  const prompt = getPrompt("violation-explainer");
+
   try {
     const result = await complete({
       model: modelId,
-      messages: [
-        {
-          role: "system",
-          content: `You are an accessibility compliance expert. Explain web accessibility violations in clear, non-technical language. Respond with JSON matching this schema: { summary: string (max 500 chars), impact: string (max 300 chars), recommendation: string (max 500 chars), technicalDetail: string (max 1000 chars, optional), confidence: number 0-1 }`,
-        },
-        {
-          role: "user",
-          content: `Explain this accessibility violation:
-- Rule: ${violation.id}
-- Impact: ${violation.impact}
-- Description: ${violation.description}
-- Help: ${violation.help}
-- WCAG Tags: ${violation.wcagTags.join(", ")}
-- Affected elements: ${violation.nodes.length}
-- Example HTML: ${violation.nodes[0]?.html ?? "N/A"}
-- Failure: ${violation.nodes[0]?.failureSummary ?? "N/A"}`,
-        },
-      ],
+      messages: buildMessages("violation-explainer", {
+        "violation.id": violation.id,
+        "violation.impact": violation.impact,
+        "violation.description": violation.description,
+        "violation.help": violation.help,
+        "violation.wcagTags": violation.wcagTags.join(", "),
+        "violation.nodeCount": violation.nodes.length,
+        "violation.exampleHtml": violation.nodes[0]?.html ?? "N/A",
+        "violation.failureSummary": violation.nodes[0]?.failureSummary ?? "N/A",
+      }),
       jsonMode: true,
-      temperature: 0.3,
-      maxTokens: 500,
-      metadata: { feature: "violation-explainer" },
+      temperature: prompt.defaultTemperature,
+      maxTokens: prompt.defaultMaxTokens,
+      metadata: { feature: prompt.feature },
     });
 
     if (!result) return null;
