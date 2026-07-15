@@ -44,13 +44,13 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
 
       {/* Panel */}
       <div
-        className="fixed inset-y-0 right-0 z-50 flex w-full max-w-[420px] flex-col bg-white shadow-2xl animate-in slide-in-from-right duration-200 dark:bg-neutral-900"
+        className="fixed inset-y-0 right-0 z-50 flex w-full max-w-105 flex-col bg-white shadow-2xl animate-in slide-in-from-right duration-200 dark:bg-neutral-900"
         role="complementary"
         aria-label="AI Chat Assistant"
       >
         {/* Header — subtle gradient accent */}
         <div className="relative border-b border-neutral-100 dark:border-neutral-800">
-          <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-accent via-blue-400 to-purple-500" />
+          <div className="absolute inset-x-0 top-0 h-0.5 bg-linear-to-r from-accent via-blue-400 to-purple-500" />
           <div className="flex items-center justify-between px-4 py-3.5">
             <div className="flex items-center gap-2.5">
               <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent/10">
@@ -92,16 +92,16 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
         <div ref={scrollRef} className="flex-1 overflow-y-auto">
           {messages.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center px-6 text-center">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-accent/10 to-purple-500/10">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-linear-to-br from-accent/10 to-purple-500/10">
                 <Sparkles className="h-6 w-6 text-accent" />
               </div>
               <h3 className="mb-1.5 text-base font-semibold text-neutral-800 dark:text-neutral-200">
                 How can I help?
               </h3>
-              <p className="mb-6 max-w-[260px] text-xs leading-relaxed text-neutral-500 dark:text-neutral-400">
+              <p className="mb-6 max-w-65 text-xs leading-relaxed text-neutral-500 dark:text-neutral-400">
                 Ask about WCAG criteria, fix violations, check compliance, or get remediation guidance.
               </p>
-              <div className="flex flex-col gap-2 w-full max-w-[280px]">
+              <div className="flex flex-col gap-2 w-full max-w-70">
                 {[
                   { text: "What is WCAG 2.1 SC 1.4.3?", icon: "📋" },
                   { text: "How do I fix missing alt text?", icon: "🔧" },
