@@ -54,12 +54,12 @@ import type {
 import { calculateCost, getModelConfig, calculateEmbeddingCost } from "./providers/registry";
 import { createOpenAIModel, createOpenAIEmbeddingModel } from "./providers/openai";
 import { createAnthropicModel } from "./providers/anthropic";
+import { consoleLogger } from "./logger";
 
-// ── Event Subscribers ─────────────────────────────────────────────────────────
-// Listeners register once at startup. The gateway calls them after every
-// completion. This is the Observer pattern — decoupled, extensible.
+// ── Initialize Gateway ────────────────────────────────────────────────────────
+// Register default event handlers on module load.
 
-const eventHandlers: GatewayEventHandler[] = [];
+const eventHandlers: GatewayEventHandler[] = [consoleLogger];
 
 /**
  * Register a handler that fires after every AI completion.
@@ -113,6 +113,13 @@ function toCoreMessages(messages: Message[]): ModelMessage[] {
   return messages
     .filter((msg) => !("role" in msg && msg.role === "system"))
     .map((msg): ModelMessage => {
+    // Tool result message (Phase 6: tool calling)
+    if ("role" in msg && msg.role === "tool") {
+      return {
+        role: "tool" as const,
+        content: [{ type: "tool-result" as const, toolCallId: (msg as { toolCallId: string }).toolCallId, result: msg.content }],
+      } as unknown as ModelMessage;
+    }
     if ("content" in msg && Array.isArray(msg.content)) {
       // Multimodal message (text + images)
       return {
@@ -300,49 +307,96 @@ export function stream(request: CompletionRequest) {
     return null;
   }
 
-  const model = getLanguageModel(
-    modelConfig.provider,
-    modelConfig.providerModelId,
-  );
+  try {
+    const model = getLanguageModel(
+      modelConfig.provider,
+      modelConfig.providerModelId,
+    );
 
-  const result = streamText({
-    model,
-    instructions: extractSystemInstructions(request.messages),
-    messages: toCoreMessages(request.messages),
-    temperature: request.temperature ?? 0.5,
-    maxOutputTokens: request.maxTokens,
-    onFinish: ({ usage }) => {
-      const latencyMs = Date.now() - startTime;
-      const inputTokens = usage?.inputTokens ?? 0;
-      const outputTokens = usage?.outputTokens ?? 0;
-      const cost = calculateCost(request.model, inputTokens, outputTokens);
+    const result = streamText({
+      model,
+      instructions: extractSystemInstructions(request.messages),
+      messages: toCoreMessages(request.messages),
+      temperature: request.temperature ?? 0.5,
+      maxOutputTokens: request.maxTokens,
+      onFinish: ({ usage }) => {
+        const latencyMs = Date.now() - startTime;
+        const inputTokens = usage?.inputTokens ?? 0;
+        const outputTokens = usage?.outputTokens ?? 0;
+        const cost = calculateCost(request.model, inputTokens, outputTokens);
 
-      emitEvent({
-        type: "ai.completion",
-        timestamp: new Date(),
-        request: {
-          model: request.model,
-          feature: request.metadata?.feature ?? "unknown",
-          workspaceId: request.metadata?.workspaceId,
-          userId: request.metadata?.userId,
-        },
-        response: {
-          model: modelConfig.providerModelId,
-          provider: modelConfig.provider,
-          usage: {
-            inputTokens,
-            outputTokens,
-            totalTokens: inputTokens + outputTokens,
+        emitEvent({
+          type: "ai.completion",
+          timestamp: new Date(),
+          request: {
+            model: request.model,
+            feature: request.metadata?.feature ?? "unknown",
+            workspaceId: request.metadata?.workspaceId,
+            userId: request.metadata?.userId,
           },
-          cost,
-          latencyMs,
-          success: true,
-        },
-      });
-    },
-  });
+          response: {
+            model: modelConfig.providerModelId,
+            provider: modelConfig.provider,
+            usage: {
+              inputTokens,
+              outputTokens,
+              totalTokens: inputTokens + outputTokens,
+            },
+            cost,
+            latencyMs,
+            success: true,
+          },
+        });
+      },
+      onError: ({ error }) => {
+        const latencyMs = Date.now() - startTime;
+        emitEvent({
+          type: "ai.completion",
+          timestamp: new Date(),
+          request: {
+            model: request.model,
+            feature: request.metadata?.feature ?? "unknown",
+            workspaceId: request.metadata?.workspaceId,
+            userId: request.metadata?.userId,
+          },
+          response: {
+            model: modelConfig.providerModelId,
+            provider: modelConfig.provider,
+            usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
+            cost: { inputCost: 0, outputCost: 0, totalCost: 0 },
+            latencyMs,
+            success: false,
+            error: error instanceof Error ? error.message : "Stream error",
+          },
+        });
+      },
+    });
 
-  return result;
+    return result;
+  } catch (error) {
+    // Synchronous error (e.g., invalid model, provider misconfiguration)
+    const latencyMs = Date.now() - startTime;
+    emitEvent({
+      type: "ai.completion",
+      timestamp: new Date(),
+      request: {
+        model: request.model,
+        feature: request.metadata?.feature ?? "unknown",
+        workspaceId: request.metadata?.workspaceId,
+        userId: request.metadata?.userId,
+      },
+      response: {
+        model: modelConfig.providerModelId,
+        provider: modelConfig.provider,
+        usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
+        cost: { inputCost: 0, outputCost: 0, totalCost: 0 },
+        latencyMs,
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
+    });
+    return null;
+  }
 }
 
 /**

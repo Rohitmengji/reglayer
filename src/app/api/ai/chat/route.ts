@@ -34,6 +34,7 @@ import { z } from "zod";
 import { stream, getDefaultModelId, isAIAvailable } from "@/lib/ai/gateway";
 import { getPrompt } from "@/lib/ai/prompts/registry";
 import { buildRAGContext, buildRAGMessages } from "@/lib/ai/rag/service";
+import { rateLimit, RATE_LIMITS, rateLimitHeaders } from "@/lib/rate-limit";
 import { toTextStream } from "ai";
 
 // Force Node.js runtime for streaming (Edge doesn't support all Node APIs)
@@ -62,7 +63,16 @@ export async function POST(request: NextRequest) {
     return new Response("Unauthorized", { status: 401 });
   }
 
-  // 2. Check AI availability
+  // 2. Rate limiting — prevent budget exhaustion attacks
+  const rl = await rateLimit(session.user.email, RATE_LIMITS.ai);
+  if (!rl.success) {
+    return new Response("Too many requests. Please wait before sending another message.", {
+      status: 429,
+      headers: rateLimitHeaders(rl),
+    });
+  }
+
+  // 3. Check AI availability
   if (!isAIAvailable()) {
     return new Response("AI features are not configured", { status: 503 });
   }
@@ -88,7 +98,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // 4. Build RAG-augmented messages
+  // 5. Build RAG-augmented messages
   // Extract the latest user message for semantic search
   const userMessages = parsed.data.messages.filter((m) => m.role === "user");
   const latestUserMessage = userMessages[userMessages.length - 1]?.content ?? "";
@@ -97,7 +107,19 @@ export async function POST(request: NextRequest) {
   const ragContext = await buildRAGContext(latestUserMessage);
   const messages = buildRAGMessages(parsed.data.messages, ragContext);
 
-  // 5. Call the AI Gateway stream
+  // 6. Token budget protection — prevent context window overflow
+  // Approximate token count: ~4 chars per token for English text
+  const estimatedTokens = messages.reduce((acc, m) => acc + ("content" in m ? String(m.content).length : 0), 0) / 4;
+  const MAX_INPUT_TOKENS = 100_000; // Leave headroom in 128K context window
+  if (estimatedTokens > MAX_INPUT_TOKENS) {
+    // Truncate conversation history, keeping system + last 10 messages
+    const systemMsg = messages[0];
+    const recentMessages = messages.slice(-10);
+    messages.length = 0;
+    messages.push(systemMsg, ...recentMessages);
+  }
+
+  // 7. Call the AI Gateway stream
   const prompt = getPrompt(ragContext.augmented ? "chat-rag" : "chat-system");
   const result = stream({
     model: modelId,
