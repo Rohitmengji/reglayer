@@ -38,7 +38,7 @@
 
 import "server-only";
 
-import { generateText, type ModelMessage, type LanguageModel } from "ai";
+import { generateText, streamText, type ModelMessage, type LanguageModel } from "ai";
 import type {
   CompletionRequest,
   CompletionResponse,
@@ -254,6 +254,76 @@ export async function complete(
  */
 export function isAIAvailable(): boolean {
   return !!(process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY);
+}
+
+/**
+ * Stream a completion from an LLM.
+ *
+ * Unlike complete(), this returns the AI SDK's StreamTextResult which the
+ * API route converts to an HTTP streaming response. The browser receives
+ * tokens as they're generated — ~200ms to first token instead of 3-5s.
+ *
+ * WHY THIS RETURNS THE RAW RESULT (not a custom type):
+ *   The AI SDK's streamText result has methods like toTextStream() and
+ *   createTextStreamResponse() that produce the correct SSE format.
+ *   Wrapping this in our own type would mean re-implementing SSE encoding.
+ *   The gateway adds value by handling model resolution, provider routing,
+ *   and event emission — not by re-wrapping the stream format.
+ *
+ * Cost tracking note:
+ *   Token usage is only available AFTER the stream finishes. We register
+ *   an onFinish callback to emit the event at that point.
+ */
+export function stream(request: CompletionRequest) {
+  const startTime = Date.now();
+  const modelConfig = getModelConfig(request.model);
+
+  if (!modelConfig.isAvailable()) {
+    return null;
+  }
+
+  const model = getLanguageModel(
+    modelConfig.provider,
+    modelConfig.providerModelId,
+  );
+
+  const result = streamText({
+    model,
+    messages: toCoreMessages(request.messages),
+    temperature: request.temperature ?? 0.5,
+    maxOutputTokens: request.maxTokens,
+    onFinish: ({ usage }) => {
+      const latencyMs = Date.now() - startTime;
+      const inputTokens = usage?.inputTokens ?? 0;
+      const outputTokens = usage?.outputTokens ?? 0;
+      const cost = calculateCost(request.model, inputTokens, outputTokens);
+
+      emitEvent({
+        type: "ai.completion",
+        timestamp: new Date(),
+        request: {
+          model: request.model,
+          feature: request.metadata?.feature ?? "unknown",
+          workspaceId: request.metadata?.workspaceId,
+          userId: request.metadata?.userId,
+        },
+        response: {
+          model: modelConfig.providerModelId,
+          provider: modelConfig.provider,
+          usage: {
+            inputTokens,
+            outputTokens,
+            totalTokens: inputTokens + outputTokens,
+          },
+          cost,
+          latencyMs,
+          success: true,
+        },
+      });
+    },
+  });
+
+  return result;
 }
 
 /**

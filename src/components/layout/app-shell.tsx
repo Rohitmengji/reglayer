@@ -27,14 +27,16 @@ import { useSession, signOut } from "next-auth/react";
 import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import { Sidebar } from "./sidebar";
-import { Menu, X } from "lucide-react";
+import { Menu, X, MessageSquare } from "lucide-react";
 import { useIsEmbedded } from "./embedded-context";
 import { OnboardingChecklist } from "@/components/onboarding/checklist";
+import { ChatPanel } from "@/components/ai/ChatPanel";
 import { useI18n } from "@/components/i18n-provider";
 
 export function AppShell({ children, bare }: { children: React.ReactNode; bare?: boolean }) {
   const { t } = useI18n();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
   const { data: session, status } = useSession();
   const router = useRouter();
   const pathname = usePathname();
@@ -176,6 +178,19 @@ export function AppShell({ children, bare }: { children: React.ReactNode; bare?:
 
       {/* Onboarding checklist — floating bottom-right */}
       <OnboardingChecklist />
+
+      {/* AI Chat toggle button — floating bottom-right */}
+      <button
+        onClick={() => setChatOpen(true)}
+        className={`fixed bottom-6 right-6 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-accent text-white shadow-lg transition-all hover:bg-accent/90 hover:scale-105 ${chatOpen ? "hidden" : ""}`}
+        aria-label="Open AI Chat"
+        title="Ask RegLayer AI"
+      >
+        <MessageSquare className="h-5 w-5" />
+      </button>
+
+      {/* AI Chat panel — slides in from right */}
+      <ChatPanel open={chatOpen} onClose={() => setChatOpen(false)} />
     </div>
   );
 }
