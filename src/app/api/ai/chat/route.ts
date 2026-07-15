@@ -34,6 +34,7 @@ import { z } from "zod";
 import { stream, getDefaultModelId, isAIAvailable } from "@/lib/ai/gateway";
 import { getPrompt } from "@/lib/ai/prompts/registry";
 import { buildRAGContext, buildRAGMessages } from "@/lib/ai/rag/service";
+import { chatTools } from "@/lib/ai/tools/definitions";
 import { rateLimit, RATE_LIMITS, rateLimitHeaders } from "@/lib/rate-limit";
 import { toTextStream } from "ai";
 
@@ -119,11 +120,12 @@ export async function POST(request: NextRequest) {
     messages.push(systemMsg, ...recentMessages);
   }
 
-  // 7. Call the AI Gateway stream
+  // 7. Call the AI Gateway stream with tools
   const prompt = getPrompt(ragContext.augmented ? "chat-rag" : "chat-system");
   const result = stream({
     model: modelId,
     messages,
+    tools: chatTools,
     temperature: prompt.defaultTemperature,
     maxTokens: prompt.defaultMaxTokens,
     metadata: {

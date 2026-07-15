@@ -100,10 +100,17 @@ export interface CompletionRequest {
 
   /**
    * Optional Zod schema for structured output.
-   * When provided, the gateway uses the AI SDK's structured output feature
-   * to guarantee the response conforms to this schema.
    */
   schema?: z.ZodType;
+
+  /**
+   * Tools the LLM can call during this request.
+   * Pass the AI SDK tool definitions directly (from `tool()` helper).
+   * The gateway passes them through to streamText/generateText.
+   * Uses `unknown` to avoid coupling gateway types to AI SDK internals.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  tools?: any;
 
   /** Caller metadata — used for cost tracking, audit logging, and rate limiting. */
   metadata?: RequestMetadata;

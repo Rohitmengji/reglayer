@@ -319,6 +319,7 @@ export function stream(request: CompletionRequest) {
       messages: toCoreMessages(request.messages),
       temperature: request.temperature ?? 0.5,
       maxOutputTokens: request.maxTokens,
+      ...(request.tools ? { tools: request.tools } : {}),
       onFinish: ({ usage }) => {
         const latencyMs = Date.now() - startTime;
         const inputTokens = usage?.inputTokens ?? 0;
