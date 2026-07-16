@@ -155,6 +155,10 @@ export type { DeepResearchConfig, ResearchReport, ResearchFinding, ReportSection
 export { processInput, processBatch, detectModality, buildScreenAuditPrompt, getSupportedModalities } from "./multimodal/processor";
 export type { MultiModalInput, ProcessedInput, ImageAnalysis, Modality } from "./multimodal/processor";
 
+// ── Platform Intelligence ─────────────────────────────────────────────────────
+export { generateRecommendations, routeByComplexity, estimateComplexity, calculateReliabilityScores, runOptimizationCycle, getOptimizationOverview, getIntelligenceDashboard } from "./intelligence/engine";
+export type { Recommendation, CostRoute, ModelTier, ReliabilityScore, OptimizationCycle, IntelligenceDashboard } from "./intelligence/engine";
+
 // ── RAG ───────────────────────────────────────────────────────────────────────
 export { buildRAGContext, buildRAGMessages } from "./rag/service";
 
