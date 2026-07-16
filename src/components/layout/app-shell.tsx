@@ -36,6 +36,7 @@ import { useI18n } from "@/components/i18n-provider";
 import { OfflineBanner } from "@/components/ui/offline-banner";
 import { SessionTimeoutWarning } from "@/components/ui/session-timeout-warning";
 import { KeyboardShortcutSheet } from "@/components/ui/keyboard-shortcut-sheet";
+import { useAppTabSync } from "@/hooks/use-tab-sync";
 
 export function AppShell({ children, bare }: { children: React.ReactNode; bare?: boolean }) {
   const { t } = useI18n();
@@ -48,6 +49,13 @@ export function AppShell({ children, bare }: { children: React.ReactNode; bare?:
   const [workspaceVerified, setWorkspaceVerified] = useState(false);
   const mobileDrawerRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  // Cross-tab synchronization — keeps workspace context, auth, and scan events in sync
+  useAppTabSync({
+    onSessionExpired: () => {
+      signOut({ callbackUrl: "/auth/login" });
+    },
+  });
 
   const handleWorkspaceCheck = useCallback(() => {
     setWorkspaceVerified(true);

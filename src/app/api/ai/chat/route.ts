@@ -15,6 +15,8 @@ import { authOptions } from "@/lib/auth/config";
 import { z } from "zod";
 import { stream, getDefaultModelId, isAIAvailable } from "@/lib/ai/gateway";
 import { getModelConfig } from "@/lib/ai/gateway/providers/registry";
+import { routeToModel } from "@/lib/ai/routing/model-router";
+import { trackAILatency, trackTokenUsage, incrementCounter } from "@/lib/telemetry/metrics";
 import { getPrompt } from "@/lib/ai/prompts/registry";
 import { createChatTools } from "@/lib/ai/tools/definitions";
 import { containsPII, sanitizeForLLM } from "@/lib/ai/hardening";
@@ -70,8 +72,8 @@ export async function POST(request: NextRequest) {
   if (!isAIAvailable()) {
     return new Response("AI features are not configured", { status: 503 });
   }
-  const modelId = getDefaultModelId();
-  if (!modelId) {
+  const fallbackModelId = getDefaultModelId();
+  if (!fallbackModelId) {
     return new Response("No AI model available", { status: 503 });
   }
 
@@ -100,11 +102,28 @@ export async function POST(request: NextRequest) {
   // ── 5b. Jailbreak detection ─────────────────────────────────────────────
   if (detectJailbreakAttempt(latestUserMessage)) {
     lineage.addStage({ name: "jailbreak_blocked", category: "validation", details: { reason: "pattern_match" }, success: true });
+    incrementCounter("ai.jailbreak.blocked");
     return new Response(
       "I can only help with accessibility and compliance topics. Please rephrase your question.",
       { status: 200 },
     );
   }
+
+  // ── 5c. Dynamic model routing ───────────────────────────────────────────
+  const wantsCode = /\b(code|fix|implement|html|css|javascript|jsx|tsx|react|component)\b/i.test(latestUserMessage);
+  const routing = routeToModel({
+    message: latestUserMessage,
+    historyLength: sanitizedMessages.length,
+    wantsCode,
+  });
+  const modelId = fallbackModelId;
+  const dynamicMaxTokens = routing.config.maxTokens;
+  lineage.addStage({
+    name: "model_routing",
+    category: "processing",
+    details: { tier: routing.tier, complexity: routing.complexity, maxTokens: dynamicMaxTokens },
+    success: true,
+  });
 
   // ── 6. Resolve user + workspace ─────────────────────────────────────────
   const user = await prisma.user.findUnique({
@@ -249,6 +268,12 @@ export async function POST(request: NextRequest) {
     traceId,
     consentBasis: "legitimate_interest",
   }).catch(() => {}); // fire-and-forget
+
+  // ── Metrics: track AI request latency and token usage ───────────────────
+  const chatLatencyMs = Date.now() - streamStart;
+  trackAILatency(modelId, chatLatencyMs, false);
+  trackTokenUsage(modelId, Math.round(estimatedTokens), dynamicMaxTokens);
+  incrementCounter("ai.chat.request", { tier: routing.tier });
 
   // Memory extraction from user message
   const extracted = extractMemories(latestUserMessage);
