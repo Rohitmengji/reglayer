@@ -13,7 +13,8 @@ import { useChatSync } from "@/hooks/use-chat-sync";
 import { useChatStore } from "@/stores/chatStore";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
-import { MessageSquare, Trash2, X, ArrowDown, Download, Plus, History, Loader2, Clock } from "lucide-react";
+import { MessageSquare, Trash2, X, ArrowDown, Download, Plus, History, Loader2, Clock, Zap } from "lucide-react";
+import { useCredits } from "@/hooks/use-credits";
 
 interface ChatPanelProps {
   open: boolean;
@@ -26,6 +27,7 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
   const { conversations, loadingList, isSaving, fetchConversations, switchConversation, startNew, deleteConversation } =
     useChatSync();
   const conversationId = useChatStore((s) => s.conversationId);
+  const { credits } = useCredits();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showScrollDown, setShowScrollDown] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
@@ -101,6 +103,22 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
                 Accessibility assistant
               </p>
             </div>
+            {/* Credit balance indicator */}
+            {credits && !credits.unlimited && (
+              <span
+                className={`ml-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                  credits.remaining <= 5
+                    ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
+                    : credits.remaining <= 20
+                      ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                      : "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400"
+                }`}
+                title={`${credits.remaining} AI credits remaining (${credits.used}/${credits.limit} used)`}
+              >
+                <Zap className="h-2.5 w-2.5" aria-hidden="true" />
+                {credits.remaining}
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-1">
             {/* Saving indicator */}
