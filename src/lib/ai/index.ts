@@ -63,6 +63,10 @@ export { searchViolations, embedViolation, embedScanViolations } from "./vector/
 export { hybridSearch, multiQuerySearch, generateMultiQueries, rewriteQuery } from "./search/hybrid";
 export type { HybridSearchResult, HybridSearchOptions } from "./search/hybrid";
 
+// ── Graph RAG ─────────────────────────────────────────────────────────────────
+export { upsertEntity, upsertEdge, indexScan, findEntities, getNeighbors, findPaths, relationshipSearch, buildGraphContext, extractEntityReferences, getGraphStats } from "./graph/service";
+export type { GraphEntity, GraphEdge, GraphPath, GraphSearchResult, EntityType, RelationType } from "./graph/service";
+
 // ── RAG ───────────────────────────────────────────────────────────────────────
 export { buildRAGContext, buildRAGMessages } from "./rag/service";
 
