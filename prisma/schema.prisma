@@ -1591,6 +1591,38 @@ model AiEvent {
 }
 
 // ─────────────────────────────────────────────
+// AI Chat Conversations (persisted user chat history)
+// ─────────────────────────────────────────────
+
+model ChatConversation {
+  id          String   @id @default(cuid())
+  title       String?  // Auto-generated from first message, user-editable
+  userId      String
+  workspaceId String?
+  messages    ChatMessage[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  archivedAt  DateTime? // Soft delete
+
+  @@index([userId, updatedAt])
+  @@index([workspaceId, updatedAt])
+  @@map("chat_conversations")
+}
+
+model ChatMessage {
+  id             String   @id @default(cuid())
+  role           String   // "user" | "assistant"
+  content        String   @db.Text
+  feedback       Int      @default(0) // -1, 0, 1
+  conversationId String
+  conversation   ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime @default(now())
+
+  @@index([conversationId, createdAt])
+  @@map("chat_messages")
+}
+
+// ─────────────────────────────────────────────
 // AI Memory (Long-term user/workspace preferences)
 // ─────────────────────────────────────────────
 

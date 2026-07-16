@@ -43,7 +43,7 @@ export function InfoHint({ content, label, side = "top", className }: InfoHintPr
         id={id}
         role="tooltip"
         className={cn(
-          "pointer-events-none absolute left-1/2 z-50 w-max max-w-[16rem] -translate-x-1/2 rounded-lg bg-neutral-900 dark:bg-neutral-800 px-2.5 py-1.5 text-left text-xs font-normal leading-relaxed text-white shadow-lg ring-1 ring-black/5",
+          "pointer-events-none absolute left-1/2 z-50 w-max max-w-[min(16rem,calc(100vw-2rem))] -translate-x-1/2 rounded-lg bg-neutral-900 dark:bg-neutral-800 px-2.5 py-1.5 text-left text-xs font-normal leading-relaxed text-white shadow-lg ring-1 ring-black/5",
           "opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100",
           side === "top" ? "bottom-full mb-1.5" : "top-full mt-1.5"
         )}

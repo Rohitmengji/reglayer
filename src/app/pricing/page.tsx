@@ -114,7 +114,7 @@ export default function PricingPage() {
   const [billing, setBilling] = useState<"monthly" | "annual">("annual");
 
   return (
-    <div className="min-h-screen bg-white dark:bg-neutral-950">
+    <div className="min-h-screen bg-white dark:bg-neutral-950 overflow-x-hidden">
       <PublicHeader />
 
       <main className="mx-auto max-w-6xl px-4 sm:px-6 py-12 sm:py-16">

@@ -16,6 +16,7 @@ import { z } from "zod";
 const checkoutSchema = z.object({
   plan: z.enum(["PRO", "ENTERPRISE"]),
   interval: z.enum(["monthly", "annual"]).default("monthly"),
+  workspaceId: z.string().min(1, "workspaceId is required"),
 });
 
 /**
@@ -37,20 +38,26 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: parsed.error.flatten().fieldErrors }, { status: 400 });
   }
 
-  const { plan, interval } = parsed.data;
+  const { plan, interval, workspaceId } = parsed.data;
   const priceId = planToPriceId(plan, interval);
   if (!priceId) {
     return NextResponse.json({ error: "Price not configured. Contact support." }, { status: 503 });
   }
 
-  // Get user's workspace
+  // Get user's membership for the specified workspace (prevents cross-workspace billing)
   const user = await prisma.user.findUnique({
     where: { email: session.user.email },
-    include: { memberships: { include: { workspace: true }, take: 1 } },
+    include: {
+      memberships: {
+        where: { workspaceId },
+        include: { workspace: true },
+        take: 1,
+      },
+    },
   });
 
   if (!user || !user.memberships[0]) {
-    return NextResponse.json({ error: "No workspace found" }, { status: 404 });
+    return NextResponse.json({ error: "No workspace found or you are not a member" }, { status: 404 });
   }
 
   const membership = user.memberships[0];

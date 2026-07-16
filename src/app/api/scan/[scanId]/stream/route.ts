@@ -32,9 +32,23 @@ export async function GET(
 
   const { scanId } = await params;
 
-  // Verify scan belongs to user
+  // Verify scan belongs to user's workspace (not just the creator)
+  // This allows team members to view scan progress for shared workspace scans
+  const user = await prisma.user.findUnique({
+    where: { email: session.user.email },
+    select: { memberships: { select: { workspaceId: true } } },
+  });
+
+  const workspaceIds = user?.memberships.map((m) => m.workspaceId) ?? [];
+
   const scan = await prisma.scan.findFirst({
-    where: { id: scanId, user: { email: session.user.email } },
+    where: {
+      id: scanId,
+      OR: [
+        { user: { email: session.user.email } },
+        { workspaceId: { in: workspaceIds } },
+      ],
+    },
     select: { id: true, status: true },
   });
 

@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { rateLimitSync, rateLimitHeaders } from "@/lib/rate-limit";
+import { validateCsrf } from "@/lib/security/csrf";
 
 /**
  * Generate a short request correlation ID for tracing.
@@ -23,6 +24,8 @@ function generateRequestId(): string {
  * Security headers applied to ALL responses.
  * Reference: OWASP Secure Headers Project
  */
+const IS_PRODUCTION = process.env.NODE_ENV === "production";
+
 const SECURITY_HEADERS: Record<string, string> = {
   "X-Content-Type-Options": "nosniff",
   "X-Frame-Options": "DENY",
@@ -33,7 +36,10 @@ const SECURITY_HEADERS: Record<string, string> = {
   "X-DNS-Prefetch-Control": "on",
   "Content-Security-Policy": [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // Next.js requires inline scripts
+    // Production: remove 'unsafe-eval' (no code uses eval). Dev: Turbopack HMR needs it.
+    IS_PRODUCTION
+      ? "script-src 'self' 'unsafe-inline'"
+      : "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com data:",
     "img-src 'self' data: https: blob:",
@@ -143,7 +149,7 @@ export async function proxy(request: NextRequest) {
       const token = await getToken({ req: request });
       if (token) {
         const dashboardUrl = new URL("/dashboard", request.url);
-        return applySecurityHeaders(NextResponse.redirect(dashboardUrl));
+        return applySecurityHeaders(NextResponse.redirect(dashboardUrl), requestId);
       }
     }
     const response = NextResponse.next();
@@ -151,7 +157,7 @@ export async function proxy(request: NextRequest) {
       response.headers.set("x-agency-hostname", hostname.split(":")[0]);
       if (agencySlug) response.headers.set("x-agency-slug", agencySlug);
     }
-    return applySecurityHeaders(response);
+    return applySecurityHeaders(response, requestId);
   }
 
   // Protected paths — require auth
@@ -161,15 +167,19 @@ export async function proxy(request: NextRequest) {
     // API routes get 401 JSON, pages get redirected
     if (pathname.startsWith("/api/")) {
       const res = NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      return applySecurityHeaders(res);
+      return applySecurityHeaders(res, requestId);
     }
     const loginUrl = new URL("/auth/login", request.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
-    return applySecurityHeaders(NextResponse.redirect(loginUrl));
+    return applySecurityHeaders(NextResponse.redirect(loginUrl), requestId);
   }
 
   // Global rate limit for all authenticated API requests (120 req/min per IP)
   if (pathname.startsWith("/api/")) {
+    // CSRF protection — reject cross-origin mutation requests
+    const csrfError = validateCsrf(request);
+    if (csrfError) return applySecurityHeaders(csrfError, requestId);
+
     // Use rightmost x-forwarded-for IP (appended by trusted proxy, hardest to spoof)
     const forwardedFor = request.headers.get("x-forwarded-for");
     const forwardedIps = forwardedFor?.split(",").map(s => s.trim()).filter(Boolean);
@@ -182,7 +192,7 @@ export async function proxy(request: NextRequest) {
         { error: "Too many requests. Please slow down." },
         { status: 429, headers: rateLimitHeaders(rl) }
       );
-      return applySecurityHeaders(res);
+      return applySecurityHeaders(res, requestId);
     }
   }
 
@@ -191,7 +201,7 @@ export async function proxy(request: NextRequest) {
     response.headers.set("x-agency-hostname", hostname.split(":")[0]);
     if (agencySlug) response.headers.set("x-agency-slug", agencySlug);
   }
-  return applySecurityHeaders(response);
+  return applySecurityHeaders(response, requestId);
 }
 
 export const config = {

@@ -41,13 +41,13 @@ export async function POST(request: NextRequest) {
 
     const { name, email, password } = parsed.data;
 
-    // Check if user already exists
+    // Check if user already exists — return same success shape to prevent
+    // email enumeration (attacker cannot distinguish existing vs new accounts).
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {
-      return NextResponse.json(
-        { error: "An account with this email already exists. Please sign in instead." },
-        { status: 409 }
-      );
+      // Return same response as success to prevent enumeration.
+      // The existing user won't be affected — no duplicate is created.
+      return NextResponse.json({ success: true, message: "If this email is available, your account has been created. Check your email." });
     }
 
     // Hash password
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({ success: true, message: "Account created. You can now sign in." });
+    return NextResponse.json({ success: true, message: "If this email is available, your account has been created. Check your email." });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Registration failed";
     return NextResponse.json({ error: message }, { status: 500 });

@@ -140,6 +140,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Only owners and admins can invite members" }, { status: 403 });
   }
 
+  // Privilege escalation guard: prevent assigning a role higher than your own.
+  // OWNER can assign any role; ADMIN can assign ADMIN, MEMBER, VIEWER (not OWNER).
+  const ROLE_HIERARCHY: Record<string, number> = { OWNER: 4, ADMIN: 3, MEMBER: 2, VIEWER: 1 };
+  const inviterLevel = ROLE_HIERARCHY[membership.role] ?? 0;
+  const invitedLevel = ROLE_HIERARCHY[role] ?? 0;
+  if (invitedLevel > inviterLevel) {
+    return NextResponse.json(
+      { error: "Cannot assign a role higher than your own" },
+      { status: 403 }
+    );
+  }
+
   // Per-workspace invite rate limit (10 invites/hour) — prevents email spam attacks
   const inviteRl = await rateLimit(
     `invite:${membership.workspaceId}`,
