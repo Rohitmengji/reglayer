@@ -88,5 +88,9 @@ export { isCircuitOpen, recordSuccess, recordFailure, containsPII, sanitizeForLL
 export { runGuardrails, CHAT_GUARDS, STRUCTURED_GUARDS, RAG_GUARDS } from "./guardrails";
 export type { GuardResult, GuardContext, GuardPipelineResult, GuardFn } from "./guardrails";
 
+// ── Memory ────────────────────────────────────────────────────────────────────
+export { getMemories, setMemory, deleteMemory, clearAllMemories, listUserMemories, extractMemories, formatMemoriesForPrompt } from "./memory/service";
+export type { MemoryEntry, MemoryContext, MemoryScope } from "./memory/service";
+
 // ── Feature Flags ─────────────────────────────────────────────────────────────
 export { isAIFeatureEnabled, getAllAIFeatures, getEnabledFeatures } from "./features/flags";

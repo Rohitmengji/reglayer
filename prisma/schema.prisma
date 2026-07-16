@@ -1587,3 +1587,34 @@ model AiEvent {
   @@index([userId, createdAt])
   @@map("ai_events")
 }
+
+// ─────────────────────────────────────────────
+// AI Memory (Long-term user/workspace preferences)
+// ─────────────────────────────────────────────
+
+model AiMemory {
+  id          String   @id @default(cuid())
+  scope       AiMemoryScope @default(USER)
+  key         String   // e.g. "preferred_wcag_level", "industry", "tech_stack"
+  value       String   // the remembered fact/preference
+  confidence  Float    @default(1.0) // how confident we are (decays over time)
+  source      String?  // what caused this memory ("user_stated", "inferred", "admin_set")
+  expiresAt   DateTime? // optional TTL for time-sensitive memories
+
+  userId      String?
+  workspaceId String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, workspaceId, key])
+  @@index([userId, scope])
+  @@index([workspaceId, scope])
+  @@map("ai_memories")
+}
+
+enum AiMemoryScope {
+  USER       // personal preferences (e.g. "prefers code examples")
+  WORKSPACE  // shared team knowledge (e.g. "our tech stack is React + Next.js")
+  SYSTEM     // global facts set by admins (e.g. "compliance deadline is June 2025")
+}
