@@ -103,6 +103,14 @@ export type { AutonomousPreset } from "./scheduler/presets";
 export { resolveWorkspaceContext, INVALIDATION_EVENTS } from "./workspace/context";
 export type { WorkspaceContext, WorkspaceResources } from "./workspace/context";
 
+// ── Semantic User Profile ─────────────────────────────────────────────────────
+export { getProfile, updateProfile, trackUsage, inferPreferences, formatProfileForPrompt } from "./profile/service";
+export type { SemanticProfile } from "./profile/service";
+
+// ── Long-Term Learning ────────────────────────────────────────────────────────
+export { recordFeedback, analyzeFeedback, proposeImprovement, listProposals, applyImprovement, rejectImprovement, runLearningCycle, getLearningOverview } from "./learning/service";
+export type { FeedbackInput, FeedbackAnalysis, ImprovementProposal } from "./learning/service";
+
 // ── RAG ───────────────────────────────────────────────────────────────────────
 export { buildRAGContext, buildRAGMessages } from "./rag/service";
 
