@@ -83,6 +83,14 @@ export type { CacheLookupResult, CacheStats, CacheLayer, PromptCacheHint } from 
 export { optimizedRetrieve, autoPreset, FAST_PRESET, BALANCED_PRESET, THOROUGH_PRESET } from "./retrieval/pipeline";
 export type { RetrievalConfig, RetrievalResult, PipelineStage } from "./retrieval/pipeline";
 
+// ── Agent Marketplace ─────────────────────────────────────────────────────────
+export { createBlueprint, getBlueprint, listBlueprints, updateBlueprint, deleteBlueprint, seedSystemAgents } from "./marketplace/registry";
+export type { AgentBlueprint } from "./marketplace/registry";
+
+// ── Agent-to-Agent (A2A) Protocol ─────────────────────────────────────────────
+export { startConversation, runTurn, executeHandoff, runConversation, getConversation, listConversations, detectHandoff } from "./a2a/protocol";
+export type { A2AMessage, Conversation, HandoffRequest, MessageRole } from "./a2a/protocol";
+
 // ── RAG ───────────────────────────────────────────────────────────────────────
 export { buildRAGContext, buildRAGMessages } from "./rag/service";
 

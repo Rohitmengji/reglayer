@@ -1817,3 +1817,93 @@ model KnowledgeEdge {
   @@index([relation])
   @@map("knowledge_edges")
 }
+
+// ─────────────────────────────────────────────
+// Agent Marketplace + A2A Protocol
+// ─────────────────────────────────────────────
+
+model AgentBlueprint {
+  id            String   @id @default(cuid())
+  slug          String   @unique  // "compliance-auditor", "legal-analyst"
+  name          String
+  description   String
+  category      String   // "compliance", "legal", "development", "research", "custom"
+  version       Int      @default(1)
+  systemPrompt  String   @db.Text
+  model         String   @default("gpt-4o-mini")
+  temperature   Float    @default(0.4)
+  maxTokens     Int      @default(2000)
+  tools         String[] // tool IDs this agent can use
+  permissions   String[] // resource scopes: "scans.read", "violations.write", etc.
+  costLimitUsd  Float?   // max $ per invocation
+  isPublic      Boolean  @default(false) // visible in marketplace
+  isSystem      Boolean  @default(false) // built-in (cannot delete)
+
+  createdBy     String?  // userId (null for system agents)
+  workspaceId   String?  // null for global/system agents
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  conversations AgentConversation[]
+
+  @@index([workspaceId, category])
+  @@index([isPublic, category])
+  @@map("agent_blueprints")
+}
+
+model AgentConversation {
+  id          String   @id @default(cuid())
+  status      AgentConversationStatus @default(RUNNING)
+  initiator   String   // userId or agentBlueprintId that started this
+  metadata    Json?    // task description, parameters
+
+  blueprintId String
+  blueprint   AgentBlueprint @relation(fields: [blueprintId], references: [id], onDelete: Cascade)
+  workspaceId String
+
+  messages    AgentMessage[]
+
+  createdAt   DateTime @default(now())
+  completedAt DateTime?
+
+  @@index([workspaceId, status])
+  @@index([blueprintId])
+  @@map("agent_conversations")
+}
+
+model AgentMessage {
+  id             String   @id @default(cuid())
+  role           AgentMessageRole
+  content        String   @db.Text
+  fromAgentSlug  String?  // which agent sent this (null for user/system)
+  toAgentSlug    String?  // which agent this is addressed to (null for broadcast)
+  toolCalls      Json?    // tool call requests/results
+  tokenCount     Int      @default(0)
+  costUsd        Float    @default(0)
+  latencyMs      Int      @default(0)
+
+  conversationId String
+  conversation   AgentConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  createdAt      DateTime @default(now())
+
+  @@index([conversationId, createdAt])
+  @@index([fromAgentSlug])
+  @@map("agent_messages")
+}
+
+enum AgentConversationStatus {
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum AgentMessageRole {
+  USER       // human user
+  AGENT      // agent response
+  SYSTEM     // system instruction
+  HANDOFF    // agent-to-agent delegation
+  TOOL       // tool call result
+}
