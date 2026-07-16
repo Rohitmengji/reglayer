@@ -338,46 +338,6 @@ jobs:
           echo "✓ All required checks passed"
 
   # ─────────────────────────────────────────────────────────────────────────────
-  # Stage 4: Deploy to production (only on main after CI gate passes)
+  # Deployment is handled automatically by Vercel's GitHub integration on merge.
+  # No deploy job needed here — Vercel deploys every push to main.
   # ─────────────────────────────────────────────────────────────────────────────
-  deploy:
-    name: Deploy
-    runs-on: ubuntu-latest
-    needs: [ci-gate]
-    if: github.ref == 'refs/heads/main' && needs.ci-gate.result == 'success'
-    timeout-minutes: 10
-    environment: production
-
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build for production
-        run: npm run build
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
-          NEXTAUTH_URL: https://reglayer.vercel.app
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-
-      # Deploy with Vercel (uncomment and configure if using Vercel)
-      # - name: Deploy to Vercel
-      #   run: npx vercel --prod --token=${{ secrets.VERCEL_TOKEN }}
-
-      - name: Deploy summary
-        run: |
-          echo "## 🚀 Deployment" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Detail | Value |" >> $GITHUB_STEP_SUMMARY
-          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Commit | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Branch | ${{ github.ref_name }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Actor | ${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Time | $(date -u) |" >> $GITHUB_STEP_SUMMARY
