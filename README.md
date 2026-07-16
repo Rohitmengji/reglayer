@@ -5,7 +5,7 @@
 ![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)
 ![Prisma](https://img.shields.io/badge/Prisma-7-2D3748?logo=prisma)
-![Tests](https://img.shields.io/badge/Tests-301_passing-brightgreen)
+![Tests](https://img.shields.io/badge/Tests-1150_passing-brightgreen)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
 ## Why RegLayer
@@ -22,7 +22,7 @@ RegLayer is the first platform that combines automated scanning with **lawsuit r
 | Feature | Description |
 |---------|-------------|
 | **Single-page Scan** | axe-core 4.11 + Playwright real-browser evaluation |
-| **Multi-page Crawl** | BFS crawler with configurable depth/concurrency (up to 10 pages) |
+| **Multi-page Crawl** | BFS crawler with configurable depth/concurrency, sitemap discovery, deadline-aware partial results |
 | **Authenticated Scanning** | Scan behind login walls with stored credentials |
 | **User Journey Testing** | Multi-step flow scanning (checkout, login, forms) |
 | **Design System Scanner** | Scan Storybook components individually |
@@ -77,6 +77,20 @@ RegLayer is the first platform that combines automated scanning with **lawsuit r
 | **Revenue Impact Calculator** | Dollar cost per violation using disability prevalence data |
 | **Human Testing Network** | Crowdsourced validation by users with disabilities |
 | **Executive Dashboard** | C-suite risk overview with financial exposure |
+
+### AI Platform
+| Feature | Description |
+|---------|-------------|
+| **AI Chat Assistant** | Streaming chat with regenerate, edit, feedback, export, conversation history |
+| **Multi-Provider Gateway** | OpenAI + Anthropic with cost-based routing and fallback chains |
+| **RAG Pipeline** | Hybrid retrieval (violations + graph + knowledge base) with citation support |
+| **AI Cost Dashboard** | Real-time spend analytics with model efficiency metrics and period comparison |
+| **Guardrails** | PII redaction, hallucination detection, topic relevance, jailbreak blocking |
+| **Credit System** | Per-plan AI credit limits with monthly resets (FREE: 25, PRO: 500, ENTERPRISE: 2000) |
+| **Observability** | Every AI call logged to DB with tokens, cost, latency, success rate |
+| **Memory System** | Extracts and injects user context across sessions |
+| **Conversation Persistence** | Server-side storage with auto-save (3s debounce) + sendBeacon on tab close |
+| **Prompt Library** | Versioned system prompts with temperature/token configs |
 
 ### Integrations & Notifications
 | Feature | Description |
@@ -186,7 +200,7 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ```
 src/
-├── app/                         # Next.js App Router (72 pages, 116 API routes)
+├── app/                         # Next.js App Router (87 pages, 180 API routes)
 │   ├── api/                     # REST API endpoints
 │   │   ├── scan/                # Scanning endpoints
 │   │   ├── violations/          # Violation management
@@ -230,23 +244,23 @@ src/
 │   ├── intelligence/            # AIS engine, alerts, regression detection
 │   ├── auth/                    # NextAuth config, RBAC, shared resource-access asserts (access.ts)
 │   ├── email/                   # Nodemailer service, branded templates
-│   ├── ai/                      # OpenAI explainers, structured output
+│   ├── ai/                      # AI gateway, chat, RAG, observability, guardrails, memory, lineage
 │   ├── integrations/            # GitHub, Slack, webhook dispatchers
 │   ├── queue/                   # Job queue, scheduler, workers
 │   ├── credits/                 # Plan limits, credit tracking
 │   ├── database/                # Prisma client, repositories
 │   └── i18n/                    # 7 EU language translations
 ├── services/                    # Service layer (scanService)
-├── stores/                      # Zustand state (scanStore)
-├── hooks/                       # React hooks (features, trends, violations)
-└── __tests__/                   # Unit tests (18 test files, 301 passing)
+├── stores/                      # Zustand state (scanStore, chatStore)
+├── hooks/                       # React hooks (useChat, useChatSync, features, trends)
+└── __tests__/                   # Unit tests (98 test files, 1,150 passing)
 ```
 
 ---
 
 ## Database Schema
 
-34 models organized into domains:
+75 models organized into domains:
 
 | Domain | Models |
 |--------|--------|
@@ -256,7 +270,8 @@ src/
 | **Integrations** | Webhook, ApiKey, Integration, AuthConfig, NotificationPreference |
 | **Agency** | Agency, AgencyClient, AgencyApiKey |
 | **Risk & Compliance** | LitigationRiskScore, LitigationWeight, ComplianceProof, GuardPolicy |
-| **Data-Network Intelligence** | FixOutcomeRecord (fix_outcomes), VendorObservation (vendor_observations), RumEventRecord (rum_events) |
+| **AI Platform** | AiEvent, AiMemory, ChatConversation, ChatMessage, AgentBlueprint, AgentConversation, AgentMessage |
+| **Data-Network Intelligence** | FixOutcomeRecord, VendorObservation, RumEventRecord |
 | **Marketplace** | Tester, AuditRequest |
 | **Content** | Article, ArticleVersion |
 | **Analytics** | AuditLog, ConversionEvent, AccessRequest |
@@ -267,11 +282,13 @@ src/
 
 ## API Overview
 
-116 API routes organized by domain:
+180 API routes organized by domain:
 
 | Domain | Key Endpoints | Auth |
 |--------|--------------|------|
-| **Scanning** | `POST /api/scan`, `POST /api/scan/crawl` | Session / API Key |
+| **AI Chat** | `POST /api/ai/chat`, `GET\|POST\|DELETE /api/ai/conversations` | Session |
+| **AI Usage** | `GET /api/ai/usage` | Session |
+| **Scanning** | `POST /api/scan`, `POST /api/crawl` | Session / API Key |
 | **Violations** | `GET /api/violations`, `PATCH /api/violations/status` | Session |
 | **Risk** | `GET /api/risk`, `POST /api/risk/recalculate` | Session |
 | **Vault** | `GET /api/vault/events`, `POST /api/vault/export` | Session |
@@ -297,18 +314,29 @@ npm run test:e2e        # E2E tests (Playwright)
 npm run visual-audit    # Visual regression screenshots
 ```
 
-- 18 test suites, 301 tests passing
-- Coverage: rate-limit, RBAC, scan API, queue, scheduler, compliance, auth, Anchored Evidence Chain, Litigation Defense File, demand-letter triage, Fix Genome, VALG, i18n locale parity
+- 98 test suites, 1,150 tests passing
+- Coverage: rate-limit, RBAC, scan API, queue, scheduler, compliance, auth, AI gateway, AI observability, crawl errors, security hardening, Anchored Evidence Chain, Litigation Defense File, demand-letter triage, Fix Genome, VALG, i18n locale parity
+- E2E: Playwright smoke tests run in CI on every PR (public pages + auth flows)
 
 ---
 
 ## Deployment
 
 Deployed on Vercel with:
-- Serverless functions (60s timeout for scan endpoints)
+- Serverless functions (60s timeout for scan/crawl endpoints, 2048MB memory)
 - Neon PostgreSQL (serverless Postgres)
-- Upstash Redis (rate limiting)
-- Sentry (error tracking)
+- Upstash Redis (rate limiting, distributed state)
+- Sentry (error tracking + performance profiling at 20%/10%)
+
+### CI Pipeline (GitHub Actions)
+- **Lint & TypeScript** — zero errors required
+- **Unit tests** — 1,150 tests via Vitest
+- **E2E smoke tests** — Playwright on Chromium (public pages + auth flows)
+- **Production build** — must compile, bundle size < 7MB
+- **Security audit** — `npm audit`, license compliance, secret scanning
+- **Code quality** — complexity metrics, PR size warnings
+
+All 5 jobs must pass before merge (ci-gate).
 
 ```bash
 npm run build    # Verify production build
