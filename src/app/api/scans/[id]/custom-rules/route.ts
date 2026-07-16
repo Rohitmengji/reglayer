@@ -50,6 +50,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
 
   const dbRules = await prisma.complianceRule.findMany({
     where: { workspaceId: scan.workspaceId, enabled: true },
+    select: { id: true, name: true, type: true, severity: true, config: true },
     orderBy: { createdAt: "desc" },
   });
   if (dbRules.length === 0) {

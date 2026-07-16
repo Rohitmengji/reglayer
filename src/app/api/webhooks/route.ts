@@ -60,6 +60,7 @@ export async function GET() {
 
   const hooks = await prisma.webhook.findMany({
     where: { workspaceId },
+    select: { id: true, name: true, url: true, events: true, enabled: true, secret: true, createdAt: true },
     orderBy: { createdAt: "desc" },
   });
 
@@ -76,6 +77,7 @@ export async function GET() {
   // Recent deliveries (logged to audit trail, scoped to this workspace)
   const deliveries = await prisma.auditLog.findMany({
     where: { action: "webhook.delivered", workspaceId },
+    select: { id: true, metadata: true, createdAt: true },
     orderBy: { createdAt: "desc" },
     take: 50,
   });
