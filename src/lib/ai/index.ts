@@ -71,6 +71,10 @@ export type { GraphEntity, GraphEdge, GraphPath, GraphSearchResult, EntityType, 
 export { classifyIntent, generatePlan, executePlan, topologicalSort, buildSynthesisContext } from "./planner/engine";
 export type { QueryIntent, QueryPlan, PlanStep, StepResult, PlanExecutionResult, StepExecutors, DataSource } from "./planner/engine";
 
+// ── Context Compression ───────────────────────────────────────────────────────
+export { compressContext, scoreRelevance, scoreChunks, deduplicateChunks, estimateTokens, buildDistillationPrompt } from "./compression/engine";
+export type { ContextChunk, CompressionOptions, CompressionResult } from "./compression/engine";
+
 // ── RAG ───────────────────────────────────────────────────────────────────────
 export { buildRAGContext, buildRAGMessages } from "./rag/service";
 
