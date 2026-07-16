@@ -135,6 +135,14 @@ export type { DataRegion, RegionConfig, ResidencyContext } from "./residency/eng
 export { reflect, quickScore, getCritiqueDimensions } from "./reflection/engine";
 export type { ReflectionConfig, ReflectionResult, CritiqueResult, CritiqueDimension } from "./reflection/engine";
 
+// ── Debate Mode ───────────────────────────────────────────────────────────────
+export { debate } from "./reasoning/debate";
+export type { DebateConfig, DebateResult, DebateTurn } from "./reasoning/debate";
+
+// ── Monte Carlo Reasoning ─────────────────────────────────────────────────────
+export { monteCarloReason, calculateConfidence } from "./reasoning/montecarlo";
+export type { MonteCarloConfig, MonteCarloResult, ScoredCandidate } from "./reasoning/montecarlo";
+
 // ── RAG ───────────────────────────────────────────────────────────────────────
 export { buildRAGContext, buildRAGMessages } from "./rag/service";
 
