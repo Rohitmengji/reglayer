@@ -33,6 +33,8 @@ import { OnboardingChecklist } from "@/components/onboarding/checklist";
 import { ChatPanel } from "@/components/ai/ChatPanel";
 import { useChatStore } from "@/stores/chatStore";
 import { useI18n } from "@/components/i18n-provider";
+import { OfflineBanner } from "@/components/ui/offline-banner";
+import { SessionTimeoutWarning } from "@/components/ui/session-timeout-warning";
 
 export function AppShell({ children, bare }: { children: React.ReactNode; bare?: boolean }) {
   const { t } = useI18n();
@@ -201,6 +203,10 @@ export function AppShell({ children, bare }: { children: React.ReactNode; bare?:
 
       {/* Main content */}
       <main id="main-content" className="flex-1 flex flex-col overflow-y-auto">
+        {/* Connectivity & session warnings */}
+        <OfflineBanner />
+        <SessionTimeoutWarning />
+
         {/* Mobile header */}
         <div className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-4 lg:hidden">
           <button

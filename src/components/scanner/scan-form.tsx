@@ -164,9 +164,22 @@ export function ScanForm({ onScanComplete }: ScanFormProps) {
           return;
         }
         const code = data.code as string | undefined;
-        const message = res.status === 429
-          ? ERROR_MESSAGES.RATE_LIMITED
-          : (code && ERROR_MESSAGES[code]) || data.message || data.error || "Scan failed";
+        let message: string;
+        if (res.status === 429) {
+          // Extract rate limit info from response headers for user feedback
+          const resetHeader = res.headers.get("X-RateLimit-Reset");
+          if (resetHeader) {
+            const resetAt = parseInt(resetHeader, 10);
+            const secsLeft = Math.max(1, Math.ceil((resetAt * 1000 - Date.now()) / 1000));
+            message = secsLeft > 60
+              ? `Too many requests. Try again in ${Math.ceil(secsLeft / 60)} minute${Math.ceil(secsLeft / 60) !== 1 ? "s" : ""}.`
+              : `Too many requests. Try again in ${secsLeft} second${secsLeft !== 1 ? "s" : ""}.`;
+          } else {
+            message = ERROR_MESSAGES.RATE_LIMITED;
+          }
+        } else {
+          message = (code && ERROR_MESSAGES[code]) || data.message || data.error || "Scan failed";
+        }
         const retryable = res.status >= 500 || res.status === 504 || res.status === 429;
         setErrorInfo({ message, retryable });
         toast.error(message);
