@@ -1593,6 +1593,37 @@ model AiEvent {
 }
 
 // ─────────────────────────────────────────────
+// Workspace Decision Engine (RegLayer moat feature)
+// ─────────────────────────────────────────────
+
+model WorkspaceDecision {
+  id          String   @id @default(cuid())
+  workspaceId String
+  category    DecisionCategory
+  decision    String   @db.Text
+  rationale   String?  @db.Text
+  createdBy   String
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([workspaceId, category, active])
+  @@map("workspace_decisions")
+}
+
+enum DecisionCategory {
+  ARCHITECTURE
+  CODING
+  COMPLIANCE
+  SECURITY
+  UX
+  PERFORMANCE
+  TESTING
+  INTEGRATION
+  CUSTOM
+}
+
+// ─────────────────────────────────────────────
 // AI Chat Conversations (persisted user chat history)
 // ─────────────────────────────────────────────
 
