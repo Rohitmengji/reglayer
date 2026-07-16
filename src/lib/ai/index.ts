@@ -96,5 +96,13 @@ export type { MemoryEntry, MemoryContext, MemoryScope } from "./memory/service";
 export { createApprovalRequest, listPendingApprovals, getApprovalRequest, approveRequest, rejectRequest, markPublished, countPending } from "./approval/service";
 export type { ApprovalRequestEntry, ApprovalType, ApprovalStatus } from "./approval/service";
 
+// ── Knowledge Management ──────────────────────────────────────────────────────
+export { createDocument, listDocuments, deleteDocument, processDocument, searchKnowledge, chunkText } from "./knowledge/service";
+export type { KnowledgeDocumentEntry, KnowledgeSearchResult } from "./knowledge/service";
+
+// ── AI Experiments ────────────────────────────────────────────────────────────
+export { createExperiment, listExperiments, getExperiment, startExperiment, pauseExperiment, completeExperiment, resolveVariant, recordTrial, analyzeResults } from "./experiments/service";
+export type { ExperimentEntry, VariantConfig, ExperimentStatus } from "./experiments/service";
+
 // ── Feature Flags ─────────────────────────────────────────────────────────────
 export { isAIFeatureEnabled, getAllAIFeatures, getEnabledFeatures } from "./features/flags";
