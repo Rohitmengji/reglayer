@@ -12,6 +12,8 @@ import { optimizedRetrieve, BALANCED_PRESET } from "@/lib/ai/retrieval/pipeline"
 import { stream, getDefaultModelId, isAIAvailable } from "@/lib/ai/gateway";
 import { getPrompt } from "@/lib/ai/prompts/registry";
 import { containsPII, sanitizeForLLM } from "@/lib/ai/hardening";
+import { LineageBuilder, traceToHeaders } from "@/lib/ai/lineage/tracker";
+import { recordAuditEntry } from "@/lib/ai/audit/trail";
 import { toTextStream } from "ai";
 
 export const runtime = "nodejs";
@@ -76,7 +78,18 @@ export async function POST(request: NextRequest) {
 
   if (!result) return apiError("AI provider unavailable", "provider_error", 503);
 
+  // Lineage + audit (fire-and-forget)
+  const lineage = new LineageBuilder();
+  lineage.recordInput(latestMsg, ctx.userId, ctx.workspaceId);
+  lineage.recordCache(retrieval.cached, retrieval.cacheLayer);
+  lineage.recordRetrieval({ source: "optimizedRetrieve", resultCount: retrieval.sourceCount, durationMs: retrieval.totalLatencyMs });
+  lineage.recordPrompt(retrieval.context ? "chat-rag" : "chat-system", 1);
+  lineage.recordGeneration({ model: modelId, provider: "openai", inputTokens: 0, outputTokens: 0, costUsd: 0, durationMs: Date.now() - start, temperature: 0.4 });
+  lineage.recordOutput(0);
+  const trace = lineage.build();
+
   auditLog(ctx, "/v1/chat", "POST", Date.now() - start, 200);
+  recordAuditEntry({ userId: ctx.userId, workspaceId: ctx.workspaceId, action: "chat", feature: "v1-chat", model: modelId, traceId: trace.traceId, input: latestMsg }).catch(() => {});
 
   return new Response(toTextStream(result), {
     headers: {
