@@ -302,6 +302,57 @@ function makeGetComplianceStatus(ctx: ToolContext) {
   };
 }
 
+// ── Tool: Trigger a Scan (Chat → Agent Handoff) ─────────────────────────────
+
+function makeTriggerScan(ctx: ToolContext) {
+  return {
+    description: "Scan a website for accessibility issues. Use this when the user says 'scan [URL]', 'check [URL]', 'test [URL]', or asks you to analyze a website's accessibility. This actually runs a real scan and returns results.",
+    parameters: z.object({
+      url: z.string().url().describe("The full URL to scan (must include https://)"),
+    }),
+    execute: async ({ url }: { url: string }) => {
+      const start = Date.now();
+      try {
+        // We don't call performScan directly here because it requires browser launch
+        // which would exceed tool timeout. Instead, trigger via internal API call.
+        const { validateScanUrl } = await import("@/lib/validations/ssrf");
+        const ssrfError = validateScanUrl(url);
+        if (ssrfError) {
+          return `Cannot scan this URL: ${ssrfError}`;
+        }
+
+        // Import and execute scan service
+        const { performScan } = await import("@/services/scanService");
+        const result = await performScan({
+          url,
+          options: { deep: false },
+          userEmail: undefined, // Tool-initiated scan
+        });
+
+        logToolCall("triggerScan", { url, workspaceId: ctx.workspaceId }, Date.now() - start, true);
+
+        const scan = result.scan;
+        const summary = scan.summary;
+        return truncateResult(JSON.stringify({
+          scanId: scan.id,
+          url: scan.url,
+          score: summary.score,
+          totalViolations: summary.totalViolations,
+          critical: summary.critical,
+          serious: summary.serious,
+          moderate: summary.moderate,
+          minor: summary.minor,
+          status: "COMPLETED",
+          summary: `Scan complete! Score: ${summary.score}/100 with ${summary.totalViolations} violations (${summary.critical} critical, ${summary.serious} serious).`,
+        }));
+      } catch (error) {
+        logToolCall("triggerScan", { url }, Date.now() - start, false);
+        return `Scan failed: ${error instanceof Error ? error.message : "unknown error"}. The site may be unreachable or blocking automated access.`;
+      }
+    },
+  };
+}
+
 // ── Tool Registry ────────────────────────────────────────────────────────────
 
 /**
@@ -321,6 +372,7 @@ export function createChatTools(ctx: ToolContext) {
     getViolations: makeGetViolations(ctx),
     explainWcag,
     getComplianceStatus: makeGetComplianceStatus(ctx),
+    triggerScan: makeTriggerScan(ctx),
   };
 }
 
