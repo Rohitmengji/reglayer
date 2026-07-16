@@ -10,9 +10,10 @@
 import { useRef, useEffect, useState, useCallback } from "react";
 import { useChat } from "@/hooks/use-chat";
 import { useChatSync } from "@/hooks/use-chat-sync";
+import { useChatStore } from "@/stores/chatStore";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
-import { MessageSquare, Trash2, X, ArrowDown, Download, Plus, History, Loader2 } from "lucide-react";
+import { MessageSquare, Trash2, X, ArrowDown, Download, Plus, History, Loader2, Clock } from "lucide-react";
 
 interface ChatPanelProps {
   open: boolean;
@@ -24,6 +25,7 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
     useChat();
   const { conversations, loadingList, isSaving, fetchConversations, switchConversation, startNew, deleteConversation } =
     useChatSync();
+  const conversationId = useChatStore((s) => s.conversationId);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showScrollDown, setShowScrollDown] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
@@ -158,41 +160,82 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
 
         {/* Conversation History Panel */}
         {showHistory && (
-          <div className="border-b border-neutral-200 dark:border-neutral-800 max-h-60 overflow-y-auto">
-            {loadingList ? (
-              <div className="py-4 text-center text-xs text-neutral-400">Loading...</div>
-            ) : conversations.length === 0 ? (
-              <div className="py-4 text-center text-xs text-neutral-400">No saved conversations</div>
-            ) : (
-              <div className="py-1">
-                {conversations.map((conv) => (
-                  <div
-                    key={conv.id}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => { switchConversation(conv.id); setShowHistory(false); }}
-                    onKeyDown={(e) => { if (e.key === "Enter") { switchConversation(conv.id); setShowHistory(false); } }}
-                    className="w-full px-4 py-2.5 text-left hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors group cursor-pointer"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-medium text-neutral-700 dark:text-neutral-300 truncate max-w-[200px]">
-                        {conv.title}
-                      </span>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); deleteConversation(conv.id); }}
-                        className="opacity-0 group-hover:opacity-100 p-1 rounded text-neutral-400 hover:text-red-500 transition-all"
-                        title="Delete"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </button>
-                    </div>
-                    {conv.lastMessage && (
-                      <p className="text-[10px] text-neutral-400 truncate mt-0.5">{conv.lastMessage}</p>
-                    )}
+          <div className="border-b border-neutral-200 dark:border-neutral-800 overflow-hidden flex flex-col" style={{ maxHeight: "min(50vh, 400px)" }}>
+            {/* History header */}
+            <div className="flex items-center justify-between px-4 py-2.5 bg-neutral-50/80 dark:bg-neutral-800/40 border-b border-neutral-100 dark:border-neutral-800">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+                Recent Chats
+              </span>
+              <span className="text-[10px] text-neutral-400 tabular-nums">
+                {conversations.length} conversation{conversations.length !== 1 ? "s" : ""}
+              </span>
+            </div>
+
+            {/* History list */}
+            <div className="flex-1 overflow-y-auto">
+              {loadingList ? (
+                <div className="flex items-center justify-center gap-2 py-8">
+                  <Loader2 className="h-4 w-4 animate-spin text-neutral-400" />
+                  <span className="text-xs text-neutral-400">Loading conversations...</span>
+                </div>
+              ) : conversations.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-8 px-6 text-center">
+                  <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-full bg-neutral-100 dark:bg-neutral-800">
+                    <MessageSquare className="h-4 w-4 text-neutral-400" />
                   </div>
-                ))}
-              </div>
-            )}
+                  <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">No conversations yet</p>
+                  <p className="text-[10px] text-neutral-400 mt-0.5">Your chats will appear here automatically</p>
+                </div>
+              ) : (
+                <div className="py-1">
+                  {conversations.map((conv) => {
+                    const isActive = conv.id === conversationId;
+                    const timeAgo = formatTimeAgo(conv.updatedAt);
+                    return (
+                      <div
+                        key={conv.id}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => { switchConversation(conv.id); setShowHistory(false); }}
+                        onKeyDown={(e) => { if (e.key === "Enter") { switchConversation(conv.id); setShowHistory(false); } }}
+                        className={`w-full px-4 py-3 text-left transition-colors group cursor-pointer border-l-2 ${
+                          isActive
+                            ? "bg-accent/5 border-accent dark:bg-accent/10"
+                            : "border-transparent hover:bg-neutral-50 dark:hover:bg-neutral-800/50"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-[13px] font-medium truncate ${
+                              isActive ? "text-accent" : "text-neutral-800 dark:text-neutral-200"
+                            }`}>
+                              {conv.title}
+                            </p>
+                            {conv.lastMessage && (
+                              <p className="text-[11px] text-neutral-400 dark:text-neutral-500 truncate mt-0.5 leading-snug">
+                                {conv.lastMessage}
+                              </p>
+                            )}
+                            <div className="flex items-center gap-1 mt-1">
+                              <Clock className="h-2.5 w-2.5 text-neutral-300 dark:text-neutral-600" />
+                              <span className="text-[10px] text-neutral-400 dark:text-neutral-500">{timeAgo}</span>
+                            </div>
+                          </div>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); deleteConversation(conv.id); }}
+                            className="opacity-0 group-hover:opacity-100 shrink-0 mt-0.5 p-1.5 rounded-md text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-all"
+                            title="Delete conversation"
+                            aria-label={`Delete conversation: ${conv.title}`}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -267,4 +310,20 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
       </div>
     </>
   );
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function formatTimeAgo(dateStr: string): string {
+  const now = Date.now();
+  const then = new Date(dateStr).getTime();
+  const diffMs = now - then;
+  const diffMin = Math.floor(diffMs / 60_000);
+  if (diffMin < 1) return "just now";
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `${diffHr}h ago`;
+  const diffDays = Math.floor(diffHr / 24);
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return new Date(dateStr).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
