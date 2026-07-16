@@ -1772,3 +1772,48 @@ enum ExperimentStatus {
   PAUSED      // temporarily stopped
   COMPLETED   // finished, results final
 }
+
+// ─────────────────────────────────────────────
+// Knowledge Graph (Graph RAG)
+// ─────────────────────────────────────────────
+
+model KnowledgeEntity {
+  id          String   @id @default(cuid())
+  type        String   // "site", "violation", "wcag_criterion", "regulation", "team_member", "policy", "document"
+  name        String   // human-readable label
+  properties  Json?    // arbitrary structured metadata
+  embedding   Unsupported("vector(1536)")?  // entity embedding for graph + vector fusion
+
+  workspaceId String?  // null for global entities (WCAG criteria, regulations)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  outgoing    KnowledgeEdge[] @relation("EdgeFrom")
+  incoming    KnowledgeEdge[] @relation("EdgeTo")
+
+  @@unique([workspaceId, type, name])
+  @@index([workspaceId, type])
+  @@index([type])
+  @@map("knowledge_entities")
+}
+
+model KnowledgeEdge {
+  id          String   @id @default(cuid())
+  relation    String   // "violates", "owns", "scanned_by", "fixed_by", "part_of", "member_of", "governs"
+  weight      Float    @default(1.0) // edge strength (recency, frequency, confidence)
+  properties  Json?    // edge metadata (e.g. "scan_date", "fix_version")
+
+  fromId      String
+  toId        String
+  from        KnowledgeEntity @relation("EdgeFrom", fields: [fromId], references: [id], onDelete: Cascade)
+  to          KnowledgeEntity @relation("EdgeTo", fields: [toId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+
+  @@unique([fromId, toId, relation])
+  @@index([fromId, relation])
+  @@index([toId, relation])
+  @@index([relation])
+  @@map("knowledge_edges")
+}
