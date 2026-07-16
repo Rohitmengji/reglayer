@@ -1984,3 +1984,98 @@ enum ScheduleRunStatus {
   COMPLETED
   FAILED
 }
+
+// ─────────────────────────────────────────────
+// Semantic User Profile + Long-Term Learning
+// ─────────────────────────────────────────────
+
+model UserProfile {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+
+  writingStyle   String?  // "concise" | "detailed" | "technical" | "non-technical"
+  preferredTone  String?  // "formal" | "casual" | "instructional"
+  preferredModel String?  // user's favorite model
+  language       String?  // "en" | "es" | "de"
+
+  domainExpertise  String[] // ["frontend", "legal", "design", "qa"]
+  industries       String[] // ["ecommerce", "healthcare", "fintech"]
+  techStack        String[] // ["react", "nextjs", "tailwind"]
+  wcagLevel        String?  // "A" | "AA" | "AAA"
+  regulations      String[] // ["ADA", "EAA", "Section508"]
+
+  frequentTools    String[] // tool IDs used most often
+  topFeatures      String[] // features used most: "chat", "scan", "report"
+  totalQueries     Int      @default(0)
+  totalFeedback    Int      @default(0)
+  avgRating        Float?
+
+  prefersCodeExamples  Boolean @default(false)
+  prefersCitations     Boolean @default(true)
+  prefersShortAnswers  Boolean @default(false)
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("user_profiles")
+}
+
+model FeedbackEntry {
+  id          String   @id @default(cuid())
+  rating      Int      // 1-5 or -1/+1 thumbs
+  comment     String?
+  category    String?  // "accuracy" | "relevance" | "helpfulness" | "tone"
+
+  feature     String   // "chat" | "violation-explainer" | "agent"
+  messageId   String?
+  promptId    String?
+  model       String?
+
+  query       String?  @db.Text
+  response    String?  @db.Text
+  context     Json?
+
+  userId      String
+  workspaceId String?
+
+  createdAt   DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([feature, rating])
+  @@index([promptId, rating])
+  @@index([model, rating])
+  @@map("feedback_entries")
+}
+
+model PromptImprovement {
+  id              String   @id @default(cuid())
+  promptId        String
+  version         Int
+  improvementType String   // "rewrite" | "example_added" | "constraint_added" | "tone_shift"
+  description     String
+
+  originalSegment String?  @db.Text
+  improvedSegment String?  @db.Text
+
+  source          String   // "feedback_analysis" | "experiment_winner" | "manual" | "auto_learning"
+  feedbackCount   Int      @default(0)
+  avgRatingBefore Float?
+  avgRatingAfter  Float?
+
+  status          ImprovementStatus @default(PROPOSED)
+  appliedAt       DateTime?
+  appliedBy       String?
+
+  createdAt       DateTime @default(now())
+
+  @@index([promptId, status])
+  @@index([source])
+  @@map("prompt_improvements")
+}
+
+enum ImprovementStatus {
+  PROPOSED
+  APPROVED
+  APPLIED
+  REJECTED
+}
