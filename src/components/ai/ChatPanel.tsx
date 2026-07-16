@@ -9,9 +9,10 @@
 
 import { useRef, useEffect, useState, useCallback } from "react";
 import { useChat } from "@/hooks/use-chat";
+import { useChatSync } from "@/hooks/use-chat-sync";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
-import { MessageSquare, Trash2, X, ArrowDown, Download } from "lucide-react";
+import { MessageSquare, Trash2, X, ArrowDown, Download, Plus, History, Loader2 } from "lucide-react";
 
 interface ChatPanelProps {
   open: boolean;
@@ -21,8 +22,16 @@ interface ChatPanelProps {
 export function ChatPanel({ open, onClose }: ChatPanelProps) {
   const { messages, isStreaming, sendMessage, regenerate, editAndResend, stopStreaming, clearMessages, setFeedback } =
     useChat();
+  const { conversations, loadingList, isSaving, fetchConversations, switchConversation, startNew, deleteConversation } =
+    useChatSync();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showScrollDown, setShowScrollDown] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+
+  // Fetch conversation list when panel opens
+  useEffect(() => {
+    if (open) fetchConversations();
+  }, [open, fetchConversations]);
 
   // Track scroll position to show/hide scroll-to-bottom button
   const handleScroll = useCallback(() => {
@@ -92,6 +101,30 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
             </div>
           </div>
           <div className="flex items-center gap-1">
+            {/* Saving indicator */}
+            {isSaving && (
+              <span className="flex items-center gap-1 text-[10px] text-neutral-400 mr-1">
+                <Loader2 className="h-3 w-3 animate-spin" /> Saving
+              </span>
+            )}
+            {/* New conversation */}
+            <button
+              onClick={() => { startNew(); setShowHistory(false); }}
+              className="rounded-lg p-2 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+              title="New conversation"
+              aria-label="New conversation"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+            {/* History toggle */}
+            <button
+              onClick={() => { setShowHistory(!showHistory); if (!showHistory) fetchConversations(); }}
+              className={`rounded-lg p-2 transition-colors ${showHistory ? "bg-accent/10 text-accent" : "text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"}`}
+              title="Conversation history"
+              aria-label="Show conversation history"
+            >
+              <History className="h-4 w-4" />
+            </button>
             {messages.length > 0 && (
               <button
                 onClick={exportConversation}
@@ -122,6 +155,43 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
             </button>
           </div>
         </div>
+
+        {/* Conversation History Panel */}
+        {showHistory && (
+          <div className="border-b border-neutral-200 dark:border-neutral-800 max-h-60 overflow-y-auto">
+            {loadingList ? (
+              <div className="py-4 text-center text-xs text-neutral-400">Loading...</div>
+            ) : conversations.length === 0 ? (
+              <div className="py-4 text-center text-xs text-neutral-400">No saved conversations</div>
+            ) : (
+              <div className="py-1">
+                {conversations.map((conv) => (
+                  <button
+                    key={conv.id}
+                    onClick={() => { switchConversation(conv.id); setShowHistory(false); }}
+                    className="w-full px-4 py-2.5 text-left hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors group"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-neutral-700 dark:text-neutral-300 truncate max-w-[200px]">
+                        {conv.title}
+                      </span>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); deleteConversation(conv.id); }}
+                        className="opacity-0 group-hover:opacity-100 p-1 rounded text-neutral-400 hover:text-red-500 transition-all"
+                        title="Delete"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
+                    {conv.lastMessage && (
+                      <p className="text-[10px] text-neutral-400 truncate mt-0.5">{conv.lastMessage}</p>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Messages */}
         <div

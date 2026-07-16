@@ -41,6 +41,10 @@ interface ChatState {
   messages: ChatMessage[];
   isStreaming: boolean;
   panelOpen: boolean;
+  /** Server-side conversation ID. Null = new/unsaved conversation. */
+  conversationId: string | null;
+  /** True when a background save is in progress */
+  isSaving: boolean;
 
   // Actions
   addMessage: (role: "user" | "assistant", content: string) => string;
@@ -55,6 +59,13 @@ interface ChatState {
   truncateFrom: (id: string) => void;
   /** Edit a user message — truncates everything after it */
   editMessage: (id: string, newContent: string) => void;
+  /** Server sync actions */
+  setConversationId: (id: string | null) => void;
+  setIsSaving: (saving: boolean) => void;
+  /** Load a conversation from server (replaces current messages) */
+  loadConversation: (id: string, messages: ChatMessage[]) => void;
+  /** Start a new conversation (clear state + null conversationId) */
+  newConversation: () => void;
 }
 
 // ── Store ─────────────────────────────────────────────────────────────────────
@@ -70,6 +81,8 @@ export const useChatStore = create<ChatState>()(
       messages: [],
       isStreaming: false,
       panelOpen: false,
+      conversationId: null,
+      isSaving: false,
 
       addMessage: (role, content) => {
         const id = generateMessageId();
@@ -102,7 +115,7 @@ export const useChatStore = create<ChatState>()(
 
       setPanelOpen: (open) => set({ panelOpen: open }),
 
-      clearMessages: () => set({ messages: [], isStreaming: false }),
+      clearMessages: () => set({ messages: [], isStreaming: false, conversationId: null }),
 
       setFeedback: (id, feedback) =>
         set((state) => ({
@@ -127,11 +140,21 @@ export const useChatStore = create<ChatState>()(
           updated[idx] = { ...updated[idx], content: newContent, edited: true };
           return { messages: updated };
         }),
+
+      setConversationId: (id) => set({ conversationId: id }),
+      setIsSaving: (saving) => set({ isSaving: saving }),
+
+      loadConversation: (id, messages) =>
+        set({ conversationId: id, messages, isStreaming: false }),
+
+      newConversation: () =>
+        set({ conversationId: null, messages: [], isStreaming: false }),
     }),
     {
       name: "reglayer-chat",
       partialize: (state) => ({
         messages: state.messages,
+        conversationId: state.conversationId,
       }),
       storage: {
         getItem: (name) => {
