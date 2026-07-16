@@ -181,29 +181,27 @@ function ActionButton({ onClick, title, active, children }: { onClick: () => voi
 
 /**
  * Full markdown formatter for assistant messages.
- * Handles: headings, bold, inline code, code blocks, lists, line breaks.
+ * Supports: headings, bold, italic, inline code, fenced code blocks with
+ * language label + copy button, bullet/numbered lists, links, horizontal
+ * rules, and paragraph breaks.
  */
 function FormattedContent({ content }: { content: string }) {
   if (!content) {
     return <ThinkingIndicator />;
   }
 
-  // Split by code blocks first (```...```)
+  // Split by fenced code blocks first (```lang\n...\n```)
   const parts = content.split(/(```[\s\S]*?```)/g);
 
   return (
     <>
       {parts.map((part, i) => {
         if (part.startsWith("```") && part.endsWith("```")) {
-          const code = part.slice(3, -3).replace(/^\w*\n/, "");
-          return (
-            <pre
-              key={i}
-              className="my-2 overflow-x-auto rounded-lg bg-neutral-900 p-3 text-xs text-neutral-100 dark:bg-neutral-950"
-            >
-              <code>{code}</code>
-            </pre>
-          );
+          const inner = part.slice(3, -3);
+          const firstNewline = inner.indexOf("\n");
+          const lang = firstNewline > 0 ? inner.slice(0, firstNewline).trim() : "";
+          const code = firstNewline > 0 ? inner.slice(firstNewline + 1) : inner;
+          return <CodeBlock key={i} code={code} language={lang} />;
         }
         return <InlineFormat key={i} text={part} />;
       })}
@@ -211,50 +209,114 @@ function FormattedContent({ content }: { content: string }) {
   );
 }
 
+/** Fenced code block with language label, copy button, and mono font. */
+function CodeBlock({ code, language }: { code: string; language: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    navigator.clipboard.writeText(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="my-2.5 rounded-lg overflow-hidden border border-neutral-200 dark:border-neutral-700">
+      {/* Header bar */}
+      <div className="flex items-center justify-between bg-neutral-100 dark:bg-neutral-800 px-3 py-1.5">
+        <span className="text-[10px] font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+          {language || "code"}
+        </span>
+        <button
+          onClick={handleCopy}
+          className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-neutral-500 hover:text-neutral-700 hover:bg-neutral-200 dark:hover:text-neutral-300 dark:hover:bg-neutral-700 transition-colors"
+        >
+          {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+          {copied ? "Copied" : "Copy"}
+        </button>
+      </div>
+      {/* Code */}
+      <pre className="overflow-x-auto bg-neutral-950 p-3 text-[13px] leading-relaxed text-neutral-100">
+        <code>{code}</code>
+      </pre>
+    </div>
+  );
+}
+
 function InlineFormat({ text }: { text: string }) {
-  // Process line by line for headings and lists
   const lines = text.split("\n");
 
   return (
     <>
       {lines.map((line, i) => {
+        // Horizontal rule
+        if (/^-{3,}$/.test(line.trim()) || /^\*{3,}$/.test(line.trim())) {
+          return <hr key={i} className="my-3 border-neutral-200 dark:border-neutral-700" />;
+        }
         // Headings
         if (line.startsWith("### ")) {
-          return <h4 key={i} className="mt-3 mb-1 text-sm font-semibold text-neutral-900 dark:text-white">{formatInline(line.slice(4))}</h4>;
+          return <h4 key={i} className="mt-3 mb-1 text-[13px] font-semibold text-neutral-900 dark:text-white">{formatInline(line.slice(4))}</h4>;
         }
         if (line.startsWith("## ")) {
           return <h3 key={i} className="mt-3 mb-1 text-sm font-bold text-neutral-900 dark:text-white">{formatInline(line.slice(3))}</h3>;
         }
         if (line.startsWith("# ")) {
-          return <h2 key={i} className="mt-3 mb-1 font-bold text-neutral-900 dark:text-white">{formatInline(line.slice(2))}</h2>;
+          return <h2 key={i} className="mt-4 mb-1.5 text-[15px] font-bold text-neutral-900 dark:text-white">{formatInline(line.slice(2))}</h2>;
         }
         // Numbered list
         if (/^\d+\.\s/.test(line)) {
-          return <div key={i} className="ml-4 flex gap-2"><span className="shrink-0 text-neutral-400">{line.match(/^\d+/)?.[0]}.</span><span>{formatInline(line.replace(/^\d+\.\s/, ""))}</span></div>;
+          return (
+            <div key={i} className="ml-1 flex gap-2 py-0.5">
+              <span className="shrink-0 w-5 text-right text-neutral-400 text-[13px]">{line.match(/^\d+/)?.[0]}.</span>
+              <span className="text-[13px]">{formatInline(line.replace(/^\d+\.\s/, ""))}</span>
+            </div>
+          );
         }
         // Bullet list
         if (line.startsWith("- ") || line.startsWith("* ")) {
-          return <div key={i} className="ml-4 flex gap-2"><span className="shrink-0 text-neutral-400">•</span><span>{formatInline(line.slice(2))}</span></div>;
+          return (
+            <div key={i} className="ml-1 flex gap-2 py-0.5">
+              <span className="shrink-0 w-5 text-right text-neutral-400 text-[13px]">•</span>
+              <span className="text-[13px]">{formatInline(line.slice(2))}</span>
+            </div>
+          );
         }
         // Empty line = paragraph break
         if (line.trim() === "") {
           return <div key={i} className="h-2" />;
         }
         // Regular text
-        return <span key={i}>{formatInline(line)}{i < lines.length - 1 ? "\n" : ""}</span>;
+        return <span key={i} className="text-[13px] leading-relaxed">{formatInline(line)}{i < lines.length - 1 ? "\n" : ""}</span>;
       })}
     </>
   );
 }
 
 function formatInline(text: string): React.ReactNode {
-  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
+  // Match: **bold**, *italic*, `code`, [text](url)
+  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`|\[[^\]]+\]\([^)]+\))/g);
   return parts.map((part, i) => {
     if (part.startsWith("**") && part.endsWith("**")) {
       return <strong key={i} className="font-semibold">{part.slice(2, -2)}</strong>;
     }
+    if (part.startsWith("*") && part.endsWith("*") && !part.startsWith("**")) {
+      return <em key={i}>{part.slice(1, -1)}</em>;
+    }
     if (part.startsWith("`") && part.endsWith("`")) {
-      return <code key={i} className="rounded bg-neutral-200 px-1 py-0.5 text-xs font-mono dark:bg-neutral-700">{part.slice(1, -1)}</code>;
+      return <code key={i} className="rounded bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 text-[12px] font-mono text-accent">{part.slice(1, -1)}</code>;
+    }
+    // Links: [text](url)
+    const linkMatch = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+    if (linkMatch) {
+      return (
+        <a
+          key={i}
+          href={linkMatch[2]}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-accent underline underline-offset-2 hover:text-accent/80 transition-colors"
+        >
+          {linkMatch[1]}
+        </a>
+      );
     }
     return part;
   });
@@ -262,10 +324,13 @@ function formatInline(text: string): React.ReactNode {
 
 function ThinkingIndicator() {
   return (
-    <div className="flex items-center gap-1 py-1">
-      <span className="h-2 w-2 rounded-full bg-neutral-400 animate-bounce dark:bg-neutral-500" style={{ animationDelay: "0ms" }} />
-      <span className="h-2 w-2 rounded-full bg-neutral-400 animate-bounce dark:bg-neutral-500" style={{ animationDelay: "150ms" }} />
-      <span className="h-2 w-2 rounded-full bg-neutral-400 animate-bounce dark:bg-neutral-500" style={{ animationDelay: "300ms" }} />
+    <div className="flex items-center gap-2 py-2">
+      <div className="flex items-center gap-1">
+        <span className="h-1.5 w-1.5 rounded-full bg-accent/60 animate-pulse" style={{ animationDelay: "0ms" }} />
+        <span className="h-1.5 w-1.5 rounded-full bg-accent/60 animate-pulse" style={{ animationDelay: "200ms" }} />
+        <span className="h-1.5 w-1.5 rounded-full bg-accent/60 animate-pulse" style={{ animationDelay: "400ms" }} />
+      </div>
+      <span className="text-[11px] text-neutral-400">Thinking...</span>
     </div>
   );
 }
