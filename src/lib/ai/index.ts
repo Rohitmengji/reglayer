@@ -91,6 +91,14 @@ export type { AgentBlueprint } from "./marketplace/registry";
 export { startConversation, runTurn, executeHandoff, runConversation, getConversation, listConversations, detectHandoff } from "./a2a/protocol";
 export type { A2AMessage, Conversation, HandoffRequest, MessageRole } from "./a2a/protocol";
 
+// ── Agent Scheduler ───────────────────────────────────────────────────────────
+export { createSchedule, listSchedules, toggleSchedule, deleteSchedule, getDueAgentSchedules, executeScheduledRun, fireAgentEvent, getRunHistory, resolveTemplate as resolveScheduleTemplate } from "./scheduler/service";
+export type { AgentScheduleEntry, ScheduleRunEntry } from "./scheduler/service";
+
+// ── Autonomous Agent Presets ──────────────────────────────────────────────────
+export { installPresets, getAvailablePresets, AUTONOMOUS_PRESETS } from "./scheduler/presets";
+export type { AutonomousPreset } from "./scheduler/presets";
+
 // ── RAG ───────────────────────────────────────────────────────────────────────
 export { buildRAGContext, buildRAGMessages } from "./rag/service";
 

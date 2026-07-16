@@ -1907,3 +1907,80 @@ enum AgentMessageRole {
   HANDOFF    // agent-to-agent delegation
   TOOL       // tool call result
 }
+
+// ─────────────────────────────────────────────
+// Agent Scheduler + Autonomous Agents
+// ─────────────────────────────────────────────
+
+model AgentSchedule {
+  id            String   @id @default(cuid())
+  name          String
+  agentSlug     String   // which agent blueprint to run
+  trigger       AgentTrigger @default(CRON)
+  cron          String?  // cron expression (for CRON trigger)
+  eventType     String?  // event name (for EVENT trigger): "scan.completed", "score.dropped"
+  taskTemplate  String   @db.Text // prompt template with {{variables}}
+  enabled       Boolean  @default(true)
+  lastRunAt     DateTime?
+  nextRunAt     DateTime?
+  runCount      Int      @default(0)
+  lastError     String?
+
+  // What to do with the agent's output
+  outputAction  AgentOutputAction @default(LOG)
+  notifyEmail   String?  // email recipient for NOTIFY action
+  webhookUrl    String?  // URL for WEBHOOK action
+
+  workspaceId   String
+  createdBy     String   // userId
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  runs          AgentScheduleRun[]
+
+  @@index([workspaceId, enabled])
+  @@index([trigger, nextRunAt])
+  @@index([eventType])
+  @@map("agent_schedules")
+}
+
+model AgentScheduleRun {
+  id          String   @id @default(cuid())
+  status      ScheduleRunStatus @default(RUNNING)
+  trigger     String   // "cron", "event:scan.completed", "manual"
+  input       Json?    // resolved task + event data
+  output      String?  @db.Text // agent's response
+  error       String?
+  costUsd     Float    @default(0)
+  durationMs  Int      @default(0)
+
+  scheduleId  String
+  schedule    AgentSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+  completedAt DateTime?
+
+  @@index([scheduleId, createdAt])
+  @@index([status])
+  @@map("agent_schedule_runs")
+}
+
+enum AgentTrigger {
+  CRON      // time-based: hourly, daily, weekly, custom cron
+  EVENT     // event-driven: scan.completed, score.dropped, violation.new
+  MANUAL    // on-demand (API or UI button)
+}
+
+enum AgentOutputAction {
+  LOG       // just persist the output (audit trail)
+  NOTIFY    // email the result to notifyEmail
+  WEBHOOK   // POST the result to webhookUrl
+  APPROVE   // create an ApprovalRequest for human review
+}
+
+enum ScheduleRunStatus {
+  RUNNING
+  COMPLETED
+  FAILED
+}
