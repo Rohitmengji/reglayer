@@ -13,6 +13,7 @@ import { canManageUser } from "@/lib/auth/rbac";
 import { prisma } from "@/lib/database/prisma";
 import { sendTeamInviteEmail, isEmailConfigured } from "@/lib/email/service";
 import { applyRateLimit } from "@/lib/rate-limit-middleware";
+import { rateLimit } from "@/lib/rate-limit";
 import { logger } from "@/lib/telemetry/logger";
 import bcrypt from "bcryptjs";
 import { PLAN_LIMITS, type PlanType } from "@/lib/credits/plan-limits";
@@ -137,6 +138,19 @@ export async function POST(request: NextRequest) {
   const membership = currentUser.memberships[0];
   if (!["OWNER", "ADMIN"].includes(membership.role)) {
     return NextResponse.json({ error: "Only owners and admins can invite members" }, { status: 403 });
+  }
+
+  // Per-workspace invite rate limit (10 invites/hour) — prevents email spam attacks
+  const inviteRl = await rateLimit(
+    `invite:${membership.workspaceId}`,
+    { limit: 10, windowSec: 3600 },
+    "invite"
+  );
+  if (!inviteRl.success) {
+    return NextResponse.json(
+      { error: "Too many invites. Please wait before inviting more members." },
+      { status: 429 }
+    );
   }
 
   // Enforce team member limit based on user's plan

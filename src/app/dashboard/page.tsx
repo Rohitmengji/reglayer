@@ -48,15 +48,28 @@ import type { ScanResult, ComplianceReport } from "@/lib/types";
 // Heavy components lazy-loaded to keep initial dashboard bundle lean.
 const DashboardAnalytics = dynamic(
   () => import("@/components/dashboard/dashboard-analytics").then((m) => m.DashboardAnalytics),
-  { ssr: false, loading: () => null }
+  { ssr: false, loading: () => (
+    <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-5 animate-pulse">
+      <div className="h-4 w-32 bg-neutral-200 dark:bg-neutral-700 rounded mb-4" />
+      <div className="h-40 bg-neutral-100 dark:bg-neutral-800 rounded" />
+    </div>
+  ) }
 );
 
 // Charts pull in recharts (~100KB gz) — load them lazily so the dashboard's
-// initial bundle stays lean. Both render null while empty, so a null loading
-// state introduces no layout shift.
+// initial bundle stays lean.
 const ComplianceTrend = dynamic(
   () => import("@/components/charts/compliance-trend").then((m) => m.ComplianceTrend),
-  { ssr: false, loading: () => null }
+  { ssr: false, loading: () => (
+    <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-5 animate-pulse">
+      <div className="h-4 w-28 bg-neutral-200 dark:bg-neutral-700 rounded mb-4" />
+      <div className="flex items-end gap-1 h-32">
+        {[40, 55, 45, 60, 50, 65, 70].map((h, i) => (
+          <div key={i} className="flex-1 bg-neutral-100 dark:bg-neutral-800 rounded-t" style={{ height: `${h}%` }} />
+        ))}
+      </div>
+    </div>
+  ) }
 );
 
 interface ScanResponse {
@@ -90,6 +103,8 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const controller = new AbortController();
+    // Timeout slow API fetches after 15s to prevent infinite loading state
+    const timeoutId = setTimeout(() => controller.abort(), 15_000);
 
     // Fetch onboarding status from server (authoritative source)
     fetch("/api/onboarding/status", { signal: controller.signal })
@@ -134,7 +149,7 @@ export default function DashboardPage() {
       .then((d) => d && setCredits(d.credits))
       .catch(() => {});
 
-    return () => controller.abort();
+    return () => { controller.abort(); clearTimeout(timeoutId); };
   }, [statsReloadKey]);
 
   function handleScanComplete(result: unknown) {
@@ -243,7 +258,7 @@ export default function DashboardPage() {
           </div>
         )}
         {!statsLoading && stats && stats.totalScans > 0 && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             <StatCard
               label={t("dashboard.totalScans")}
               value={stats.totalScans.toString()}
@@ -269,6 +284,17 @@ export default function DashboardPage() {
               icon={<Globe className="h-4 w-4 text-purple-500" />}
               delay={225}
             />
+          </div>
+        )}
+
+        {/* Empty state — no scans yet (shown only when onboarding is dismissed) */}
+        {!statsLoading && stats && stats.totalScans === 0 && !showOnboarding && (
+          <div className="rounded-xl border border-dashed border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900/50 p-6 text-center">
+            <Globe className="mx-auto h-8 w-8 text-neutral-400 dark:text-neutral-500 mb-3" />
+            <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">No scans yet</p>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+              Enter a URL above to run your first accessibility scan
+            </p>
           </div>
         )}
 

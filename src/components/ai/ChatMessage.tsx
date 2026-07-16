@@ -1,31 +1,52 @@
 /**
  * RegLayer — Chat Message
  *
- * Production chat message component with:
- * - Copy to clipboard button
- * - Full markdown: headings, bold, code blocks, inline code, lists
- * - Timestamp display
- * - Clean layout (no bubbles — like ChatGPT/Claude)
+ * Production chat message with:
+ * - Full markdown rendering
+ * - Copy to clipboard
+ * - Regenerate response (assistant messages)
+ * - Edit message (user messages)
+ * - Feedback thumbs up/down (assistant messages)
+ * - Inline edit mode with save/cancel
  */
 
 "use client";
 
 import { useState } from "react";
 import type { ChatMessage as ChatMessageType } from "@/stores/chatStore";
-import { MessageSquare, User, Copy, Check } from "lucide-react";
+import { MessageSquare, User, Copy, Check, RotateCcw, Pencil, ThumbsUp, ThumbsDown, X } from "lucide-react";
 
 interface ChatMessageProps {
   message: ChatMessageType;
+  isLast?: boolean;
+  isStreaming?: boolean;
+  onRegenerate?: () => void;
+  onEdit?: (id: string, newContent: string) => void;
+  onFeedback?: (id: string, feedback: -1 | 0 | 1) => void;
 }
 
-export function ChatMessage({ message }: ChatMessageProps) {
+export function ChatMessage({ message, isLast, isStreaming, onRegenerate, onEdit, onFeedback }: ChatMessageProps) {
   const isUser = message.role === "user";
   const [copied, setCopied] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editContent, setEditContent] = useState(message.content);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(message.content);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleSaveEdit = () => {
+    if (editContent.trim() && editContent !== message.content) {
+      onEdit?.(message.id, editContent.trim());
+    }
+    setEditing(false);
+  };
+
+  const handleCancelEdit = () => {
+    setEditContent(message.content);
+    setEditing(false);
   };
 
   return (
@@ -46,36 +67,115 @@ export function ChatMessage({ message }: ChatMessageProps) {
       </div>
 
       {/* Content */}
-      <div className={`flex-1 min-w-0 ${isUser ? "flex justify-end" : ""}`}>
-        <div
-          className={`relative rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
-            isUser
-              ? "bg-accent text-white max-w-[80%] inline-block"
-              : "text-neutral-800 dark:text-neutral-200"
-          }`}
-        >
-          {isUser ? (
-            <p className="whitespace-pre-wrap">{message.content}</p>
-          ) : (
-            <div className="prose-sm">
-              <FormattedContent content={message.content} />
+      <div className={`flex-1 min-w-0 ${isUser ? "flex flex-col items-end" : ""}`}>
+        {/* Edit mode for user messages */}
+        {isUser && editing ? (
+          <div className="w-full max-w-[80%]">
+            <textarea
+              value={editContent}
+              onChange={(e) => setEditContent(e.target.value)}
+              className="w-full rounded-xl border border-accent/30 bg-accent/5 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 dark:bg-accent/10 resize-none"
+              rows={Math.min(6, editContent.split("\n").length + 1)}
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSaveEdit(); }
+                if (e.key === "Escape") handleCancelEdit();
+              }}
+            />
+            <div className="mt-1.5 flex gap-1.5 justify-end">
+              <button
+                onClick={handleCancelEdit}
+                className="rounded-md px-2.5 py-1 text-xs text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveEdit}
+                className="rounded-md bg-accent px-2.5 py-1 text-xs text-white hover:bg-accent/90"
+              >
+                Save & Resend
+              </button>
             </div>
-          )}
+          </div>
+        ) : (
+          <div
+            className={`relative rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
+              isUser
+                ? "bg-accent text-white max-w-[80%] inline-block"
+                : "text-neutral-800 dark:text-neutral-200"
+            }`}
+          >
+            {isUser ? (
+              <p className="whitespace-pre-wrap">{message.content}</p>
+            ) : (
+              <div className="prose-sm">
+                <FormattedContent content={message.content} />
+              </div>
+            )}
+          </div>
+        )}
 
-          {/* Copy button — visible on hover for assistant messages */}
-          {!isUser && message.content && (
-            <button
-              onClick={handleCopy}
-              className="absolute -bottom-6 right-0 flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] text-neutral-400 opacity-0 transition-opacity group-hover:opacity-100 hover:text-neutral-600 dark:hover:text-neutral-300"
-              aria-label="Copy message"
-            >
+        {/* Action bar — visible on hover */}
+        {!editing && message.content && !isStreaming && (
+          <div className={`flex items-center gap-0.5 mt-1 opacity-0 transition-opacity group-hover:opacity-100 ${isUser ? "justify-end" : ""}`}>
+            {/* Copy */}
+            <ActionButton onClick={handleCopy} title="Copy">
               {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-              {copied ? "Copied" : "Copy"}
-            </button>
-          )}
-        </div>
+            </ActionButton>
+
+            {/* User: Edit */}
+            {isUser && onEdit && (
+              <ActionButton onClick={() => { setEditContent(message.content); setEditing(true); }} title="Edit & resend">
+                <Pencil className="h-3 w-3" />
+              </ActionButton>
+            )}
+
+            {/* Assistant: Regenerate (only on last message) */}
+            {!isUser && isLast && onRegenerate && (
+              <ActionButton onClick={onRegenerate} title="Regenerate">
+                <RotateCcw className="h-3 w-3" />
+              </ActionButton>
+            )}
+
+            {/* Assistant: Feedback */}
+            {!isUser && onFeedback && (
+              <>
+                <ActionButton
+                  onClick={() => onFeedback(message.id, message.feedback === 1 ? 0 : 1)}
+                  title="Helpful"
+                  active={message.feedback === 1}
+                >
+                  <ThumbsUp className="h-3 w-3" />
+                </ActionButton>
+                <ActionButton
+                  onClick={() => onFeedback(message.id, message.feedback === -1 ? 0 : -1)}
+                  title="Not helpful"
+                  active={message.feedback === -1}
+                >
+                  <ThumbsDown className="h-3 w-3" />
+                </ActionButton>
+              </>
+            )}
+          </div>
+        )}
       </div>
     </div>
+  );
+}
+
+function ActionButton({ onClick, title, active, children }: { onClick: () => void; title: string; active?: boolean; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      className={`rounded-md p-1.5 transition-colors ${
+        active
+          ? "text-accent bg-accent/10"
+          : "text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 dark:hover:text-neutral-300 dark:hover:bg-neutral-800"
+      }`}
+    >
+      {children}
+    </button>
   );
 }
 
