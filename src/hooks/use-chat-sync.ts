@@ -91,7 +91,8 @@ export function useChatSync() {
     finally { setIsSaving(false); }
   }, [setConversationId, setIsSaving]);
 
-  // Auto-save: debounce 3s after streaming completes or message changes
+  // Auto-save: debounce 3s after streaming completes or message changes.
+  // Also saves immediately on page unload (beforeunload) as a safety net.
   useEffect(() => {
     if (isStreaming || messages.length === 0) return;
 
@@ -102,6 +103,26 @@ export function useChatSync() {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
   }, [messages, isStreaming, saveToServer]);
+
+  // Save immediately when user is about to leave (tab close, navigate away)
+  useEffect(() => {
+    const handleUnload = () => {
+      const state = useChatStore.getState();
+      if (state.messages.length === 0) return;
+      // navigator.sendBeacon is fire-and-forget — survives page unload
+      navigator.sendBeacon(
+        "/api/ai/conversations",
+        new Blob([JSON.stringify({
+          id: state.conversationId || undefined,
+          messages: state.messages.map((m) => ({
+            id: m.id, role: m.role, content: m.content, feedback: m.feedback ?? 0,
+          })),
+        })], { type: "application/json" }),
+      );
+    };
+    window.addEventListener("beforeunload", handleUnload);
+    return () => window.removeEventListener("beforeunload", handleUnload);
+  }, []);
 
   /** Switch to an existing conversation (load from server). */
   const switchConversation = useCallback(async (id: string) => {
