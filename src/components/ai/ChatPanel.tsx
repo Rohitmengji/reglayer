@@ -166,10 +166,13 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
             ) : (
               <div className="py-1">
                 {conversations.map((conv) => (
-                  <button
+                  <div
                     key={conv.id}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => { switchConversation(conv.id); setShowHistory(false); }}
-                    className="w-full px-4 py-2.5 text-left hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors group"
+                    onKeyDown={(e) => { if (e.key === "Enter") { switchConversation(conv.id); setShowHistory(false); } }}
+                    className="w-full px-4 py-2.5 text-left hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors group cursor-pointer"
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-medium text-neutral-700 dark:text-neutral-300 truncate max-w-[200px]">
@@ -186,7 +189,7 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
                     {conv.lastMessage && (
                       <p className="text-[10px] text-neutral-400 truncate mt-0.5">{conv.lastMessage}</p>
                     )}
-                  </button>
+                  </div>
                 ))}
               </div>
             )}
