@@ -159,6 +159,10 @@ export type { MultiModalInput, ProcessedInput, ImageAnalysis, Modality } from ".
 export { generateRecommendations, routeByComplexity, estimateComplexity, calculateReliabilityScores, runOptimizationCycle, getOptimizationOverview, getIntelligenceDashboard } from "./intelligence/engine";
 export type { Recommendation, CostRoute, ModelTier, ReliabilityScore, OptimizationCycle, IntelligenceDashboard } from "./intelligence/engine";
 
+// ── Synthetic Test Data ───────────────────────────────────────────────────────
+export { getAllTestCases, getTestCasesByCategory, getTestCasesByTag, generateDataset, getDatasetStats } from "./testing/synthetic";
+export type { TestCase, TestDataset, TestCategory } from "./testing/synthetic";
+
 // ── RAG ───────────────────────────────────────────────────────────────────────
 export { buildRAGContext, buildRAGMessages } from "./rag/service";
 
