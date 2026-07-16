@@ -80,8 +80,14 @@ export async function POST(request: NextRequest) {
   // never a separately-resolved one (which could differ for a multi-workspace
   // user and escalate a write into a workspace they don't administer).
   const workspaceId = perm.ctx.workspaceId ?? (await getOrCreateWorkspace(user.id, user.email));
-  const body = await request.json();
-  const { provider, webhookUrl, config, name } = body;
+  let body: Record<string, unknown>;
+  try { body = await request.json(); } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+  const provider = typeof body.provider === "string" ? body.provider : "";
+  const webhookUrl = typeof body.webhookUrl === "string" ? body.webhookUrl : undefined;
+  const config = body.config as Record<string, string> | undefined;
+  const name = typeof body.name === "string" ? body.name : undefined;
 
   if (!provider || !VALID_PROVIDERS.includes(provider)) {
     return NextResponse.json({ error: "Invalid provider" }, { status: 400 });
@@ -123,8 +129,8 @@ export async function POST(request: NextRequest) {
   }
 
   // Encrypt sensitive tokens before storage
-  const encryptedToken = encryptToken(body.accessToken);
-  const encryptedRefresh = encryptToken(body.refreshToken);
+  const encryptedToken = encryptToken(typeof body.accessToken === "string" ? body.accessToken : undefined);
+  const encryptedRefresh = encryptToken(typeof body.refreshToken === "string" ? body.refreshToken : undefined);
 
   // Upsert integration (one per provider per workspace)
   const integration = await prisma.integration.upsert({

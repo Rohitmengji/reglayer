@@ -45,12 +45,15 @@ export function useChatSync() {
   const hasFetchedRef = useRef(false);
 
   /** Fetch conversation list from server. Only shows loading on first fetch. */
-  const fetchConversations = useCallback(async () => {
+  const fetchConversations = useCallback(async (searchQuery?: string) => {
     // Only show the loading spinner on the very first fetch.
     // Subsequent refreshes happen silently in the background.
     if (!hasFetchedRef.current) setLoadingList(true);
     try {
-      const res = await fetch("/api/ai/conversations");
+      const url = searchQuery
+        ? `/api/ai/conversations?q=${encodeURIComponent(searchQuery)}`
+        : "/api/ai/conversations";
+      const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
         setConversations(data.conversations ?? []);

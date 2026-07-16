@@ -35,6 +35,7 @@ import { useChatStore } from "@/stores/chatStore";
 import { useI18n } from "@/components/i18n-provider";
 import { OfflineBanner } from "@/components/ui/offline-banner";
 import { SessionTimeoutWarning } from "@/components/ui/session-timeout-warning";
+import { KeyboardShortcutSheet } from "@/components/ui/keyboard-shortcut-sheet";
 
 export function AppShell({ children, bare }: { children: React.ReactNode; bare?: boolean }) {
   const { t } = useI18n();
@@ -240,6 +241,9 @@ export function AppShell({ children, bare }: { children: React.ReactNode; bare?:
 
       {/* AI Chat panel — slides in from right */}
       <ChatPanel open={chatOpen} onClose={() => setChatOpen(false)} />
+
+      {/* Keyboard shortcut sheet — press ? to toggle */}
+      <KeyboardShortcutSheet />
     </div>
   );
 }

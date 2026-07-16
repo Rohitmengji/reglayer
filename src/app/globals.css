@@ -354,6 +354,13 @@ code, kbd, pre, samp, .font-mono {
   100% { background-position: 200% 0; }
 }
 
+@keyframes confetti-fall {
+  0% { transform: translateY(0) rotate(0deg) scale(1); opacity: 1; }
+  70% { opacity: 1; }
+  100% { transform: translateY(100vh) rotate(720deg) scale(0.3); opacity: 0; }
+}
+.animate-confetti { animation: confetti-fall 2s ease-out forwards; }
+
 @keyframes pulse-soft {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.7; }
