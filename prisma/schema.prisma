@@ -1665,3 +1665,110 @@ enum ApprovalStatus {
   EXPIRED     // auto-expired (stale draft)
   PUBLISHED   // approved AND published/sent
 }
+
+// ─────────────────────────────────────────────
+// Knowledge Base (RAG over custom documents)
+// ─────────────────────────────────────────────
+
+model KnowledgeDocument {
+  id          String   @id @default(cuid())
+  title       String
+  source      String   // original filename or URL
+  mimeType    String   // "application/pdf", "text/markdown", etc.
+  sizeBytes   Int      @default(0)
+  status      KnowledgeStatus @default(PROCESSING)
+  chunkCount  Int      @default(0)
+  errorMessage String?
+
+  workspaceId String
+  uploadedBy  String   // userId
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  chunks      KnowledgeChunk[]
+
+  @@index([workspaceId, status])
+  @@index([uploadedBy])
+  @@map("knowledge_documents")
+}
+
+model KnowledgeChunk {
+  id          String   @id @default(cuid())
+  content     String   // the text content of this chunk
+  chunkIndex  Int      // position in the document (0-based)
+  tokenCount  Int      @default(0)
+  metadata    Json?    // page number, section heading, etc.
+
+  // pgvector embedding for semantic search
+  embedding   Unsupported("vector(1536)")?
+
+  documentId  String
+  document    KnowledgeDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+
+  @@index([documentId, chunkIndex])
+  @@map("knowledge_chunks")
+}
+
+enum KnowledgeStatus {
+  PROCESSING  // being chunked + embedded
+  READY       // available for RAG queries
+  FAILED      // processing error
+}
+
+// ─────────────────────────────────────────────
+// AI Experiments (A/B prompt testing)
+// ─────────────────────────────────────────────
+
+model AiExperiment {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  status      ExperimentStatus @default(DRAFT)
+  feature     String   // which AI feature this tests (e.g. "chat", "violation-explainer")
+
+  // Variant A (control)
+  promptA     String   @db.Text
+  modelA      String   // e.g. "gpt-4o-mini"
+  temperatureA Float   @default(0.4)
+
+  // Variant B (challenger)
+  promptB     String   @db.Text
+  modelB      String
+  temperatureB Float   @default(0.4)
+
+  // Traffic split (0.0–1.0 = % sent to variant B)
+  trafficSplit Float   @default(0.5)
+
+  // Results (aggregated)
+  totalTrials  Int     @default(0)
+  trialsA      Int     @default(0)
+  trialsB      Int     @default(0)
+  avgLatencyA  Float   @default(0)
+  avgLatencyB  Float   @default(0)
+  avgCostA     Float   @default(0)
+  avgCostB     Float   @default(0)
+  avgRatingA   Float?  // user thumbs up/down aggregated
+  avgRatingB   Float?
+
+  workspaceId String
+  createdBy   String   // userId
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  startedAt   DateTime?
+  endedAt     DateTime?
+
+  @@index([workspaceId, status])
+  @@index([feature])
+  @@map("ai_experiments")
+}
+
+enum ExperimentStatus {
+  DRAFT       // configured but not running
+  RUNNING     // actively splitting traffic
+  PAUSED      // temporarily stopped
+  COMPLETED   // finished, results final
+}
