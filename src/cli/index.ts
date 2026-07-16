@@ -129,6 +129,7 @@ function handleConfig(args: string[]) {
 
 function loadConfigSafe(): Record<string, string> {
   try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- CLI tool needs synchronous dynamic import
     const { loadConfig } = require("./client.js");
     return loadConfig();
   } catch {

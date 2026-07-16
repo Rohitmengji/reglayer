@@ -20,7 +20,7 @@ export function OfflineBanner() {
   useEffect(() => {
     // Check initial state
     if (typeof navigator !== "undefined" && !navigator.onLine) {
-      setIsOffline(true);
+      setIsOffline(true); // eslint-disable-line react-hooks/set-state-in-effect -- intentional: sync initial state
     }
 
     function handleOffline() {
