@@ -67,6 +67,10 @@ export type { HybridSearchResult, HybridSearchOptions } from "./search/hybrid";
 export { upsertEntity, upsertEdge, indexScan, findEntities, getNeighbors, findPaths, relationshipSearch, buildGraphContext, extractEntityReferences, getGraphStats } from "./graph/service";
 export type { GraphEntity, GraphEdge, GraphPath, GraphSearchResult, EntityType, RelationType } from "./graph/service";
 
+// ── Query Planner ─────────────────────────────────────────────────────────────
+export { classifyIntent, generatePlan, executePlan, topologicalSort, buildSynthesisContext } from "./planner/engine";
+export type { QueryIntent, QueryPlan, PlanStep, StepResult, PlanExecutionResult, StepExecutors, DataSource } from "./planner/engine";
+
 // ── RAG ───────────────────────────────────────────────────────────────────────
 export { buildRAGContext, buildRAGMessages } from "./rag/service";
 
