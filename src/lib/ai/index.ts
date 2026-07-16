@@ -75,6 +75,10 @@ export type { QueryIntent, QueryPlan, PlanStep, StepResult, PlanExecutionResult,
 export { compressContext, scoreRelevance, scoreChunks, deduplicateChunks, estimateTokens, buildDistillationPrompt } from "./compression/engine";
 export type { ContextChunk, CompressionOptions, CompressionResult } from "./compression/engine";
 
+// ── Context Cache ─────────────────────────────────────────────────────────────
+export { cacheLookup, cacheStore, exactLookup, exactStore, semanticLookup, semanticStore, embeddingLookup, embeddingStore, invalidateUserCache, invalidateWorkspaceCache, getPromptCacheHint, getCacheStats, cosineSimilarity, generateCacheKey } from "./cache/context-cache";
+export type { CacheLookupResult, CacheStats, CacheLayer, PromptCacheHint } from "./cache/context-cache";
+
 // ── RAG ───────────────────────────────────────────────────────────────────────
 export { buildRAGContext, buildRAGMessages } from "./rag/service";
 
