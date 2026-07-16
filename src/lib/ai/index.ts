@@ -115,6 +115,10 @@ export type { FeedbackInput, FeedbackAnalysis, ImprovementProposal } from "./lea
 export { generateSDK, parseOpenAPISpec } from "./sdk/generator";
 export type { SDKLanguage, SDKConfig, GeneratedSDK, SDKFile } from "./sdk/generator";
 
+// ── Data Lineage ──────────────────────────────────────────────────────────────
+export { LineageBuilder, formatLineageChain, traceToHeaders } from "./lineage/tracker";
+export type { LineageTrace, LineageStage, LineageSummary } from "./lineage/tracker";
+
 // ── RAG ───────────────────────────────────────────────────────────────────────
 export { buildRAGContext, buildRAGMessages } from "./rag/service";
 
