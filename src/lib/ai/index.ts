@@ -119,6 +119,14 @@ export type { SDKLanguage, SDKConfig, GeneratedSDK, SDKFile } from "./sdk/genera
 export { LineageBuilder, formatLineageChain, traceToHeaders } from "./lineage/tracker";
 export type { LineageTrace, LineageStage, LineageSummary } from "./lineage/tracker";
 
+// ── Audit Trail ───────────────────────────────────────────────────────────────
+export { recordAuditEntry, queryAuditTrail, getAuditStats, purgeExpiredEntries, eraseUserData, exportAuditTrail } from "./audit/trail";
+export type { AuditEntryInput, AuditEntry, AuditQueryOpts } from "./audit/trail";
+
+// ── Compliance Framework ──────────────────────────────────────────────────────
+export { seedControls, runAutomatedChecks, generateComplianceReport, getComplianceOverview, FRAMEWORK_CONTROLS } from "./compliance/framework";
+export type { Framework, ComplianceControl, ComplianceReport, ControlStatus } from "./compliance/framework";
+
 // ── RAG ───────────────────────────────────────────────────────────────────────
 export { buildRAGContext, buildRAGMessages } from "./rag/service";
 
