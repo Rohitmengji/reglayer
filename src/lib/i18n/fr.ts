@@ -197,6 +197,7 @@ export const fr = {
   "nav.automation": "Automatisation",
   "nav.manage": "Gérer",
   "nav.executive": "Direction",
+  "nav.aiCosts": "Coûts IA",
   "nav.agency": "Agence",
   "nav.warranty": "Garantie",
   "nav.competitive": "Concurrence",

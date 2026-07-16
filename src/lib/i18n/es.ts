@@ -197,6 +197,7 @@ export const es = {
   "nav.automation": "Automatización",
   "nav.manage": "Gestionar",
   "nav.executive": "Dirección",
+  "nav.aiCosts": "Costes IA",
   "nav.agency": "Agencia",
   "nav.warranty": "Garantía",
   "nav.competitive": "Competencia",

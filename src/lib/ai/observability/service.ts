@@ -61,17 +61,24 @@ export interface UsageSummary {
 
 /**
  * Get usage summary for a time period.
+ * Use `offset` to query a previous period (e.g., offset=30 with days=30 gets the 30 days before the current 30-day window).
  */
 export async function getUsageSummary(options?: {
   workspaceId?: string;
   userId?: string;
   days?: number;
+  offset?: number;
 }): Promise<UsageSummary> {
-  const since = new Date();
-  since.setDate(since.getDate() - (options?.days ?? 30));
+  const days = options?.days ?? 30;
+  const offset = options?.offset ?? 0;
+
+  const until = new Date();
+  until.setDate(until.getDate() - offset);
+  const since = new Date(until);
+  since.setDate(since.getDate() - days);
 
   const where = {
-    createdAt: { gte: since },
+    createdAt: { gte: since, ...(offset > 0 ? { lt: until } : {}) },
     ...(options?.workspaceId ? { workspaceId: options.workspaceId } : {}),
     ...(options?.userId ? { userId: options.userId } : {}),
   };

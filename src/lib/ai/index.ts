@@ -84,5 +84,9 @@ export { getUsageSummary, getCostByFeature, getDailyUsage } from "./observabilit
 // ── Hardening ─────────────────────────────────────────────────────────────────
 export { isCircuitOpen, recordSuccess, recordFailure, containsPII, sanitizeForLLM, getCachedResponse, setCachedResponse } from "./hardening";
 
+// ── Guardrails ────────────────────────────────────────────────────────────────
+export { runGuardrails, CHAT_GUARDS, STRUCTURED_GUARDS, RAG_GUARDS } from "./guardrails";
+export type { GuardResult, GuardContext, GuardPipelineResult, GuardFn } from "./guardrails";
+
 // ── Feature Flags ─────────────────────────────────────────────────────────────
 export { isAIFeatureEnabled, getAllAIFeatures, getEnabledFeatures } from "./features/flags";
