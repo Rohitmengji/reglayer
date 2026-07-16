@@ -111,6 +111,10 @@ export type { SemanticProfile } from "./profile/service";
 export { recordFeedback, analyzeFeedback, proposeImprovement, listProposals, applyImprovement, rejectImprovement, runLearningCycle, getLearningOverview } from "./learning/service";
 export type { FeedbackInput, FeedbackAnalysis, ImprovementProposal } from "./learning/service";
 
+// ── SDK Generator ─────────────────────────────────────────────────────────────
+export { generateSDK, parseOpenAPISpec } from "./sdk/generator";
+export type { SDKLanguage, SDKConfig, GeneratedSDK, SDKFile } from "./sdk/generator";
+
 // ── RAG ───────────────────────────────────────────────────────────────────────
 export { buildRAGContext, buildRAGMessages } from "./rag/service";
 
