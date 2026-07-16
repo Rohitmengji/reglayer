@@ -5,6 +5,27 @@ import { prisma } from "@/lib/database/prisma";
 import { rateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
 
+/**
+ * Anonymize IP address for GDPR compliance.
+ * IPv4: zeros the last octet (192.168.1.45 → 192.168.1.0)
+ * IPv6: zeros the last 80 bits (truncates to /48)
+ */
+function anonymizeIp(ip: string): string {
+  if (ip === "unknown") return ip;
+  if (ip.includes(":")) {
+    // IPv6: keep first 3 groups (48 bits)
+    const parts = ip.split(":");
+    return parts.slice(0, 3).join(":") + "::0";
+  }
+  // IPv4: zero last octet
+  const parts = ip.split(".");
+  if (parts.length === 4) {
+    parts[3] = "0";
+    return parts.join(".");
+  }
+  return ip;
+}
+
 // FIX C10: validate + cap the `days` query param. parseInt(...) returns NaN for
 // non-numeric input ("?days=abc"), which makes `since` an Invalid Date and the
 // Prisma date filters throw → 500. An uncapped value also allows arbitrarily
@@ -29,7 +50,10 @@ const eventSchema = z.object({
  * POST — Track a conversion event (public, no auth required)
  */
 export async function POST(request: NextRequest) {
-  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const rawIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  // GDPR: Anonymize IP by zeroing the last octet (IPv4) or last 80 bits (IPv6)
+  // This preserves geographic locality for analytics while removing PII.
+  const ip = anonymizeIp(rawIp);
 
   // Rate limit to prevent abuse
   const rl = await rateLimit(`track:${ip}`, { limit: 60, windowSec: 60 }, "tracking");

@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
   const keyHash = createHash("sha256").update(rawKey).digest("hex");
 
   // Store hashed key (never store plaintext)
-  await prisma.apiKey.create({
+  const created = await prisma.apiKey.create({
     data: {
       name,
       prefix,
@@ -102,6 +102,17 @@ export async function POST(request: NextRequest) {
       expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year
     },
   });
+
+  // Audit trail — key creation is security-sensitive
+  await prisma.auditLog.create({
+    data: {
+      action: "apiKey.created",
+      actor: user.id,
+      target: created.id,
+      workspaceId,
+      metadata: { prefix, name },
+    },
+  }).catch(() => {}); // non-blocking
 
   // Return the raw key ONCE — it can never be retrieved again
   return NextResponse.json({ key: rawKey, prefix }, { status: 201 });
@@ -148,5 +159,17 @@ export async function DELETE(request: NextRequest) {
     where: { id: body.id },
     data: { expiresAt: new Date() },
   });
+
+  // Audit trail — key revocation is security-sensitive
+  await prisma.auditLog.create({
+    data: {
+      action: "apiKey.revoked",
+      actor: user.id,
+      target: body.id,
+      workspaceId: perm.ctx.workspaceId,
+      metadata: { prefix: key.prefix, name: key.name },
+    },
+  }).catch(() => {}); // non-blocking
+
   return NextResponse.json({ revoked: true });
 }

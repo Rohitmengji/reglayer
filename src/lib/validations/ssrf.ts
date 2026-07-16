@@ -147,8 +147,8 @@ export function validateScanUrl(urlString: string): string | null {
  * private/internal. Catches public hostnames that point at internal IPs (DNS
  * misconfig / rebinding-at-rest) which the literal checks above can't see.
  *
- * Fail-OPEN on DNS error/timeout (a transient DNS hiccup must not block a
- * legitimate public site — the crawl will simply fail later if the host is bad).
+ * Fail-CLOSED on DNS error/timeout — a transient DNS hiccup blocks the request.
+ * This prevents DNS rebinding attacks where an attacker races DNS resolution.
  * Literal IPs are already handled by validateScanUrl, so we skip them here.
  */
 export async function resolvesToInternalIp(urlString: string): Promise<boolean> {
@@ -156,7 +156,7 @@ export async function resolvesToInternalIp(urlString: string): Promise<boolean> 
   try {
     parsed = new URL(urlString);
   } catch {
-    return false;
+    return true; // Cannot parse → block
   }
   const host = normalizeHost(parsed);
   // Skip literal IPs (handled synchronously) and obviously-empty hosts.
@@ -175,15 +175,16 @@ export async function resolvesToInternalIp(urlString: string): Promise<boolean> 
       if (a.family === 6 && isPrivateIPv6(addr.replace(/^\[|\]$/g, ""))) return true;
     }
   } catch (err) {
-    // DNS failure/timeout → fail open (don't block legit sites on a hiccup).
-    // Log for security monitoring — a pattern of DNS failures on unusual hosts
-    // could indicate a rebinding attack or infrastructure probe.
+    // DNS failure/timeout → fail CLOSED to prevent DNS rebinding attacks.
+    // A legitimate site with transient DNS issues will fail the scan anyway;
+    // blocking here prevents the attacker's race-condition window.
     if (typeof console !== "undefined") {
-      console.warn("[SSRF] DNS resolution failed for host, failing open", {
+      console.warn("[SSRF] DNS resolution failed for host, failing closed (blocking)", {
         host,
         error: err instanceof Error ? err.message : "unknown",
       });
     }
+    return true; // Block — cannot verify the host resolves safely
   }
   return false;
 }

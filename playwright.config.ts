@@ -41,7 +41,12 @@ export default defineConfig({
     },
   ],
   webServer: process.env.CI
-    ? undefined
+    ? {
+        command: "npx next start -p 3000",
+        url: "http://localhost:3000",
+        reuseExistingServer: false,
+        timeout: 30000,
+      }
     : {
         command: "npm run dev",
         url: "http://localhost:3000",
