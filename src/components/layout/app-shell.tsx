@@ -227,8 +227,8 @@ export function AppShell({ children, bare }: { children: React.ReactNode; bare?:
           >
             {mobileOpen ? <X className="h-5 w-5" aria-hidden="true" /> : <Menu className="h-5 w-5" aria-hidden="true" />}
           </button>
-          <Image src="/assests/reglayer-logo-light.svg" alt="RegLayer" width={120} height={28} priority style={{ height: "1.75rem", width: "auto" }} className="dark:hidden" />
-          <Image src="/assests/reglayer-logo-dark.svg" alt="RegLayer" width={120} height={28} priority style={{ height: "1.75rem", width: "auto" }} className="hidden dark:block" />
+          <Image src="/assests/reglayer-logo-light.svg" alt="RegLayer" width={120} height={28} priority style={{ height: "auto", width: "auto" }} className="h-7 w-auto dark:hidden" />
+          <Image src="/assests/reglayer-logo-dark.svg" alt="RegLayer" width={120} height={28} priority style={{ height: "auto", width: "auto" }} className="h-7 w-auto hidden dark:block" />
         </div>
 
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 flex-1 w-full flex flex-col">{children}</div>

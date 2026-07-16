@@ -76,7 +76,7 @@ const navSections: NavSection[] = [
         activePaths: ["/test", "/scans", "/crawl", "/manual-testing"],
       },
       { name: "Violations", key: "nav.violations", href: "/violations", icon: AlertTriangle },
-      { name: "Red Team", key: "nav.redteam", href: "/red-team", icon: Shield },
+      { name: "Red Team", key: "nav.redteam", href: "/chaos?tab=red-team", icon: Shield },
       { name: "Chaos", key: "nav.chaos", href: "/chaos", icon: Flame },
       { name: "Analysis", key: "nav.analysis", href: "/analysis?tab=screen-reader", icon: BarChart3 },
       { name: "Automation", key: "nav.automation", href: "/automation?tab=remediation", icon: Zap },
