@@ -41,33 +41,22 @@ export function useChat() {
     appendToMessage,
     setStreaming,
     clearMessages,
+    truncateFrom,
+    editMessage,
+    setFeedback,
   } = useChatStore();
 
   // AbortController ref for cancelling in-flight requests
   const abortRef = useRef<AbortController | null>(null);
 
-  const sendMessage = useCallback(
-    async (content: string) => {
-      if (!content.trim() || isStreaming) return;
-
-      // 1. Add user message to store
-      addMessage("user", content.trim());
-
-      // 2. Create placeholder for assistant response
+  /** Core streaming logic — sends messages to the API and streams the response. */
+  const streamResponse = useCallback(
+    async (apiMessages: Array<{ role: string; content: string }>) => {
       const assistantId = addMessage("assistant", "");
-
-      // 3. Start streaming
       setStreaming(true);
       abortRef.current = new AbortController();
 
       try {
-        // 4. Build message history for the API (exclude the empty placeholder)
-        const apiMessages = useChatStore
-          .getState()
-          .messages.filter((m) => m.id !== assistantId)
-          .map((m) => ({ role: m.role, content: m.content }));
-
-        // 5. POST to the streaming endpoint
         const response = await fetch("/api/ai/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -79,12 +68,11 @@ export function useChat() {
           const errorText = await response.text();
           appendToMessage(
             assistantId,
-            `Sorry, I couldn't respond. ${response.status === 401 ? "Please sign in." : errorText}`,
+            `Sorry, I couldn't respond. ${response.status === 401 ? "Please sign in." : response.status === 429 ? "Rate limit reached — try again shortly." : errorText}`,
           );
           return;
         }
 
-        // 6. Read the stream chunk-by-chunk
         const reader = response.body?.getReader();
         if (!reader) {
           appendToMessage(assistantId, "Sorry, streaming is not supported.");
@@ -92,31 +80,73 @@ export function useChat() {
         }
 
         const decoder = new TextDecoder();
-
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-
-          // Decode the chunk and append to the assistant message
           const chunk = decoder.decode(value, { stream: true });
           appendToMessage(assistantId, chunk);
         }
       } catch (error) {
         if (error instanceof Error && error.name === "AbortError") {
-          // User cancelled — this is fine
           appendToMessage(assistantId, "\n\n*(Response cancelled)*");
         } else {
-          appendToMessage(
-            assistantId,
-            "\n\nSorry, an error occurred. Please try again.",
-          );
+          appendToMessage(assistantId, "\n\nSorry, an error occurred. Please try again.");
         }
       } finally {
         setStreaming(false);
         abortRef.current = null;
       }
     },
-    [isStreaming, addMessage, appendToMessage, setStreaming],
+    [addMessage, appendToMessage, setStreaming],
+  );
+
+  /** Send a new user message. */
+  const sendMessage = useCallback(
+    async (content: string) => {
+      if (!content.trim() || isStreaming) return;
+      addMessage("user", content.trim());
+
+      // Build API messages (full history minus the not-yet-existing assistant placeholder)
+      const apiMessages = useChatStore
+        .getState()
+        .messages.map((m) => ({ role: m.role, content: m.content }));
+
+      await streamResponse(apiMessages);
+    },
+    [isStreaming, addMessage, streamResponse],
+  );
+
+  /** Regenerate the last assistant response. */
+  const regenerate = useCallback(async () => {
+    if (isStreaming) return;
+    const msgs = useChatStore.getState().messages;
+    // Find the last assistant message and remove it
+    const lastAssistantIdx = msgs.length - 1;
+    if (lastAssistantIdx < 0 || msgs[lastAssistantIdx].role !== "assistant") return;
+    truncateFrom(msgs[lastAssistantIdx].id);
+
+    // Re-send everything up to (but not including) the removed assistant message
+    const apiMessages = useChatStore
+      .getState()
+      .messages.map((m) => ({ role: m.role, content: m.content }));
+
+    await streamResponse(apiMessages);
+  }, [isStreaming, truncateFrom, streamResponse]);
+
+  /** Edit a user message and re-run from that point. */
+  const editAndResend = useCallback(
+    async (messageId: string, newContent: string) => {
+      if (isStreaming) return;
+      editMessage(messageId, newContent);
+
+      // Re-send the conversation up to and including the edited message
+      const apiMessages = useChatStore
+        .getState()
+        .messages.map((m) => ({ role: m.role, content: m.content }));
+
+      await streamResponse(apiMessages);
+    },
+    [isStreaming, editMessage, streamResponse],
   );
 
   const stopStreaming = useCallback(() => {
@@ -127,7 +157,10 @@ export function useChat() {
     messages,
     isStreaming,
     sendMessage,
+    regenerate,
+    editAndResend,
     stopStreaming,
     clearMessages,
+    setFeedback,
   };
 }

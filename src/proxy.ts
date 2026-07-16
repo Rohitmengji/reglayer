@@ -10,6 +10,16 @@ import { getToken } from "next-auth/jwt";
 import { rateLimitSync, rateLimitHeaders } from "@/lib/rate-limit";
 
 /**
+ * Generate a short request correlation ID for tracing.
+ * Format: timestamp(base36)-random(4 chars) — e.g., "lxk4m2-a7f3"
+ */
+function generateRequestId(): string {
+  const ts = Date.now().toString(36);
+  const rand = Math.random().toString(36).substring(2, 6);
+  return `${ts}-${rand}`;
+}
+
+/**
  * Security headers applied to ALL responses.
  * Reference: OWASP Secure Headers Project
  */
@@ -45,9 +55,14 @@ const MAIN_DOMAINS = new Set([
 
 const REGLAYER_SUFFIX = ".reglayer.app";
 
-function applySecurityHeaders(response: NextResponse): NextResponse {
+function applySecurityHeaders(response: NextResponse, requestId?: string): NextResponse {
   for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
     response.headers.set(key, value);
+  }
+  // Correlation ID for request tracing — allows support/debugging to trace
+  // a user-reported error back to specific logs and Sentry events.
+  if (requestId) {
+    response.headers.set("X-Request-Id", requestId);
   }
   return response;
 }
@@ -80,6 +95,7 @@ function isAgencyDomain(hostname: string): boolean {
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const hostname = request.headers.get("host") || "localhost";
+  const requestId = request.headers.get("x-request-id") || generateRequestId();
 
   // Agency tenant detection — pass hostname to server components via header
   const agencySlug = getAgencySlug(hostname);

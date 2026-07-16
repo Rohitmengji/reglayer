@@ -130,6 +130,11 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: "Key not found" }, { status: 404 });
   }
 
-  await prisma.apiKey.delete({ where: { id: body.id } });
-  return NextResponse.json({ deleted: true });
+  // Revoke by setting expiresAt to now — the key becomes immediately invalid
+  // (authenticateApiKey checks expiresAt > now) while preserving the record for audit.
+  await prisma.apiKey.update({
+    where: { id: body.id },
+    data: { expiresAt: new Date() },
+  });
+  return NextResponse.json({ revoked: true });
 }

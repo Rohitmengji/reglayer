@@ -31,6 +31,10 @@ export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   timestamp: number;
+  /** User feedback: 1 = helpful, -1 = not helpful, 0 = no feedback */
+  feedback?: -1 | 0 | 1;
+  /** True if user edited this message (fork point) */
+  edited?: boolean;
 }
 
 interface ChatState {
@@ -45,6 +49,12 @@ interface ChatState {
   setStreaming: (streaming: boolean) => void;
   setPanelOpen: (open: boolean) => void;
   clearMessages: () => void;
+  /** Set feedback on a message (+1 helpful, -1 not helpful) */
+  setFeedback: (id: string, feedback: -1 | 0 | 1) => void;
+  /** Delete messages from the given ID onwards (for edit/regenerate) */
+  truncateFrom: (id: string) => void;
+  /** Edit a user message — truncates everything after it */
+  editMessage: (id: string, newContent: string) => void;
 }
 
 // ── Store ─────────────────────────────────────────────────────────────────────
@@ -93,6 +103,30 @@ export const useChatStore = create<ChatState>()(
       setPanelOpen: (open) => set({ panelOpen: open }),
 
       clearMessages: () => set({ messages: [], isStreaming: false }),
+
+      setFeedback: (id, feedback) =>
+        set((state) => ({
+          messages: state.messages.map((msg) =>
+            msg.id === id ? { ...msg, feedback } : msg,
+          ),
+        })),
+
+      truncateFrom: (id) =>
+        set((state) => {
+          const idx = state.messages.findIndex((m) => m.id === id);
+          if (idx === -1) return state;
+          return { messages: state.messages.slice(0, idx) };
+        }),
+
+      editMessage: (id, newContent) =>
+        set((state) => {
+          const idx = state.messages.findIndex((m) => m.id === id);
+          if (idx === -1) return state;
+          // Keep messages up to and including the edited one, truncate the rest
+          const updated = state.messages.slice(0, idx + 1);
+          updated[idx] = { ...updated[idx], content: newContent, edited: true };
+          return { messages: updated };
+        }),
     }),
     {
       name: "reglayer-chat",

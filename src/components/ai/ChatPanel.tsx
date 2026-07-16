@@ -11,7 +11,7 @@ import { useRef, useEffect, useState, useCallback } from "react";
 import { useChat } from "@/hooks/use-chat";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
-import { MessageSquare, Trash2, X, ArrowDown } from "lucide-react";
+import { MessageSquare, Trash2, X, ArrowDown, Download } from "lucide-react";
 
 interface ChatPanelProps {
   open: boolean;
@@ -19,7 +19,7 @@ interface ChatPanelProps {
 }
 
 export function ChatPanel({ open, onClose }: ChatPanelProps) {
-  const { messages, isStreaming, sendMessage, stopStreaming, clearMessages } =
+  const { messages, isStreaming, sendMessage, regenerate, editAndResend, stopStreaming, clearMessages, setFeedback } =
     useChat();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showScrollDown, setShowScrollDown] = useState(false);
@@ -45,6 +45,15 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
   const scrollToBottom = useCallback(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, []);
+
+  /** Export conversation as markdown and copy to clipboard. */
+  const exportConversation = useCallback(() => {
+    if (!messages.length) return;
+    const md = messages
+      .map((m) => `**${m.role === "user" ? "You" : "RegLayer AI"}:**\n${m.content}`)
+      .join("\n\n---\n\n");
+    navigator.clipboard.writeText(md);
+  }, [messages]);
 
   if (!open) return null;
 
@@ -83,6 +92,16 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
             </div>
           </div>
           <div className="flex items-center gap-1">
+            {messages.length > 0 && (
+              <button
+                onClick={exportConversation}
+                className="rounded-lg p-2 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+                title="Copy conversation as Markdown"
+                aria-label="Export conversation"
+              >
+                <Download className="h-4 w-4" />
+              </button>
+            )}
             {messages.length > 0 && (
               <button
                 onClick={clearMessages}
@@ -139,8 +158,16 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
             </div>
           ) : (
             <div className="space-y-4 px-4 py-4">
-              {messages.map((message) => (
-                <ChatMessage key={message.id} message={message} />
+              {messages.map((message, idx) => (
+                <ChatMessage
+                  key={message.id}
+                  message={message}
+                  isLast={idx === messages.length - 1}
+                  isStreaming={isStreaming && idx === messages.length - 1}
+                  onRegenerate={regenerate}
+                  onEdit={editAndResend}
+                  onFeedback={setFeedback}
+                />
               ))}
             </div>
           )}

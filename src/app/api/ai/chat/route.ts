@@ -14,6 +14,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { z } from "zod";
 import { stream, getDefaultModelId, isAIAvailable } from "@/lib/ai/gateway";
+import { getModelConfig } from "@/lib/ai/gateway/providers/registry";
 import { getPrompt } from "@/lib/ai/prompts/registry";
 import { createChatTools } from "@/lib/ai/tools/definitions";
 import { containsPII, sanitizeForLLM } from "@/lib/ai/hardening";
@@ -206,9 +207,11 @@ export async function POST(request: NextRequest) {
     return new Response("AI provider unavailable", { status: 503 });
   }
 
+  const resolvedProvider = getModelConfig(modelId).provider;
+
   lineage.recordGeneration({
     model: modelId,
-    provider: "openai", // TODO: resolve from router
+    provider: resolvedProvider,
     inputTokens: Math.round(estimatedTokens),
     outputTokens: 0, // unknown until stream completes
     costUsd: 0,
@@ -230,7 +233,7 @@ export async function POST(request: NextRequest) {
     feature: isRAGAugmented ? "chat-rag" : "chat",
     promptId: isRAGAugmented ? "chat-rag" : "chat-system",
     model: modelId,
-    provider: "openai",
+    provider: resolvedProvider,
     input: latestUserMessage,
     inputTokens: Math.round(estimatedTokens),
     traceId,
