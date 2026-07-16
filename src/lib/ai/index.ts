@@ -143,6 +143,10 @@ export type { DebateConfig, DebateResult, DebateTurn } from "./reasoning/debate"
 export { monteCarloReason, calculateConfidence } from "./reasoning/montecarlo";
 export type { MonteCarloConfig, MonteCarloResult, ScoredCandidate } from "./reasoning/montecarlo";
 
+// ── Tree of Thoughts ──────────────────────────────────────────────────────────
+export { treeOfThoughts, getDefaultApproaches } from "./reasoning/tree-of-thoughts";
+export type { ToTConfig, ToTResult, ThoughtBranch } from "./reasoning/tree-of-thoughts";
+
 // ── RAG ───────────────────────────────────────────────────────────────────────
 export { buildRAGContext, buildRAGMessages } from "./rag/service";
 
