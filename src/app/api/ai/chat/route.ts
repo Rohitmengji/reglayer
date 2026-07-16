@@ -200,6 +200,17 @@ export async function POST(request: NextRequest) {
   if (profileContext) systemPrompt += `\n\n<user_profile>\n${profileContext}\n</user_profile>`;
   if (memoryContext) systemPrompt += `\n\n<user_memory>\n${memoryContext}\n</user_memory>`;
 
+  // ── 10b. Decision Engine — inject workspace decisions as constraints ────
+  // This is RegLayer's moat: the AI enforces workspace-level decisions on
+  // every response. If the workspace decided "WCAG 2.2 AA" and "TypeScript
+  // required," the AI must follow those in all recommendations.
+  if (workspaceId) {
+    const { loadDecisions, formatDecisionsForPrompt } = await import("@/lib/ai/decisions/engine");
+    const decisions = await loadDecisions(workspaceId);
+    const decisionBlock = formatDecisionsForPrompt(decisions);
+    if (decisionBlock) systemPrompt += decisionBlock;
+  }
+
   // ── 11. Build final message array ───────────────────────────────────────
   const messages: { role: "system" | "user" | "assistant"; content: string }[] = [
     { role: "system", content: systemPrompt },
