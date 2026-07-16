@@ -28,11 +28,20 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // Authorization — viewing keys requires apiKeys.manage in the current workspace.
+  const perm = await requireWorkspacePermission("apiKeys.manage");
+  if (!perm.ok) return perm.response;
+
   const user = await prisma.user.findUnique({ where: { email: session.user.email } });
   if (!user) return NextResponse.json({ keys: [] });
 
+  // SECURITY: scope to the CURRENT workspace only — never leak keys from other
+  // workspaces the user belongs to (cross-workspace IDOR).
   const keys = await prisma.apiKey.findMany({
-    where: { userId: user.id },
+    where: {
+      userId: user.id,
+      ...(perm.ctx.workspaceId ? { workspaceId: perm.ctx.workspaceId } : {}),
+    },
     select: {
       id: true,
       name: true,
@@ -126,7 +135,10 @@ export async function DELETE(request: NextRequest) {
   }
 
   const key = await prisma.apiKey.findUnique({ where: { id: body.id } });
-  if (!key || key.userId !== user.id) {
+  // SECURITY: verify BOTH ownership AND workspace scope — prevents cross-workspace
+  // key revocation (IDOR). A user with permission in Workspace A must not be able
+  // to revoke a key scoped to Workspace B.
+  if (!key || key.userId !== user.id || key.workspaceId !== perm.ctx.workspaceId) {
     return NextResponse.json({ error: "Key not found" }, { status: 404 });
   }
 
