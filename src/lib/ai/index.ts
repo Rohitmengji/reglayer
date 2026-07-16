@@ -99,6 +99,10 @@ export type { AgentScheduleEntry, ScheduleRunEntry } from "./scheduler/service";
 export { installPresets, getAvailablePresets, AUTONOMOUS_PRESETS } from "./scheduler/presets";
 export type { AutonomousPreset } from "./scheduler/presets";
 
+// ── Workspace Memory (AI Operating System) ────────────────────────────────────
+export { resolveWorkspaceContext, INVALIDATION_EVENTS } from "./workspace/context";
+export type { WorkspaceContext, WorkspaceResources } from "./workspace/context";
+
 // ── RAG ───────────────────────────────────────────────────────────────────────
 export { buildRAGContext, buildRAGMessages } from "./rag/service";
 
