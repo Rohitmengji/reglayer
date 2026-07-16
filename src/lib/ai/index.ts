@@ -151,6 +151,10 @@ export type { ToTConfig, ToTResult, ThoughtBranch } from "./reasoning/tree-of-th
 export { deepResearch, formatReport } from "./reasoning/deep-research";
 export type { DeepResearchConfig, ResearchReport, ResearchFinding, ReportSection, Citation } from "./reasoning/deep-research";
 
+// ── Multi-Modal ───────────────────────────────────────────────────────────────
+export { processInput, processBatch, detectModality, buildScreenAuditPrompt, getSupportedModalities } from "./multimodal/processor";
+export type { MultiModalInput, ProcessedInput, ImageAnalysis, Modality } from "./multimodal/processor";
+
 // ── RAG ───────────────────────────────────────────────────────────────────────
 export { buildRAGContext, buildRAGMessages } from "./rag/service";
 
