@@ -79,6 +79,10 @@ export type { ContextChunk, CompressionOptions, CompressionResult } from "./comp
 export { cacheLookup, cacheStore, exactLookup, exactStore, semanticLookup, semanticStore, embeddingLookup, embeddingStore, invalidateUserCache, invalidateWorkspaceCache, getPromptCacheHint, getCacheStats, cosineSimilarity, generateCacheKey } from "./cache/context-cache";
 export type { CacheLookupResult, CacheStats, CacheLayer, PromptCacheHint } from "./cache/context-cache";
 
+// ── Retrieval Pipeline ────────────────────────────────────────────────────────
+export { optimizedRetrieve, autoPreset, FAST_PRESET, BALANCED_PRESET, THOROUGH_PRESET } from "./retrieval/pipeline";
+export type { RetrievalConfig, RetrievalResult, PipelineStage } from "./retrieval/pipeline";
+
 // ── RAG ───────────────────────────────────────────────────────────────────────
 export { buildRAGContext, buildRAGMessages } from "./rag/service";
 
