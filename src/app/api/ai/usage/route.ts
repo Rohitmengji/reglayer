@@ -3,7 +3,8 @@
  *
  * GET /api/ai/usage
  *
- * Returns AI usage metrics: total cost, tokens, requests, breakdown by feature.
+ * Returns AI usage metrics: total cost, tokens, requests, breakdown by feature,
+ * breakdown by model, and previous-period comparison for delta indicators.
  * Powers the cost dashboard.
  */
 
@@ -35,11 +36,43 @@ export async function GET(request: NextRequest) {
 
   const workspaceId = membership?.workspaceId ?? undefined;
 
-  const [summary, byFeature, daily] = await Promise.all([
+  // Current period + previous period (for delta comparison)
+  const [summary, prevSummary, byFeature, byModel, daily] = await Promise.all([
     getUsageSummary({ workspaceId, days }),
+    getUsageSummary({ workspaceId, days, offset: days }), // previous period
     getCostByFeature({ workspaceId, days }),
+    getCostByModel({ workspaceId, days }),
     getDailyUsage({ workspaceId, days }),
   ]);
 
-  return NextResponse.json({ summary, byFeature, daily });
+  return NextResponse.json({ summary, prevSummary, byFeature, byModel, daily });
+}
+
+// ── Model-level cost breakdown ────────────────────────────────────────────────
+
+async function getCostByModel(options: { workspaceId?: string; days: number }) {
+  const since = new Date();
+  since.setDate(since.getDate() - options.days);
+
+  const results = await prisma.aiEvent.groupBy({
+    by: ["model", "provider"],
+    where: {
+      createdAt: { gte: since },
+      ...(options.workspaceId ? { workspaceId: options.workspaceId } : {}),
+    },
+    _sum: { costUsd: true, inputTokens: true, outputTokens: true },
+    _count: true,
+    _avg: { latencyMs: true },
+    orderBy: { _sum: { costUsd: "desc" } },
+  });
+
+  return results.map((r) => ({
+    model: r.model,
+    provider: r.provider,
+    cost: r._sum.costUsd ?? 0,
+    inputTokens: r._sum.inputTokens ?? 0,
+    outputTokens: r._sum.outputTokens ?? 0,
+    requests: r._count,
+    avgLatencyMs: Math.round(r._avg.latencyMs ?? 0),
+  }));
 }

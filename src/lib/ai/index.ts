@@ -84,5 +84,17 @@ export { getUsageSummary, getCostByFeature, getDailyUsage } from "./observabilit
 // ── Hardening ─────────────────────────────────────────────────────────────────
 export { isCircuitOpen, recordSuccess, recordFailure, containsPII, sanitizeForLLM, getCachedResponse, setCachedResponse } from "./hardening";
 
+// ── Guardrails ────────────────────────────────────────────────────────────────
+export { runGuardrails, CHAT_GUARDS, STRUCTURED_GUARDS, RAG_GUARDS } from "./guardrails";
+export type { GuardResult, GuardContext, GuardPipelineResult, GuardFn } from "./guardrails";
+
+// ── Memory ────────────────────────────────────────────────────────────────────
+export { getMemories, setMemory, deleteMemory, clearAllMemories, listUserMemories, extractMemories, formatMemoriesForPrompt } from "./memory/service";
+export type { MemoryEntry, MemoryContext, MemoryScope } from "./memory/service";
+
+// ── Human Approval Workflows ──────────────────────────────────────────────────
+export { createApprovalRequest, listPendingApprovals, getApprovalRequest, approveRequest, rejectRequest, markPublished, countPending } from "./approval/service";
+export type { ApprovalRequestEntry, ApprovalType, ApprovalStatus } from "./approval/service";
+
 // ── Feature Flags ─────────────────────────────────────────────────────────────
 export { isAIFeatureEnabled, getAllAIFeatures, getEnabledFeatures } from "./features/flags";
