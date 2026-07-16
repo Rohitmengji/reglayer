@@ -35,6 +35,8 @@ import { useFeatures } from "@/hooks/use-features";
 import { toast } from "sonner";
 import { ScanAuthSection } from "@/components/scanner/scan-auth-section";
 import { SCAN_REGIONS } from "@/lib/scanner/regions";
+import { ConfettiBurst } from "@/components/ui/celebrations";
+import { broadcastEvent } from "@/hooks/use-tab-sync";
 import type { AuthConfig } from "@/lib/validations/auth";
 
 const SCAN_STAGES = [
@@ -64,6 +66,7 @@ export function ScanForm({ onScanComplete }: ScanFormProps) {
   const [isSlow, setIsSlow] = useState(false);
   const [currentStage, setCurrentStage] = useState(0);
   const [errorInfo, setErrorInfo] = useState<{ message: string; retryable: boolean } | null>(null);
+  const [showConfetti, setShowConfetti] = useState(false);
   const [authConfig, setAuthConfig] = useState<AuthConfig | undefined>(undefined);
   const [deep, setDeep] = useState(false);
   const [region, setRegion] = useState("");
@@ -187,11 +190,24 @@ export function ScanForm({ onScanComplete }: ScanFormProps) {
       }
 
       // Success
+      const score = data.scan?.summary?.score;
       toast.success(
-        data.scan?.summary?.score != null
-          ? `Scan complete — compliance score: ${data.scan.summary.score}/100`
+        score != null
+          ? `Scan complete — compliance score: ${score}/100`
           : "Scan completed successfully"
       );
+
+      // Celebrate high scores with confetti burst
+      if (score != null && score >= 90) {
+        setShowConfetti(true);
+        setTimeout(() => setShowConfetti(false), 3000);
+      }
+
+      // Broadcast to other tabs so dashboards auto-refresh
+      if (data.scan?.id && score != null) {
+        broadcastEvent({ type: "scan_completed", scanId: data.scan.id, url, score });
+      }
+
       onScanComplete?.(data);
       setUrl("");
       setErrorInfo(null);
@@ -219,6 +235,8 @@ export function ScanForm({ onScanComplete }: ScanFormProps) {
   }
 
   return (
+    <>
+    <ConfettiBurst active={showConfetti} />
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
@@ -355,5 +373,6 @@ export function ScanForm({ onScanComplete }: ScanFormProps) {
         )}
       </CardContent>
     </Card>
+    </>
   );
 }

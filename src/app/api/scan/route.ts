@@ -33,6 +33,7 @@ import { AuthenticationError } from "@/lib/scanner/auth";
 import { classifyError } from "@/lib/errors/scan-errors";
 import { cacheSetNX, cacheDel } from "@/lib/cache/redis";
 import { requireWorkspacePermission } from "@/lib/auth/api-guard";
+import { trackScanDuration, incrementCounter } from "@/lib/telemetry/metrics";
 
 // Allow up to 90 seconds for scan execution (browser launch + navigation + axe analysis)
 export const maxDuration = 90;
@@ -130,7 +131,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Delegate to service layer
+    const scanStart = Date.now();
     const result = await performScan({ url, options, userEmail: session?.user?.email || undefined });
+
+    // Track scan metrics
+    trackScanDuration(Date.now() - scanStart, options?.region || "default");
+    incrementCounter("scan.completed", { region: options?.region || "default" });
 
     // Clear dedup lock after successful scan
     await cacheDel(dedupKey);
