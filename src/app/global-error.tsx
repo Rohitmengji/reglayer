@@ -28,7 +28,7 @@ export default function GlobalError({
   return (
     <html lang="en">
       <body className="flex min-h-screen items-center justify-center bg-neutral-50 dark:bg-neutral-950 p-6">
-        <div className="max-w-md text-center space-y-4">
+        <div className="max-w-md text-center space-y-4" role="alert" aria-live="assertive">
           <div className="text-5xl">⚠️</div>
           <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">
             Something went wrong

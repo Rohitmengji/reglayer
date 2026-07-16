@@ -14,7 +14,7 @@
 
 import "server-only";
 
-import { createHash } from "crypto";
+import { createHash, timingSafeEqual } from "crypto";
 import { prisma } from "@/lib/database/prisma";
 
 export interface AuthenticatedApiKey {
@@ -44,11 +44,21 @@ export async function authenticateApiKey(
   const prefix = apiKey.substring(0, 8);
   const keyHash = createHash("sha256").update(apiKey).digest("hex");
 
+  // Look up by prefix only, then constant-time compare the full hash to prevent
+  // timing attacks that could leak whether a prefix is valid.
   const keyRecord = await prisma.apiKey.findFirst({
-    where: { prefix, keyHash, expiresAt: { gt: new Date() } },
+    where: { prefix, expiresAt: { gt: new Date() } },
   });
 
   if (!keyRecord) return null;
+
+  // Constant-time comparison prevents attackers from measuring response time
+  // to determine hash correctness character-by-character.
+  const storedHash = Buffer.from(keyRecord.keyHash, "hex");
+  const providedHash = Buffer.from(keyHash, "hex");
+  if (storedHash.length !== providedHash.length || !timingSafeEqual(storedHash, providedHash)) {
+    return null;
+  }
 
   return {
     id: keyRecord.id,

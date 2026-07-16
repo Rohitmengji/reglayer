@@ -12,6 +12,7 @@
 
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/database/prisma";
+import { getRedis } from "@/lib/cache/redis";
 
 export async function GET() {
   let dbStatus = "healthy";
@@ -21,7 +22,19 @@ export async function GET() {
     dbStatus = "unhealthy";
   }
 
-  const status = dbStatus === "healthy" ? "healthy" : "degraded";
+  let redisStatus: "healthy" | "unavailable" | "not_configured" = "not_configured";
+  const redis = getRedis();
+  if (redis) {
+    try {
+      await redis.ping();
+      redisStatus = "healthy";
+    } catch {
+      redisStatus = "unavailable";
+    }
+  }
+
+  const isHealthy = dbStatus === "healthy" && redisStatus !== "unavailable";
+  const status = isHealthy ? "healthy" : "degraded";
 
   return NextResponse.json(
     {
@@ -30,8 +43,11 @@ export async function GET() {
       version: "0.1.0",
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
-      dependencies: { database: dbStatus },
+      dependencies: {
+        database: dbStatus,
+        redis: redisStatus,
+      },
     },
-    { status: status === "healthy" ? 200 : 503 }
+    { status: isHealthy ? 200 : 503 }
   );
 }

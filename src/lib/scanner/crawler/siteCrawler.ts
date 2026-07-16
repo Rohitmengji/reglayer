@@ -34,6 +34,7 @@ import { persistScan } from "@/services/scanService";
 import { logger } from "@/lib/telemetry/logger";
 import { jobManager, type JobEvent } from "./job-manager";
 import { computeLitigationSurface, type LitigationSurface } from "@/lib/risk/litigationSurface";
+import { validateScanUrl, resolvesToInternalIp } from "@/lib/validations/ssrf";
 import type { Browser, BrowserContext, Page } from "playwright-core";
 import type { AuthConfig } from "@/lib/validations/auth";
 import type { ScanOptions } from "@/lib/types";
@@ -298,10 +299,12 @@ async function discoverLinks(page: Page, origin: string): Promise<string[]> {
 }
 
 async function waitForPageReady(page: Page, timeout = 10000): Promise<void> {
+  // On serverless, time is precious — don't wait as long for network idle.
+  const effectiveTimeout = isServerless() ? Math.min(timeout, 5000) : timeout;
   try {
-    await page.waitForLoadState("networkidle", { timeout });
+    await page.waitForLoadState("networkidle", { timeout: effectiveTimeout });
   } catch { /* timeout OK */ }
-  await page.waitForTimeout(1000);
+  await page.waitForTimeout(isServerless() ? 500 : 1000);
 }
 
 function isLoginRedirect(currentUrl: string, auth?: AuthConfig): boolean {
@@ -396,6 +399,8 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
   const deadline = config.deadline ?? startTime + 10 * 60 * 1000;
   const isExpired = () => Date.now() > deadline;
   let timedOut = false;
+  // Track whether the browser crashed during discovery (affects outcome label).
+  let browserCrashedDuringDiscovery = false;
 
   // Mutable: a root-level redirect (apex→www, http→https) moves the canonical
   // origin. We adopt the landed origin after the first navigation so discovery
@@ -561,11 +566,19 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
   let sitemapAvailable = false;
 
   // Inject known routes (admin sidebar pages, etc.)
+  // SSRF: each injected URL is navigated by the headless browser, so it must
+  // pass the same origin + SSRF checks as the seed URL.
   let knownRouteCount = 0;
   if (config.knownRoutes?.length) {
     for (const route of config.knownRoutes) {
       const fullUrl = route.startsWith("http") ? route : `${origin}${route}`;
       const normalized = normalizeUrl(fullUrl);
+      // SSRF guard: reject routes pointing at internal/metadata IPs
+      const ssrfErr = validateScanUrl(normalized);
+      if (ssrfErr) {
+        crawlLogger.warn("Known route rejected (SSRF)", { route, error: ssrfErr });
+        continue;
+      }
       if (!shouldSkipUrl(normalized) && isSameOrigin(normalized, origin)
         && matchesPatterns(normalized, config.includePatterns, config.excludePatterns)) {
         queue.push({ url: normalized, depth: 1 });
@@ -582,10 +595,18 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
       const sitemapUrls = await discoverFromSitemap(origin);
       sitemapUrlCount = sitemapUrls.length;
       sitemapAvailable = sitemapUrls.length > 0;
+      // Throttle discovery events: emitting 5000 SSE events for a large sitemap
+      // clogs the channel. Emit every Nth URL to keep the site-map visualization
+      // accurate without flooding.
+      const emitEveryN = sitemapUrls.length > 100 ? Math.ceil(sitemapUrls.length / 50) : 1;
+      let sitemapIdx = 0;
       for (const sUrl of sitemapUrls) {
         if (!shouldSkipUrl(sUrl) && matchesPatterns(sUrl, config.includePatterns, config.excludePatterns)) {
           queue.push({ url: sUrl, depth: 1 });
-          emit(config.jobId, { type: "discovery", url: sUrl, source: "sitemap", total: queue.length, from: rootUrl, depth: 1, timestamp: Date.now() });
+          sitemapIdx++;
+          if (sitemapIdx % emitEveryN === 0 || sitemapIdx === sitemapUrls.length) {
+            emit(config.jobId, { type: "discovery", url: sUrl, source: "sitemap", total: queue.length, from: rootUrl, depth: 1, timestamp: Date.now() });
+          }
         }
       }
       if (sitemapAvailable) crawlLogger.info("Sitemap discovered", { urls: sitemapUrlCount });
@@ -609,7 +630,10 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
     visited.add(normalizedUrl);
 
     try {
-      await page.goto(normalizedUrl, { waitUntil: "domcontentloaded", timeout: 20000 });
+      // Serverless budget is tight — 15s per navigation is generous enough for
+      // DOM-ready while leaving time for the scan phase.
+      const navTimeout = isServerless() ? 15000 : 20000;
+      await page.goto(normalizedUrl, { waitUntil: "domcontentloaded", timeout: navTimeout });
       await waitForPageReady(page, 6000);
 
       // Adopt a root-level redirect to the canonical origin (apex→www,
@@ -728,6 +752,7 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
         /Target closed|Target\.createTarget|Session closed|Connection closed|browser has disconnected|Protocol error/i.test(msg) ||
         !(browser as { isConnected?: () => boolean }).isConnected?.();
       if (browserDead) {
+        browserCrashedDuringDiscovery = true;
         crawlLogger.warn("Discovery browser died — proceeding to audit with pages found so far", {
           discovered: visited.size,
         });
@@ -821,7 +846,11 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
     });
 
     let lastError = "";
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    // Adaptive retry budget: when the deadline is close, reduce retries so
+    // we don't waste the remaining time on a single failing page.
+    const timeLeft = deadline - Date.now();
+    const effectiveRetries = timeLeft < 20_000 ? 0 : timeLeft < 40_000 ? Math.min(maxRetries, 1) : maxRetries;
+    for (let attempt = 0; attempt <= effectiveRetries; attempt++) {
       if (isCancelled(config.jobId)) return;
       if (isExpired()) { timedOut = true; return; }
 
@@ -833,11 +862,15 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
         }
 
         // Hard per-page timeout so a single hung page can't stall a worker
-        // (and, across retries, the whole audit) for minutes.
+        // (and, across retries, the whole audit) for minutes. On serverless the
+        // total budget is tight (45s), so cap each page at 25s — enough for a
+        // normal page load + axe analysis, but not so long that one slow page
+        // consumes the entire crawl budget.
+        const PAGE_TIMEOUT = isServerless() ? 25_000 : 35_000;
         const scanResult = await Promise.race([
           executeScanPipeline(url, scanOptions),
           new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error("Page scan timed out")), 35_000)
+            setTimeout(() => reject(new Error("Page scan timed out")), PAGE_TIMEOUT)
           ),
         ]);
 
@@ -956,7 +989,7 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
         return; // Success — exit retry loop
       } catch (err) {
         lastError = err instanceof Error ? err.message : "Scan failed";
-        if (attempt < maxRetries) {
+        if (attempt < effectiveRetries) {
           crawlLogger.warn("Page scan failed, retrying", { url, attempt: attempt + 1, error: lastError });
           await delay(1000 * (attempt + 1)); // Exponential backoff
         }
@@ -964,12 +997,12 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
     }
 
     // All retries exhausted
-    errors.push({ url, phase: "scan", error: `${lastError} (after ${maxRetries + 1} attempts)`, timestamp: Date.now() });
+    errors.push({ url, phase: "scan", error: `${lastError} (after ${effectiveRetries + 1} attempts)`, timestamp: Date.now() });
     pagesCompleted++;
     results.push({
       url, scanId: "", score: 0, violations: 0, critical: 0, serious: 0,
       moderate: 0, minor: 0, depth, importance, consoleErrors: [], error: lastError,
-      retryCount: maxRetries,
+      retryCount: effectiveRetries,
     });
 
     emit(config.jobId, {
@@ -988,9 +1021,16 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
   while (pending.length > 0 || inFlight.length > 0) {
     if (isCancelled(config.jobId) || isExpired()) {
       if (isExpired()) timedOut = true;
-      // Stop scheduling new pages; let in-flight scans finish, then assemble
-      // whatever we have into a partial result.
-      if (inFlight.length > 0) await Promise.allSettled(inFlight);
+      // Stop scheduling new pages. Give in-flight scans a bounded window to
+      // finish so we can include their results; don't wait indefinitely or the
+      // lambda gets killed mid-finalization.
+      if (inFlight.length > 0) {
+        const graceMs = Math.max(2000, Math.min(deadline - Date.now() - 3000, 8000));
+        await Promise.race([
+          Promise.allSettled(inFlight),
+          new Promise((r) => setTimeout(r, graceMs)),
+        ]);
+      }
       break;
     }
 
@@ -1098,9 +1138,16 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
     patterns,
     discovery: { sitemapUrls: sitemapUrlCount, linkUrls: linkUrlCount, totalUnique: visited.size, sitemapAvailable },
     litigationSurface,
-    // Pages were discovered but every scan failed → tell the UI so it shows an
-    // honest "couldn't scan any pages" state instead of a "score 0" success.
-    outcome: validResults.length === 0 ? "all-failed" : timedOut ? "partial" : "ok",
+    // Outcome semantics:
+    // - "ok":         at least one page scanned, no budget/browser issues
+    // - "all-failed": pages discovered but every scan errored
+    // - "partial":    deadline hit OR browser crashed mid-discovery (results are incomplete)
+    // - "no-pages":   nothing scannable found  (set earlier, not here)
+    // - "launch-failed": browser couldn't start (set earlier, not here)
+    outcome: validResults.length === 0
+      ? "all-failed"
+      : (timedOut || browserCrashedDuringDiscovery) ? "partial"
+      : "ok",
   };
 
   emit(config.jobId, { type: "complete", result: finalResult, timestamp: Date.now() });

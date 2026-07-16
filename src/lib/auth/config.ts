@@ -248,7 +248,11 @@ export const authOptions: NextAuthOptions = {
             }
           }
         } catch (err) {
-          logger.error("SSO enforcement check failed — allowing login (fail-open)", { error: String(err) });
+          // Fail-CLOSED: an enforcement lookup error blocks the login rather than
+          // silently bypassing the SSO policy. Enterprise customers rely on SSO
+          // enforcement — an error must never let an unapproved provider through.
+          logger.error("SSO enforcement check failed — blocking login (fail-closed)", { error: String(err) });
+          return false;
         }
       }
 

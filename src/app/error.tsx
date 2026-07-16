@@ -27,7 +27,7 @@ export default function Error({
     Sentry.captureException(error);
   }, [error]);
   return (
-    <div className="flex flex-1 items-center justify-center p-6">
+    <div className="flex flex-1 items-center justify-center p-6" role="alert" aria-live="assertive">
       <div className="max-w-md text-center space-y-4">
         <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-red-50 dark:bg-red-950/30">
           <svg className="h-8 w-8 text-red-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">

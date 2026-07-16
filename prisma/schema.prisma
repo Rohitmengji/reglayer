@@ -381,6 +381,7 @@ model AuditLog {
   workspaceId String?
 
   @@index([workspaceId, createdAt])
+  @@index([actor, createdAt])
   @@map("audit_logs")
 }
 

@@ -24,8 +24,11 @@ export async function applyRateLimit(
   preset: RateLimitPreset,
   identifierOverride?: string
 ): Promise<NextResponse | null> {
-  const ip =
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+  // Use rightmost x-forwarded-for IP (appended by trusted proxy, hardest to spoof).
+  // Attackers control the leftmost value; the proxy they can't bypass adds the real IP last.
+  const forwardedFor = request.headers.get("x-forwarded-for");
+  const forwardedIps = forwardedFor?.split(",").map(s => s.trim()).filter(Boolean);
+  const ip = forwardedIps?.at(-1) ||
     request.headers.get("x-real-ip") ||
     "anonymous";
 

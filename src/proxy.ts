@@ -154,7 +154,10 @@ export async function proxy(request: NextRequest) {
 
   // Global rate limit for all authenticated API requests (120 req/min per IP)
   if (pathname.startsWith("/api/")) {
-    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    // Use rightmost x-forwarded-for IP (appended by trusted proxy, hardest to spoof)
+    const forwardedFor = request.headers.get("x-forwarded-for");
+    const forwardedIps = forwardedFor?.split(",").map(s => s.trim()).filter(Boolean);
+    const ip = forwardedIps?.at(-1) ||
       request.headers.get("x-real-ip") || "anonymous";
     const globalLimit = { limit: 120, windowSec: 60 };
     const rl = rateLimitSync(`global:${ip}`, globalLimit, "global");
