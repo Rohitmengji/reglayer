@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const limit = Number(request.nextUrl.searchParams.get("limit")) || 50;
+    const limit = Math.min(100, Math.max(1, Number(request.nextUrl.searchParams.get("limit")) || 50));
     const url = request.nextUrl.searchParams.get("url");
 
     // Scope: users see only their own scans; master admins see all workspace scans

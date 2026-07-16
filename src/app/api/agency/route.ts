@@ -40,7 +40,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden: admin access required" }, { status: 403 });
     }
 
-    const body = await request.json();
+    let body: unknown;
+    try { body = await request.json(); } catch {
+      return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    }
     const parsed = createAgencySchema.safeParse(body);
 
     if (!parsed.success) {
@@ -60,8 +63,9 @@ export async function POST(request: NextRequest) {
 
     // Mass-assignment guard: only a master admin may assign ownership to another
     // user. A workspace ADMIN/OWNER always becomes the owner of what they create.
-    const ownerId = user.isMasterAdmin && typeof body.ownerId === "string" && body.ownerId
-      ? body.ownerId
+    const rawBody = body as Record<string, unknown>;
+    const ownerId = user.isMasterAdmin && typeof rawBody.ownerId === "string" && rawBody.ownerId
+      ? rawBody.ownerId
       : user.id;
 
     const agency = await prisma.agency.create({

@@ -28,7 +28,7 @@ const saveSchema = z.object({
   })).max(200),
 });
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -40,8 +40,22 @@ export async function GET() {
   });
   if (!user) return NextResponse.json({ conversations: [] });
 
+  // Support search query parameter for conversation search
+  const { searchParams } = new URL(request.url);
+  const query = searchParams.get("q")?.trim();
+
   const conversations = await prisma.chatConversation.findMany({
-    where: { userId: user.id, archivedAt: null },
+    where: {
+      userId: user.id,
+      archivedAt: null,
+      // Full-text search across title and message content
+      ...(query ? {
+        OR: [
+          { title: { contains: query, mode: "insensitive" as const } },
+          { messages: { some: { content: { contains: query, mode: "insensitive" as const } } } },
+        ],
+      } : {}),
+    },
     select: {
       id: true,
       title: true,

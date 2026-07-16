@@ -18,6 +18,7 @@ import { getModelConfig } from "@/lib/ai/gateway/providers/registry";
 import { getPrompt } from "@/lib/ai/prompts/registry";
 import { createChatTools } from "@/lib/ai/tools/definitions";
 import { containsPII, sanitizeForLLM } from "@/lib/ai/hardening";
+import { detectJailbreakAttempt } from "@/lib/ai/safety/guardrails";
 import { rateLimit, RATE_LIMITS, rateLimitHeaders } from "@/lib/rate-limit";
 import { prisma } from "@/lib/database/prisma";
 import { toTextStream } from "ai";
@@ -95,6 +96,15 @@ export async function POST(request: NextRequest) {
 
   const userMessages = sanitizedMessages.filter((m) => m.role === "user");
   const latestUserMessage = userMessages[userMessages.length - 1]?.content ?? "";
+
+  // ── 5b. Jailbreak detection ─────────────────────────────────────────────
+  if (detectJailbreakAttempt(latestUserMessage)) {
+    lineage.addStage({ name: "jailbreak_blocked", category: "validation", details: { reason: "pattern_match" }, success: true });
+    return new Response(
+      "I can only help with accessibility and compliance topics. Please rephrase your question.",
+      { status: 200 },
+    );
+  }
 
   // ── 6. Resolve user + workspace ─────────────────────────────────────────
   const user = await prisma.user.findUnique({

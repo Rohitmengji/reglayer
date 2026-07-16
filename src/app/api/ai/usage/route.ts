@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
   }
 
   const url = new URL(request.url);
-  const days = parseInt(url.searchParams.get("days") ?? "30", 10);
+  const days = Math.min(365, Math.max(1, parseInt(url.searchParams.get("days") ?? "30", 10)));
 
   // Resolve workspace
   const user = await prisma.user.findUnique({

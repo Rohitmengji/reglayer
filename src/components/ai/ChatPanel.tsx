@@ -15,6 +15,7 @@ import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
 import { MessageSquare, Trash2, X, ArrowDown, Download, Plus, History, Loader2, Clock, Zap } from "lucide-react";
 import { useCredits } from "@/hooks/use-credits";
+import { useFollowUpSuggestions } from "@/hooks/use-follow-up-suggestions";
 
 interface ChatPanelProps {
   open: boolean;
@@ -28,9 +29,11 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
     useChatSync();
   const conversationId = useChatStore((s) => s.conversationId);
   const { credits } = useCredits();
+  const followUps = useFollowUpSuggestions(messages);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showScrollDown, setShowScrollDown] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [historySearch, setHistorySearch] = useState("");
 
   // Fetch conversation list when panel opens
   useEffect(() => {
@@ -189,6 +192,24 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
               </span>
             </div>
 
+            {/* Search conversations */}
+            <div className="px-3 pb-2">
+              <input
+                type="search"
+                value={historySearch}
+                onChange={(e) => {
+                  setHistorySearch(e.target.value);
+                  // Trigger search with debounce via fetchConversations
+                  const q = e.target.value.trim();
+                  if (q.length >= 2 || q.length === 0) fetchConversations(q || undefined);
+                }}
+                placeholder="Search conversations..."
+                className="w-full rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-3 py-1.5 text-[12px] text-neutral-700 dark:text-neutral-300 placeholder-neutral-400 focus:outline-none focus-visible:outline-none"
+                style={{ outline: "none" }}
+                aria-label="Search conversations"
+              />
+            </div>
+
             {/* History list */}
             <div className="flex-1 overflow-y-auto">
               {loadingList ? (
@@ -309,6 +330,22 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
                   onEdit={editAndResend}
                   onFeedback={setFeedback}
                 />
+              ))}
+            </div>
+          )}
+
+          {/* Follow-up suggestion chips — shown after AI responds */}
+          {!isStreaming && followUps.length > 0 && messages.length > 0 && (
+            <div className="px-4 pb-3 flex flex-wrap gap-1.5">
+              {followUps.map(({ icon, text }) => (
+                <button
+                  key={text}
+                  onClick={() => sendMessage(text)}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800/50 px-2.5 py-1.5 text-[11px] text-neutral-600 dark:text-neutral-400 transition-all hover:border-accent/50 hover:text-accent hover:bg-accent/5 dark:hover:border-accent/40 dark:hover:text-accent"
+                >
+                  <span className="text-xs">{icon}</span>
+                  <span className="truncate max-w-[200px]">{text}</span>
+                </button>
               ))}
             </div>
           )}
