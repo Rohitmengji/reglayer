@@ -2079,3 +2079,100 @@ enum ImprovementStatus {
   APPLIED
   REJECTED
 }
+
+// ─────────────────────────────────────────────
+// AI Audit Trail + Compliance
+// ─────────────────────────────────────────────
+
+model AiAuditEntry {
+  id            String   @id @default(cuid())
+
+  // WHO
+  userId        String?
+  email         String?
+  apiKeyId      String?
+  workspaceId   String?
+
+  // WHAT
+  action        String   // "chat" | "rag" | "embed" | "agent" | "workflow" | "tool"
+  feature       String?  // specific feature name
+
+  // PROMPT
+  promptId      String?
+  promptVersion Int?
+  promptHash    String?  // SHA-256 of system prompt (audit without storing PII)
+
+  // MODEL
+  model         String?
+  provider      String?
+  temperature   Float?
+
+  // INPUT/OUTPUT (hashed for PII protection)
+  inputHash     String?  // SHA-256 of user query
+  inputTokens   Int      @default(0)
+  outputHash    String?  // SHA-256 of AI response
+  outputTokens  Int      @default(0)
+
+  // COST
+  costUsd       Float    @default(0)
+  durationMs    Int      @default(0)
+
+  // LINEAGE
+  traceId       String?  // links to LineageTrace
+
+  // APPROVAL
+  approvalId    String?  // links to ApprovalRequest if human review required
+  approved      Boolean?
+
+  // COMPLIANCE
+  consentBasis  String?  // GDPR: "legitimate_interest" | "consent" | "contract"
+  retainUntil   DateTime? // auto-delete date per retention policy
+  dataClassification String? // "public" | "internal" | "confidential" | "restricted"
+  piiDetected   Boolean  @default(false)
+  piiRedacted   Boolean  @default(false)
+
+  // METADATA
+  ipAddress     String?
+  userAgent     String?
+  metadata      Json?
+
+  createdAt     DateTime @default(now())
+
+  @@index([workspaceId, createdAt])
+  @@index([userId, createdAt])
+  @@index([action, createdAt])
+  @@index([traceId])
+  @@index([retainUntil])
+  @@map("ai_audit_entries")
+}
+
+model CompliancePolicy {
+  id              String   @id @default(cuid())
+  framework       String   // "GDPR" | "SOC2" | "ISO27001" | "HIPAA" | "AI_ACT"
+  controlId       String   // e.g. "GDPR-17" (right to erasure), "SOC2-CC6.1"
+  controlName     String
+  description     String
+  status          ComplianceControlStatus @default(NOT_ASSESSED)
+  evidence        String?  @db.Text  // how this control is satisfied
+  automatedCheck  Boolean  @default(false) // can be verified programmatically
+  lastAssessedAt  DateTime?
+  lastAssessedBy  String?
+
+  workspaceId     String
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([workspaceId, framework, controlId])
+  @@index([workspaceId, framework])
+  @@index([status])
+  @@map("compliance_policies")
+}
+
+enum ComplianceControlStatus {
+  NOT_ASSESSED
+  COMPLIANT
+  PARTIALLY_COMPLIANT
+  NON_COMPLIANT
+  NOT_APPLICABLE
+}
