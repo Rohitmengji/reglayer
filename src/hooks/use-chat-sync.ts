@@ -42,15 +42,19 @@ export function useChatSync() {
   const [loadingList, setLoadingList] = useState(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSavedRef = useRef<string>("");
+  const hasFetchedRef = useRef(false);
 
-  /** Fetch conversation list from server. */
+  /** Fetch conversation list from server. Only shows loading on first fetch. */
   const fetchConversations = useCallback(async () => {
-    setLoadingList(true);
+    // Only show the loading spinner on the very first fetch.
+    // Subsequent refreshes happen silently in the background.
+    if (!hasFetchedRef.current) setLoadingList(true);
     try {
       const res = await fetch("/api/ai/conversations");
       if (res.ok) {
         const data = await res.json();
         setConversations(data.conversations ?? []);
+        hasFetchedRef.current = true;
       }
     } catch { /* silent — list is non-critical */ }
     finally { setLoadingList(false); }
@@ -86,10 +90,12 @@ export function useChatSync() {
           setConversationId(data.id);
         }
         lastSavedRef.current = fingerprint;
+        // Silently refresh the conversation list so the sidebar stays current
+        fetchConversations();
       }
     } catch { /* silent — will retry on next trigger */ }
     finally { setIsSaving(false); }
-  }, [setConversationId, setIsSaving]);
+  }, [setConversationId, setIsSaving, fetchConversations]);
 
   // Auto-save: debounce 3s after streaming completes or message changes.
   // Also saves immediately on page unload (beforeunload) as a safety net.

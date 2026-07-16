@@ -118,9 +118,9 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
             >
               <Plus className="h-4 w-4" />
             </button>
-            {/* History toggle */}
+            {/* History toggle — data is pre-loaded on panel open, toggle is instant */}
             <button
-              onClick={() => { setShowHistory(!showHistory); if (!showHistory) fetchConversations(); }}
+              onClick={() => setShowHistory(!showHistory)}
               className={`rounded-lg p-2 transition-colors ${showHistory ? "bg-accent/10 text-accent" : "text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"}`}
               title="Conversation history"
               aria-label="Show conversation history"
