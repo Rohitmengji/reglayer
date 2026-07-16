@@ -147,6 +147,10 @@ export type { MonteCarloConfig, MonteCarloResult, ScoredCandidate } from "./reas
 export { treeOfThoughts, getDefaultApproaches } from "./reasoning/tree-of-thoughts";
 export type { ToTConfig, ToTResult, ThoughtBranch } from "./reasoning/tree-of-thoughts";
 
+// ── Deep Research ─────────────────────────────────────────────────────────────
+export { deepResearch, formatReport } from "./reasoning/deep-research";
+export type { DeepResearchConfig, ResearchReport, ResearchFinding, ReportSection, Citation } from "./reasoning/deep-research";
+
 // ── RAG ───────────────────────────────────────────────────────────────────────
 export { buildRAGContext, buildRAGMessages } from "./rag/service";
 
