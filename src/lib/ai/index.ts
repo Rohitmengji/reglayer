@@ -59,6 +59,10 @@ export { resolveTemplate } from "./prompts/resolver";
 // ── Vector Search ─────────────────────────────────────────────────────────────
 export { searchViolations, embedViolation, embedScanViolations } from "./vector/search";
 
+// ── Hybrid Search ─────────────────────────────────────────────────────────────
+export { hybridSearch, multiQuerySearch, generateMultiQueries, rewriteQuery } from "./search/hybrid";
+export type { HybridSearchResult, HybridSearchOptions } from "./search/hybrid";
+
 // ── RAG ───────────────────────────────────────────────────────────────────────
 export { buildRAGContext, buildRAGMessages } from "./rag/service";
 
