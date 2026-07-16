@@ -122,7 +122,11 @@ export type JobEvent =
 // JOB MANAGER SINGLETON
 // ══════════════════════════════════════════════════════════════
 
-const JOB_TTL = 60 * 60 * 1000; // 1 hour
+// On serverless each lambda instance is ephemeral, so a 1-hour TTL wastes
+// memory on completed jobs that will never be read again (the durable record
+// is the real source of truth after completion). 5 minutes is enough for the
+// SSE subscriber window + poll backstop to land the terminal event.
+const JOB_TTL = 5 * 60 * 1000; // 5 minutes
 const MAX_CONCURRENT_JOBS = 3;
 const CLEANUP_INTERVAL = 5 * 60 * 1000; // 5 minutes
 

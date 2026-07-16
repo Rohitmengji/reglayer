@@ -21,6 +21,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { jobManager, type JobEvent } from "@/lib/scanner/crawler/job-manager";
 import { assertCrawlJobAccess } from "@/lib/auth/access";
+import { prisma } from "@/lib/database/prisma";
 
 export const dynamic = "force-dynamic";
 
@@ -34,9 +35,52 @@ export async function GET(
   }
 
   const { jobId } = await params;
+
+  // Input validation: job IDs are ~30 chars; reject absurd lengths early.
+  if (typeof jobId !== "string" || jobId.length > 100) {
+    return new Response("Invalid job ID", { status: 400 });
+  }
+
   const job = jobManager.getJob(jobId);
+
+  // On serverless the SSE stream often lands on a cold lambda where the
+  // in-memory job doesn't exist. Fall back to the durable record so the
+  // client still gets the terminal event (complete/failed/cancelled) rather
+  // than a confusing 404. For in-flight jobs on a cold instance the SSE
+  // stream can't help (the events are emitted on the crawl lambda), so
+  // return 404 and let the client's polling backstop handle it.
   if (!job) {
-    return new Response("Job not found", { status: 404 });
+    const rec = await prisma.crawlJobRecord.findUnique({ where: { id: jobId } });
+    if (!rec) return new Response("Job not found", { status: 404 });
+
+    // If the durable record is terminal, return the result as a single SSE event
+    if (["complete", "failed", "cancelled"].includes(rec.status)) {
+      const access = await assertCrawlJobAccess(jobId, session, {
+        workspaceId: rec.workspaceId, userId: rec.userId,
+      });
+      if (!access.ok) return new Response(access.error, { status: access.status });
+
+      const encoder = new TextEncoder();
+      const eventType = rec.status === "complete" ? "complete" : rec.status === "cancelled" ? "cancelled" : "error";
+      const body = encoder.encode(
+        `data: ${JSON.stringify({
+          type: eventType,
+          ...(rec.result ? { result: rec.result } : {}),
+          ...(rec.error ? { error: rec.error } : {}),
+          timestamp: Date.now(),
+        })}\n\n`
+      );
+      return new Response(body, {
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache, no-transform",
+          Connection: "keep-alive",
+        },
+      });
+    }
+
+    // Still processing on another lambda — SSE can't help, let polling handle it
+    return new Response("Job not found on this instance", { status: 404 });
   }
 
   // Ownership check (IDOR guard): don't stream another tenant's live audit.

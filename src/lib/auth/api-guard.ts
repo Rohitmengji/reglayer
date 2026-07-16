@@ -19,6 +19,7 @@ import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
 import { hasPermission, type Permission, type SystemRole, type WorkspaceRole } from "@/lib/auth/rbac";
+import { logger } from "@/lib/telemetry/logger";
 
 export interface WorkspaceAccess {
   userId: string;
@@ -85,6 +86,17 @@ export async function requireWorkspacePermission(
     });
     workspaceRole = (member?.role as WorkspaceRole) ?? null;
     workspaceId = member?.workspaceId ?? null;
+
+    // Security note: primary workspace fallback can cause mutations to execute
+    // in an unexpected workspace if the caller has multiple memberships. Log
+    // this so routes can be audited and migrated to always pass workspaceId.
+    if (workspaceId) {
+      logger.warn("api-guard: primary workspace fallback used — caller should pass explicit workspaceId", {
+        userId: user.id,
+        resolvedWorkspaceId: workspaceId,
+        permission,
+      });
+    }
   }
 
   if (!hasPermission(systemRole, workspaceRole, permission)) {

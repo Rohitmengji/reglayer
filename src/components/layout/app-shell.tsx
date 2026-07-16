@@ -43,6 +43,7 @@ export function AppShell({ children, bare }: { children: React.ReactNode; bare?:
   const router = useRouter();
   const pathname = usePathname();
   const [workspaceVerified, setWorkspaceVerified] = useState(false);
+  const mobileDrawerRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   const handleWorkspaceCheck = useCallback(() => {
@@ -110,6 +111,45 @@ export function AppShell({ children, bare }: { children: React.ReactNode; bare?:
 
   const showLoading = status === "loading" || (status === "authenticated" && !workspaceVerified);
 
+  // Focus trap + keyboard escape for mobile drawer (WCAG 2.4.3 Focus Order)
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const drawer = mobileDrawerRef.current;
+    if (!drawer) return;
+
+    // Focus the drawer on open
+    const firstFocusable = drawer.querySelector<HTMLElement>(
+      'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    firstFocusable?.focus();
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setMobileOpen(false);
+        return;
+      }
+      // Trap focus inside drawer
+      if (e.key === "Tab" && drawer) {
+        const focusable = drawer.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [mobileOpen]);
+
   if (showLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-background dark:bg-neutral-950">
@@ -147,6 +187,7 @@ export function AppShell({ children, bare }: { children: React.ReactNode; bare?:
 
       {/* Mobile drawer */}
       <div
+        ref={mobileDrawerRef}
         id="mobile-nav-drawer"
         className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-200 ease-in-out lg:hidden ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"

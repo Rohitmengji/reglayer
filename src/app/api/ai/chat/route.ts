@@ -161,10 +161,14 @@ export async function POST(request: NextRequest) {
 
   let systemPrompt = basePrompt.system;
   if (isRAGAugmented) {
-    systemPrompt = systemPrompt.replace("{{context}}", retrieval.context);
+    // Wrap retrieved context in XML delimiters to prevent prompt injection via
+    // malicious scan data (e.g. violation descriptions containing "ignore previous
+    // instructions"). The model treats content inside <context> as data, not instructions.
+    const escapedContext = `<context>\n${retrieval.context}\n</context>`;
+    systemPrompt = systemPrompt.replace("{{context}}", escapedContext);
   }
-  if (profileContext) systemPrompt += `\n\n${profileContext}`;
-  if (memoryContext) systemPrompt += `\n\n${memoryContext}`;
+  if (profileContext) systemPrompt += `\n\n<user_profile>\n${profileContext}\n</user_profile>`;
+  if (memoryContext) systemPrompt += `\n\n<user_memory>\n${memoryContext}\n</user_memory>`;
 
   // ── 11. Build final message array ───────────────────────────────────────
   const messages: { role: "system" | "user" | "assistant"; content: string }[] = [

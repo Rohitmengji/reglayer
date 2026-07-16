@@ -49,6 +49,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   UNREACHABLE: "Cannot reach this URL. Please check the address is correct and publicly accessible.",
   BLOCKED: "This site blocks automated access. Try again later or contact the site owner.",
   BROWSER_CRASH: "Browser encountered an unexpected error. Please try again.",
+  RATE_LIMITED: "You're sending requests too quickly. Please wait a minute before scanning again.",
   UNKNOWN: "Something went wrong during the scan. Please try again.",
 };
 
@@ -163,7 +164,9 @@ export function ScanForm({ onScanComplete }: ScanFormProps) {
           return;
         }
         const code = data.code as string | undefined;
-        const message = (code && ERROR_MESSAGES[code]) || data.message || data.error || "Scan failed";
+        const message = res.status === 429
+          ? ERROR_MESSAGES.RATE_LIMITED
+          : (code && ERROR_MESSAGES[code]) || data.message || data.error || "Scan failed";
         const retryable = res.status >= 500 || res.status === 504 || res.status === 429;
         setErrorInfo({ message, retryable });
         toast.error(message);
@@ -220,6 +223,7 @@ export function ScanForm({ onScanComplete }: ScanFormProps) {
             required
             disabled={isScanning}
             className="flex-1"
+            aria-label="Website URL to scan for accessibility compliance"
           />
           <Button type="submit" disabled={isScanning || !url}>
             {isScanning ? (
@@ -326,7 +330,7 @@ export function ScanForm({ onScanComplete }: ScanFormProps) {
 
         {/* Error with retry */}
         {errorInfo && (
-          <div className="flex items-center justify-between rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/30 px-4 py-3">
+          <div role="alert" className="flex items-center justify-between rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/30 px-4 py-3">
             <p className="text-sm text-red-700 dark:text-red-300">{errorInfo.message}</p>
             {errorInfo.retryable && (
               <Button variant="ghost" size="sm" onClick={handleRetry} className="text-red-700 dark:text-red-300 hover:text-red-900">

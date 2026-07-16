@@ -198,8 +198,19 @@ export async function POST(request: NextRequest) {
   // progress to the durable CrawlJobRecord every few seconds, so a client
   // polling from ANY lambda instance sees live progress even though the
   // in-memory job manager is per-instance and SSE may land on a cold instance.
+  //
+  // TIMING BUDGET: Vercel's maxDuration (60s) counts from function invocation,
+  // NOT from when after() starts. Capture the invocation timestamp so the
+  // deadline is anchored to the REAL start, not the after() start.
+  // Budget: 60s total − 12s finalization buffer = 48s for the crawl.
+  // The 12s buffer covers: clearing ticker, reading in-memory job state,
+  // writing the full CrawlResult to the DB, and event emission.
+  const functionStartedAt = Date.now();
   after(async () => {
+    // Safety: if we ever throw before clearing the ticker, ensure finalization.
+    let finalized = false;
     const persistProgress = async () => {
+      if (finalized) return;
       try {
         const j = jobManager.getJob(job.id);
         if (!j || j.status === "complete" || j.status === "failed" || j.status === "cancelled") return;
@@ -235,15 +246,17 @@ export async function POST(request: NextRequest) {
     const ticker = setInterval(persistProgress, 2500);
 
     try {
-      // Wall-clock budget ~10s under the 60s function maxDuration: the crawl
-      // returns a "partial" result and the finalizer below writes a terminal
-      // status BEFORE Vercel kills the lambda — so the job never hangs at
-      // "processing" on deep/large crawls.
-      const result = await crawlSite({ ...crawlConfig, jobId: job.id, deadline: Date.now() + 50_000 });
+      // Wall-clock budget anchored to FUNCTION invocation, not after() start.
+      // 60s maxDuration − 12s finalization buffer = 48s for crawl work.
+      // This is tight but safe: browser launch (5-10s) + discovery + scanning
+      // must all fit. On slow cold starts the crawl returns "partial".
+      const crawlDeadline = functionStartedAt + 48_000;
+      const result = await crawlSite({ ...crawlConfig, jobId: job.id, deadline: crawlDeadline });
       // Stop the progress ticker BEFORE writing the final result, so a ticker
       // fire can't land its partial {__live} snapshot AFTER the full CrawlResult
       // and silently blank out a completed audit (data-corruption race).
       clearInterval(ticker);
+      finalized = true;
       // crawlSite resolves (doesn't throw) for cancelled / internally-failed
       // crawls too — mirror the in-memory job's terminal status so the durable
       // record doesn't mislabel them as "complete".
@@ -281,6 +294,7 @@ export async function POST(request: NextRequest) {
       }
     } catch (error) {
       clearInterval(ticker); // stop partial writes before the terminal write
+      finalized = true;
       const message = error instanceof Error ? error.message : "Crawl failed unexpectedly";
       logger.error("Background crawl failed", { jobId: job.id, error: message });
       jobManager.emitEvent(job.id, { type: "error", error: message, timestamp: Date.now() });

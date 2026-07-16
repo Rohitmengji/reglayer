@@ -24,8 +24,15 @@ function getKey(): Buffer {
   if (envKey && envKey.length === 64) {
     return Buffer.from(envKey, "hex");
   }
-  // Derive from NEXTAUTH_SECRET as fallback
-  const secret = process.env.NEXTAUTH_SECRET || "dev-fallback-secret-not-for-production";
+  // Derive from NEXTAUTH_SECRET as fallback (never uses a hardcoded value in production)
+  const secret = process.env.NEXTAUTH_SECRET;
+  if (!secret) {
+    // Allow tests to run without env vars — use a deterministic test key
+    if (process.env.NODE_ENV === "test") {
+      return createHash("sha256").update("test-only-key").digest();
+    }
+    throw new Error("ENCRYPTION_KEY or NEXTAUTH_SECRET must be set — refusing to use a hardcoded key");
+  }
   return createHash("sha256").update(secret).digest();
 }
 

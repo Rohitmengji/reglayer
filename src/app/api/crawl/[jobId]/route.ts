@@ -22,6 +22,12 @@ export async function GET(
   }
 
   const { jobId } = await params;
+
+  // Input validation: reject absurd job IDs early (DoS prevention).
+  if (typeof jobId !== "string" || jobId.length > 100) {
+    return NextResponse.json({ error: "Invalid job ID" }, { status: 400 });
+  }
+
   const job = jobManager.getJob(jobId);
 
   // Ownership check (IDOR guard): job IDs are guessable, so a status/result/live
@@ -57,10 +63,11 @@ export async function GET(
   }
 
   // Stuck-job recovery: if a record is still "processing" but hasn't been
-  // updated in well over the function budget (60s + the 2.5s ticker), the
-  // lambda was killed before finalizing. Surface it as failed so the client
-  // leaves the spinning state instead of polling forever.
-  const STALE_MS = 90_000;
+  // updated well beyond the function's maxDuration (60s), the lambda was killed
+  // before finalizing. The progress ticker writes every 2.5s, so if we haven't
+  // seen an update in 65s (60s maxDuration + 5s DB write grace), the function
+  // is dead. Surface it as failed so the client stops polling.
+  const STALE_MS = 65_000;
   const isStale = record.status === "processing" && Date.now() - record.updatedAt.getTime() > STALE_MS;
   const effectiveStatus = isStale ? "failed" : record.status;
   const terminal = effectiveStatus === "complete" || effectiveStatus === "failed" || effectiveStatus === "cancelled";

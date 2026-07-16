@@ -116,8 +116,9 @@ interface RateLimitResult {
 
 /**
  * Check rate limit for an identifier.
- * Uses Redis when configured, falls back to in-memory.
- * If Redis is unreachable, gracefully falls back instead of crashing.
+ * Uses Redis when configured; rejects with a hard failure if Redis is configured
+ * but unreachable (prevents per-instance bypass in multi-instance environments).
+ * Falls back to in-memory ONLY when Redis is not configured at all (local dev).
  */
 export async function rateLimit(
   identifier: string,
@@ -136,11 +137,14 @@ export async function rateLimit(
         resetAt: result.reset,
       };
     } catch {
-      // Redis unreachable — fall through to in-memory
+      // Redis configured but unreachable — reject the request rather than
+      // silently falling back to per-instance in-memory limits, which allows
+      // attackers to bypass distributed rate limiting across serverless instances.
+      return { success: false, limit: config.limit, remaining: 0, resetAt: Date.now() + config.windowSec * 1000 };
     }
   }
 
-  // Fallback to in-memory
+  // In-memory fallback ONLY when Redis is not configured (local dev / single-instance)
   return memoryRateLimit(`${prefix}:${identifier}`, config.limit, config.windowSec);
 }
 
