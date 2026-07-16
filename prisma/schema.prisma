@@ -1618,3 +1618,50 @@ enum AiMemoryScope {
   WORKSPACE  // shared team knowledge (e.g. "our tech stack is React + Next.js")
   SYSTEM     // global facts set by admins (e.g. "compliance deadline is June 2025")
 }
+
+// ─────────────────────────────────────────────
+// Human Approval Workflows
+// ─────────────────────────────────────────────
+
+model ApprovalRequest {
+  id            String         @id @default(cuid())
+  type          ApprovalType   // what kind of content needs approval
+  status        ApprovalStatus @default(PENDING)
+  title         String         // human-readable title for the review queue
+  content       Json           // the AI-generated draft content (type-specific)
+  metadata      Json?          // additional context (source scanId, model used, etc.)
+
+  // Who submitted and who reviewed
+  requestedBy   String         // userId who triggered the AI generation
+  reviewedBy    String?        // userId who approved/rejected
+  reviewNote    String?        // reviewer's comment
+  reviewedAt    DateTime?
+
+  // Workspace scoping
+  workspaceId   String
+
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  expiresAt     DateTime?      // optional: auto-expire stale drafts
+
+  @@index([workspaceId, status])
+  @@index([requestedBy])
+  @@index([status, createdAt])
+  @@map("approval_requests")
+}
+
+enum ApprovalType {
+  COMPLIANCE_REPORT   // monthly/quarterly PDF report
+  ACCESSIBILITY_STATEMENT // public a11y statement
+  REMEDIATION_PLAN    // prioritized fix plan
+  CERTIFICATE         // compliance certificate
+  POLICY_UPDATE       // guard policy or rule change
+}
+
+enum ApprovalStatus {
+  PENDING     // awaiting human review
+  APPROVED    // human approved → ready to publish
+  REJECTED    // human rejected with feedback
+  EXPIRED     // auto-expired (stale draft)
+  PUBLISHED   // approved AND published/sent
+}

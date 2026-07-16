@@ -92,5 +92,9 @@ export type { GuardResult, GuardContext, GuardPipelineResult, GuardFn } from "./
 export { getMemories, setMemory, deleteMemory, clearAllMemories, listUserMemories, extractMemories, formatMemoriesForPrompt } from "./memory/service";
 export type { MemoryEntry, MemoryContext, MemoryScope } from "./memory/service";
 
+// ── Human Approval Workflows ──────────────────────────────────────────────────
+export { createApprovalRequest, listPendingApprovals, getApprovalRequest, approveRequest, rejectRequest, markPublished, countPending } from "./approval/service";
+export type { ApprovalRequestEntry, ApprovalType, ApprovalStatus } from "./approval/service";
+
 // ── Feature Flags ─────────────────────────────────────────────────────────────
 export { isAIFeatureEnabled, getAllAIFeatures, getEnabledFeatures } from "./features/flags";
