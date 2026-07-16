@@ -11,6 +11,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
 import { stripe, planToPriceId } from "@/lib/billing/stripe";
+import { assertSessionFresh } from "@/lib/security/session-freshness";
 import { z } from "zod";
 
 const checkoutSchema = z.object({
@@ -26,6 +27,11 @@ export async function POST(request: NextRequest) {
   if (!stripe) {
     return NextResponse.json({ error: "Billing not configured" }, { status: 503 });
   }
+
+  // Session freshness check — billing is a sensitive operation that must reject
+  // revoked sessions even if the JWT hasn't expired yet.
+  const staleSession = await assertSessionFresh(request);
+  if (staleSession) return staleSession;
 
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) {

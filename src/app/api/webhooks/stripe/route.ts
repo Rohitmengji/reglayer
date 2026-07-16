@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/database/prisma";
 import { stripe, priceIdToPlan } from "@/lib/billing/stripe";
 import { logger } from "@/lib/telemetry/logger";
+import { cacheGet, cacheSet } from "@/lib/cache/redis";
 
 const log = logger.withContext({ service: "stripe-webhook" });
 
@@ -30,6 +31,14 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     log.error("Webhook signature verification failed", { action: "verify", error: err instanceof Error ? err.message : String(err) });
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
+  }
+
+  // Idempotency guard: Stripe retries on network failure. If we've already
+  // processed this event ID, return 200 immediately to prevent double-processing.
+  const idempotencyKey = `stripe:event:${event.id}`;
+  const alreadyProcessed = await cacheGet(idempotencyKey);
+  if (alreadyProcessed) {
+    return NextResponse.json({ received: true, deduplicated: true });
   }
 
   try {
@@ -112,6 +121,9 @@ export async function POST(request: NextRequest) {
     log.error("Webhook handler error", { action: "handle", error: err instanceof Error ? err.message : String(err) });
     return NextResponse.json({ error: "Handler failed" }, { status: 500 });
   }
+
+  // Mark event as processed (24h TTL — Stripe retries within this window)
+  await cacheSet(idempotencyKey, "1", 86400).catch(() => {});
 
   return NextResponse.json({ received: true });
 }
