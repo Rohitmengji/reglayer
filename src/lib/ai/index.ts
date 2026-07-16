@@ -131,6 +131,10 @@ export type { Framework, ComplianceControl, ComplianceReport, ControlStatus } fr
 export { resolveRegion, getRegionalEndpoint, evaluateResidency, setWorkspaceRegion, getAvailableRegions, isValidRegion, REGIONS } from "./residency/engine";
 export type { DataRegion, RegionConfig, ResidencyContext } from "./residency/engine";
 
+// ── Self-Reflection ───────────────────────────────────────────────────────────
+export { reflect, quickScore, getCritiqueDimensions } from "./reflection/engine";
+export type { ReflectionConfig, ReflectionResult, CritiqueResult, CritiqueDimension } from "./reflection/engine";
+
 // ── RAG ───────────────────────────────────────────────────────────────────────
 export { buildRAGContext, buildRAGMessages } from "./rag/service";
 
