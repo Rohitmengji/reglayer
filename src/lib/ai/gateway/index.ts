@@ -321,7 +321,7 @@ export function stream(request: CompletionRequest) {
       temperature: request.temperature ?? 0.5,
       maxOutputTokens: request.maxTokens,
       ...(request.tools ? { tools: request.tools } : {}),
-      onFinish: ({ usage }) => {
+      onFinish: ({ usage, text }) => {
         const latencyMs = Date.now() - startTime;
         const inputTokens = usage?.inputTokens ?? 0;
         const outputTokens = usage?.outputTokens ?? 0;
@@ -349,6 +349,26 @@ export function stream(request: CompletionRequest) {
             success: true,
           },
         });
+
+        // Post-stream guardrails: validate the complete output for hallucinations,
+        // off-topic content, etc. This is fire-and-forget — can't retract a
+        // streamed response, but logs policy violations for monitoring/alerting.
+        if (text && request.metadata?.feature?.startsWith("chat")) {
+          try {
+            const { runGuardrails } = require("@/lib/ai/guardrails");
+            const guardResult = runGuardrails(text, {
+              feature: request.metadata.feature,
+              ragAugmented: request.metadata.feature === "chat-rag",
+            });
+            if (!guardResult.passed) {
+              console.warn("[AI Guardrails] Post-stream violation detected", {
+                feature: request.metadata.feature,
+                model: request.model,
+                results: guardResult.results.filter((r: { severity: string }) => r.severity !== "pass"),
+              });
+            }
+          } catch { /* guardrail errors must never break the response */ }
+        }
       },
       onError: ({ error }) => {
         const latencyMs = Date.now() - startTime;
