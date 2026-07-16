@@ -174,8 +174,16 @@ export async function resolvesToInternalIp(urlString: string): Promise<boolean> 
       if (a.family === 4 && isPrivateIPv4(addr)) return true;
       if (a.family === 6 && isPrivateIPv6(addr.replace(/^\[|\]$/g, ""))) return true;
     }
-  } catch {
+  } catch (err) {
     // DNS failure/timeout → fail open (don't block legit sites on a hiccup).
+    // Log for security monitoring — a pattern of DNS failures on unusual hosts
+    // could indicate a rebinding attack or infrastructure probe.
+    if (typeof console !== "undefined") {
+      console.warn("[SSRF] DNS resolution failed for host, failing open", {
+        host,
+        error: err instanceof Error ? err.message : "unknown",
+      });
+    }
   }
   return false;
 }
