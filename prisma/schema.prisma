@@ -83,6 +83,7 @@ model Workspace {
   name      String
   slug      String   @unique
   plan      Plan     @default(FREE)
+  region    String   @default("us-east") // data residency: "us-east" | "eu-west" | "ap-south" | "ap-southeast"
   stripeCustomerId   String?   @unique
   stripeSubscriptionId String?
   stripePriceId      String?

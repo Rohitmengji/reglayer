@@ -127,6 +127,10 @@ export type { AuditEntryInput, AuditEntry, AuditQueryOpts } from "./audit/trail"
 export { seedControls, runAutomatedChecks, generateComplianceReport, getComplianceOverview, FRAMEWORK_CONTROLS } from "./compliance/framework";
 export type { Framework, ComplianceControl, ComplianceReport, ControlStatus } from "./compliance/framework";
 
+// ── Data Residency ────────────────────────────────────────────────────────────
+export { resolveRegion, getRegionalEndpoint, evaluateResidency, setWorkspaceRegion, getAvailableRegions, isValidRegion, REGIONS } from "./residency/engine";
+export type { DataRegion, RegionConfig, ResidencyContext } from "./residency/engine";
+
 // ── RAG ───────────────────────────────────────────────────────────────────────
 export { buildRAGContext, buildRAGMessages } from "./rag/service";
 
