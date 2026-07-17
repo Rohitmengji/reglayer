@@ -39,12 +39,12 @@ export function ActionNode({ data, selected }: NodeProps) {
           </p>
         </div>
       </div>
-      {nodeData.config?.url && (
+      {!!nodeData.config?.url && (
         <p className="text-[10px] text-muted-foreground mt-1.5 truncate max-w-[140px]">
           {String(nodeData.config.url)}
         </p>
       )}
-      {nodeData.config?.channel && (
+      {!!nodeData.config?.channel && (
         <p className="text-[10px] text-muted-foreground mt-1.5">
           via {String(nodeData.config.channel)}
         </p>

@@ -35,7 +35,7 @@ export function TriggerNode({ data, selected }: NodeProps) {
           </p>
         </div>
       </div>
-      {nodeData.config?.cron && (
+      {!!nodeData.config?.cron && (
         <p className="text-[10px] text-muted-foreground mt-1.5 font-mono">
           {String(nodeData.config.cron)}
         </p>

@@ -12,7 +12,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { requireWorkspacePermission } from "@/lib/auth/api-guard";
 import { createDocument, processDocument } from "@/lib/ai/knowledge/service";
-import * as pdfParse from "pdf-parse";
+import { PDFParse } from "pdf-parse";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = new Set([
@@ -66,7 +66,8 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(await file.arrayBuffer());
 
     if (mimeType === "application/pdf") {
-      const pdfData = await pdfParse(buffer);
+      const pdf = new PDFParse({ data: buffer });
+      const pdfData = await pdf.getText();
       textContent = pdfData.text;
     } else {
       // Text-based files (TXT, MD, CSV)
