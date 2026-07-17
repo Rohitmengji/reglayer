@@ -321,7 +321,7 @@ export function stream(request: CompletionRequest) {
       temperature: request.temperature ?? 0.5,
       maxOutputTokens: request.maxTokens,
       ...(request.tools ? { tools: request.tools } : {}),
-      onFinish: ({ usage, text }) => {
+      onFinish: async ({ usage, text }) => {
         const latencyMs = Date.now() - startTime;
         const inputTokens = usage?.inputTokens ?? 0;
         const outputTokens = usage?.outputTokens ?? 0;
@@ -355,7 +355,7 @@ export function stream(request: CompletionRequest) {
         // streamed response, but logs policy violations for monitoring/alerting.
         if (text && request.metadata?.feature?.startsWith("chat")) {
           try {
-            const { runGuardrails } = require("@/lib/ai/guardrails");
+            const { runGuardrails } = await import("@/lib/ai/guardrails");
             const guardResult = runGuardrails(text, {
               feature: request.metadata.feature,
               ragAugmented: request.metadata.feature === "chat-rag",

@@ -167,6 +167,7 @@ function MarketplacePageInner() {
     finally { setLoading(false); }
   }, [search, activeCategory, activeType]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- async fetch, setState after await
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
   const handleInstall = async (item: MarketplaceItem) => {

@@ -70,6 +70,7 @@ export function DecisionEngineTab() {
     finally { setLoading(false); }
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- async fetch, setState after await
   useEffect(() => { fetchDecisions(); }, [fetchDecisions]);
 
   const handleAdd = async () => {
