@@ -52,6 +52,7 @@ export function useCredits() {
 
   useEffect(() => {
     if (cachedCredits && Date.now() - cachedAt < CACHE_TTL_MS) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: restore from cache
       setCredits(cachedCredits);
       return;
     }

@@ -114,15 +114,8 @@ export function AppShell({ children, bare }: { children: React.ReactNode; bare?:
     };
   }, [session, status, pathname, workspaceVerified, handleWorkspaceCheck, handleNoAccess]);
 
-  // Bare mode: skip shell, just render children (used when embedded in tabbed layouts)
-  const isEmbedded = useIsEmbedded();
-  if (bare || isEmbedded) {
-    return <>{children}</>;
-  }
-
-  const showLoading = status === "loading" || (status === "authenticated" && !workspaceVerified);
-
   // Focus trap + keyboard escape for mobile drawer (WCAG 2.4.3 Focus Order)
+  // Must be before any conditional returns to respect Rules of Hooks.
   useEffect(() => {
     if (!mobileOpen) return;
     const drawer = mobileDrawerRef.current;
@@ -160,6 +153,14 @@ export function AppShell({ children, bare }: { children: React.ReactNode; bare?:
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [mobileOpen]);
+
+  // Bare mode: skip shell, just render children (used when embedded in tabbed layouts)
+  const isEmbedded = useIsEmbedded();
+  if (bare || isEmbedded) {
+    return <>{children}</>;
+  }
+
+  const showLoading = status === "loading" || (status === "authenticated" && !workspaceVerified);
 
   if (showLoading) {
     return (
