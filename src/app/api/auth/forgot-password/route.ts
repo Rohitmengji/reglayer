@@ -135,6 +135,7 @@ export async function PUT(request: NextRequest) {
     // Find valid (unused, non-expired) OTP for this email
     const resets = await prisma.passwordReset.findMany({
       where: { email, used: false, expiresAt: { gt: new Date() } },
+      select: { id: true, otp: true },
       orderBy: { createdAt: "desc" },
       take: 5,
     });

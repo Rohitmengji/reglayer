@@ -28,6 +28,7 @@
 import { z } from "zod";
 import { prisma } from "@/lib/database/prisma";
 import type { Impact } from "@/generated/prisma/client";
+import { logger } from "@/lib/telemetry/logger";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -58,9 +59,7 @@ function truncateResult(result: string): string {
  * Log tool execution for observability.
  */
 function logToolCall(tool: string, params: unknown, durationMs: number, success: boolean) {
-  console.log(
-    `[ai-tool] ${success ? "OK" : "FAIL"} | ${tool} | ${durationMs}ms | params: ${JSON.stringify(params)}`,
-  );
+  logger.info(`[ai-tool] ${success ? "OK" : "FAIL"} | ${tool} | ${durationMs}ms`, { tool, params, durationMs, success });
 }
 
 // ── Tool Context ──────────────────────────────────────────────────────────────
