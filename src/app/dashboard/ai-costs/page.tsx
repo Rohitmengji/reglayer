@@ -133,6 +133,9 @@ export default function AICostDashboard() {
     }
   }, [days]);
 
+  // Fetch data on mount and when days changes — setState in effect is intentional
+  // (data fetching pattern, not a synchronous state cascade).
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchData(); }, [fetchData]);
 
   // Projected monthly cost (extrapolate daily average × 30)

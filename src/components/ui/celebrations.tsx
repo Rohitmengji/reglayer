@@ -24,6 +24,7 @@ export function ConfettiBurst({ active, duration = 2000 }: ConfettiProps) {
   const [particles, setParticles] = useState<Array<{ id: number; x: number; color: string; delay: number }>>([]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: generate particles on trigger
     if (!active) { setParticles([]); return; }
 
     const colors = ["#2563eb", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4"];
@@ -33,6 +34,7 @@ export function ConfettiBurst({ active, duration = 2000 }: ConfettiProps) {
       color: colors[i % colors.length],
       delay: Math.random() * 300,
     }));
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: animation tick
     setParticles(newParticles);
 
     const timer = setTimeout(() => setParticles([]), duration);
@@ -72,6 +74,7 @@ export function AnimatedScore({ value, duration = 1200, className = "" }: Animat
   const [displayValue, setDisplayValue] = useState(0);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: animation reset
     if (value === 0) { setDisplayValue(0); return; }
 
     const start = performance.now();

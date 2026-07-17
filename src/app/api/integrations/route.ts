@@ -38,6 +38,7 @@ export async function GET() {
 
   const integrations = await prisma.integration.findMany({
     where: { workspaceId },
+    select: { id: true, provider: true, name: true, enabled: true, webhookUrl: true, externalId: true, config: true, connectedAt: true },
     orderBy: { connectedAt: "desc" },
   });
 

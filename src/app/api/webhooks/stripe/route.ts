@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/database/prisma";
 import { stripe, priceIdToPlan } from "@/lib/billing/stripe";
 import { logger } from "@/lib/telemetry/logger";
-import { cacheGet, cacheSet } from "@/lib/cache/redis";
+import { cacheGet, cacheSet, cacheSetNX } from "@/lib/cache/redis";
 
 const log = logger.withContext({ service: "stripe-webhook" });
 
@@ -33,11 +33,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
-  // Idempotency guard: Stripe retries on network failure. If we've already
-  // processed this event ID, return 200 immediately to prevent double-processing.
+  // Idempotency guard — WRITE-AHEAD pattern: claim the event ID BEFORE processing.
+  // If the function crashes mid-processing, the next Stripe retry will see the key
+  // and return 200 (preventing duplicate subscription changes). This is safer than
+  // writing after processing, which leaves a window for double-processing on crash.
   const idempotencyKey = `stripe:event:${event.id}`;
-  const alreadyProcessed = await cacheGet(idempotencyKey);
-  if (alreadyProcessed) {
+  const claimed = await cacheSetNX(idempotencyKey, "1", 86400);
+  if (!claimed) {
+    // Either already processed OR Redis wrote the key on a prior attempt
     return NextResponse.json({ received: true, deduplicated: true });
   }
 
@@ -121,9 +124,6 @@ export async function POST(request: NextRequest) {
     log.error("Webhook handler error", { action: "handle", error: err instanceof Error ? err.message : String(err) });
     return NextResponse.json({ error: "Handler failed" }, { status: 500 });
   }
-
-  // Mark event as processed (24h TTL — Stripe retries within this window)
-  await cacheSet(idempotencyKey, "1", 86400).catch(() => {});
 
   return NextResponse.json({ received: true });
 }

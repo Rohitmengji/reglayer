@@ -43,7 +43,7 @@ export function broadcastEvent(event: SyncEvent): void {
  */
 export function useTabSync(onEvent: (event: SyncEvent) => void): void {
   const callbackRef = useRef(onEvent);
-  callbackRef.current = onEvent;
+  useEffect(() => { callbackRef.current = onEvent; });
 
   useEffect(() => {
     const ch = getChannel();
@@ -68,7 +68,7 @@ export function useAppTabSync(handlers: {
   onScanCompleted?: (scanId: string, url: string, score: number) => void;
 }): { broadcastEvent: typeof broadcastEvent } {
   const handlersRef = useRef(handlers);
-  handlersRef.current = handlers;
+  useEffect(() => { handlersRef.current = handlers; });
 
   const handleEvent = useCallback((event: SyncEvent) => {
     switch (event.type) {

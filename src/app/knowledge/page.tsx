@@ -68,6 +68,7 @@ function KnowledgePageInner() {
     finally { setLoading(false); }
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- async fetch, setState after await
   useEffect(() => { fetchDocs(); }, [fetchDocs]);
 
   // Poll for processing status updates

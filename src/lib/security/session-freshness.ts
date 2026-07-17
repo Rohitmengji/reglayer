@@ -30,6 +30,7 @@ export async function assertSessionFresh(request: NextRequest): Promise<NextResp
 
   const iat = (token as { iat?: number }).iat;
   if (typeof iat !== "number") {
+    // Token without iat — cannot verify freshness; reject on sensitive endpoints
     return NextResponse.json({ error: "Session expired. Please sign in again." }, { status: 401 });
   }
 
@@ -49,8 +50,9 @@ export async function assertSessionFresh(request: NextRequest): Promise<NextResp
       }
     }
   } catch {
-    // DB lookup failed — fail open for session check (revocation is defense-in-depth).
+    // DB lookup failed — fail open for session check (revocation is defense-in-depth;
+    // the endpoint's own auth check via getServerSession is the primary gate).
   }
 
-  return null;
+  return null; // Session is fresh
 }

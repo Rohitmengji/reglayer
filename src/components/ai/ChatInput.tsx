@@ -62,10 +62,17 @@ export function ChatInput({ onSend, onStop, isStreaming }: ChatInputProps) {
       <div
         className={`flex items-end gap-2 rounded-xl border transition-colors ${
           focused
-            ? "border-accent/40 bg-white dark:bg-neutral-800 shadow-sm shadow-accent/5"
+            ? "border-neutral-900 dark:border-neutral-100 bg-white dark:bg-neutral-800 shadow-sm"
             : "border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50"
         }`}
       >
+        {/*
+         * INTENTIONAL: No blue focus ring on this textarea or its container.
+         * The parent div already shows a black border on focus via the `focused`
+         * state. Adding outline/ring here causes an ugly double-border.
+         * DO NOT add focus:ring-*, focus-visible:outline-*, or border-accent here.
+         * — Rohit, 2026-07-16
+         */}
         <textarea
           ref={textareaRef}
           value={input}
@@ -77,7 +84,8 @@ export function ChatInput({ onSend, onStop, isStreaming }: ChatInputProps) {
           disabled={isStreaming}
           rows={1}
           maxLength={MAX_CHARS}
-          className="flex-1 resize-none bg-transparent px-3.5 py-2.5 text-[13px] text-neutral-900 placeholder-neutral-400 disabled:opacity-50 dark:text-neutral-100 dark:placeholder-neutral-500 overflow-hidden focus:outline-none"
+          className="flex-1 resize-none bg-transparent px-3.5 py-2.5 text-[13px] text-neutral-900 placeholder-neutral-400 disabled:opacity-50 dark:text-neutral-100 dark:placeholder-neutral-500 overflow-hidden focus:outline-none focus-visible:outline-none"
+          style={{ outline: "none" }}
           aria-label="Chat message input"
           autoFocus
         />

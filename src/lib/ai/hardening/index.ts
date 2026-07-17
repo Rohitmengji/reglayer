@@ -10,6 +10,7 @@
 import "server-only";
 
 import { getRedis } from "@/lib/cache/redis";
+import { logger } from "@/lib/telemetry/logger";
 
 // ── Circuit Breaker ───────────────────────────────────────────────────────────
 // Prevents hammering a provider that's down. After 3 consecutive failures,
@@ -65,7 +66,7 @@ export async function recordFailure(provider: string): Promise<void> {
       // Set TTL = RECOVERY_SEC so the circuit auto-closes after the window.
       await redis.expire(circuitKey(provider), RECOVERY_SEC);
       if (count >= FAILURE_THRESHOLD) {
-        console.log(`[circuit-breaker] OPEN for ${provider} after ${count} failures (Redis-backed)`);
+        logger.warn(`[circuit-breaker] OPEN for ${provider} after ${count} failures (Redis-backed)`);
       }
     } catch { /* best-effort */ }
     return;
@@ -76,7 +77,7 @@ export async function recordFailure(provider: string): Promise<void> {
   state.lastFailure = Date.now();
   if (state.failures >= FAILURE_THRESHOLD) {
     state.isOpen = true;
-    console.log(`[circuit-breaker] OPEN for ${provider} after ${state.failures} failures`);
+    logger.warn(`[circuit-breaker] OPEN for ${provider} after ${state.failures} failures`);
   }
   localCircuits.set(provider, state);
 }

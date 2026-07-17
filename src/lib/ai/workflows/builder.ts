@@ -24,6 +24,7 @@ import "server-only";
 import type { WorkflowDefinition, WorkflowState, WorkflowStep } from "./types";
 import { complete, getDefaultModelId } from "@/lib/ai/gateway";
 import { prisma } from "@/lib/database/prisma";
+import { logger } from "@/lib/telemetry/logger";
 
 // ── Step Type Registry ────────────────────────────────────────────────────────
 
@@ -160,7 +161,7 @@ function createNotifyStep(template: StepTemplate): WorkflowStep {
     execute: async (state: WorkflowState) => {
       // Log notification (actual email/webhook implementation deferred)
       const message = (template.config.message as string) ?? "Workflow completed";
-      console.log(`[workflow-notify] ${message}`, { runId: state.runId });
+      logger.info(`[workflow-notify] ${message}`, { runId: state.runId });
       return { ...state, data: { ...state.data, notified: true } };
     },
   };

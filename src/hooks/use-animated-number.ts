@@ -13,6 +13,7 @@ export function useAnimatedNumber(target: number, duration = 800): number {
 
   useEffect(() => {
     // Skip animation for zero or same value
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- synchronous early-return for known values
     if (target === 0) { setValue(0); return; }
 
     const start = startValueRef.current;

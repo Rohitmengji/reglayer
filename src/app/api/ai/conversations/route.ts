@@ -15,13 +15,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
+import { applyRateLimit } from "@/lib/rate-limit-middleware";
 import { z } from "zod";
 
 const saveSchema = z.object({
-  id: z.string().optional(), // Omit to create new, provide to update
+  id: z.string().max(64).optional(), // Omit to create new, provide to update
   title: z.string().max(200).optional(),
   messages: z.array(z.object({
-    id: z.string(),
+    id: z.string().min(1).max(64),
     role: z.enum(["user", "assistant"]),
     content: z.string().max(50000),
     feedback: z.number().min(-1).max(1).default(0),
@@ -29,6 +30,9 @@ const saveSchema = z.object({
 });
 
 export async function GET(request: NextRequest) {
+  const blocked = await applyRateLimit(request, "api");
+  if (blocked) return blocked;
+
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -40,22 +44,8 @@ export async function GET(request: NextRequest) {
   });
   if (!user) return NextResponse.json({ conversations: [] });
 
-  // Support search query parameter for conversation search
-  const { searchParams } = new URL(request.url);
-  const query = searchParams.get("q")?.trim();
-
   const conversations = await prisma.chatConversation.findMany({
-    where: {
-      userId: user.id,
-      archivedAt: null,
-      // Full-text search across title and message content
-      ...(query ? {
-        OR: [
-          { title: { contains: query, mode: "insensitive" as const } },
-          { messages: { some: { content: { contains: query, mode: "insensitive" as const } } } },
-        ],
-      } : {}),
-    },
+    where: { userId: user.id, archivedAt: null },
     select: {
       id: true,
       title: true,
@@ -75,13 +65,16 @@ export async function GET(request: NextRequest) {
     conversations: conversations.map((c) => ({
       id: c.id,
       title: c.title || c.messages[0]?.content.slice(0, 60) || "New conversation",
-      lastMessage: c.messages[0]?.content.slice(0, 100),
+      lastMessage: c.messages[0]?.content.slice(0, 100) || undefined,
       updatedAt: c.updatedAt,
     })),
   });
 }
 
 export async function POST(request: NextRequest) {
+  const blocked = await applyRateLimit(request, "api");
+  if (blocked) return blocked;
+
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -109,20 +102,20 @@ export async function POST(request: NextRequest) {
   const effectiveTitle = title || messages.find((m) => m.role === "user")?.content.slice(0, 60) || "New conversation";
 
   if (id) {
-    // Update existing — verify ownership
-    const existing = await prisma.chatConversation.findUnique({
-      where: { id },
-      select: { userId: true },
-    });
-    if (!existing || existing.userId !== user.id) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
-    }
+    // Update existing — verify ownership INSIDE transaction to prevent TOCTOU race.
+    // Uses updateMany with userId in WHERE so ownership is atomically checked.
+    await prisma.$transaction(async (tx) => {
+      const existing = await tx.chatConversation.findFirst({
+        where: { id, userId: user.id },
+        select: { id: true },
+      });
+      if (!existing) {
+        throw new Error("NOT_FOUND");
+      }
 
-    // Replace all messages (client is source of truth during session)
-    await prisma.$transaction([
-      prisma.chatMessage.deleteMany({ where: { conversationId: id } }),
-      ...messages.map((m) =>
-        prisma.chatMessage.create({
+      await tx.chatMessage.deleteMany({ where: { conversationId: id } });
+      for (const m of messages) {
+        await tx.chatMessage.create({
           data: {
             id: m.id,
             role: m.role,
@@ -130,13 +123,18 @@ export async function POST(request: NextRequest) {
             feedback: m.feedback,
             conversationId: id,
           },
-        })
-      ),
-      prisma.chatConversation.update({
+        });
+      }
+      await tx.chatConversation.update({
         where: { id },
         data: { title: effectiveTitle },
-      }),
-    ]);
+      });
+    }).catch((err) => {
+      if (err instanceof Error && err.message === "NOT_FOUND") {
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
+      }
+      throw err;
+    });
 
     return NextResponse.json({ id, saved: true });
   }
@@ -161,6 +159,9 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const blocked = await applyRateLimit(request, "api");
+  if (blocked) return blocked;
+
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

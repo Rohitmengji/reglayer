@@ -62,6 +62,7 @@ function AgentsPageInner() {
     finally { setLoading(false); }
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- async fetch, setState after await
   useEffect(() => { fetchAgents(); }, [fetchAgents]);
 
   const handleRun = async (slug: string) => {
