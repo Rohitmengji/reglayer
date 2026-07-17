@@ -2289,3 +2289,53 @@ model BackgroundJob {
   @@index([workspaceId])
   @@map("background_jobs")
 }
+
+// ── Visual Workflow Builder ───────────────────────────────────────────────────
+
+model SavedWorkflow {
+  id          String   @id @default(cuid())
+  name        String
+  workspaceId String
+  createdBy   String
+  definition  Json     // { nodes: [...], edges: [...] }
+  nodeCount   Int      @default(0)
+  edgeCount   Int      @default(0)
+  isPublished Boolean  @default(false) // shared to marketplace
+  description String?
+  category    String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId])
+  @@index([isPublished])
+  @@map("saved_workflows")
+}
+
+// ── Community Marketplace ─────────────────────────────────────────────────────
+
+model MarketplaceItem {
+  id          String   @id @default(cuid())
+  type        String   // "workflow" | "rule" | "agent" | "template"
+  title       String
+  description String
+  category    String
+  author      String   // display name
+  authorId    String   // user id
+  workspaceId String
+  downloads   Int      @default(0)
+  rating      Float    @default(0)
+  ratingCount Int      @default(0)
+  definition  Json     // the actual template content
+  tags        String[] @default([])
+  isVerified  Boolean  @default(false)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([type, category])
+  @@index([downloads])
+  @@index([rating])
+  @@map("marketplace_items")
+}

@@ -346,9 +346,31 @@ export function runGuardrails(
 // ── Feature-Specific Pipelines ────────────────────────────────────────────────
 
 /** Guards for the chat feature (most comprehensive) */
+import { factCheckWcagResponse } from "@/lib/ai/safety/wcag-fact-check";
+
 export const CHAT_GUARDS: GuardFn[] = [
   outputLengthGuard,
   wcagHallucinationGuard,
+  // Enhanced fact-checker: validates against full 55-criterion WCAG 2.0/2.1/2.2 database
+  (output: string) => {
+    const result = factCheckWcagResponse(output);
+    if (result.hasHallucinations) {
+      return {
+        severity: "warn" as GuardSeverity,
+        guardId: "wcag-fact-check",
+        reason: `Hallucinated criteria detected: ${result.claims.filter(c => !c.valid).map(c => c.criterion).join(", ")}`,
+      };
+    }
+    const levelMismatches = result.claims.filter(c => c.levelMismatch);
+    if (levelMismatches.length > 0) {
+      return {
+        severity: "warn" as GuardSeverity,
+        guardId: "wcag-fact-check",
+        reason: `Conformance level mismatch: ${levelMismatches.map(c => `${c.criterion} claimed ${c.levelMismatch!.claimed} but is actually ${c.levelMismatch!.actual}`).join("; ")}`,
+      };
+    }
+    return { severity: "pass" as GuardSeverity, guardId: "wcag-fact-check" };
+  },
   topicRelevanceGuard,
   refusalDetectionGuard,
 ];

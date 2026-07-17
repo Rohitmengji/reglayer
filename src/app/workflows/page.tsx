@@ -16,10 +16,11 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
   Workflow, Play, Loader2, CheckCircle2, XCircle,
-  Shield, FileText, BarChart3, Zap, Clock,
+  Shield, FileText, BarChart3, Zap, Clock, PenTool,
 } from "lucide-react";
 import { toast } from "sonner";
 import { FeatureGate } from "@/components/ui/feature-gate";
+import Link from "next/link";
 
 interface WorkflowDef {
   id: string;
@@ -108,6 +109,11 @@ function WorkflowsPageInner() {
             Automated multi-step compliance processes. Select a workflow, provide a target URL, and let the AI handle the rest.
           </p>
         </div>
+        <Link href="/workflows/builder">
+          <Button variant="outline" size="sm">
+            <PenTool className="h-3.5 w-3.5 mr-1" /> Visual Builder
+          </Button>
+        </Link>
 
         {/* URL Input */}
         <Card>

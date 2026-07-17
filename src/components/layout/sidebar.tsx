@@ -31,7 +31,7 @@ import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { cn } from "@/lib/utils/cn";
 import { useTheme } from "@/components/theme-provider";
-import { Shield, LayoutDashboard, Scan, Grid3X3, Moon, Sun, Crown, ChevronDown, Settings, BarChart3, Zap, Plug, LogOut, AlertTriangle, TrendingUp, Building2, ChevronsUpDown, Check, BookOpen, Search, HelpCircle, Trophy, Radar, Flame, Sparkles, Bot, Workflow } from "lucide-react";
+import { Shield, LayoutDashboard, Scan, Grid3X3, Moon, Sun, Crown, ChevronDown, Settings, BarChart3, Zap, Plug, LogOut, AlertTriangle, TrendingUp, Building2, ChevronsUpDown, Check, BookOpen, Search, HelpCircle, Trophy, Radar, Flame, Sparkles, Bot, Workflow, Store } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 import { SUPPORTED_LOCALES, type TranslationKey } from "@/lib/i18n/translations";
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -82,6 +82,7 @@ const navSections: NavSection[] = [
       { name: "Automation", key: "nav.automation", href: "/automation?tab=remediation", icon: Zap },
       { name: "Agents", key: "nav.agents", href: "/agents", icon: Bot },
       { name: "Workflows", key: "nav.workflows", href: "/workflows", icon: Workflow },
+      { name: "Marketplace", key: "nav.marketplace", href: "/marketplace", icon: Store },
       { name: "Blog", key: "nav.blog", href: "/blog", icon: BookOpen },
     ],
   },

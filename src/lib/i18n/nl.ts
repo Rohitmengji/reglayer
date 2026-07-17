@@ -197,6 +197,7 @@ export const nl = {
   "nav.automation": "Automatisering",
   "nav.agents": "Agenten",
   "nav.workflows": "Werkstromen",
+  "nav.marketplace": "Marktplaats",
   "nav.manage": "Beheren",
   "nav.executive": "Directie",
   "nav.aiCosts": "AI-kosten",
