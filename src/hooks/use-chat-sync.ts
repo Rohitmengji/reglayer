@@ -118,16 +118,20 @@ export function useChatSync() {
     const handleUnload = () => {
       const state = useChatStore.getState();
       if (state.messages.length === 0) return;
-      // navigator.sendBeacon is fire-and-forget — survives page unload
-      navigator.sendBeacon(
-        "/api/ai/conversations",
-        new Blob([JSON.stringify({
+      // Use fetch with keepalive: true — more reliable than sendBeacon because
+      // it sends proper Content-Type headers and the server can parse JSON.
+      // keepalive: true allows the request to outlive the page, same as sendBeacon.
+      fetch("/api/ai/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           id: state.conversationId || undefined,
           messages: state.messages.map((m) => ({
             id: m.id, role: m.role, content: m.content, feedback: m.feedback ?? 0,
           })),
-        })], { type: "application/json" }),
-      );
+        }),
+        keepalive: true,
+      }).catch(() => {}); // fire-and-forget
     };
     window.addEventListener("beforeunload", handleUnload);
     return () => window.removeEventListener("beforeunload", handleUnload);

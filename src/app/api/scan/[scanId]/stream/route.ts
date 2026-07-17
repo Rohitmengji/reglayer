@@ -30,12 +30,14 @@ export async function GET(
     return new Response("Unauthorized", { status: 401 });
   }
 
+  const userEmail = session.user.email;
+
   const { scanId } = await params;
 
   // Verify scan belongs to user's workspace (not just the creator)
   // This allows team members to view scan progress for shared workspace scans
   const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
+    where: { email: userEmail },
     select: { memberships: { select: { workspaceId: true } } },
   });
 
@@ -45,7 +47,7 @@ export async function GET(
     where: {
       id: scanId,
       OR: [
-        { user: { email: session.user.email } },
+        { user: { email: userEmail } },
         { workspaceId: { in: workspaceIds } },
       ],
     },
@@ -90,8 +92,16 @@ export async function GET(
         }
 
         try {
-          const current = await prisma.scan.findUnique({
-            where: { id: scanId },
+          // Re-verify workspace membership on every poll to prevent IDOR if
+          // user is removed from workspace while stream is open.
+          const current = await prisma.scan.findFirst({
+            where: {
+              id: scanId,
+              OR: [
+                { user: { email: userEmail } },
+                { workspaceId: { in: workspaceIds } },
+              ],
+            },
             select: {
               status: true,
               score: true,

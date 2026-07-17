@@ -125,7 +125,12 @@ export async function POST(request: NextRequest) {
 /**
  * GET — Return current billing status for the workspace.
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
+  // Session freshness — billing data is sensitive; revoked sessions must not
+  // see subscription status (they could infer workspace plan after removal).
+  const staleSession = await assertSessionFresh(request);
+  if (staleSession) return staleSession;
+
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
