@@ -75,6 +75,27 @@ export const FEATURE_CATALOG: FeatureDefinition[] = [
     category: "analytics",
     plans: ["PRO", "ENTERPRISE"],
   },
+  {
+    id: "knowledge",
+    name: "Knowledge Base",
+    description: "Upload documents for AI-powered workspace-specific answers",
+    category: "automation",
+    plans: ["PRO", "ENTERPRISE"],
+  },
+  {
+    id: "agents",
+    name: "AI Agents",
+    description: "Specialized AI agents for compliance tasks",
+    category: "automation",
+    plans: ["PRO", "ENTERPRISE"],
+  },
+  {
+    id: "workflows",
+    name: "Workflows",
+    description: "Automated multi-step compliance processes",
+    category: "automation",
+    plans: ["PRO", "ENTERPRISE"],
+  },
 
   // ─── Compliance (PRO+) ────────────────────────
   {

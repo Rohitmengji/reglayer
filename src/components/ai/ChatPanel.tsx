@@ -107,19 +107,21 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
               </p>
             </div>
             {/* Credit balance indicator */}
-            {credits && !credits.unlimited && (
+            {credits && (
               <span
                 className={`ml-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                  credits.remaining <= 5
-                    ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
-                    : credits.remaining <= 20
-                      ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
-                      : "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400"
+                  credits.unlimited
+                    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+                    : credits.remaining <= 5
+                      ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
+                      : credits.remaining <= 20
+                        ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                        : "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400"
                 }`}
-                title={`${credits.remaining} AI credits remaining (${credits.used}/${credits.limit} used)`}
+                title={credits.unlimited ? "Unlimited AI credits" : `${credits.remaining} AI credits remaining (${credits.used}/${credits.limit} used)`}
               >
                 <Zap className="h-2.5 w-2.5" aria-hidden="true" />
-                {credits.remaining}
+                {credits.unlimited ? "∞" : credits.remaining}
               </span>
             )}
           </div>
