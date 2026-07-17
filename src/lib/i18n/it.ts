@@ -195,6 +195,7 @@ export const it = {
   "nav.integrations": "Integrazioni",
   "nav.blog": "Blog",
   "nav.automation": "Automazione",
+  "nav.agents": "Agenti",
   "nav.manage": "Gestisci",
   "nav.executive": "Direzione",
   "nav.aiCosts": "Costi IA",

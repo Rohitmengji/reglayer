@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const perm = await requireWorkspacePermission("scans.read");
+  const perm = await requireWorkspacePermission("scans.view");
   if (!perm.ok) return perm.response;
 
   let body: unknown;

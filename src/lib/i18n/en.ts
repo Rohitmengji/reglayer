@@ -195,6 +195,7 @@ export const en = {
   "nav.integrations": "Integrations",
   "nav.blog": "Blog",
   "nav.automation": "Automation",
+  "nav.agents": "Agents",
   "nav.manage": "Manage",
   "nav.executive": "Executive",
   "nav.aiCosts": "AI Costs",
