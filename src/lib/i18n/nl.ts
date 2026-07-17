@@ -195,6 +195,7 @@ export const nl = {
   "nav.integrations": "Integraties",
   "nav.blog": "Blog",
   "nav.automation": "Automatisering",
+  "nav.agents": "Agenten",
   "nav.manage": "Beheren",
   "nav.executive": "Directie",
   "nav.aiCosts": "AI-kosten",

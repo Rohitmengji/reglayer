@@ -251,15 +251,7 @@ function AgentsPageInner() {
 
 export default function AgentsPage() {
   return (
-    <FeatureGate feature="agents" fallback={
-      <AppShell>
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <Bot className="h-12 w-12 text-muted-foreground/30 mb-4" />
-          <h2 className="text-xl font-semibold">AI Agents</h2>
-          <p className="text-sm text-muted-foreground mt-1">Available on Pro and Enterprise plans</p>
-        </div>
-      </AppShell>
-    }>
+    <FeatureGate feature="agents">
       <AgentsPageInner />
     </FeatureGate>
   );
