@@ -18,12 +18,13 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { PageLoading } from "@/components/ui/page-loading";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Key, GitBranch, Bell, Copy, Eye, EyeOff, Sparkles, Zap, SlidersHorizontal, AlertTriangle, User, Download, Pencil, X, Shield } from "lucide-react";
+import { Plus, Trash2, Key, GitBranch, Bell, Copy, Eye, EyeOff, Sparkles, Zap, SlidersHorizontal, AlertTriangle, User, Download, Pencil, X, Shield, Brain } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 import { signOut } from "next-auth/react";
 import Link from "next/link";
 import { useFeatures } from "@/hooks/use-features";
 import { useSession } from "next-auth/react";
+import { DecisionEngineTab } from "@/components/settings/decision-engine-tab";
 
 interface ApiKeyRecord {
   id: string;
@@ -34,7 +35,7 @@ interface ApiKeyRecord {
   expiresAt: string | null;
 }
 
-type Tab = "plan" | "general" | "account" | "api-keys" | "integrations" | "alerts";
+type Tab = "plan" | "general" | "account" | "api-keys" | "integrations" | "alerts" | "decisions";
 
 export default function SettingsPage() {
   const searchParams = useSearchParams();
@@ -53,6 +54,7 @@ export default function SettingsPage() {
     { id: "api-keys", label: t("settings.tabApiKeys"), icon: <Key className="h-4 w-4" /> },
     { id: "integrations", label: t("settings.tabIntegrations"), icon: <GitBranch className="h-4 w-4" /> },
     { id: "alerts", label: t("settings.tabAlerts"), icon: <AlertTriangle className="h-4 w-4" /> },
+    { id: "decisions", label: "AI Decisions", icon: <Brain className="h-4 w-4" /> },
   ];
 
   return (
@@ -100,6 +102,7 @@ export default function SettingsPage() {
         {activeTab === "api-keys" && <ApiKeysTab />}
         {activeTab === "integrations" && <IntegrationsTab />}
         {activeTab === "alerts" && <AlertsTab />}
+        {activeTab === "decisions" && <DecisionEngineTab />}
       </div>
     </AppShell>
   );
