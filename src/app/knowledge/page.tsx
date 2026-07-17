@@ -9,7 +9,7 @@
  * HOW: POST /api/knowledge (text upload), GET (list), DELETE (remove).
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   FileText, Upload, Trash2, Loader2, CheckCircle2, AlertCircle,
-  Clock, Plus, Search, BookOpen, X,
+  Clock, Plus, Search, BookOpen, X, File,
 } from "lucide-react";
 import { toast } from "sonner";
 import { FeatureGate } from "@/components/ui/feature-gate";
@@ -53,6 +53,9 @@ function KnowledgePageInner() {
   const [showUpload, setShowUpload] = useState(false);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [uploadMode, setUploadMode] = useState<"text" | "file">("file");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchDocs = useCallback(async () => {
     try {
@@ -76,6 +79,33 @@ function KnowledgePageInner() {
   }, [docs, fetchDocs]);
 
   const handleUpload = async () => {
+    if (uploadMode === "file") {
+      if (!selectedFile) return;
+      setUploading(true);
+      try {
+        const formData = new FormData();
+        formData.append("file", selectedFile);
+        if (title.trim()) formData.append("title", title.trim());
+        const res = await fetch("/api/knowledge/upload", {
+          method: "POST",
+          body: formData,
+        });
+        if (res.ok) {
+          toast.success("File uploaded — processing will take a few seconds");
+          setSelectedFile(null);
+          setTitle("");
+          setShowUpload(false);
+          fetchDocs();
+        } else {
+          const data = await res.json().catch(() => ({}));
+          toast.error(data.error || "Upload failed");
+        }
+      } catch { toast.error("Network error"); }
+      finally { setUploading(false); }
+      return;
+    }
+
+    // Text mode
     if (!title.trim() || !content.trim()) return;
     setUploading(true);
     try {
@@ -160,27 +190,101 @@ function KnowledgePageInner() {
           <Card>
             <CardHeader>
               <CardTitle className="text-sm">Add Knowledge Document</CardTitle>
-              <CardDescription>Paste text content from your policies, guidelines, or documentation.</CardDescription>
+              <CardDescription>Upload a PDF file or paste text from your policies and documentation.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
+              {/* Mode Toggle */}
+              <div className="flex gap-1 p-1 bg-neutral-100 dark:bg-neutral-800 rounded-lg w-fit">
+                <button
+                  onClick={() => setUploadMode("file")}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${uploadMode === "file" ? "bg-white dark:bg-neutral-700 shadow-sm" : "text-muted-foreground"}`}
+                >
+                  <File className="h-3 w-3 inline mr-1" /> File Upload
+                </button>
+                <button
+                  onClick={() => setUploadMode("text")}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${uploadMode === "text" ? "bg-white dark:bg-neutral-700 shadow-sm" : "text-muted-foreground"}`}
+                >
+                  <FileText className="h-3 w-3 inline mr-1" /> Paste Text
+                </button>
+              </div>
+
               <Input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="Document title — e.g., 'Company Accessibility Policy'"
+                placeholder={uploadMode === "file" ? "Document title (optional — uses filename)" : "Document title — e.g., 'Company Accessibility Policy'"}
               />
-              <textarea
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                placeholder="Paste the document content here..."
-                className="w-full rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-3.5 py-2.5 text-sm min-h-[200px] resize-y focus:outline-none focus:ring-2 focus:ring-accent/40"
-              />
+
+              {uploadMode === "file" ? (
+                <div
+                  className="border-2 border-dashed border-neutral-300 dark:border-neutral-600 rounded-lg p-8 text-center cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 transition-colors"
+                  onClick={() => fileInputRef.current?.click()}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const file = e.dataTransfer.files[0];
+                    if (file) setSelectedFile(file);
+                  }}
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf,.txt,.md,.csv"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) setSelectedFile(file);
+                    }}
+                  />
+                  {selectedFile ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <File className="h-5 w-5 text-blue-500" />
+                      <span className="text-sm font-medium">{selectedFile.name}</span>
+                      <Badge variant="secondary" className="text-[10px]">
+                        {(selectedFile.size / 1024).toFixed(0)} KB
+                      </Badge>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setSelectedFile(null); }}
+                        className="text-muted-foreground hover:text-red-500"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <Upload className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
+                      <p className="text-sm text-muted-foreground">
+                        Drop a file here or click to browse
+                      </p>
+                      <p className="text-xs text-muted-foreground/60 mt-1">
+                        PDF, TXT, MD, CSV — max 10MB
+                      </p>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <textarea
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  placeholder="Paste the document content here..."
+                  className="w-full rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-3.5 py-2.5 text-sm min-h-[200px] resize-y focus:outline-none focus:ring-2 focus:ring-accent/40"
+                />
+              )}
+
               <div className="flex items-center justify-between">
                 <span className="text-xs text-muted-foreground">
-                  {content.length > 0 ? `${(content.length / 4).toFixed(0)} estimated tokens` : "Max 500K characters"}
+                  {uploadMode === "file"
+                    ? selectedFile ? `${selectedFile.name} (${(selectedFile.size / 1024).toFixed(0)} KB)` : "Supports PDF, TXT, MD, CSV"
+                    : content.length > 0 ? `${(content.length / 4).toFixed(0)} estimated tokens` : "Max 500K characters"
+                  }
                 </span>
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" onClick={() => setShowUpload(false)}>Cancel</Button>
-                  <Button size="sm" onClick={handleUpload} disabled={uploading || !title.trim() || !content.trim()}>
+                  <Button
+                    size="sm"
+                    onClick={handleUpload}
+                    disabled={uploading || (uploadMode === "file" ? !selectedFile : !title.trim() || !content.trim())}
+                  >
                     {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Upload className="h-3.5 w-3.5 mr-1" />}
                     Upload & Process
                   </Button>
