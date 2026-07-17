@@ -145,13 +145,19 @@ export async function POST(request: NextRequest) {
   const intent = classifyIntent(latestUserMessage);
   const preset = intent === "conversational" ? FAST_PRESET : BALANCED_PRESET;
 
-  // ── 8. Retrieval pipeline (hybrid search + graph + knowledge + cache) ───
+  // ── 8+9. Retrieval + profile + memories (ALL in parallel for speed) ─────
+  // These three are independent — running them concurrently saves 200-500ms
+  // which is the difference between "instant" and "noticeable delay".
   const retrievalStart = Date.now();
-  const retrieval = await optimizedRetrieve(latestUserMessage, {
-    ...preset,
-    workspaceId: workspaceId ?? "",
-    userId,
-  });
+  const [retrieval, profile, memories] = await Promise.all([
+    optimizedRetrieve(latestUserMessage, {
+      ...preset,
+      workspaceId: workspaceId ?? "",
+      userId,
+    }),
+    getProfile(userId).catch(() => null),
+    getMemories({ userId, workspaceId: workspaceId ?? null }).catch(() => []),
+  ]);
 
   lineage.recordCache(retrieval.cached, retrieval.cacheLayer);
 
@@ -166,19 +172,13 @@ export async function POST(request: NextRequest) {
   if (retrieval.stages.some((s) => s.name === "compression")) {
     const comp = retrieval.stages.find((s) => s.name === "compression")!;
     lineage.recordCompression({
-      inputTokens: retrieval.tokenCount * 2, // estimate pre-compression
+      inputTokens: retrieval.tokenCount * 2,
       outputTokens: retrieval.tokenCount,
       chunksIn: comp.resultCount * 2,
       chunksOut: comp.resultCount,
       durationMs: comp.latencyMs,
     });
   }
-
-  // ── 9. Load user profile + memories (parallel) ──────────────────────────
-  const [profile, memories] = await Promise.all([
-    getProfile(userId).catch(() => null),
-    getMemories({ userId, workspaceId: workspaceId ?? null }).catch(() => []),
-  ]);
 
   const profileContext = profile ? formatProfileForPrompt(profile) : "";
   const memoryContext = formatMemoriesForPrompt(memories);
@@ -240,6 +240,7 @@ export async function POST(request: NextRequest) {
     metadata: {
       feature: isRAGAugmented ? "chat-rag" : "chat",
       userId: session.user.email,
+      workspaceId: workspaceId ?? undefined,
     },
   });
 

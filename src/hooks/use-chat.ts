@@ -38,6 +38,7 @@ export function useChat() {
     messages,
     isStreaming,
     addMessage,
+    updateMessage,
     appendToMessage,
     setStreaming,
     clearMessages,
@@ -66,8 +67,8 @@ export function useChat() {
 
         if (!response.ok) {
           const errorText = await response.text();
-          appendToMessage(
-            assistantId,
+          // Clear the empty placeholder before showing error
+          updateMessage(assistantId,
             `Sorry, I couldn't respond. ${response.status === 401 ? "Please sign in." : response.status === 429 ? "Rate limit reached — try again shortly." : errorText}`,
           );
           return;
