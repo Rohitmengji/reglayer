@@ -7,7 +7,7 @@
  *      the session was issued AFTER the last revocation.
  *
  * WHAT: Database lookup of `sessionsRevokedAt` compared against token `iat`.
- * HOW: Call `assertSessionFresh(session)` on sensitive endpoints.
+ * HOW: Call `assertSessionFresh(request)` on sensitive endpoints.
  *      Returns error response if session was issued before revocation.
  */
 
