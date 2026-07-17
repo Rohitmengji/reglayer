@@ -7,21 +7,23 @@ import { useEffect, useRef, useState } from "react";
  * Uses easeOutExpo for a satisfying deceleration feel.
  */
 export function useAnimatedNumber(target: number, duration = 800): number {
-  const [value, setValue] = useState(0);
-  const prevTarget = useRef(0);
+  const [value, setValue] = useState(target);
   const frameRef = useRef<number>(0);
+  const startValueRef = useRef(0);
 
   useEffect(() => {
-    const start = prevTarget.current;
+    // Skip animation for zero or same value
+    if (target === 0) { setValue(0); return; }
+
+    const start = startValueRef.current;
     const diff = target - start;
-    if (diff === 0) return;
+    if (diff === 0) { setValue(target); return; }
 
     const startTime = performance.now();
 
     function tick(now: number) {
       const elapsed = now - startTime;
       const progress = Math.min(elapsed / duration, 1);
-      // easeOutExpo — fast start, smooth deceleration
       const eased = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
       const current = start + diff * eased;
       setValue(Math.round(current));
@@ -29,12 +31,17 @@ export function useAnimatedNumber(target: number, duration = 800): number {
       if (progress < 1) {
         frameRef.current = requestAnimationFrame(tick);
       } else {
-        prevTarget.current = target;
+        startValueRef.current = target;
       }
     }
 
     frameRef.current = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frameRef.current);
+    return () => {
+      cancelAnimationFrame(frameRef.current);
+      // On cleanup, set the value directly so it's correct immediately on re-render
+      startValueRef.current = target;
+      setValue(target);
+    };
   }, [target, duration]);
 
   return value;
