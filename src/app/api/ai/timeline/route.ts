@@ -8,6 +8,8 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import * as Sentry from "@sentry/nextjs";
+import { z } from "zod";
 import { authOptions } from "@/lib/auth/config";
 import { requireWorkspacePermission } from "@/lib/auth/api-guard";
 import { prisma } from "@/lib/database/prisma";
@@ -24,6 +26,14 @@ interface TimelineEvent {
   status: "success" | "error" | "pending" | "info";
   createdAt: string;
 }
+
+// Only chat/agent/scan sources are actually aggregated today (see below) —
+// an unrecognized `type` gets a clean 400 instead of silently returning [].
+const querySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(50).default(30),
+  type: z.enum(["chat", "agent", "scan"]).nullish(),
+});
 
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -42,16 +52,23 @@ export async function GET(request: NextRequest) {
   if (!perm.ctx.workspaceId) return NextResponse.json({ events: [] });
 
   const url = new URL(request.url);
-  const page = Math.max(1, parseInt(url.searchParams.get("page") || "1"));
-  const limit = Math.min(50, parseInt(url.searchParams.get("limit") || "30"));
-  const type = url.searchParams.get("type") || null;
+  const parsedQuery = querySchema.safeParse({
+    page: url.searchParams.get("page") ?? undefined,
+    limit: url.searchParams.get("limit") ?? undefined,
+    type: url.searchParams.get("type") ?? undefined,
+  });
+  if (!parsedQuery.success) {
+    return NextResponse.json({ error: parsedQuery.error.flatten().fieldErrors }, { status: 400 });
+  }
+  const { page, limit, type } = parsedQuery.data;
   const offset = (page - 1) * limit;
 
   const events: TimelineEvent[] = [];
   const workspaceId = perm.ctx.workspaceId;
 
-  // Fetch from multiple sources in parallel
-  const [aiEvents, conversations, scans, agentRuns] = await Promise.all([
+  try {
+    // Fetch from multiple sources in parallel
+    const [aiEvents, conversations, scans, agentRuns] = await Promise.all([
     // AI Events (chat completions, tool calls)
     prisma.aiEvent.findMany({
       where: {
@@ -199,5 +216,9 @@ export async function GET(request: NextRequest) {
   // Apply limit
   const paginatedEvents = events.slice(0, limit);
 
-  return NextResponse.json({ events: paginatedEvents, page, hasMore: events.length >= limit });
+    return NextResponse.json({ events: paginatedEvents, page, hasMore: events.length >= limit });
+  } catch (err) {
+    Sentry.captureException(err);
+    return NextResponse.json({ error: "Failed to load activity" }, { status: 500 });
+  }
 }
