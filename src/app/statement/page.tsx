@@ -9,6 +9,8 @@
  */
 
 import { useState } from "react";
+import { toast } from "sonner";
+import * as Sentry from "@sentry/nextjs";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -63,7 +65,11 @@ export default function StatementPage() {
         }),
       });
       const data = await res.json();
-      if (res.ok) setResult(data);
+      if (!res.ok) throw new Error(data?.error ?? "Could not generate statement.");
+      setResult(data);
+    } catch (err) {
+      Sentry.captureException(err);
+      toast.error(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
       setLoading(false);
     }

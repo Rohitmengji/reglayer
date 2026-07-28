@@ -10,6 +10,8 @@ import { FeatureGate } from "@/components/ui/feature-gate";
  */
 
 import { useState, useEffect, useMemo } from "react";
+import { toast } from "sonner";
+import * as Sentry from "@sentry/nextjs";
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,6 +58,7 @@ function WebhooksPageInner() {
   const [webhooks, setWebhooks] = useState<WebhookEntry[]>([]);
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
 
   // Create form state
@@ -89,55 +92,81 @@ function WebhooksPageInner() {
   }, []);
 
   async function fetchWebhooks() {
-    const res = await fetch("/api/webhooks");
-    if (res.ok) {
+    try {
+      const res = await fetch("/api/webhooks");
+      if (!res.ok) throw new Error(res.status === 429 ? "Rate limited — try again shortly." : "Could not load webhooks.");
       const data = await res.json();
       setWebhooks(data.webhooks || []);
       setDeliveries(data.deliveries || []);
+      setLoadError(null);
+    } catch (err) {
+      Sentry.captureException(err);
+      setLoadError(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     setCreating(true);
-    const res = await fetch("/api/webhooks", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, url, events: selectedEvents }),
-    });
-    if (res.ok) {
+    try {
+      const res = await fetch("/api/webhooks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, url, events: selectedEvents }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.error ?? "Could not create webhook.");
+      }
       const data = await res.json();
       setNewSecret(data.signingSecret);
       setName("");
       setUrl("");
       setSelectedEvents(["scan.completed", "alert.triggered"]);
       setShowCreate(false);
-      fetchWebhooks();
+      await fetchWebhooks();
+    } catch (err) {
+      Sentry.captureException(err);
+      toast.error(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setCreating(false);
     }
-    setCreating(false);
   }
 
   async function handleDelete(id: string) {
-    await fetch(`/api/webhooks?id=${id}`, { method: "DELETE" });
-    setWebhooks((prev) => prev.filter((w) => w.id !== id));
-    setDeleteTarget(null);
+    try {
+      const res = await fetch(`/api/webhooks?id=${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Could not delete webhook.");
+      setWebhooks((prev) => prev.filter((w) => w.id !== id));
+    } catch (err) {
+      Sentry.captureException(err);
+      toast.error(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setDeleteTarget(null);
+    }
   }
 
   async function handleTest(id: string) {
     setTesting(id);
     setTestResult(null);
-    const res = await fetch("/api/webhooks/test", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ webhookId: id }),
-    });
-    if (res.ok) {
+    try {
+      const res = await fetch("/api/webhooks/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ webhookId: id }),
+      });
+      if (!res.ok) throw new Error("Test delivery failed.");
       const data = await res.json();
       setTestResult({ id, ...data });
-      fetchWebhooks(); // refresh deliveries
+      await fetchWebhooks(); // refresh deliveries
+    } catch (err) {
+      Sentry.captureException(err);
+      toast.error(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setTesting(null);
     }
-    setTesting(null);
   }
 
   function toggleEvent(event: string) {
@@ -150,8 +179,34 @@ function WebhooksPageInner() {
     return (
       <AppShell>
         <div className="flex-1 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-neutral-300" />
+          <Loader2 className="h-8 w-8 animate-spin text-neutral-300" aria-hidden="true" />
+          <span className="sr-only">Loading webhooks</span>
         </div>
+      </AppShell>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <AppShell>
+        <Card className="border-dashed border-red-200 dark:border-red-900">
+          <CardContent className="flex flex-col items-center justify-center py-16 text-center" role="alert">
+            <XCircle className="h-10 w-10 text-red-400 mb-3" aria-hidden="true" />
+            <h3 className="font-medium">Couldn&apos;t load webhooks</h3>
+            <p className="text-sm text-muted-foreground mt-1">{loadError}</p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-4"
+              onClick={() => {
+                setLoading(true);
+                fetchWebhooks();
+              }}
+            >
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
       </AppShell>
     );
   }

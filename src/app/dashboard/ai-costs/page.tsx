@@ -14,6 +14,7 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import * as Sentry from "@sentry/nextjs";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -121,13 +122,19 @@ const FEATURE_COLORS = [
 export default function AICostDashboard() {
   const [data, setData] = useState<UsageData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [days, setDays] = useState(30);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch(`/api/ai/usage?days=${days}`);
-      if (res.ok) setData(await res.json());
+      if (!res.ok) throw new Error(res.status === 429 ? "Rate limited — try again shortly." : "Could not load AI cost data.");
+      setData(await res.json());
+      setError(null);
+    } catch (err) {
+      Sentry.captureException(err);
+      setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
       setLoading(false);
     }
@@ -198,6 +205,20 @@ export default function AICostDashboard() {
 
         {/* ── Loading State ───────────────────────────────────────────────── */}
         {loading && !data && <LoadingSkeleton />}
+
+        {/* ── Error State ─────────────────────────────────────────────────── */}
+        {!loading && error && !data && (
+          <Card className="border-dashed border-red-200 dark:border-red-900">
+            <CardContent className="flex flex-col items-center justify-center py-16 text-center" role="alert">
+              <AlertCircle className="h-10 w-10 text-red-400 mb-3" aria-hidden="true" />
+              <h3 className="font-medium">Couldn&apos;t load AI cost data</h3>
+              <p className="text-sm text-muted-foreground mt-1">{error}</p>
+              <Button variant="outline" size="sm" className="mt-4" onClick={fetchData}>
+                Retry
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {/* ── Main Content ────────────────────────────────────────────────── */}
         {data && (
