@@ -10,6 +10,8 @@ import { FeatureGate } from "@/components/ui/feature-gate";
  */
 
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
+import * as Sentry from "@sentry/nextjs";
 import { ModernSelect } from "@/components/ui/modern-select";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent } from "@/components/ui/card";
@@ -66,9 +68,11 @@ function RevenueImpactPageInner() {
           region,
         }),
       });
-      if (res.ok) {
-        setResult(await res.json());
-      }
+      if (!res.ok) throw new Error(res.status === 429 ? "Rate limited — try again shortly." : "Could not calculate revenue impact.");
+      setResult(await res.json());
+    } catch (err) {
+      Sentry.captureException(err);
+      toast.error(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
       setLoading(false);
     }
