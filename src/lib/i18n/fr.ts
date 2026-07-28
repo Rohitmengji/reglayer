@@ -2108,6 +2108,7 @@ export const fr = {
   "violations.clearSelection": "Effacer la sélection",
   "violations.selectedCount": "{count} sélectionné(s)",
   "violations.selectAllAria": "Sélectionner toutes les violations",
+  "violations.filterTabsAria": "Filtrer les violations par statut",
   "violations.selectAllOnPage": "Tout sélectionner sur cette page",
   "violations.violationCountSingular": "{count} violation",
   "violations.violationCountPlural": "{count} violations",

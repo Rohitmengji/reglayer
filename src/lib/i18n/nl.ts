@@ -1784,6 +1784,7 @@ export const nl = {
   "violations.clearSelection": "Selectie wissen",
   "violations.selectedCount": "{count} geselecteerd",
   "violations.selectAllAria": "Alle overtredingen selecteren",
+  "violations.filterTabsAria": "Overtredingen filteren op status",
   "violations.selectAllOnPage": "Alles op deze pagina selecteren",
   "violations.violationCountSingular": "{count} overtreding",
   "violations.violationCountPlural": "{count} overtredingen",

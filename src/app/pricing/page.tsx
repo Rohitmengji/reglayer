@@ -144,7 +144,7 @@ export default function PricingPage() {
               className={`rounded-full px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 dark:focus-visible:ring-white ${
                 billing === "monthly"
                   ? "bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm"
-                  : "text-neutral-500 dark:text-neutral-400"
+                  : "text-neutral-600 dark:text-neutral-400"
               }`}
             >
               {t("pricing.monthly")}
@@ -156,7 +156,7 @@ export default function PricingPage() {
               className={`rounded-full px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 dark:focus-visible:ring-white ${
                 billing === "annual"
                   ? "bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm"
-                  : "text-neutral-500 dark:text-neutral-400"
+                  : "text-neutral-600 dark:text-neutral-400"
               }`}
             >
               {t("pricing.annual")}

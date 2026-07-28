@@ -1784,6 +1784,7 @@ export const pt = {
   "violations.clearSelection": "Limpar seleção",
   "violations.selectedCount": "{count} selecionadas",
   "violations.selectAllAria": "Selecionar todas as violações",
+  "violations.filterTabsAria": "Filtrar violações por estado",
   "violations.selectAllOnPage": "Selecionar tudo nesta página",
   "violations.violationCountSingular": "{count} violação",
   "violations.violationCountPlural": "{count} violações",

@@ -1804,6 +1804,7 @@ export const es = {
   "violations.clearSelection": "Borrar selección",
   "violations.selectedCount": "{count} seleccionadas",
   "violations.selectAllAria": "Seleccionar todas las violaciones",
+  "violations.filterTabsAria": "Filtrar violaciones por estado",
   "violations.selectAllOnPage": "Seleccionar todo en esta página",
   "violations.violationCountSingular": "{count} violación",
   "violations.violationCountPlural": "{count} violaciones",

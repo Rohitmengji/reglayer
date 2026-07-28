@@ -59,7 +59,7 @@ export function EnterpriseSection() {
       {/* Why / Who */}
       <div className="mt-10 grid gap-5 sm:grid-cols-2">
         <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/60 p-6">
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-neutral-600 dark:text-neutral-400">
             {t("pricing.ent.whyTitle")}
           </h3>
           <p className="mt-2 text-base leading-relaxed text-neutral-700 dark:text-neutral-200">
@@ -67,7 +67,7 @@ export function EnterpriseSection() {
           </p>
         </div>
         <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/60 p-6">
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-neutral-600 dark:text-neutral-400">
             {t("pricing.ent.whoTitle")}
           </h3>
           <p className="mt-2 text-base leading-relaxed text-neutral-700 dark:text-neutral-200">

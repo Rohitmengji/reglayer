@@ -86,16 +86,24 @@ export function ConfirmDialog({
   const isDanger = variant === "danger";
 
   return (
+    // The backdrop is click-to-dismiss for pointer users only — Escape (handled
+    // above) is the keyboard equivalent, and the backdrop itself carries no dialog
+    // semantics (role="dialog" belongs on the panel below, matching what a screen
+    // reader should announce as the dialog's boundary).
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/no-noninteractive-element-interactions
     <div
       ref={overlayRef}
       onClick={handleOverlayClick}
       className="fixed inset-0 z-100 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-fade-in"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="confirm-title"
-      aria-describedby="confirm-desc"
     >
-      <div ref={dialogRef} className="w-full max-w-md mx-4 rounded-2xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-2xl animate-scale-in">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="confirm-title"
+        aria-describedby="confirm-desc"
+        className="w-full max-w-md mx-4 rounded-2xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-2xl animate-scale-in"
+      >
         <div className="p-6">
           <div className="flex items-start gap-4">
             <div

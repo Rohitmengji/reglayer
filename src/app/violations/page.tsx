@@ -300,7 +300,15 @@ function ViolationsPageInner() {
         </div>
 
         {/* Filter Tabs */}
-        <div className="flex items-center gap-1 border-b border-neutral-200 dark:border-neutral-700 overflow-x-auto">
+        {/* role="tab" REQUIRES an ancestor with role="tablist" (axe `aria-required-parent`,
+            WCAG 1.3.1). Without it screen readers cannot announce "tab 2 of 6" and the
+            arrow-key contract is not implied. Roving tabindex keeps the group a single
+            tab stop, per the WAI-ARIA Tabs pattern. */}
+        <div
+          role="tablist"
+          aria-label={t("violations.filterTabsAria")}
+          className="flex items-center gap-1 border-b border-neutral-200 dark:border-neutral-700 overflow-x-auto"
+        >
           {STATUS_TABS.map((tab) => {
             const TabIcon = tab.icon;
             const isActive = activeTab === tab.key;
@@ -311,10 +319,11 @@ function ViolationsPageInner() {
                 className={`inline-flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${
                   isActive
                     ? "border-neutral-900 dark:border-white text-neutral-900 dark:text-white"
-                    : "border-transparent text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
+                    : "border-transparent text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-200"
                 }`}
                 aria-selected={isActive}
                 role="tab"
+                tabIndex={isActive ? 0 : -1}
               >
                 <TabIcon className={`h-3.5 w-3.5 ${isActive ? tab.color : ""}`} />
                 {tab.label}
@@ -368,11 +377,13 @@ function ViolationsPageInner() {
                 className="h-4 w-4 rounded border-neutral-300 dark:border-neutral-600 text-neutral-900 focus:ring-neutral-500"
                 aria-label={t("violations.selectAllAria")}
               />
-              <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
+              {/* neutral-500 (#737373) on the neutral-50 header (#f8f7f4) measures 4.42:1 —
+                  just under the 4.5:1 required by WCAG 1.4.3 at 12px. neutral-600 is 7.44:1. */}
+              <span className="text-xs font-medium text-neutral-600 dark:text-neutral-400">
                 {t("violations.selectAllOnPage")}
               </span>
               {data.total > 0 && (
-                <span className="ml-auto text-xs text-neutral-500 dark:text-neutral-400">
+                <span className="ml-auto text-xs text-neutral-600 dark:text-neutral-400">
                   {t(data.total === 1 ? "violations.violationCountSingular" : "violations.violationCountPlural", { count: String(data.total) })}
                 </span>
               )}

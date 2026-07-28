@@ -351,7 +351,7 @@ jobs:
           path: .next/
 
       - name: Run E2E smoke tests
-        run: npx playwright test e2e/public-pages.spec.ts e2e/smoke.spec.ts --project=chromium
+        run: npx playwright test e2e/public-pages.spec.ts e2e/smoke.spec.ts e2e/a11y.spec.ts --project=chromium
         env:
           E2E_BASE_URL: http://localhost:3000
           NEXTAUTH_SECRET: ci-test-secret

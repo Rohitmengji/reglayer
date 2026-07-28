@@ -109,7 +109,7 @@ export default function CookiePolicyPage() {
             <p className="text-neutral-600 dark:text-neutral-300">
               RegLayer does not use third-party advertising or tracking cookies. If you sign in via Google OAuth, 
               Google may set its own cookies subject to{" "}
-              <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="text-blue-600">
+              <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline underline-offset-2">
                 Google&apos;s Privacy Policy
               </a>.
             </p>
@@ -127,7 +127,7 @@ export default function CookiePolicyPage() {
             <h2 className="text-lg font-semibold text-neutral-900 dark:text-white mt-8 mb-3">7. Contact</h2>
             <p className="text-neutral-600 dark:text-neutral-300">
               Questions about our cookie usage? Contact us at{" "}
-              <a href="mailto:privacy@reglayer.dev" className="text-blue-600">privacy@reglayer.dev</a>.
+              <a href="mailto:privacy@reglayer.dev" className="text-blue-600 underline underline-offset-2">privacy@reglayer.dev</a>.
             </p>
           </section>
         </div>

@@ -90,7 +90,7 @@ export default function ApiReferencePage() {
           <Code2 className="h-8 w-8 text-neutral-700 dark:text-neutral-300" />
           <h1 className="text-3xl font-bold text-neutral-900 dark:text-white">{t("apiReference.title")}</h1>
         </div>
-        <p className="text-neutral-500 dark:text-neutral-400 mb-8">
+        <p className="text-neutral-600 dark:text-neutral-400 mb-8">
           {t("apiReference.subtitle")}
         </p>
 
@@ -106,7 +106,7 @@ export default function ApiReferencePage() {
           <pre className="bg-neutral-50 dark:bg-neutral-900 rounded-lg p-4 text-xs font-mono text-neutral-700 dark:text-neutral-300 overflow-x-auto">
 {`Authorization: Bearer your_api_token_here`}
           </pre>
-          <p className="text-xs text-neutral-500 mt-3">
+          <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-3">
             Generate API tokens from Settings → API Keys in your workspace dashboard.
           </p>
         </div>
@@ -122,7 +122,7 @@ export default function ApiReferencePage() {
             <p><strong>Pro plan:</strong> 300 requests/minute, 100 scans/day</p>
             <p><strong>Enterprise:</strong> Custom limits</p>
           </div>
-          <p className="text-xs text-neutral-500 mt-3">
+          <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-3">
             Rate limit headers (<code className="bg-neutral-100 dark:bg-neutral-800 px-1 py-0.5 rounded">X-RateLimit-Remaining</code>) are included in every response.
           </p>
         </div>
@@ -140,7 +140,7 @@ export default function ApiReferencePage() {
                   {ep.method}
                 </span>
                 <code className="text-sm font-mono text-neutral-800 dark:text-neutral-200">{ep.path}</code>
-                <span className="text-sm text-neutral-500 dark:text-neutral-400 ml-auto hidden sm:block">
+                <span className="text-sm text-neutral-600 dark:text-neutral-400 ml-auto hidden sm:block">
                   {ep.description}
                 </span>
               </div>
@@ -148,14 +148,14 @@ export default function ApiReferencePage() {
                 <p className="text-sm text-neutral-600 dark:text-neutral-300 sm:hidden">{ep.description}</p>
                 {ep.body && (
                   <div>
-                    <p className="text-xs font-medium text-neutral-500 mb-1">Request Body</p>
+                    <p className="text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1">Request Body</p>
                     <pre className="bg-neutral-50 dark:bg-neutral-900 rounded p-3 text-xs font-mono text-neutral-700 dark:text-neutral-300 overflow-x-auto">
                       {ep.body}
                     </pre>
                   </div>
                 )}
                 <div>
-                  <p className="text-xs font-medium text-neutral-500 mb-1">Response</p>
+                  <p className="text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1">Response</p>
                   <pre className="bg-neutral-50 dark:bg-neutral-900 rounded p-3 text-xs font-mono text-neutral-700 dark:text-neutral-300 overflow-x-auto">
                     {ep.response}
                   </pre>
@@ -165,10 +165,10 @@ export default function ApiReferencePage() {
           ))}
         </div>
 
-        <div className="mt-12 text-center text-sm text-neutral-500">
+        <div className="mt-12 text-center text-sm text-neutral-600 dark:text-neutral-400">
           <p>
-            Need help integrating? <Link href="/contact" className="text-blue-600">Contact our team</Link> or check the{" "}
-            <Link href="/docs" className="text-blue-600">Documentation</Link>.
+            Need help integrating? <Link href="/contact" className="text-blue-600 underline underline-offset-2">Contact our team</Link> or check the{" "}
+            <Link href="/docs" className="text-blue-600 underline underline-offset-2">Documentation</Link>.
           </p>
         </div>
       </div>
