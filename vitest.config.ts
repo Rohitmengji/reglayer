@@ -17,17 +17,31 @@ export default defineConfig({
     include: ["src/**/*.test.{ts,tsx}"],
     coverage: {
       provider: "v8",
+      // WHY `include` is mandatory: without it, the v8 provider only reports files that were
+      // actually loaded during the run. Untested files become invisible rather than counting
+      // as 0%, so coverage measures "how well tested are the already-tested files" — a metric
+      // that cannot detect the risk it exists to detect. With `include`, the denominator is
+      // the whole codebase (28,549 statements vs 6,146 when unset).
+      include: ["src/**/*.{ts,tsx}"],
+      // Thresholds are the HONEST measured baseline (with a small safety margin below
+      // the actual ~14.2/13.8/13.3/14.3 measured values), not an aspiration. They exist
+      // to ratchet: raise them as coverage improves; never lower them. A gate that
+      // cannot fail is not a gate. Keep this in sync with the CI workflow's "Coverage
+      // threshold check" step (.github/workflows/ci.yml), which enforces its own
+      // separate floor on `lines.pct` from coverage-summary.json.
       thresholds: {
-        lines: 40,
-        functions: 35,
-        branches: 30,
-        statements: 40,
+        lines: 13,
+        functions: 12,
+        branches: 12,
+        statements: 13,
       },
       exclude: [
         "src/generated/**",
         "src/__tests__/**",
         "src/app/**/loading.tsx",
         "src/app/**/error.tsx",
+        "src/app/**/not-found.tsx",
+        "**/*.d.ts",
       ],
     },
   },

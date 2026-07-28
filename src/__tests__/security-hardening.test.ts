@@ -203,8 +203,15 @@ describe("crypto — key derivation safety", () => {
 
     const { encrypt, decrypt } = await import("@/lib/crypto");
     const ciphertext = encrypt("original");
-    // Tamper: flip a character in the middle
-    const tampered = ciphertext.slice(0, 15) + "X" + ciphertext.slice(16);
+    // Tamper by flipping every bit of one byte (XOR 0xFF) rather than
+    // splicing in a literal character. The IV is random per encryption, so
+    // a fixed replacement character has a ~1/64 chance of coincidentally
+    // matching the original base64 char at that position — producing an
+    // unchanged ciphertext and a flaky false pass/fail. XOR-ing guarantees
+    // the byte always differs, regardless of what was originally there.
+    const bytes = Buffer.from(ciphertext, "base64");
+    bytes[10] ^= 0xff;
+    const tampered = bytes.toString("base64");
     expect(() => decrypt(tampered)).toThrow();
   });
 });
