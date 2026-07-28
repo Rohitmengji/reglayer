@@ -98,22 +98,24 @@ function WorkflowsPageInner() {
     <AppShell>
       <div className="space-y-6 max-w-4xl mx-auto">
         {/* Header */}
-        <div>
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
-              <Workflow className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+        <div className="flex items-start justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                <Workflow className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <h1 className="text-2xl font-bold tracking-tight">Workflows</h1>
             </div>
-            <h1 className="text-2xl font-bold tracking-tight">Workflows</h1>
+            <p className="text-sm text-muted-foreground mt-1 ml-11">
+              Automated multi-step compliance processes. Select a workflow, provide a target URL, and let the AI handle the rest.
+            </p>
           </div>
-          <p className="text-sm text-muted-foreground mt-1 ml-11">
-            Automated multi-step compliance processes. Select a workflow, provide a target URL, and let the AI handle the rest.
-          </p>
+          <Link href="/workflows/builder">
+            <Button variant="outline" size="sm">
+              <PenTool className="h-3.5 w-3.5 mr-1" /> Visual Builder
+            </Button>
+          </Link>
         </div>
-        <Link href="/workflows/builder">
-          <Button variant="outline" size="sm">
-            <PenTool className="h-3.5 w-3.5 mr-1" /> Visual Builder
-          </Button>
-        </Link>
 
         {/* URL Input */}
         <Card>

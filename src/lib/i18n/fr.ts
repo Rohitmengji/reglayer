@@ -198,6 +198,7 @@ export const fr = {
   "nav.agents": "Agents",
   "nav.workflows": "Flux de travail",
   "nav.marketplace": "Place de marché",
+  "nav.timeline": "Chronologie",
   "nav.manage": "Gérer",
   "nav.executive": "Direction",
   "nav.aiCosts": "Coûts IA",

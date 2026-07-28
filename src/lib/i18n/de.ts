@@ -198,6 +198,7 @@ export const de = {
   "nav.agents": "Agenten",
   "nav.workflows": "Arbeitsabläufe",
   "nav.marketplace": "Marktplatz",
+  "nav.timeline": "Zeitleiste",
   "nav.manage": "Verwalten",
   "nav.executive": "Führungsebene",
   "nav.aiCosts": "KI-Kosten",

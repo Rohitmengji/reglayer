@@ -198,6 +198,7 @@ export const nl = {
   "nav.agents": "Agenten",
   "nav.workflows": "Werkstromen",
   "nav.marketplace": "Marktplaats",
+  "nav.timeline": "Tijdlijn",
   "nav.manage": "Beheren",
   "nav.executive": "Directie",
   "nav.aiCosts": "AI-kosten",

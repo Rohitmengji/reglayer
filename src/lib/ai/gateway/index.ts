@@ -54,6 +54,7 @@ import type {
 import { calculateCost, getModelConfig, calculateEmbeddingCost } from "./providers/registry";
 import { createOpenAIModel, createOpenAIEmbeddingModel } from "./providers/openai";
 import { createAnthropicModel } from "./providers/anthropic";
+import { createGoogleModel } from "./providers/google";
 import { consoleLogger } from "./logger";
 import { persistEventHandler } from "../observability/service";
 
@@ -99,9 +100,7 @@ function getLanguageModel(
     case "anthropic":
       return createAnthropicModel(providerModelId);
     case "google":
-      throw new Error(
-        "Google provider not yet implemented. Coming when API key is configured.",
-      );
+      return createGoogleModel(providerModelId);
   }
 }
 
@@ -279,7 +278,7 @@ export async function complete(
  * Use this for feature gates: "should we show the AI button?"
  */
 export function isAIAvailable(): boolean {
-  return !!(process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY);
+  return !!(process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY || process.env.GOOGLE_AI_API_KEY);
 }
 
 /**
@@ -428,6 +427,7 @@ export function stream(request: CompletionRequest) {
 export function getDefaultModelId(): ModelId | null {
   if (process.env.OPENAI_API_KEY) return "gpt-4o-mini";
   if (process.env.ANTHROPIC_API_KEY) return "claude-haiku";
+  if (process.env.GOOGLE_AI_API_KEY) return "gemini-2.0-flash";
   return null;
 }
 

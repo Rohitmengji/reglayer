@@ -31,7 +31,7 @@ import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { cn } from "@/lib/utils/cn";
 import { useTheme } from "@/components/theme-provider";
-import { Shield, LayoutDashboard, Scan, Grid3X3, Moon, Sun, Crown, ChevronDown, Settings, BarChart3, Zap, Plug, LogOut, AlertTriangle, TrendingUp, Building2, ChevronsUpDown, Check, BookOpen, Search, HelpCircle, Trophy, Radar, Flame, Sparkles, Bot, Workflow, Store } from "lucide-react";
+import { Shield, LayoutDashboard, Scan, Grid3X3, Moon, Sun, Crown, ChevronDown, Settings, BarChart3, Zap, Plug, LogOut, AlertTriangle, TrendingUp, Building2, ChevronsUpDown, Check, BookOpen, Search, HelpCircle, Trophy, Radar, Flame, Sparkles, Bot, Workflow, Store, Activity } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 import { SUPPORTED_LOCALES, type TranslationKey } from "@/lib/i18n/translations";
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -109,6 +109,7 @@ const navSections: NavSection[] = [
       { name: "Manage", key: "nav.manage", href: "/manage?tab=team", icon: Plug },
       { name: "Knowledge", key: "nav.knowledge", href: "/knowledge", icon: BookOpen },
       { name: "AI Costs", key: "nav.aiCosts", href: "/dashboard/ai-costs", icon: Sparkles },
+      { name: "Timeline", key: "nav.timeline", href: "/dashboard/timeline", icon: Activity },
       { name: "Agency", key: "nav.agency", href: "/agency", icon: Building2 },
       { name: "Settings", key: "nav.settings", href: "/settings", icon: Settings },
     ],
