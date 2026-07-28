@@ -30,13 +30,21 @@ input, textarea, [contenteditable] {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Remove all native focus indicators — custom focus styles are applied via Tailwind */
-input:focus:not([type="checkbox"]):not([type="radio"]),
-input:focus-visible:not([type="checkbox"]):not([type="radio"]),
-input:focus-within:not([type="checkbox"]):not([type="radio"]) {
-  outline: none !important;
-  outline-offset: 0 !important;
-  box-shadow: none !important;
+/* Suppress only the NATIVE (UA) focus ring on pointer focus. Deliberately scoped to `:focus`
+   and WITHOUT `!important`, so that:
+     - the global `:focus-visible` outline (see "Focus Visible" below), and
+     - Tailwind's `focus-visible:ring-*` utilities used by ui/input.tsx
+   both still apply for keyboard users.
+   Previously this block used `outline/box-shadow: none !important` on `:focus-visible` and
+   `:focus-within` too, which stripped the keyboard focus indicator from every text input in
+   the app — a WCAG 2.4.7 (Focus Visible, AA) failure. Do not reintroduce `!important` here. */
+input:focus:not(:focus-visible):not([type="checkbox"]):not([type="radio"]) {
+  outline: none;
+  outline-offset: 0;
+  box-shadow: none;
+}
+
+input:not([type="checkbox"]):not([type="radio"]) {
   -webkit-appearance: none;
 }
 

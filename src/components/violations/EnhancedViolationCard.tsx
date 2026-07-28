@@ -17,7 +17,7 @@
  *      Uses shadcn Card/Badge/Button patterns for consistency.
  */
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -132,6 +132,22 @@ export function EnhancedViolationCard({ violation, onStatusChange }: EnhancedVio
   const [pendingStatus, setPendingStatus] = useState<ViolationStatus | null>(null);
   const [noteText, setNoteText] = useState("");
   const [showHistory, setShowHistory] = useState(false);
+  const noteTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Focus the textarea when the dialog opens (replaces the `autoFocus` prop,
+  // which jsx-a11y flags — DOM-attribute autofocus fires on mount regardless
+  // of context, while this only runs when the dialog is deliberately opened
+  // by the user). Escape closes it, matching the WAI-ARIA Dialog pattern and
+  // giving keyboard users the same exit the backdrop click gives pointer users.
+  useEffect(() => {
+    if (!noteDialogOpen) return;
+    noteTextareaRef.current?.focus();
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setNoteDialogOpen(false);
+    };
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [noteDialogOpen]);
 
   const { state, isUpdating, isVerifying, error, updateStatus, verifyFix } = useViolationStatus(
     violation.id,
@@ -460,14 +476,18 @@ export function EnhancedViolationCard({ violation, onStatusChange }: EnhancedVio
 
       {/* Note Dialog (modal for WONT_FIX / ACCEPTABLE_RISK) */}
       {noteDialogOpen && (
+        // Backdrop is click-to-dismiss for pointer users only — Escape (handled in the
+        // effect above) is the keyboard equivalent; role="dialog" belongs on the panel
+        // below, not this full-screen backdrop.
+        // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/no-noninteractive-element-interactions
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
           onClick={() => setNoteDialogOpen(false)}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="note-dialog-title"
         >
           <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="note-dialog-title"
             className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 shadow-xl p-6 w-full max-w-md mx-4"
             onClick={(e) => e.stopPropagation()}
           >
@@ -478,13 +498,13 @@ export function EnhancedViolationCard({ violation, onStatusChange }: EnhancedVio
               {t("violations.noteDialogDesc", { status: t(pendingStatus === "WONT_FIX" ? "violations.wontFix" : "violations.acceptableRisk") })}
             </p>
             <textarea
+              ref={noteTextareaRef}
               value={noteText}
               onChange={(e) => setNoteText(e.target.value)}
               placeholder={t("violations.notePlaceholder")}
               className="w-full rounded-md border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 px-3 py-2 text-sm text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
               rows={3}
               minLength={10}
-              autoFocus
             />
             <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
               {t("violations.charMinimum", { count: String(noteText.trim().length) })}

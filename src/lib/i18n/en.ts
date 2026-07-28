@@ -1353,6 +1353,7 @@ export const en = {
   "violations.clearSelection": "Clear Selection",
   "violations.selectedCount": "{count} selected",
   "violations.selectAllAria": "Select all violations",
+  "violations.filterTabsAria": "Filter violations by status",
   "violations.selectAllOnPage": "Select all on this page",
   "violations.violationCountSingular": "{count} violation",
   "violations.violationCountPlural": "{count} violations",

@@ -104,12 +104,15 @@ const staticArticles: Article[] = [
   },
 ];
 
+// Category chips render at 12px on a tinted `-50` background. At that size WCAG 1.4.3 (AA)
+// requires 4.5:1, and the `-600` shades fail it (amber 3.08, emerald 3.46, rose 4.12).
+// The `-700` shades all clear 4.5:1 on their matching `-50` background. Verified with axe.
 const categories = [
-  { slug: "wcag", label: "WCAG", icon: Shield, color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-50 dark:bg-blue-950/40" },
-  { slug: "eaa", label: "EAA", icon: Globe, color: "text-violet-600 dark:text-violet-400", bg: "bg-violet-50 dark:bg-violet-950/40" },
-  { slug: "legal", label: "Legal", icon: Gavel, color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950/40" },
-  { slug: "technical", label: "Technical", icon: FileText, color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-950/40" },
-  { slug: "section-508", label: "Section 508", icon: Scale, color: "text-rose-600 dark:text-rose-400", bg: "bg-rose-50 dark:bg-rose-950/40" },
+  { slug: "wcag", label: "WCAG", icon: Shield, color: "text-blue-700 dark:text-blue-300", bg: "bg-blue-50 dark:bg-blue-950/40" },
+  { slug: "eaa", label: "EAA", icon: Globe, color: "text-violet-700 dark:text-violet-300", bg: "bg-violet-50 dark:bg-violet-950/40" },
+  { slug: "legal", label: "Legal", icon: Gavel, color: "text-amber-700 dark:text-amber-300", bg: "bg-amber-50 dark:bg-amber-950/40" },
+  { slug: "technical", label: "Technical", icon: FileText, color: "text-emerald-700 dark:text-emerald-300", bg: "bg-emerald-50 dark:bg-emerald-950/40" },
+  { slug: "section-508", label: "Section 508", icon: Scale, color: "text-rose-700 dark:text-rose-300", bg: "bg-rose-50 dark:bg-rose-950/40" },
 ];
 
 function formatDate(dateStr: string) {
@@ -207,10 +210,15 @@ export default function BlogPage() {
               className="group rounded-xl border border-neutral-100 dark:border-neutral-800 p-6 transition-all hover:border-neutral-200 dark:hover:border-neutral-700 hover:shadow-sm"
             >
               <div className="flex items-center gap-2 mb-3">
-                <span className="inline-block rounded-md bg-accent/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-accent">
+                {/* bg-accent/10 (#e9effd) under text-accent (#2563eb) measures 4.48:1 — just under
+                    the 4.5:1 AA floor at 10px. A /5 tint lifts it clear while keeping the token
+                    themeable for agency branding. */}
+                <span className="inline-block rounded-md bg-accent/5 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-accent">
                   {article.category}
                 </span>
-                <span className="flex items-center gap-1 text-[11px] text-neutral-400 dark:text-neutral-500">
+                {/* neutral-400 (#a1a1a1) on white measures 2.58:1 — a clear WCAG 1.4.3 failure
+                    for 11px metadata. neutral-600 is 7.60:1. */}
+                <span className="flex items-center gap-1 text-[11px] text-neutral-600 dark:text-neutral-400">
                   <Clock className="h-3 w-3" />
                   {article.readTime}
                 </span>
@@ -222,7 +230,7 @@ export default function BlogPage() {
                 {article.excerpt}
               </p>
               <div className="mt-4 flex items-center justify-between">
-                <span className="flex items-center gap-1 text-[11px] text-neutral-400 dark:text-neutral-500">
+                <span className="flex items-center gap-1 text-[11px] text-neutral-600 dark:text-neutral-400">
                   <Calendar className="h-3 w-3" />
                   {formatDate(article.date)}
                 </span>
@@ -252,7 +260,7 @@ export default function BlogPage() {
                   <span className="inline-block rounded bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 text-[10px] font-medium text-neutral-600 dark:text-neutral-400 uppercase">
                     {article.category}
                   </span>
-                  <span className="text-[11px] text-neutral-400 dark:text-neutral-500">{formatDate(article.date)}</span>
+                  <span className="text-[11px] text-neutral-600 dark:text-neutral-400">{formatDate(article.date)}</span>
                 </div>
                 <h3 className="text-sm font-semibold text-neutral-900 dark:text-white group-hover:text-accent transition-colors">
                   {article.title}
@@ -261,7 +269,7 @@ export default function BlogPage() {
                   {article.excerpt}
                 </p>
               </div>
-              <span className="shrink-0 mt-3 flex items-center gap-1 text-[11px] text-neutral-400">
+              <span className="shrink-0 mt-3 flex items-center gap-1 text-[11px] text-neutral-600 dark:text-neutral-400">
                 <Clock className="h-3 w-3" />{article.readTime}
               </span>
             </Link>

@@ -289,7 +289,7 @@ export function LandingContent() {
                 <div key={item.labelKey} className="flex flex-col items-center">
                   <item.icon className="h-6 w-6 text-neutral-700 dark:text-neutral-300 mb-2" />
                   <p className="text-sm font-semibold text-neutral-900 dark:text-white">{t(item.labelKey)}</p>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">{t(item.subKey)}</p>
+                  <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-0.5">{t(item.subKey)}</p>
                 </div>
               ))}
             </div>

@@ -78,7 +78,7 @@ export default function TermsPage() {
                 14 days of initial purchase per EU consumer protection law.
               </p>
               <p>
-                Free plan users are subject to usage limits as described on our <Link href="/pricing" className="text-blue-600">pricing page</Link>. 
+                Free plan users are subject to usage limits as described on our <Link href="/pricing" className="text-blue-600 underline underline-offset-2">pricing page</Link>. 
                 We reserve the right to modify plan features with 30 days&apos; notice.
               </p>
             </div>
@@ -117,7 +117,7 @@ export default function TermsPage() {
             <p className="text-neutral-600 dark:text-neutral-300">
               We may suspend or terminate your access if you violate these terms. Upon termination, 
               you may export your data within 30 days. After this period, we will delete your account 
-              data in accordance with our <Link href="/privacy" className="text-blue-600">Privacy Policy</Link>.
+              data in accordance with our <Link href="/privacy" className="text-blue-600 underline underline-offset-2">Privacy Policy</Link>.
             </p>
           </section>
 
@@ -142,7 +142,7 @@ export default function TermsPage() {
             <h2 className="text-lg font-semibold text-neutral-900 dark:text-white mt-8 mb-3">12. Contact</h2>
             <p className="text-neutral-600 dark:text-neutral-300">
               For questions about these terms, contact us at{" "}
-              <a href="mailto:legal@reglayer.dev" className="text-blue-600">legal@reglayer.dev</a>.
+              <a href="mailto:legal@reglayer.dev" className="text-blue-600 underline underline-offset-2">legal@reglayer.dev</a>.
             </p>
           </section>
         </div>

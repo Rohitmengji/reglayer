@@ -38,6 +38,8 @@ export function ModernSelect({
   const baseId = useId();
   const listboxId = `${baseId}-listbox`;
   const optionId = (i: number) => `${baseId}-option-${i}`;
+  const labelId = `${baseId}-label`;
+  const valueId = `${baseId}-value`;
   const activeOption = options.find((o) => o.value === value);
   const selectedIndex = options.findIndex((o) => o.value === value);
 
@@ -134,9 +136,14 @@ export function ModernSelect({
   return (
     <div className={cn("relative", className)} ref={ref}>
       {label && (
-        <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1.5">
+        // A <label> with no `htmlFor` is not programmatically associated with anything, so this
+        // is a <span> that the trigger references via aria-labelledby instead (WCAG 1.3.1).
+        <span
+          id={labelId}
+          className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1.5"
+        >
           {label}
-        </label>
+        </span>
       )}
       <button
         ref={triggerRef}
@@ -152,9 +159,18 @@ export function ModernSelect({
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={listboxId}
+        // WAI-ARIA select-only combobox pattern: the accessible name is the label plus the
+        // current value, so screen readers announce e.g. "Role, Admin". Without this the
+        // trigger has NO accessible name whenever nothing is selected and the value span is
+        // empty — axe `button-name`, WCAG 4.1.2.
+        aria-labelledby={label ? `${labelId} ${valueId}` : undefined}
+        aria-label={label ? undefined : (placeholder ?? "Select an option")}
         aria-activedescendant={open && focusedIndex >= 0 ? optionId(focusedIndex) : undefined}
       >
-        <span className={cn("truncate", activeOption ? "font-medium text-neutral-900 dark:text-white" : "text-neutral-400")}>
+        <span
+          id={valueId}
+          className={cn("truncate", activeOption ? "font-medium text-neutral-900 dark:text-white" : "text-neutral-400")}
+        >
           {activeOption?.label ?? placeholder}
         </span>
         <ChevronDown
@@ -173,6 +189,7 @@ export function ModernSelect({
             const isSelected = value === opt.value;
             const isFocused = i === focusedIndex;
             return (
+              // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/interactive-supports-focus -- WAI-ARIA "listbox with aria-activedescendant" pattern: options are deliberately NOT focusable and carry no key handlers. Focus stays on the combobox trigger, which owns handleKeyDown (Arrow/Home/End/Enter/Escape) and points at the active option via aria-activedescendant. Making options focusable would break the pattern and the roving-focus contract.
               <div
                 key={opt.value}
                 id={optionId(i)}
