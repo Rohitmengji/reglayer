@@ -198,6 +198,7 @@ export const es = {
   "nav.agents": "Agentes",
   "nav.workflows": "Flujos de trabajo",
   "nav.marketplace": "Mercado",
+  "nav.timeline": "Cronolog\u00eda",
   "nav.manage": "Gestionar",
   "nav.executive": "Dirección",
   "nav.aiCosts": "Costes IA",

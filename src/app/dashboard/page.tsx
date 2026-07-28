@@ -34,6 +34,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { ScanForm } from "@/components/scanner/scan-form";
 import { ScoreCard } from "@/components/dashboard/score-card";
 import { ViolationCard } from "@/components/scanner/violation-card";
+import { ProactiveSuggestions } from "@/components/ai/ProactiveSuggestions";
 import { OnboardingFlow } from "@/components/onboarding/onboarding-flow";
 import { SinceLastVisit } from "@/components/dashboard/since-last-visit";
 import { RoleOnboarding } from "@/components/onboarding/role-onboarding";
@@ -231,6 +232,9 @@ export default function DashboardPage() {
 
         {/* Scan Form */}
         <ScanForm onScanComplete={handleScanComplete} />
+
+        {/* AI Proactive Suggestions */}
+        <ProactiveSuggestions />
 
         {/* Stats Overview */}
         {statsLoading && (

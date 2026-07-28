@@ -25,7 +25,7 @@ interface ChatPanelProps {
 export function ChatPanel({ open, onClose }: ChatPanelProps) {
   const { messages, isStreaming, sendMessage, regenerate, editAndResend, stopStreaming, clearMessages, setFeedback } =
     useChat();
-  const { conversations, loadingList, isSaving, fetchConversations, switchConversation, startNew, deleteConversation } =
+  const { conversations, loadingList, fetchConversations, switchConversation, startNew, deleteConversation } =
     useChatSync();
   const conversationId = useChatStore((s) => s.conversationId);
   const { credits } = useCredits();
@@ -127,11 +127,6 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
           </div>
           <div className="flex items-center gap-1">
             {/* Saving indicator */}
-            {isSaving && (
-              <span className="flex items-center gap-1 text-[10px] text-neutral-400 mr-1">
-                <Loader2 className="h-3 w-3 animate-spin" /> Saving
-              </span>
-            )}
             {/* New conversation */}
             <button
               onClick={() => { startNew(); setShowHistory(false); }}

@@ -136,9 +136,23 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // Resolve the workspace deterministically. An explicit `?workspaceId=` scopes
+  // to that membership (IDOR-safe — the where clause is filtered by the caller's
+  // memberships); otherwise fall back to the earliest-joined workspace instead of
+  // the non-deterministic `memberships[0]` (DEF-001: multi-workspace users could
+  // otherwise see billing status for an arbitrary workspace).
+  const requestedWorkspaceId = new URL(request.url).searchParams.get("workspaceId");
+
   const user = await prisma.user.findUnique({
     where: { email: session.user.email },
-    include: { memberships: { include: { workspace: true }, take: 1 } },
+    include: {
+      memberships: {
+        where: requestedWorkspaceId ? { workspaceId: requestedWorkspaceId } : undefined,
+        include: { workspace: true },
+        orderBy: { joinedAt: "asc" },
+        take: 1,
+      },
+    },
   });
 
   if (!user || !user.memberships[0]) {

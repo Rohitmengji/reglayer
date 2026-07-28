@@ -14,7 +14,9 @@
 
 import { useState } from "react";
 import type { ChatMessage as ChatMessageType } from "@/stores/chatStore";
-import { MessageSquare, User, Copy, Check, RotateCcw, Pencil, ThumbsUp, ThumbsDown, X } from "lucide-react";
+import { MessageSquare, User, Copy, Check, RotateCcw, Pencil, ThumbsUp, ThumbsDown } from "lucide-react";
+import { ToolCallIndicator } from "./ToolCallIndicator";
+import { ExplainabilityPanel } from "./ExplainabilityPanel";
 
 interface ChatMessageProps {
   message: ChatMessageType;
@@ -107,17 +109,29 @@ export function ChatMessage({ message, isLast, isStreaming, onRegenerate, onEdit
           >
             {isUser ? (
               <p className="whitespace-pre-wrap">{message.content}</p>
-            ) : message.content ? (
-              <div className="prose-sm">
-                <FormattedContent content={message.content} />
-              </div>
-            ) : isStreaming ? (
-              <div className="flex items-center gap-1.5 py-1">
-                <span className="h-1.5 w-1.5 rounded-full bg-neutral-400 animate-bounce" style={{ animationDelay: "0ms" }} />
-                <span className="h-1.5 w-1.5 rounded-full bg-neutral-400 animate-bounce" style={{ animationDelay: "150ms" }} />
-                <span className="h-1.5 w-1.5 rounded-full bg-neutral-400 animate-bounce" style={{ animationDelay: "300ms" }} />
-              </div>
-            ) : null}
+            ) : (
+              <>
+                {/* Tool Call Indicators */}
+                {message.toolCalls && message.toolCalls.length > 0 && (
+                  <ToolCallIndicator toolCalls={message.toolCalls} />
+                )}
+                {message.content ? (
+                  <div className="prose-sm">
+                    <FormattedContent content={message.content} />
+                  </div>
+                ) : isStreaming ? (
+                  <div className="flex items-center gap-1.5 py-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-neutral-400 animate-bounce" style={{ animationDelay: "0ms" }} />
+                    <span className="h-1.5 w-1.5 rounded-full bg-neutral-400 animate-bounce" style={{ animationDelay: "150ms" }} />
+                    <span className="h-1.5 w-1.5 rounded-full bg-neutral-400 animate-bounce" style={{ animationDelay: "300ms" }} />
+                  </div>
+                ) : null}
+                {/* Explainability Panel */}
+                {message.lineage && !isStreaming && (
+                  <ExplainabilityPanel lineage={message.lineage} />
+                )}
+              </>
+            )}
           </div>
         )}
 

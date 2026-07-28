@@ -149,6 +149,32 @@ const MODEL_CONFIGS: ModelConfig[] = [
     supportsJsonMode: true,
     isAvailable: () => !!process.env.ANTHROPIC_API_KEY,
   },
+
+  // ── Google Gemini ───────────────────────────────────────────────────────────
+  {
+    id: "gemini-2.0-flash",
+    providerModelId: "gemini-2.0-flash",
+    provider: "google",
+    displayName: "Gemini 2.0 Flash",
+    contextWindow: 1_000_000,
+    maxOutputTokens: 8_192,
+    pricing: { inputPerMillion: 0.075, outputPerMillion: 0.30 },
+    supportsVision: true,
+    supportsJsonMode: true,
+    isAvailable: () => !!process.env.GOOGLE_AI_API_KEY,
+  },
+  {
+    id: "gemini-2.5-pro",
+    providerModelId: "gemini-2.5-pro-preview-06-05",
+    provider: "google",
+    displayName: "Gemini 2.5 Pro",
+    contextWindow: 1_000_000,
+    maxOutputTokens: 65_536,
+    pricing: { inputPerMillion: 1.25, outputPerMillion: 10.00 },
+    supportsVision: true,
+    supportsJsonMode: true,
+    isAvailable: () => !!process.env.GOOGLE_AI_API_KEY,
+  },
 ];
 
 // ── Registry API ──────────────────────────────────────────────────────────────

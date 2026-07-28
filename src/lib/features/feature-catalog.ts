@@ -96,6 +96,13 @@ export const FEATURE_CATALOG: FeatureDefinition[] = [
     category: "automation",
     plans: ["PRO", "ENTERPRISE"],
   },
+  {
+    id: "timeline",
+    name: "AI Timeline",
+    description: "Unified chronological feed of every AI action — chat, scans, agents, workflows, decisions",
+    category: "automation",
+    plans: ["PRO", "ENTERPRISE"],
+  },
 
   // ─── Compliance (PRO+) ────────────────────────
   {
@@ -236,4 +243,5 @@ export const SIDEBAR_FEATURE_MAP: Record<string, string> = {
   "/executive": "executive",
   "/agency": "agency",
   "/settings": "settings",
+  "/dashboard/timeline": "timeline",
 };

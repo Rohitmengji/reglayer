@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { FeatureGate } from "@/components/ui/feature-gate";
+import Link from "next/link";
 
 interface Agent {
   slug: string;
@@ -96,16 +97,23 @@ function AgentsPageInner() {
     <AppShell>
       <div className="space-y-6 max-w-5xl mx-auto">
         {/* Header */}
-        <div>
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-violet-100 dark:bg-violet-900/30">
-              <Bot className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+        <div className="flex items-start justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <div className="p-2 rounded-lg bg-violet-100 dark:bg-violet-900/30">
+                <Bot className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+              </div>
+              <h1 className="text-2xl font-bold tracking-tight">AI Agents</h1>
             </div>
-            <h1 className="text-2xl font-bold tracking-tight">AI Agents</h1>
+            <p className="text-sm text-muted-foreground mt-1 ml-11">
+              Specialized AI agents that perform specific compliance tasks. Each agent has its own expertise, tools, and knowledge.
+            </p>
           </div>
-          <p className="text-sm text-muted-foreground mt-1 ml-11">
-            Specialized AI agents that perform specific compliance tasks. Each agent has its own expertise, tools, and knowledge.
-          </p>
+          <Link href="/agents/builder">
+            <Button variant="outline" size="sm">
+              <Sparkles className="h-3.5 w-3.5 mr-1" /> Build Agent
+            </Button>
+          </Link>
         </div>
 
         {/* Task Input */}

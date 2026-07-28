@@ -32,6 +32,7 @@
 
 import { useCallback, useRef } from "react";
 import { useChatStore } from "@/stores/chatStore";
+import type { MessageLineage } from "@/stores/chatStore";
 
 export function useChat() {
   const {
@@ -45,6 +46,7 @@ export function useChat() {
     truncateFrom,
     editMessage,
     setFeedback,
+    setLineage,
   } = useChatStore();
 
   // AbortController ref for cancelling in-flight requests
@@ -67,7 +69,6 @@ export function useChat() {
 
         if (!response.ok) {
           const errorText = await response.text();
-          // Clear the empty placeholder before showing error
           updateMessage(assistantId,
             `Sorry, I couldn't respond. ${response.status === 401 ? "Please sign in." : response.status === 429 ? "Rate limit reached — try again shortly." : errorText}`,
           );
@@ -81,11 +82,86 @@ export function useChat() {
         }
 
         const decoder = new TextDecoder();
+        let buffer = "";
+
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-          const chunk = decoder.decode(value, { stream: true });
-          appendToMessage(assistantId, chunk);
+          buffer += decoder.decode(value, { stream: true });
+
+          // Parse line-delimited JSON events
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? ""; // Keep incomplete line in buffer
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed.startsWith("data: ")) continue;
+            const jsonStr = trimmed.slice(6);
+            try {
+              const event = JSON.parse(jsonStr) as {
+                type: string;
+                content?: string;
+                data?: MessageLineage;
+                id?: string;
+                name?: string;
+                args?: Record<string, unknown>;
+                result?: string;
+                durationMs?: number;
+                message?: string;
+              };
+
+              switch (event.type) {
+                case "text":
+                  if (event.content) appendToMessage(assistantId, event.content);
+                  break;
+                case "tool_start":
+                  useChatStore.getState().addToolCall(assistantId, {
+                    id: event.id ?? crypto.randomUUID(),
+                    name: event.name ?? "unknown",
+                    args: event.args ?? {},
+                    status: "running",
+                  });
+                  break;
+                case "tool_end":
+                  if (event.id) {
+                    useChatStore.getState().updateToolCall(assistantId, event.id, {
+                      result: event.result,
+                      durationMs: event.durationMs,
+                      status: "completed",
+                    });
+                  }
+                  break;
+                case "lineage":
+                  if (event.data) setLineage(assistantId, event.data);
+                  break;
+                case "error":
+                  appendToMessage(assistantId, `\n\n*Error: ${event.message}*`);
+                  break;
+                case "done":
+                  break;
+              }
+            } catch {
+              // If JSON parse fails, treat as raw text (backward compat)
+              appendToMessage(assistantId, jsonStr);
+            }
+          }
+        }
+
+        // Process any remaining buffer
+        if (buffer.trim()) {
+          const trimmed = buffer.trim();
+          if (trimmed.startsWith("data: ")) {
+            try {
+              const event = JSON.parse(trimmed.slice(6));
+              if (event.type === "text" && event.content) {
+                appendToMessage(assistantId, event.content);
+              } else if (event.type === "lineage" && event.data) {
+                setLineage(assistantId, event.data);
+              }
+            } catch {
+              appendToMessage(assistantId, trimmed.slice(6));
+            }
+          }
         }
       } catch (error) {
         if (error instanceof Error && error.name === "AbortError") {
@@ -98,7 +174,7 @@ export function useChat() {
         abortRef.current = null;
       }
     },
-    [addMessage, appendToMessage, setStreaming],
+    [addMessage, appendToMessage, setStreaming, updateMessage, setLineage],
   );
 
   /** Send a new user message. */

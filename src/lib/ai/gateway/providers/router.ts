@@ -94,6 +94,16 @@ export const PROVIDERS: ProviderConfig[] = [
     ],
   },
   {
+    id: "google",
+    name: "Google",
+    type: "cloud",
+    envKey: "GOOGLE_AI_API_KEY",
+    models: [
+      { id: "gemini-2.0-flash", providerModelId: "gemini-2.0-flash", costPer1kInput: 0.000075, costPer1kOutput: 0.0003, avgLatencyMs: 400, contextWindow: 1000000, quality: 8, capabilities: ["chat", "tool-calling", "vision"] },
+      { id: "gemini-2.5-pro", providerModelId: "gemini-2.5-pro-preview-06-05", costPer1kInput: 0.00125, costPer1kOutput: 0.01, avgLatencyMs: 1000, contextWindow: 1000000, quality: 10, capabilities: ["chat", "tool-calling", "vision"] },
+    ],
+  },
+  {
     id: "groq",
     name: "Groq",
     type: "cloud",

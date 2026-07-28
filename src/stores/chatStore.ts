@@ -26,6 +26,30 @@ import { persist } from "zustand/middleware";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+export interface ToolCall {
+  id: string;
+  name: string;
+  args: Record<string, unknown>;
+  result?: string;
+  durationMs?: number;
+  status: "running" | "completed" | "error";
+}
+
+export interface MessageLineage {
+  traceId: string;
+  model: string;
+  provider: string;
+  retrievalSources: string[];
+  documentsRetrieved: number;
+  toolsCalled: string[];
+  guardrailsPassed: string[];
+  guardrailsWarned: string[];
+  cached: boolean;
+  totalTokens: number;
+  costUsd: number;
+  latencyMs: number;
+}
+
 export interface ChatMessage {
   id: string;
   role: "user" | "assistant";
@@ -35,6 +59,10 @@ export interface ChatMessage {
   feedback?: -1 | 0 | 1;
   /** True if user edited this message (fork point) */
   edited?: boolean;
+  /** Tool calls made during this response */
+  toolCalls?: ToolCall[];
+  /** Lineage/provenance data for this response */
+  lineage?: MessageLineage;
 }
 
 interface ChatState {
@@ -66,6 +94,12 @@ interface ChatState {
   loadConversation: (id: string, messages: ChatMessage[]) => void;
   /** Start a new conversation (clear state + null conversationId) */
   newConversation: () => void;
+  /** Add or update a tool call on a message */
+  addToolCall: (messageId: string, toolCall: ToolCall) => void;
+  /** Update a tool call status/result */
+  updateToolCall: (messageId: string, toolCallId: string, updates: Partial<ToolCall>) => void;
+  /** Set lineage data on a message */
+  setLineage: (messageId: string, lineage: MessageLineage) => void;
 }
 
 // ── Store ─────────────────────────────────────────────────────────────────────
@@ -149,6 +183,36 @@ export const useChatStore = create<ChatState>()(
 
       newConversation: () =>
         set({ conversationId: null, messages: [], isStreaming: false }),
+
+      addToolCall: (messageId, toolCall) =>
+        set((state) => ({
+          messages: state.messages.map((msg) =>
+            msg.id === messageId
+              ? { ...msg, toolCalls: [...(msg.toolCalls ?? []), toolCall] }
+              : msg,
+          ),
+        })),
+
+      updateToolCall: (messageId, toolCallId, updates) =>
+        set((state) => ({
+          messages: state.messages.map((msg) =>
+            msg.id === messageId
+              ? {
+                  ...msg,
+                  toolCalls: (msg.toolCalls ?? []).map((tc) =>
+                    tc.id === toolCallId ? { ...tc, ...updates } : tc,
+                  ),
+                }
+              : msg,
+          ),
+        })),
+
+      setLineage: (messageId, lineage) =>
+        set((state) => ({
+          messages: state.messages.map((msg) =>
+            msg.id === messageId ? { ...msg, lineage } : msg,
+          ),
+        })),
     }),
     {
       name: "reglayer-chat",

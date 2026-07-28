@@ -34,7 +34,10 @@ export type ModelId =
   // Anthropic models
   | "claude-sonnet"
   | "claude-haiku"
-  | "claude-opus";
+  | "claude-opus"
+  // Google models
+  | "gemini-2.0-flash"
+  | "gemini-2.5-pro";
 
 export type Provider = "openai" | "anthropic" | "google";
 

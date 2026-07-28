@@ -148,7 +148,6 @@ export async function POST(request: NextRequest) {
   // ── 8+9. Retrieval + profile + memories (ALL in parallel for speed) ─────
   // These three are independent — running them concurrently saves 200-500ms
   // which is the difference between "instant" and "noticeable delay".
-  const retrievalStart = Date.now();
   const [retrieval, profile, memories] = await Promise.all([
     optimizedRetrieve(latestUserMessage, {
       ...preset,
@@ -304,10 +303,81 @@ export async function POST(request: NextRequest) {
   const trace = lineage.build();
   const lineageHeaders = traceToHeaders(trace);
 
-  // ── 16. Return streaming response with lineage headers ──────────────────
-  return new Response(toTextStream(result), {
+  // ── 16. Return structured streaming response ────────────────────────────
+  // Format: Server-Sent Events style with typed chunks:
+  //   data: {"type":"text","content":"..."}\n
+  //   data: {"type":"tool_start","id":"...","name":"...","args":{...}}\n
+  //   data: {"type":"tool_end","id":"...","result":"...","durationMs":42}\n
+  //   data: {"type":"lineage","data":{...}}\n
+  //   data: {"type":"done"}\n
+  const textStream = toTextStream(result);
+  const reader = textStream.getReader();
+  const encoder = new TextEncoder();
+
+  // Guardrails run on the FULL response, which for a streaming endpoint is only
+  // available once the stream completes. They are therefore advisory here — we
+  // surface warnings (e.g. hallucinated WCAG criteria) in the lineage trace so
+  // the client's Explainability panel can flag them, but we cannot un-send text
+  // that has already been streamed to the user.
+  const guardContext: GuardContext = {
+    feature: "chat",
+    userMessage: latestUserMessage,
+    ragAugmented: trace.summary.documentsRetrieved > 0,
+  };
+
+  const structuredStream = new ReadableStream({
+    async start(controller) {
+      try {
+        let fullText = "";
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          // value is already a string from toTextStream()
+          const textChunk = value as string;
+          fullText += textChunk;
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "text", content: textChunk })}\n`));
+        }
+
+        // Run guardrails on the accumulated response, then record the results
+        // into the lineage so the emitted summary reflects real validation.
+        let guardrailsPassed = trace.summary.guardrailsPassed;
+        let guardrailsWarned = trace.summary.guardrailsWarned ?? [];
+        try {
+          const guardResult = runGuardrails(fullText, guardContext, CHAT_GUARDS);
+          lineage.recordGuardrails(guardResult.results);
+          const updated = lineage.build();
+          guardrailsPassed = updated.summary.guardrailsPassed;
+          guardrailsWarned = updated.summary.guardrailsWarned;
+        } catch { /* guardrails are best-effort — never break the response */ }
+
+        // After text is done, emit lineage
+        const lineageSummary = {
+          traceId: trace.traceId,
+          model: modelId,
+          provider: resolvedProvider,
+          retrievalSources: trace.summary.retrievalSources,
+          documentsRetrieved: trace.summary.documentsRetrieved,
+          toolsCalled: trace.summary.toolsCalled,
+          guardrailsPassed,
+          guardrailsWarned,
+          cached: trace.summary.cached,
+          totalTokens: trace.summary.totalTokens,
+          costUsd: trace.summary.costUsd,
+          latencyMs: Date.now() - streamStart,
+        };
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "lineage", data: lineageSummary })}\n`));
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "done" })}\n`));
+      } catch (err) {
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "error", message: err instanceof Error ? err.message : "Stream error" })}\n`));
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(structuredStream, {
     headers: {
-      "Content-Type": "text/plain; charset=utf-8",
+      "Content-Type": "text/event-stream; charset=utf-8",
       "Cache-Control": "no-cache",
       "X-Content-Type-Options": "nosniff",
       ...lineageHeaders,
