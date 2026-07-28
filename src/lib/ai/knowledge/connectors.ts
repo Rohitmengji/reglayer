@@ -16,6 +16,7 @@
 
 import "server-only";
 
+import { JSDOM } from "jsdom";
 import { processDocument, createDocument } from "@/lib/ai/knowledge/service";
 import { validateScanUrl, resolvesToInternalIp } from "@/lib/validations/ssrf";
 
@@ -261,13 +262,11 @@ export async function syncURL(opts: {
       if (!res.ok) { errors.push(`${url}: HTTP ${res.status}`); continue; }
 
       const html = await res.text();
-      // Simple HTML to text extraction (strip tags)
-      const content = html
-        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
-        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
-        .replace(/<[^>]+>/g, " ")
-        .replace(/\s+/g, " ")
-        .trim();
+      // HTML → text via a real parser. Regex tag-stripping is unreliable
+      // (CodeQL js/bad-tag-filter + incomplete-multi-character-sanitization:
+      // it misses `</script >` and can leave partial `<script`/`<style`).
+      // JSDOM parses without executing scripts or loading resources.
+      const content = htmlToText(html);
 
       if (content.length < 100) continue;
 
@@ -293,6 +292,25 @@ export async function syncURL(opts: {
     errors,
     durationMs: Date.now() - start,
   };
+}
+
+// ── URL Helpers ───────────────────────────────────────────────────────────────
+
+/**
+ * Extract readable text from an HTML document using a real parser.
+ * Removes script/style/noscript, then returns collapsed text content.
+ * Safe on untrusted input: JSDOM does not execute scripts or fetch resources
+ * unless explicitly enabled (both are off by default).
+ */
+function htmlToText(html: string): string {
+  try {
+    const dom = new JSDOM(html);
+    const doc = dom.window.document;
+    doc.querySelectorAll("script, style, noscript").forEach((el) => el.remove());
+    return (doc.body?.textContent ?? "").replace(/\s+/g, " ").trim();
+  } catch {
+    return "";
+  }
 }
 
 // ── Notion Helpers ────────────────────────────────────────────────────────────
