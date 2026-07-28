@@ -40,7 +40,10 @@ export const maxDuration = 60;
 
 const chatMessageSchema = z.object({
   role: z.enum(["user", "assistant"]),
-  content: z.string().min(1).max(10_000),
+  // Allow empty content at the schema level so a single empty assistant reply
+  // (e.g. a provider hiccup that returned no text) doesn't 400 the ENTIRE
+  // conversation on the next turn. Empty messages are stripped after parsing.
+  content: z.string().max(10_000),
 });
 
 const chatRequestSchema = z.object({
@@ -90,7 +93,17 @@ export async function POST(request: NextRequest) {
   }
 
   // ── 5. PII redaction ────────────────────────────────────────────────────
-  const sanitizedMessages = parsed.data.messages.map((m) =>
+  // Drop empty-content messages first — a prior empty assistant reply must not
+  // poison the history (the schema now permits them so this turn still succeeds).
+  const nonEmptyMessages = parsed.data.messages.filter((m) => m.content.trim().length > 0);
+  if (nonEmptyMessages.length === 0) {
+    return new Response(
+      JSON.stringify({ error: "No message content provided" }),
+      { status: 400, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+  const sanitizedMessages = nonEmptyMessages.map((m) =>
     m.role === "user" && containsPII(m.content)
       ? { ...m, content: sanitizeForLLM(m.content) }
       : m,
