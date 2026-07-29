@@ -197,6 +197,12 @@ export interface ReliabilityScore {
   };
   trend: "improving" | "stable" | "declining";
   callsLast7d: number;
+  /**
+   * How many user ratings backed `dimensions.userRating` in the window.
+   * 0 means the score is a prior, not a measurement — surface that distinction in UI
+   * rather than presenting an unrated feature as if it had been judged.
+   */
+  ratingCount: number;
 }
 
 /**
@@ -211,6 +217,19 @@ export async function calculateReliabilityScores(workspaceId: string): Promise<R
   });
 
   if (events.length === 0) return [];
+
+  // Real user ratings per feature. Previously this dimension was hardcoded to 70,
+  // because in-app thumbs up/down were written to ChatMessage.feedback and never
+  // reached FeedbackEntry — so the "quality" score contained no quality signal at all.
+  const ratingRows = await prisma.feedbackEntry.groupBy({
+    by: ["feature"],
+    where: { workspaceId, createdAt: { gte: since } },
+    _avg: { rating: true },
+    _count: true,
+  });
+  const ratingByFeature = new Map(
+    ratingRows.map((r) => [r.feature, { avg: r._avg.rating ?? 0, count: r._count }]),
+  );
 
   const byFeature = groupBy(events, "feature");
   const scores: ReliabilityScore[] = [];
@@ -233,7 +252,16 @@ export async function calculateReliabilityScores(workspaceId: string): Promise<R
     const olderSuccess = featureEvents.slice(mid).filter((e) => e.success).length / (featureEvents.length - mid);
     const trend = recentSuccess > olderSuccess + 0.05 ? "improving" : recentSuccess < olderSuccess - 0.05 ? "declining" : "stable";
 
-    const overall = Math.round((latencyScore + costScore + successScore + 70) / 4); // 70 placeholder for rating
+    // User rating dimension. Thumbs feedback is -1/+1, so map to 0-100 with 50 as
+    // neutral. With no ratings yet we use 70 as a mildly optimistic prior rather than
+    // 0 — an unrated feature is unknown, not bad — and flag it via ratingCount so the
+    // UI can distinguish "no data" from "genuinely mediocre".
+    const ratingStats = ratingByFeature.get(feature);
+    const ratingScore = ratingStats && ratingStats.count > 0
+      ? Math.round(((ratingStats.avg + 1) / 2) * 100)
+      : 70;
+
+    const overall = Math.round((latencyScore + costScore + successScore + ratingScore) / 4);
 
     scores.push({
       feature,
@@ -242,10 +270,11 @@ export async function calculateReliabilityScores(workspaceId: string): Promise<R
         latency: Math.round(latencyScore),
         cost: Math.round(costScore),
         successRate: successScore,
-        userRating: 70, // placeholder — would come from FeedbackEntry aggregation
+        userRating: ratingScore,
       },
       trend,
       callsLast7d: featureEvents.length,
+      ratingCount: ratingStats?.count ?? 0,
     });
   }
 
