@@ -39,12 +39,15 @@ export const MODEL_TIERS: Record<ModelTier, ModelConfig> = {
   },
 };
 
-/** Fallback chain: if primary fails, try next tier */
-export const FALLBACK_CHAIN: Record<string, string> = {
-  "gpt-4o": "claude-haiku-4-20250514",
-  "gpt-4o-mini": "claude-haiku-4-20250514",
-  "claude-haiku-4-20250514": "gpt-4o-mini",
-};
+/**
+ * Fallback chains now live in the gateway registry as `resolveModelChain()`.
+ *
+ * The map that used to sit here pointed at "claude-haiku-4-20250514" — a raw provider
+ * model string, not a registry ModelId — so it would have thrown on the first lookup.
+ * It had zero callers, which is exactly why the error was never noticed. The
+ * replacement is typed Record<ModelId, ModelId[]>, so an invalid entry cannot compile,
+ * and it is actually executed by complete() and stream().
+ */
 
 interface RoutingInput {
   /** Latest user message */
