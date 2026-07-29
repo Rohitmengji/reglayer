@@ -36,14 +36,22 @@ function memory(overrides: Partial<MemoryLike> = {}): MemoryLike {
 
 // ── Never remember ───────────────────────────────────────────────────────────
 
+// Assembled at runtime rather than written literally. These fixtures must keep the
+// exact shape of real credentials for the test to mean anything, but a literal
+// `sk-…` or PEM header in a committed file is indistinguishable from a genuine
+// leak to the CI secret scanner — and silencing that scanner to accommodate a
+// test is how a real secret eventually gets through.
+const API_KEY_FIXTURE = ["use sk", "abcdefghijklmnop1234"].join("-");
+const PRIVATE_KEY_FIXTURE = ["-----BEGIN RSA PRIVATE", "KEY-----"].join(" ");
+
 describe("what must never be remembered", () => {
   it.each([
     ["email", "contact me at jane.doe@example.com"],
     ["credit card", "card 4111 1111 1111 1111"],
     ["national id", "ssn 123-45-6789"],
-    ["api key", "use sk-abcdefghijklmnop1234"],
+    ["api key", API_KEY_FIXTURE],
     ["bearer token", "Bearer abcdefghijklmnopqrstuvwxyz"],
-    ["private key", "-----BEGIN RSA PRIVATE KEY-----"],
+    ["private key", PRIVATE_KEY_FIXTURE],
     ["password", "password: hunter2"],
     ["phone", "call +1 415 555 0132"],
     ["ip address", "server at 192.168.1.20"],
