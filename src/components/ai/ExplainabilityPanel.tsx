@@ -28,18 +28,63 @@ interface ExplainabilityPanelProps {
 export function ExplainabilityPanel({ lineage }: ExplainabilityPanelProps) {
   const [expanded, setExpanded] = useState(false);
 
+  // An answer is "grounded" when the retrieval pipeline actually returned context.
+  // The server already computes this (isRAGAugmented) — it just never reached the user.
+  const isGrounded = lineage.documentsRetrieved > 0;
+  const warnings = lineage.guardrailsWarned ?? [];
+  const hasWarnings = warnings.length > 0;
+
   return (
     <div className="mt-2">
+      {/*
+        WHY THIS IS ALWAYS VISIBLE, NOT BEHIND THE EXPANDER:
+        A fact-check warning (e.g. a fabricated WCAG criterion) is the highest-stakes
+        signal this product produces. It used to render only inside the collapsed
+        panel, so the one thing a user most needs to see required a deliberate click.
+        Streaming means we cannot retract the text — the least we can do is label it.
+      */}
+      {hasWarnings && (
+        <div
+          role="status"
+          className="mb-1.5 flex items-start gap-1.5 rounded-md border border-amber-300 dark:border-amber-700/60 bg-amber-50 dark:bg-amber-950/30 px-2 py-1.5 text-[11px] text-amber-800 dark:text-amber-200"
+        >
+          <AlertTriangle className="h-3 w-3 mt-px shrink-0" aria-hidden="true" />
+          <span>
+            <span className="font-medium">Automated check flagged this answer</span>
+            {" — "}
+            {warnings.includes("wcag-fact-check") || warnings.includes("wcag-hallucination")
+              ? "it may cite a standard incorrectly. Verify against the source before relying on it."
+              : "review before relying on it."}
+          </span>
+        </div>
+      )}
+
       <button
         onClick={() => setExpanded(!expanded)}
+        aria-expanded={expanded}
         className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
       >
-        <Brain className="h-3 w-3" />
+        <Brain className="h-3 w-3" aria-hidden="true" />
         <span>
           {lineage.model.split("/").pop()} · {lineage.cached ? "cached" : `${lineage.latencyMs}ms`}
-          {lineage.retrievalSources.length > 0 && ` · ${lineage.documentsRetrieved} sources`}
+          {" · "}
+          {/*
+            Grounding is stated in BOTH directions on purpose. Previously the source
+            count appeared only when sources existed, so a grounded answer and a purely
+            model-generated one looked identical. For a compliance tool that difference
+            is the difference between citable and not — absence of a signal is not a signal.
+          */}
+          {isGrounded ? (
+            <span className="text-emerald-600 dark:text-emerald-400">
+              grounded in {lineage.documentsRetrieved} source{lineage.documentsRetrieved === 1 ? "" : "s"}
+            </span>
+          ) : (
+            <span className="text-neutral-500 dark:text-neutral-400">
+              general guidance — not from your data
+            </span>
+          )}
         </span>
-        {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+        {expanded ? <ChevronUp className="h-3 w-3" aria-hidden="true" /> : <ChevronDown className="h-3 w-3" aria-hidden="true" />}
       </button>
 
       {expanded && (
