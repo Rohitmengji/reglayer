@@ -16,6 +16,11 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
 import { applyRateLimit } from "@/lib/rate-limit-middleware";
+import {
+  collectRatingTransitions,
+  recordRatingTransitions,
+  type RatingTransition,
+} from "@/lib/ai/learning/rating-transitions";
 import { z } from "zod";
 
 const saveSchema = z.object({
@@ -101,10 +106,26 @@ export async function POST(request: NextRequest) {
   // Auto-generate title from first user message if not provided
   const effectiveTitle = title || messages.find((m) => m.role === "user")?.content.slice(0, 60) || "New conversation";
 
+  // Resolve the caller's primary workspace so feedback we forward to the learning
+  // system can be found by calculateReliabilityScores(workspaceId) — ChatConversation
+  // itself has no workspace context today, so without this every rating would land
+  // with workspaceId: null and be invisible to per-workspace quality scoring.
+  // Same "earliest-joined membership" convention as requireWorkspacePermission's
+  // fallback (src/lib/auth/api-guard.ts) — this route intentionally does not enforce
+  // a workspace permission (chat history is personal), it only needs the id for tagging.
+  const primaryMembership = await prisma.workspaceMember.findFirst({
+    where: { userId: user.id },
+    orderBy: { joinedAt: "asc" },
+    select: { workspaceId: true },
+  });
+  const workspaceId = primaryMembership?.workspaceId;
+
   if (id) {
     // Update existing — verify ownership INSIDE transaction to prevent TOCTOU race.
     // Uses updateMany with userId in WHERE so ownership is atomically checked.
-    await prisma.$transaction(async (tx) => {
+    let ratingTransitions: RatingTransition[] = [];
+
+    const txError = await prisma.$transaction(async (tx) => {
       const existing = await tx.chatConversation.findFirst({
         where: { id, userId: user.id },
         select: { id: true },
@@ -112,6 +133,16 @@ export async function POST(request: NextRequest) {
       if (!existing) {
         throw new Error("NOT_FOUND");
       }
+
+      // Capture prior ratings BEFORE the delete/recreate so we can tell a genuine
+      // rating change from an unrelated re-sync. The client debounces and re-sends
+      // the whole conversation on every edit; without this diff we would create a
+      // duplicate FeedbackEntry on every keystroke-triggered save.
+      const previous = await tx.chatMessage.findMany({
+        where: { conversationId: id },
+        select: { id: true, feedback: true },
+      });
+      ratingTransitions = collectRatingTransitions(messages, new Map(previous.map((m) => [m.id, m.feedback])));
 
       await tx.chatMessage.deleteMany({ where: { conversationId: id } });
       for (const m of messages) {
@@ -136,6 +167,15 @@ export async function POST(request: NextRequest) {
       throw err;
     });
 
+    // The transaction's .catch() returns a NextResponse on a handled failure —
+    // it must be returned here, not discarded, or a not-found/not-owned update
+    // would incorrectly report `{ saved: true }` to the client.
+    if (txError) return txError;
+
+    // Outside the transaction and deliberately not awaited: the learning write is a
+    // secondary concern and must never fail or slow down saving the user's chat.
+    void recordRatingTransitions(ratingTransitions, user.id, workspaceId);
+
     return NextResponse.json({ id, saved: true });
   }
 
@@ -154,6 +194,10 @@ export async function POST(request: NextRequest) {
       },
     },
   });
+
+  // Rare but possible: the user rates a reply before the first save lands. There is
+  // no prior state, so every non-zero rating here is a genuine first transition.
+  void recordRatingTransitions(collectRatingTransitions(messages, new Map()), user.id, workspaceId);
 
   return NextResponse.json({ id: conversation.id, saved: true }, { status: 201 });
 }
