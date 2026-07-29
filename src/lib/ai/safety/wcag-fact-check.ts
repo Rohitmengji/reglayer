@@ -87,6 +87,22 @@ const WCAG_DATABASE: WcagCriterion[] = [
 // Build lookup map for O(1) access
 const CRITERIA_MAP = new Map(WCAG_DATABASE.map((c) => [c.id, c]));
 
+/**
+ * Escape ALL regex metacharacters before interpolating a value into a RegExp.
+ *
+ * WHY THE FULL SET, not just dots: an earlier version escaped only `.`, which CodeQL
+ * correctly flagged as incomplete sanitization (js/incomplete-sanitization, high).
+ *
+ * Today the interpolated value can only be digits and dots, because it comes from a
+ * `\d\.\d\.\d{1,2}` match — so this is not currently exploitable. But that safety is an
+ * implicit invariant of a regex defined 40 lines away. The moment someone widens the
+ * extraction pattern, partial escaping becomes a regex-injection bug with no warning.
+ * Escaping completely costs nothing and removes the invariant entirely.
+ */
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 // ── Public API ───────────────────────────────────────────────────────────────
 
 export interface FactCheckResult {
@@ -154,7 +170,7 @@ export function factCheckWcagResponse(responseText: string): FactCheckResult {
       // So: prefer an explicit "Level X" phrase; fall back to a CASE-SENSITIVE bare
       // token so "AA" matches but the article "a" cannot. The window is bounded to
       // keep the match within the same clause.
-      const escapedId = id.replace(/\./g, "\\.");
+      const escapedId = escapeRegExp(id);
       const levelClaim =
         responseText.match(new RegExp(`${escapedId}[^.]{0,120}?\\bLevel\\s+(A{1,3})\\b`, "i")) ??
         responseText.match(new RegExp(`${escapedId}[^.]{0,120}?\\b(A{1,3})\\b`));
