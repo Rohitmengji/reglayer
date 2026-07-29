@@ -7,11 +7,18 @@
  *       the result.
  *
  * HOW IT WORKS:
- *   1. We define tools with: name, description, parameters (Zod schema), execute fn
+ *   1. We define tools with: name, description, inputSchema (Zod schema), execute fn
  *   2. Tools are passed to streamText() / generateText() via the AI SDK
  *   3. When the LLM wants to use a tool, it outputs a tool_call with arguments
  *   4. The AI SDK automatically calls our execute() function
  *   5. The result is sent back to the LLM for it to synthesize into a response
+ *
+ * IMPORTANT — ALWAYS use the `tool()` helper from "ai":
+ *   The SDK reads the schema from `inputSchema`. It does NOT read `parameters`
+ *   (that was the pre-v5 field name). A plain object using `parameters` type-checks
+ *   fine but the SDK silently ignores the schema, so the model never receives a
+ *   usable tool — it just answers from general knowledge and the failure is invisible.
+ *   `tool()` makes TypeScript enforce the correct shape.
  *
  * SECURITY:
  *   - Tools are server-side only — the client never sees or calls them
@@ -26,6 +33,7 @@
  */
 
 import { z } from "zod";
+import { tool } from "ai";
 import { prisma } from "@/lib/database/prisma";
 import type { Impact } from "@/generated/prisma/client";
 import { logger } from "@/lib/telemetry/logger";
@@ -74,12 +82,12 @@ export interface ToolContext {
 // ── Tool: Get Recent Scans ───────────────────────────────────────────────────
 
 function makeGetRecentScans(ctx: ToolContext) {
-  return {
+  return tool({
     description: "Get the user's most recent accessibility scans with scores and violation counts. Use this when the user asks about their scan history, recent results, or compliance status.",
-    parameters: z.object({
+    inputSchema: z.object({
       limit: z.number().int().min(1).max(20).optional().describe("Number of scans to return (default 5)"),
     }),
-    execute: async ({ limit }: { limit?: number }) => {
+    execute: async ({ limit }) => {
       const start = Date.now();
       try {
         const take = limit ?? 5;
@@ -114,19 +122,19 @@ function makeGetRecentScans(ctx: ToolContext) {
         return `Error fetching scans: ${error instanceof Error ? error.message : "unknown error"}`;
       }
     },
-  };
+  });
 }
 
 // ── Tool: Get Violations for a Scan ──────────────────────────────────────────
 
 function makeGetViolations(ctx: ToolContext) {
-  return {
+  return tool({
     description: "Get the detailed list of accessibility violations from a specific scan. Use this when the user asks about specific issues, wants to see violation details, or asks about a particular scan's problems.",
-    parameters: z.object({
+    inputSchema: z.object({
       scanId: z.string().describe("The scan ID to get violations for"),
       impact: z.enum(["critical", "serious", "moderate", "minor"]).optional().describe("Filter by impact severity"),
     }),
-    execute: async ({ scanId, impact }: { scanId: string; impact?: string }) => {
+    execute: async ({ scanId, impact }) => {
       const start = Date.now();
       try {
         // Verify the scan belongs to this user's workspace
@@ -174,17 +182,17 @@ function makeGetViolations(ctx: ToolContext) {
         return `Error fetching violations: ${error instanceof Error ? error.message : "unknown error"}`;
       }
     },
-  };
+  });
 }
 
 // ── Tool: Explain WCAG Criterion ─────────────────────────────────────────────
 
-export const explainWcag = {
+export const explainWcag = tool({
   description: "Explain a specific WCAG success criterion in plain language. Use this when the user asks 'what is SC 1.4.3?' or 'explain WCAG criterion X.X.X'.",
-  parameters: z.object({
+  inputSchema: z.object({
     criterion: z.string().describe("The WCAG success criterion number (e.g., '1.4.3', '2.1.1', '4.1.2')"),
   }),
-  execute: async ({ criterion }: { criterion: string }) => {
+  execute: async ({ criterion }) => {
     const WCAG_MAP: Record<string, { name: string; level: string; summary: string }> = {
       "1.1.1": { name: "Non-text Content", level: "A", summary: "All non-text content has a text alternative that serves the equivalent purpose." },
       "1.2.1": { name: "Audio-only and Video-only", level: "A", summary: "Alternatives provided for prerecorded audio-only and video-only content." },
@@ -248,14 +256,14 @@ export const explainWcag = {
 
     return `SC ${criterion} is not in my built-in reference (I cover all Level A and AA criteria). Check https://www.w3.org/TR/WCAG21/#${criterion.replace(/\./g, "")}`;
   },
-};
+});
 
 // ── Tool: Get Compliance Summary ─────────────────────────────────────────────
 
 function makeGetComplianceStatus(ctx: ToolContext) {
-  return {
+  return tool({
     description: "Get an overview of the user's overall compliance status across all monitored sites. Use this when the user asks 'how compliant are we?', 'what's our accessibility score?', or wants a status overview.",
-    parameters: z.object({}),
+    inputSchema: z.object({}),
     execute: async () => {
       const start = Date.now();
       try {
@@ -298,18 +306,18 @@ function makeGetComplianceStatus(ctx: ToolContext) {
         return `Error fetching compliance status: ${error instanceof Error ? error.message : "unknown error"}`;
       }
     },
-  };
+  });
 }
 
 // ── Tool: Trigger a Scan (Chat → Agent Handoff) ─────────────────────────────
 
 function makeTriggerScan(ctx: ToolContext) {
-  return {
+  return tool({
     description: "Scan a website for accessibility issues. Use this when the user says 'scan [URL]', 'check [URL]', 'test [URL]', or asks you to analyze a website's accessibility. This actually runs a real scan and returns results.",
-    parameters: z.object({
+    inputSchema: z.object({
       url: z.string().url().describe("The full URL to scan (must include https://)"),
     }),
-    execute: async ({ url }: { url: string }) => {
+    execute: async ({ url }) => {
       const start = Date.now();
       try {
         // We don't call performScan directly here because it requires browser launch
@@ -349,7 +357,7 @@ function makeTriggerScan(ctx: ToolContext) {
         return `Scan failed: ${error instanceof Error ? error.message : "unknown error"}. The site may be unreachable or blocking automated access.`;
       }
     },
-  };
+  });
 }
 
 // ── Tool Registry ────────────────────────────────────────────────────────────
