@@ -70,9 +70,14 @@ export function hasAccessibleName(element: ElementSnapshot): boolean {
   // An expression may render text, so its presence is enough.
   if (/\{[^}]*\}/.test(element.children)) return true;
 
-  // Strip nested elements; whatever text remains is the name.
-  const text = element.children.replace(/<[^>]*>/g, "").trim();
-  return text.length > 0;
+  // Read the text BETWEEN the nested elements rather than deleting the elements from
+  // the string. Removal is unsound — one pass over `<scr<b>ipt>` leaves `ipt>`, and on
+  // other inputs it can splice a live tag back together, which is why CodeQL flags
+  // strip-by-replace as incomplete sanitization. Splitting yields the segments and
+  // never rebuilds markup, and a boolean is all this function ever needed.
+  return element.children
+    .split(/<[^>]*>/)
+    .some((segment) => segment.trim().length > 0);
 }
 
 /**
