@@ -328,30 +328,52 @@ function makeTriggerScan(ctx: ToolContext) {
           return `Cannot scan this URL: ${ssrfError}`;
         }
 
-        // Import and execute scan service
-        const { performScan } = await import("@/services/scanService");
-        const result = await performScan({
-          url,
-          options: { deep: false },
-          userEmail: undefined, // Tool-initiated scan
-        });
+        // IDEMPOTENCY: this is the only tool that spends real money — it launches a
+        // browser and crawls a site. The chat endpoint is not idempotent, so a client
+        // retry after a dropped connection, a "regenerate", or the model calling the
+        // tool twice in one turn would each start a duplicate scan and a duplicate
+        // bill. Dedup is keyed on (workspace/user, url) for a short window.
+        //
+        // Validation runs BEFORE the guard so a rejected URL is never cached as a
+        // result and never consumes a claim.
+        const { withIdempotency } = await import("@/lib/ai/idempotency");
 
-        logToolCall("triggerScan", { url, workspaceId: ctx.workspaceId }, Date.now() - start, true);
+        const { result: payload, deduplicated } = await withIdempotency(
+          { workspaceId: ctx.workspaceId, userId: ctx.userId },
+          "triggerScan",
+          { url },
+          async () => {
+            const { performScan } = await import("@/services/scanService");
+            const result = await performScan({
+              url,
+              options: { deep: false },
+              userEmail: undefined, // Tool-initiated scan
+            });
 
-        const scan = result.scan;
-        const summary = scan.summary;
-        return truncateResult(JSON.stringify({
-          scanId: scan.id,
-          url: scan.url,
-          score: summary.score,
-          totalViolations: summary.totalViolations,
-          critical: summary.critical,
-          serious: summary.serious,
-          moderate: summary.moderate,
-          minor: summary.minor,
-          status: "COMPLETED",
-          summary: `Scan complete! Score: ${summary.score}/100 with ${summary.totalViolations} violations (${summary.critical} critical, ${summary.serious} serious).`,
-        }));
+            const scan = result.scan;
+            const summary = scan.summary;
+            return {
+              scanId: scan.id,
+              url: scan.url,
+              score: summary.score,
+              totalViolations: summary.totalViolations,
+              critical: summary.critical,
+              serious: summary.serious,
+              moderate: summary.moderate,
+              minor: summary.minor,
+              status: "COMPLETED" as const,
+              summary: `Scan complete! Score: ${summary.score}/100 with ${summary.totalViolations} violations (${summary.critical} critical, ${summary.serious} serious).`,
+            };
+          },
+        );
+
+        logToolCall("triggerScan", { url, workspaceId: ctx.workspaceId, deduplicated }, Date.now() - start, true);
+
+        // Tell the model the result is a replay so it doesn't claim a fresh scan just
+        // happened — that would be a small but real hallucination about its own actions.
+        return truncateResult(JSON.stringify(
+          deduplicated ? { ...payload, deduplicated: true, note: "Returned the result of a scan just run for this URL — no new scan was started." } : payload,
+        ));
       } catch (error) {
         logToolCall("triggerScan", { url }, Date.now() - start, false);
         return `Scan failed: ${error instanceof Error ? error.message : "unknown error"}. The site may be unreachable or blocking automated access.`;
