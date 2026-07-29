@@ -106,12 +106,26 @@ export async function POST(request: NextRequest) {
   // Auto-generate title from first user message if not provided
   const effectiveTitle = title || messages.find((m) => m.role === "user")?.content.slice(0, 60) || "New conversation";
 
+  // Resolve the caller's primary workspace so feedback we forward to the learning
+  // system can be found by calculateReliabilityScores(workspaceId) — ChatConversation
+  // itself has no workspace context today, so without this every rating would land
+  // with workspaceId: null and be invisible to per-workspace quality scoring.
+  // Same "earliest-joined membership" convention as requireWorkspacePermission's
+  // fallback (src/lib/auth/api-guard.ts) — this route intentionally does not enforce
+  // a workspace permission (chat history is personal), it only needs the id for tagging.
+  const primaryMembership = await prisma.workspaceMember.findFirst({
+    where: { userId: user.id },
+    orderBy: { joinedAt: "asc" },
+    select: { workspaceId: true },
+  });
+  const workspaceId = primaryMembership?.workspaceId;
+
   if (id) {
     // Update existing — verify ownership INSIDE transaction to prevent TOCTOU race.
     // Uses updateMany with userId in WHERE so ownership is atomically checked.
     let ratingTransitions: RatingTransition[] = [];
 
-    await prisma.$transaction(async (tx) => {
+    const txError = await prisma.$transaction(async (tx) => {
       const existing = await tx.chatConversation.findFirst({
         where: { id, userId: user.id },
         select: { id: true },
@@ -153,9 +167,14 @@ export async function POST(request: NextRequest) {
       throw err;
     });
 
+    // The transaction's .catch() returns a NextResponse on a handled failure —
+    // it must be returned here, not discarded, or a not-found/not-owned update
+    // would incorrectly report `{ saved: true }` to the client.
+    if (txError) return txError;
+
     // Outside the transaction and deliberately not awaited: the learning write is a
     // secondary concern and must never fail or slow down saving the user's chat.
-    void recordRatingTransitions(ratingTransitions, user.id);
+    void recordRatingTransitions(ratingTransitions, user.id, workspaceId);
 
     return NextResponse.json({ id, saved: true });
   }
@@ -178,7 +197,7 @@ export async function POST(request: NextRequest) {
 
   // Rare but possible: the user rates a reply before the first save lands. There is
   // no prior state, so every non-zero rating here is a genuine first transition.
-  void recordRatingTransitions(collectRatingTransitions(messages, new Map()), user.id);
+  void recordRatingTransitions(collectRatingTransitions(messages, new Map()), user.id, workspaceId);
 
   return NextResponse.json({ id: conversation.id, saved: true }, { status: 201 });
 }
