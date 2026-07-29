@@ -174,4 +174,55 @@ describe("chat retry and queue recovery", () => {
       await pending;
     });
   });
+
+  // The banner said "that answer could not be saved" while saves were succeeding,
+  // and it survived reloads because the pause reason is persisted. Nothing cleared
+  // it on a later success, so a transient outage left a permanent false alarm.
+  it("clears a persistence pause once a later save succeeds", async () => {
+    let persistOk = false;
+    const fetchMock = routeChatFetch(
+      () => completedStream("A"),
+      () => (persistOk
+        ? new Response(JSON.stringify({ id: "conv-test" }), { status: 200 })
+        : new Response("save failed", { status: 500 })),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const { result } = renderHook(() => useChat());
+
+    await act(async () => {
+      await result.current.sendMessage("Q1");
+    });
+    expect(useChatStore.getState().queuePauseReason).toBe("persistence");
+
+    persistOk = true;
+    await act(async () => {
+      await result.current.sendMessage("Q2");
+    });
+
+    expect(useChatStore.getState().queuePauseReason).toBeNull();
+  });
+
+  // Clearing the pause resumes the drain. Doing that on the user's behalf would
+  // spend their tokens on a queue they never chose to restart, so a pause with
+  // prompts still waiting must survive a successful save.
+  it("keeps the pause while prompts are still queued", async () => {
+    const fetchMock = routeChatFetch(
+      () => completedStream("A"),
+      () => new Response("save failed", { status: 500 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const { result } = renderHook(() => useChat());
+
+    await act(async () => {
+      await result.current.sendMessage("Q1");
+    });
+    expect(useChatStore.getState().queuePauseReason).toBe("persistence");
+
+    act(() => {
+      useChatStore.getState().enqueuePrompt("still waiting");
+    });
+
+    expect(useChatStore.getState().queuedPrompts.length).toBeGreaterThan(0);
+    expect(useChatStore.getState().queuePauseReason).toBe("persistence");
+  });
 });

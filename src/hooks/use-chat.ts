@@ -422,6 +422,17 @@ export function useChat() {
             return;
           }
 
+          // This save proves persistence recovered, so a leftover "could not be saved"
+          // banner is now claiming something untrue about a turn that demonstrably was
+          // saved. Only a persistence pause is cleared, and only with nothing queued:
+          // an interrupted or user-requested pause is not resolved by this, and
+          // clearing while prompts are waiting would spend the user's tokens on a
+          // queue they never chose to resume.
+          const paused = useChatStore.getState();
+          if (paused.queuePauseReason === "persistence" && paused.queuedPrompts.length === 0) {
+            paused.clearQueuePause();
+          }
+
           // A pause requested mid-run takes effect at the TURN BOUNDARY: the answer
           // already in flight is allowed to finish, but nothing new starts. Killing a
           // half-written answer would destroy work the user is actively reading.
