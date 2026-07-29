@@ -17,6 +17,7 @@
     "test": "vitest",
     "test:run": "vitest run",
     "test:e2e": "playwright test",
+    "eval:prompts": "npx tsx scripts/eval-prompts.ts",
     "visual-audit": "npx tsx scripts/visual-audit.ts"
   },
   "dependencies": {
