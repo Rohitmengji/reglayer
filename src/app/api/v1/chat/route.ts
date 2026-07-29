@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
   const modelId = getDefaultModelId();
   if (!modelId) return apiError("No model available", "no_model", 503);
 
-  const result = stream({
+  const result = await stream({
     model: modelId,
     messages: llmMessages,
     temperature: 0.4,

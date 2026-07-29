@@ -243,7 +243,7 @@ export async function POST(request: NextRequest) {
 
   // ── 13. Stream LLM response ─────────────────────────────────────────────
   const streamStart = Date.now();
-  const result = stream({
+  const result = await stream({
     model: modelId,
     messages,
     tools,

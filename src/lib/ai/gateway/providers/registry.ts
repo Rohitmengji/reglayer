@@ -254,3 +254,56 @@ export function calculateCost(
     totalCost: inputCost + outputCost,
   };
 }
+
+// ── Fallback Chains ──────────────────────────────────────────────────────────
+//
+// WHY CROSS-PROVIDER: the failure this protects against is a provider incident —
+// an OpenAI outage, a regional 429 storm, a model deprecation. Falling back to a
+// second OpenAI model would fail in exactly the same way, so each chain crosses to
+// a different provider first and only then considers a same-provider option.
+//
+// WHY IT LIVES HERE: an earlier FALLBACK_CHAIN in routing/model-router.ts mapped to
+// "claude-haiku-4-20250514" — a provider model string, not a registry ModelId. It had
+// zero callers, so nothing ever validated it and the typo was invisible. Declaring the
+// chain as Record<ModelId, ModelId[]> next to the model definitions makes an invalid
+// entry a compile error.
+//
+// Ordering favours similar capability and lower cost: a fallback should degrade
+// gracefully, not silently escalate a cheap request onto a frontier model.
+
+const FALLBACK_CHAIN: Record<ModelId, readonly ModelId[]> = {
+  // OpenAI → Anthropic → Google
+  "gpt-4o-mini": ["claude-haiku", "gemini-2.0-flash"],
+  "gpt-4o": ["claude-sonnet", "gemini-2.5-pro"],
+  "gpt-4.1-mini": ["claude-haiku", "gemini-2.0-flash"],
+  "gpt-4.1": ["claude-sonnet", "gemini-2.5-pro"],
+  // Anthropic → OpenAI → Google
+  "claude-haiku": ["gpt-4o-mini", "gemini-2.0-flash"],
+  "claude-sonnet": ["gpt-4o", "gemini-2.5-pro"],
+  "claude-opus": ["gpt-4o", "claude-sonnet"],
+  // Google → OpenAI → Anthropic
+  "gemini-2.0-flash": ["gpt-4o-mini", "claude-haiku"],
+  "gemini-2.5-pro": ["gpt-4o", "claude-sonnet"],
+};
+
+/**
+ * Resolve the ordered list of models to attempt for a request: the requested model
+ * first, then its fallbacks.
+ *
+ * Only models whose provider is actually configured are returned — offering a
+ * fallback to a provider with no API key just converts one failure into two.
+ */
+export function resolveModelChain(modelId: ModelId): ModelId[] {
+  const candidates = [modelId, ...(FALLBACK_CHAIN[modelId] ?? [])];
+  const seen = new Set<ModelId>();
+
+  return candidates.filter((id) => {
+    if (seen.has(id)) return false;
+    seen.add(id);
+    try {
+      return getModelConfig(id).isAvailable();
+    } catch {
+      return false;
+    }
+  });
+}

@@ -51,7 +51,7 @@ import type {
   ModelId,
   Provider,
 } from "./types";
-import { calculateCost, getModelConfig, calculateEmbeddingCost } from "./providers/registry";
+import { calculateCost, getModelConfig, calculateEmbeddingCost, resolveModelChain } from "./providers/registry";
 import { createOpenAIModel, createOpenAIEmbeddingModel } from "./providers/openai";
 import { createAnthropicModel } from "./providers/anthropic";
 import { createGoogleModel } from "./providers/google";
@@ -59,6 +59,7 @@ import { consoleLogger } from "./logger";
 import { persistEventHandler } from "../observability/service";
 import { logger } from "@/lib/telemetry/logger";
 import * as Sentry from "@sentry/nextjs";
+import { isCircuitOpen, recordSuccess, recordFailure } from "../hardening";
 
 // ── Resilience defaults ──────────────────────────────────────────────────────
 //
@@ -84,6 +85,41 @@ const DEFAULT_MAX_RETRIES = 2;
  * 5 allows a couple of chained lookups without risking a runaway loop.
  */
 const DEFAULT_MAX_STEPS = 5;
+
+/**
+ * Should this failure trigger a cross-provider failover?
+ *
+ * Only transient / provider-side conditions qualify. A 4xx caused by the request
+ * itself — malformed JSON, oversized context, unsupported parameter — will fail
+ * identically on every provider, so failing over just multiplies latency and cost
+ * before returning the same error. Failing fast on those is the correct behaviour.
+ *
+ * Exported for testing: this policy only executes during an incident, so it would
+ * otherwise be validated for the first time at the worst possible moment.
+ */
+export function isFailoverWorthy(error: unknown): boolean {
+  // An explicit status wins over string matching when the SDK surfaces one.
+  if (typeof error === "object" && error !== null && "statusCode" in error) {
+    const status = Number((error as { statusCode: unknown }).statusCode);
+    if (Number.isFinite(status)) return status === 408 || status === 409 || status === 429 || status >= 500;
+  }
+  if (typeof error === "object" && error !== null && "status" in error) {
+    const status = Number((error as { status: unknown }).status);
+    if (Number.isFinite(status)) return status === 408 || status === 409 || status === 429 || status >= 500;
+  }
+
+  if (error instanceof Error) {
+    const msg = error.message.toLowerCase();
+    // Our own timeout (AbortSignal.timeout) surfaces as an abort/timeout error.
+    if (msg.includes("timeout") || msg.includes("aborted") || msg.includes("timed out")) return true;
+    if (msg.includes("fetch failed") || msg.includes("econnreset") || msg.includes("enotfound")) return true;
+    if (msg.includes("rate limit") || msg.includes("429")) return true;
+    if (msg.includes("overloaded") || msg.includes("capacity")) return true;
+    if (/\b5\d{2}\b/.test(msg)) return true;
+  }
+
+  return false;
+}
 
 // ── Initialize Gateway ────────────────────────────────────────────────────────
 // Register default event handlers on module load.
@@ -210,102 +246,155 @@ function extractSystemInstructions(messages: Message[]): string | undefined {
 export async function complete(
   request: CompletionRequest,
 ): Promise<CompletionResponse | null> {
-  const startTime = Date.now();
-  const modelConfig = getModelConfig(request.model);
+  // Ordered list of models to attempt: requested model first, then cross-provider
+  // fallbacks. Only configured providers are included.
+  const chain = resolveModelChain(request.model);
 
-  // Graceful degradation: if the provider isn't configured, return null.
+  // Graceful degradation: if nothing is configured, return null.
   // This matches the existing pattern where AI features are optional.
-  if (!modelConfig.isAvailable()) {
+  if (chain.length === 0) {
     return null;
   }
 
-  try {
-    const model = getLanguageModel(
-      modelConfig.provider,
-      modelConfig.providerModelId,
-    );
+  let lastError: unknown;
 
-    const result = await generateText({
-      model,
-      instructions: extractSystemInstructions(request.messages),
-      messages: toCoreMessages(request.messages),
-      temperature: request.temperature ?? 0.3,
-      // Fall back to the model's own ceiling rather than leaving this undefined.
-      // Undefined means "provider default", which on some models is tens of thousands
-      // of tokens — unbounded latency and unbounded cost per request.
-      maxOutputTokens: request.maxTokens ?? modelConfig.maxOutputTokens,
-      // Without an explicit timeout a degraded provider holds the serverless function
-      // open for its whole duration. Under load that exhausts concurrency and takes
-      // down the entire app, not just AI.
-      abortSignal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-      maxRetries: request.maxRetries ?? DEFAULT_MAX_RETRIES,
-    });
+  for (let i = 0; i < chain.length; i++) {
+    const modelId = chain[i];
+    const modelConfig = getModelConfig(modelId);
+    const isFallback = i > 0;
+    const startTime = Date.now();
 
-    const latencyMs = Date.now() - startTime;
-    const inputTokens = result.usage?.inputTokens ?? 0;
-    const outputTokens = result.usage?.outputTokens ?? 0;
-    const cost = calculateCost(request.model, inputTokens, outputTokens);
+    // Skip a provider we already know is failing. Without this, a provider outage
+    // costs every request a full timeout before failing over — turning a degraded
+    // dependency into an application-wide latency problem.
+    if (await isCircuitOpen(modelConfig.provider)) {
+      lastError = lastError ?? new Error(`Circuit open for provider ${modelConfig.provider}`);
+      continue;
+    }
 
-    const response: CompletionResponse = {
-      content: result.text,
-      usage: {
-        inputTokens,
-        outputTokens,
-        totalTokens: inputTokens + outputTokens,
-      },
-      model: modelConfig.providerModelId,
-      provider: modelConfig.provider,
-      latencyMs,
-      cost,
-    };
+    try {
+      const model = getLanguageModel(
+        modelConfig.provider,
+        modelConfig.providerModelId,
+      );
 
-    // Emit event for observability (fire-and-forget)
-    emitEvent({
-      type: "ai.completion",
-      timestamp: new Date(),
-      request: {
-        model: request.model,
-        feature: request.metadata?.feature ?? "unknown",
-        workspaceId: request.metadata?.workspaceId,
-        userId: request.metadata?.userId,
-      },
-      response: {
+      // NOTE ON RETRY LAYERING: same-model retry (exponential backoff, retryable
+      // errors only) is handled by the SDK via maxRetries. Wrapping this in
+      // lib/retry.ts as well would multiply attempts (2 x 3 = 6 calls) and fight the
+      // abortSignal. This loop deliberately handles a DIFFERENT axis: cross-provider
+      // failover once same-model retries are exhausted.
+      const result = await generateText({
+        model,
+        instructions: extractSystemInstructions(request.messages),
+        messages: toCoreMessages(request.messages),
+        temperature: request.temperature ?? 0.3,
+        // Fall back to the model's own ceiling rather than leaving this undefined.
+        // Undefined means "provider default", which on some models is tens of thousands
+        // of tokens — unbounded latency and unbounded cost per request.
+        maxOutputTokens: request.maxTokens ?? modelConfig.maxOutputTokens,
+        // Without an explicit timeout a degraded provider holds the serverless function
+        // open for its whole duration. Under load that exhausts concurrency and takes
+        // down the entire app, not just AI.
+        abortSignal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        maxRetries: request.maxRetries ?? DEFAULT_MAX_RETRIES,
+      });
+
+      const latencyMs = Date.now() - startTime;
+      const inputTokens = result.usage?.inputTokens ?? 0;
+      const outputTokens = result.usage?.outputTokens ?? 0;
+      // Cost must be attributed to the model that actually ran, not the one requested.
+      const cost = calculateCost(modelId, inputTokens, outputTokens);
+
+      void recordSuccess(modelConfig.provider);
+
+      if (isFallback) {
+        logger.warn("ai.fallback.succeeded", {
+          requested: request.model,
+          servedBy: modelId,
+          provider: modelConfig.provider,
+          feature: request.metadata?.feature,
+        });
+      }
+
+      const response: CompletionResponse = {
+        content: result.text,
+        usage: {
+          inputTokens,
+          outputTokens,
+          totalTokens: inputTokens + outputTokens,
+        },
         model: modelConfig.providerModelId,
         provider: modelConfig.provider,
-        usage: response.usage,
+        latencyMs,
         cost,
-        latencyMs,
-        success: true,
-      },
-    });
+      };
 
-    return response;
-  } catch (error) {
-    const latencyMs = Date.now() - startTime;
+      // Emit event for observability (fire-and-forget)
+      emitEvent({
+        type: "ai.completion",
+        timestamp: new Date(),
+        request: {
+          model: modelId,
+          feature: request.metadata?.feature ?? "unknown",
+          workspaceId: request.metadata?.workspaceId,
+          userId: request.metadata?.userId,
+        },
+        response: {
+          model: modelConfig.providerModelId,
+          provider: modelConfig.provider,
+          usage: response.usage,
+          cost,
+          latencyMs,
+          success: true,
+        },
+      });
 
-    // Emit failure event
-    emitEvent({
-      type: "ai.completion",
-      timestamp: new Date(),
-      request: {
-        model: request.model,
-        feature: request.metadata?.feature ?? "unknown",
-        workspaceId: request.metadata?.workspaceId,
-        userId: request.metadata?.userId,
-      },
-      response: {
-        model: modelConfig.providerModelId,
+      return response;
+    } catch (error) {
+      const latencyMs = Date.now() - startTime;
+      lastError = error;
+
+      void recordFailure(modelConfig.provider);
+
+      // Emit failure event
+      emitEvent({
+        type: "ai.completion",
+        timestamp: new Date(),
+        request: {
+          model: modelId,
+          feature: request.metadata?.feature ?? "unknown",
+          workspaceId: request.metadata?.workspaceId,
+          userId: request.metadata?.userId,
+        },
+        response: {
+          model: modelConfig.providerModelId,
+          provider: modelConfig.provider,
+          usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
+          cost: { inputCost: 0, outputCost: 0, totalCost: 0 },
+          latencyMs,
+          success: false,
+          error: error instanceof Error ? error.message : "Unknown error",
+        },
+      });
+
+      // Only fail over on transient/provider-side errors. A 400 (bad request,
+      // oversized context, invalid schema) will fail identically on every provider,
+      // so retrying it just multiplies latency and cost before the same failure.
+      if (!isFailoverWorthy(error)) {
+        throw error;
+      }
+
+      logger.warn("ai.fallback.attempt", {
+        failedModel: modelId,
         provider: modelConfig.provider,
-        usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
-        cost: { inputCost: 0, outputCost: 0, totalCost: 0 },
-        latencyMs,
-        success: false,
+        nextModel: chain[i + 1] ?? null,
         error: error instanceof Error ? error.message : "Unknown error",
-      },
-    });
-
-    throw error;
+      });
+    }
   }
+
+  // Every model in the chain failed or was circuit-broken.
+  throw lastError ?? new Error(`All AI providers unavailable for model ${request.model}`);
 }
 
 /**
@@ -333,22 +422,51 @@ export function isAIAvailable(): boolean {
  * Cost tracking note:
  *   Token usage is only available AFTER the stream finishes. We register
  *   an onFinish callback to emit the event at that point.
+ *
+ * Failover note:
+ *   Once bytes have been sent to the client we cannot switch providers, so this
+ *   does PRE-FLIGHT failover only: it picks the first model in the chain whose
+ *   provider circuit is closed, and retries the next candidate if the call throws
+ *   before streaming begins. Mid-stream failures surface to the caller.
+ *   That is why this is async — the circuit state is Redis-backed and shared across
+ *   serverless isolates, so it cannot be read synchronously.
  */
-export function stream(request: CompletionRequest) {
-  const startTime = Date.now();
-  const modelConfig = getModelConfig(request.model);
-
-  if (!modelConfig.isAvailable()) {
+export async function stream(request: CompletionRequest) {
+  const chain = resolveModelChain(request.model);
+  if (chain.length === 0) {
     return null;
   }
 
-  try {
-    const model = getLanguageModel(
-      modelConfig.provider,
-      modelConfig.providerModelId,
-    );
+  let lastError: unknown;
 
-    const result = streamText({
+  for (let i = 0; i < chain.length; i++) {
+    const modelId = chain[i];
+    const modelConfig = getModelConfig(modelId);
+    const startTime = Date.now();
+
+    // Skip providers we already know are failing, so a provider outage doesn't cost
+    // every user a full timeout before we try the healthy one.
+    if (await isCircuitOpen(modelConfig.provider)) {
+      lastError = lastError ?? new Error(`Circuit open for provider ${modelConfig.provider}`);
+      continue;
+    }
+
+    if (i > 0) {
+      logger.warn("ai.stream.fallback", {
+        requested: request.model,
+        servedBy: modelId,
+        provider: modelConfig.provider,
+        feature: request.metadata?.feature,
+      });
+    }
+
+    try {
+      const model = getLanguageModel(
+        modelConfig.provider,
+        modelConfig.providerModelId,
+      );
+
+      const result = streamText({
       model,
       instructions: extractSystemInstructions(request.messages),
       messages: toCoreMessages(request.messages),
@@ -369,7 +487,10 @@ export function stream(request: CompletionRequest) {
         const latencyMs = Date.now() - startTime;
         const inputTokens = usage?.inputTokens ?? 0;
         const outputTokens = usage?.outputTokens ?? 0;
-        const cost = calculateCost(request.model, inputTokens, outputTokens);
+        const cost = calculateCost(modelId, inputTokens, outputTokens);
+
+        // A completed stream is the strongest signal a provider is healthy.
+        void recordSuccess(modelConfig.provider);
 
         emitEvent({
           type: "ai.completion",
@@ -464,11 +585,16 @@ export function stream(request: CompletionRequest) {
       },
       onError: ({ error }) => {
         const latencyMs = Date.now() - startTime;
+
+        // Mid-stream failure. We cannot fail over — bytes may already be on the wire —
+        // but we must still feed the breaker so the NEXT request skips this provider.
+        void recordFailure(modelConfig.provider);
+
         emitEvent({
           type: "ai.completion",
           timestamp: new Date(),
           request: {
-            model: request.model,
+            model: modelId,
             feature: request.metadata?.feature ?? "unknown",
             workspaceId: request.metadata?.workspaceId,
             userId: request.metadata?.userId,
@@ -486,31 +612,43 @@ export function stream(request: CompletionRequest) {
       },
     });
 
-    return result;
-  } catch (error) {
-    // Synchronous error (e.g., invalid model, provider misconfiguration)
-    const latencyMs = Date.now() - startTime;
-    emitEvent({
-      type: "ai.completion",
-      timestamp: new Date(),
-      request: {
-        model: request.model,
-        feature: request.metadata?.feature ?? "unknown",
-        workspaceId: request.metadata?.workspaceId,
-        userId: request.metadata?.userId,
-      },
-      response: {
-        model: modelConfig.providerModelId,
-        provider: modelConfig.provider,
-        usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
-        cost: { inputCost: 0, outputCost: 0, totalCost: 0 },
-        latencyMs,
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
-    });
-    return null;
+      return result;
+    } catch (error) {
+      // Thrown BEFORE streaming began (invalid model, provider misconfiguration,
+      // immediate 429). Safe to fail over here because nothing has been sent yet.
+      const latencyMs = Date.now() - startTime;
+      lastError = error;
+
+      void recordFailure(modelConfig.provider);
+
+      emitEvent({
+        type: "ai.completion",
+        timestamp: new Date(),
+        request: {
+          model: modelId,
+          feature: request.metadata?.feature ?? "unknown",
+          workspaceId: request.metadata?.workspaceId,
+          userId: request.metadata?.userId,
+        },
+        response: {
+          model: modelConfig.providerModelId,
+          provider: modelConfig.provider,
+          usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
+          cost: { inputCost: 0, outputCost: 0, totalCost: 0 },
+          latencyMs,
+          success: false,
+          error: error instanceof Error ? error.message : "Unknown error",
+        },
+      });
+
+      if (!isFailoverWorthy(error)) {
+        throw error;
+      }
+    }
   }
+
+  // Every candidate was circuit-broken or failed before streaming started.
+  throw lastError ?? new Error(`All AI providers unavailable for model ${request.model}`);
 }
 
 /**
