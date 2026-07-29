@@ -157,6 +157,13 @@ interface ChatState {
   panelOpen: boolean;
   /** Server-side conversation ID. Null = new/unsaved conversation. */
   conversationId: string | null;
+  /**
+   * Version last confirmed by the server, sent with the next save.
+   *
+   * Null means "no version to compare", which the server treats as opting out of the
+   * staleness check — correct for a first save, wrong to leave null afterwards.
+   */
+  conversationVersion: number | null;
   /** True when a background save is in progress */
   isSaving: boolean;
 
@@ -195,6 +202,7 @@ interface ChatState {
   editMessage: (id: string, newContent: string) => void;
   /** Server sync actions */
   setConversationId: (id: string | null) => void;
+  setConversationVersion: (version: number | null) => void;
   setIsSaving: (saving: boolean) => void;
   /** Load a conversation from server (replaces current messages) */
   loadConversation: (id: string, messages: ChatMessage[]) => void;
@@ -228,6 +236,7 @@ export const useChatStore = create<ChatState>()(
       isStreaming: false,
       panelOpen: false,
       conversationId: null,
+      conversationVersion: null,
       isSaving: false,
 
       addMessage: (role, content, status) => {
@@ -429,13 +438,15 @@ export const useChatStore = create<ChatState>()(
         }),
 
       setConversationId: (id) => set({ conversationId: id }),
+
+      setConversationVersion: (version) => set({ conversationVersion: version }),
       setIsSaving: (saving) => set({ isSaving: saving }),
 
       loadConversation: (id, messages) =>
         set({ conversationId: id, messages, queuedPrompts: [], queuePauseReason: null, draft: "", isStreaming: false }),
 
       newConversation: () =>
-        set({ conversationId: null, messages: [], queuedPrompts: [], queuePauseReason: null, draft: "", isStreaming: false }),
+        set({ conversationId: null, conversationVersion: null, messages: [], queuedPrompts: [], queuePauseReason: null, draft: "", isStreaming: false }),
 
       addToolCall: (messageId, toolCall) =>
         set((state) => ({
@@ -474,6 +485,7 @@ export const useChatStore = create<ChatState>()(
         queuedPrompts: state.queuedPrompts,
         draft: state.draft,
         conversationId: state.conversationId,
+        conversationVersion: state.conversationVersion,
         // Pause survives reload on purpose: a reload must not be a way to silently
         // resume a queue the user was asked to make a decision about.
         queuePauseReason: state.queuePauseReason,

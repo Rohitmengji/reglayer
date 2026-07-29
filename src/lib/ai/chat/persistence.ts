@@ -22,8 +22,8 @@ export interface PersistableMessage {
 }
 
 export type PersistOutcome =
-  | { ok: true; conversationId: string | null; skipped: boolean }
-  | { ok: false; retryable: boolean };
+  | { ok: true; conversationId: string | null; version: number | null; skipped: boolean }
+  | { ok: false; retryable: boolean; stale?: boolean };
 
 /**
  * Identity of a conversation's persisted content.
@@ -58,17 +58,19 @@ function isRetryableStatus(status: number): boolean {
 export async function persistConversation(args: {
   conversationId: string | null;
   messages: readonly PersistableMessage[];
+  /** Version last seen for this conversation. Enables the server's staleness check. */
+  version?: number | null;
   fetchImpl?: typeof fetch;
 }): Promise<PersistOutcome> {
-  const { conversationId, messages, fetchImpl = fetch } = args;
+  const { conversationId, messages, version = null, fetchImpl = fetch } = args;
 
   if (messages.length === 0) {
-    return { ok: true, conversationId, skipped: true };
+    return { ok: true, conversationId, version, skipped: true };
   }
 
   const fingerprint = conversationFingerprint(messages);
   if (fingerprint === lastPersistedFingerprint) {
-    return { ok: true, conversationId, skipped: true };
+    return { ok: true, conversationId, version, skipped: true };
   }
 
   let response: Response;
@@ -78,6 +80,7 @@ export async function persistConversation(args: {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         id: conversationId || undefined,
+        version: version ?? undefined,
         messages: messages.map((m) => ({
           id: m.id,
           role: m.role,
@@ -92,6 +95,12 @@ export async function persistConversation(args: {
     return { ok: false, retryable: true };
   }
 
+  if (response.status === 409) {
+    // Another tab saved first. Retrying would re-apply this stale message set over
+    // theirs, so the caller must reload instead.
+    return { ok: false, retryable: false, stale: true };
+  }
+
   if (!response.ok) {
     return { ok: false, retryable: isRetryableStatus(response.status) };
   }
@@ -101,12 +110,14 @@ export async function persistConversation(args: {
   lastPersistedFingerprint = fingerprint;
 
   let newId: string | null = conversationId;
+  let newVersion: number | null = version;
   try {
-    const data = (await response.json()) as { id?: string };
+    const data = (await response.json()) as { id?: string; version?: number };
     if (data.id) newId = data.id;
+    if (typeof data.version === "number") newVersion = data.version;
   } catch {
     // A malformed body does not undo a successful write.
   }
 
-  return { ok: true, conversationId: newId, skipped: false };
+  return { ok: true, conversationId: newId, version: newVersion, skipped: false };
 }
