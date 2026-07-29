@@ -1637,17 +1637,12 @@ model ChatConversation {
   updatedAt   DateTime @updatedAt
   archivedAt  DateTime? // Soft delete
 
-  // Optimistic concurrency. Saving is a delete-all-and-recreate keyed on id, so two
-  // tabs saving the same conversation silently clobbered each other — last writer won
-  // and the loser's messages were gone with no error anywhere. A save must now carry
-  // the version it read; a mismatch is rejected rather than applied.
-  version     Int      @default(0)
-
-  // Cross-tab generation lease. The client-side lease prevents concurrent runs within
-  // ONE tab; it cannot span tabs, because each holds its own in-memory state. Ownership
-  // enforced here is the only kind that holds across tabs, devices, and restarts.
-  runOwner    String?   // opaque token identifying the owning tab/session
-  runExpires  DateTime? // heartbeat deadline — a dead owner's lease expires rather than deadlocking
+  // NOTE: `version`, `runOwner`, and `runExpires` are implemented on the
+  // `feat/ai-chat-concurrency` branch. They are deliberately NOT here because Prisma
+  // emits explicit column lists — adding them to the schema makes every
+  // chatConversation query select columns the deployed database does not have, which
+  // breaks chat entirely until the migration is applied. Schema and code must land
+  // together, migration first.
 
   @@index([userId, updatedAt])
   @@index([workspaceId, updatedAt])
