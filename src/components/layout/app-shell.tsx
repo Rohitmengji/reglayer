@@ -23,7 +23,8 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
+import { signOutAndClear } from "@/lib/auth/sign-out";
 import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import { Sidebar } from "./sidebar";
@@ -53,7 +54,7 @@ export function AppShell({ children, bare }: { children: React.ReactNode; bare?:
   // Cross-tab synchronization — keeps workspace context, auth, and scan events in sync
   useAppTabSync({
     onSessionExpired: () => {
-      signOut({ callbackUrl: "/auth/login" });
+      signOutAndClear({ callbackUrl: "/auth/login" });
     },
   });
 
@@ -68,7 +69,7 @@ export function AppShell({ children, bare }: { children: React.ReactNode; bare?:
   useEffect(() => {
     if (status === "loading" || workspaceVerified) return;
     if (status === "unauthenticated") {
-      signOut({ callbackUrl: "/auth/login" });
+      signOutAndClear({ callbackUrl: "/auth/login" });
       return;
     }
 
@@ -88,7 +89,7 @@ export function AppShell({ children, bare }: { children: React.ReactNode; bare?:
       fetch("/api/team", { signal: controller.signal })
         .then((r) => {
           if (r.status === 401) {
-            signOut({ callbackUrl: "/auth/login" });
+            signOutAndClear({ callbackUrl: "/auth/login" });
             return null;
           }
           return r.json();

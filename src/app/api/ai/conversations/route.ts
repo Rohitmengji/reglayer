@@ -145,17 +145,28 @@ export async function POST(request: NextRequest) {
       ratingTransitions = collectRatingTransitions(messages, new Map(previous.map((m) => [m.id, m.feedback])));
 
       await tx.chatMessage.deleteMany({ where: { conversationId: id } });
-      for (const m of messages) {
-        await tx.chatMessage.create({
-          data: {
-            id: m.id,
-            role: m.role,
-            content: m.content,
-            feedback: m.feedback,
-            conversationId: id,
-          },
-        });
-      }
+
+      // ONE round trip, not one per message.
+      //
+      // This was a `for` loop awaiting `create()` per message, which is N sequential
+      // round trips inside an interactive transaction with a 5s budget. Against a
+      // remote Postgres at ~60ms latency that is ~85 messages before it expires — and
+      // it did, in production, with P2028 at 5.6-6.1s.
+      //
+      // The loop was survivable only while saves were rare. Two changes removed that
+      // cover: the request schema now accepts 200 messages instead of 50, and the chat
+      // runtime persists after every completed turn rather than on a 3s debounce that
+      // was skipped mid-stream. Higher frequency and longer conversations turned a
+      // latent quadratic-ish cost into a hard failure.
+      await tx.chatMessage.createMany({
+        data: messages.map((m) => ({
+          id: m.id,
+          role: m.role,
+          content: m.content,
+          feedback: m.feedback,
+          conversationId: id,
+        })),
+      });
       await tx.chatConversation.update({
         where: { id },
         data: { title: effectiveTitle },

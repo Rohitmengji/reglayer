@@ -1,6 +1,6 @@
 "use client";
 
-import { signOut } from "next-auth/react";
+import { signOutAndClear } from "@/lib/auth/sign-out";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -11,7 +11,7 @@ export default function SignOutPage() {
 
   function handleSignOut() {
     setLoading(true);
-    signOut({ callbackUrl: "/auth/login" });
+    signOutAndClear({ callbackUrl: "/auth/login" });
   }
 
   return (

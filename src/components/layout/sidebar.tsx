@@ -28,7 +28,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
+import { signOutAndClear } from "@/lib/auth/sign-out";
 import { cn } from "@/lib/utils/cn";
 import { useTheme } from "@/components/theme-provider";
 import { Shield, LayoutDashboard, Scan, Grid3X3, Moon, Sun, Crown, ChevronDown, Settings, BarChart3, Zap, Plug, LogOut, AlertTriangle, TrendingUp, Building2, ChevronsUpDown, Check, BookOpen, Search, HelpCircle, Trophy, Radar, Flame, Sparkles, Bot, Workflow, Store, Activity } from "lucide-react";
@@ -445,7 +446,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                 </div>
 
                 <button
-                  onClick={() => signOut({ callbackUrl: "/auth/login" })}
+                  onClick={() => signOutAndClear({ callbackUrl: "/auth/login" })}
                   className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                 >
                   <LogOut className="h-3.5 w-3.5" />

@@ -73,6 +73,8 @@ const MODEL_CONFIGS: ModelConfig[] = [
     pricing: { inputPerMillion: 0.15, outputPerMillion: 0.60 },
     supportsVision: true,
     supportsJsonMode: true,
+    quality: 8,
+    avgLatencyMs: 800,
     isAvailable: () => !!process.env.OPENAI_API_KEY,
   },
   {
@@ -85,6 +87,8 @@ const MODEL_CONFIGS: ModelConfig[] = [
     pricing: { inputPerMillion: 2.50, outputPerMillion: 10.00 },
     supportsVision: true,
     supportsJsonMode: true,
+    quality: 10,
+    avgLatencyMs: 1200,
     isAvailable: () => !!process.env.OPENAI_API_KEY,
   },
   {
@@ -97,6 +101,8 @@ const MODEL_CONFIGS: ModelConfig[] = [
     pricing: { inputPerMillion: 0.40, outputPerMillion: 1.60 },
     supportsVision: true,
     supportsJsonMode: true,
+    quality: 8,
+    avgLatencyMs: 750,
     isAvailable: () => !!process.env.OPENAI_API_KEY,
   },
   {
@@ -109,6 +115,8 @@ const MODEL_CONFIGS: ModelConfig[] = [
     pricing: { inputPerMillion: 2.00, outputPerMillion: 8.00 },
     supportsVision: true,
     supportsJsonMode: true,
+    quality: 10,
+    avgLatencyMs: 1100,
     isAvailable: () => !!process.env.OPENAI_API_KEY,
   },
 
@@ -123,6 +131,8 @@ const MODEL_CONFIGS: ModelConfig[] = [
     pricing: { inputPerMillion: 3.00, outputPerMillion: 15.00 },
     supportsVision: true,
     supportsJsonMode: true,
+    quality: 10,
+    avgLatencyMs: 1500,
     isAvailable: () => !!process.env.ANTHROPIC_API_KEY,
   },
   {
@@ -135,6 +145,8 @@ const MODEL_CONFIGS: ModelConfig[] = [
     pricing: { inputPerMillion: 0.80, outputPerMillion: 4.00 },
     supportsVision: true,
     supportsJsonMode: true,
+    quality: 8,
+    avgLatencyMs: 600,
     isAvailable: () => !!process.env.ANTHROPIC_API_KEY,
   },
   {
@@ -147,6 +159,8 @@ const MODEL_CONFIGS: ModelConfig[] = [
     pricing: { inputPerMillion: 15.00, outputPerMillion: 75.00 },
     supportsVision: true,
     supportsJsonMode: true,
+    quality: 10,
+    avgLatencyMs: 2600,
     isAvailable: () => !!process.env.ANTHROPIC_API_KEY,
   },
 
@@ -161,6 +175,8 @@ const MODEL_CONFIGS: ModelConfig[] = [
     pricing: { inputPerMillion: 0.075, outputPerMillion: 0.30 },
     supportsVision: true,
     supportsJsonMode: true,
+    quality: 8,
+    avgLatencyMs: 400,
     isAvailable: () => !!process.env.GOOGLE_AI_API_KEY,
   },
   {
@@ -173,6 +189,8 @@ const MODEL_CONFIGS: ModelConfig[] = [
     pricing: { inputPerMillion: 1.25, outputPerMillion: 10.00 },
     supportsVision: true,
     supportsJsonMode: true,
+    quality: 10,
+    avgLatencyMs: 1000,
     isAvailable: () => !!process.env.GOOGLE_AI_API_KEY,
   },
 ];

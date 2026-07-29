@@ -14,8 +14,9 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { z } from "zod";
 import { stream, getDefaultModelId, isAIAvailable } from "@/lib/ai/gateway";
-import { getModelConfig } from "@/lib/ai/gateway/providers/registry";
+import { getModelConfig, getAvailableModels } from "@/lib/ai/gateway/providers/registry";
 import { routeToModel } from "@/lib/ai/routing/model-router";
+import { selectModel } from "@/lib/ai/routing/selector";
 import { trackAILatency, trackTokenUsage, incrementCounter } from "@/lib/telemetry/metrics";
 import { getPrompt } from "@/lib/ai/prompts/registry";
 import { createChatTools } from "@/lib/ai/tools/definitions";
@@ -26,7 +27,9 @@ import { prisma } from "@/lib/database/prisma";
 import { toTextStream } from "ai";
 // ── Integrated AI Infrastructure ──────────────────────────────────────────────
 import { optimizedRetrieve, BALANCED_PRESET, FAST_PRESET } from "@/lib/ai/retrieval/pipeline";
-import { classifyIntent } from "@/lib/ai/planner/engine";
+import { selectContext } from "@/lib/ai/chat/context-budget";
+import { composeSystemPrompt } from "@/lib/ai/prompts/compose";
+import { planRequest } from "@/lib/ai/planner/pre-execution";
 import { LineageBuilder, traceToHeaders } from "@/lib/ai/lineage/tracker";
 import { recordAuditEntry } from "@/lib/ai/audit/trail";
 import { getProfile, formatProfileForPrompt, trackUsage } from "@/lib/ai/profile/service";
@@ -47,8 +50,25 @@ const chatMessageSchema = z.object({
 });
 
 const chatRequestSchema = z.object({
-  messages: z.array(chatMessageSchema).min(1).max(50),
+  // Abuse guard only. Context fitting is the budget engine's job — a hard reject here
+  // permanently bricked any conversation past the limit, because every retry of an
+  // over-length history failed identically.
+  messages: z.array(chatMessageSchema).min(1).max(200),
 });
+
+/**
+ * Stand-in for a retrieval that the plan decided not to run.
+ *
+ * Shaped like a real result so every downstream consumer — lineage, compression
+ * reporting, prompt composition — keeps working without a skip-specific branch.
+ */
+const EMPTY_RETRIEVAL = {
+  context: "",
+  cached: false,
+  cacheLayer: null,
+  stages: [],
+  tokenCount: 0,
+} as unknown as Awaited<ReturnType<typeof optimizedRetrieve>>;
 
 // ── Handler ───────────────────────────────────────────────────────────────────
 
@@ -129,12 +149,28 @@ export async function POST(request: NextRequest) {
     historyLength: sanitizedMessages.length,
     wantsCode,
   });
-  const modelId = fallbackModelId;
+
+  // The routed decision is now APPLIED. Previously this line read
+  // `const modelId = fallbackModelId;`, so every request used the same default and the
+  // documented cost savings were never realised — while lineage recorded a routing
+  // decision the system had not acted on.
+  const modelSelection = selectModel(
+    { complexity: routing.complexity, objective: "balanced" },
+    getAvailableModels(),
+    fallbackModelId,
+  );
+  const modelId = modelSelection.modelId;
   const dynamicMaxTokens = routing.config.maxTokens;
   lineage.addStage({
     name: "model_routing",
     category: "processing",
-    details: { tier: routing.tier, complexity: routing.complexity, maxTokens: dynamicMaxTokens },
+    details: {
+      tier: routing.tier,
+      complexity: routing.complexity,
+      maxTokens: dynamicMaxTokens,
+      selectedModel: modelId,
+      reason: modelSelection.reason,
+    },
     success: true,
   });
 
@@ -154,21 +190,42 @@ export async function POST(request: NextRequest) {
 
   lineage.recordInput(latestUserMessage, userId, workspaceId ?? "");
 
-  // ── 7. Intent classification → retrieval preset ─────────────────────────
-  const intent = classifyIntent(latestUserMessage);
-  const preset = intent === "conversational" ? FAST_PRESET : BALANCED_PRESET;
+  // ── 7. Plan the request before paying for any of it ─────────────────────
+  const plan = planRequest(latestUserMessage);
+
+  // Some questions have exactly one correct answer that we already hold. Answering
+  // from the WCAG database is instant, free, and cannot hallucinate a criterion —
+  // which is the failure mode this product cannot ship.
+  if (plan.strategy === "direct-answer" && plan.directAnswer) {
+    incrementCounter("ai.chat.direct_answer", { reason: plan.reason });
+    return new Response(
+      `data: ${JSON.stringify({ type: "text", content: plan.directAnswer })}\n` +
+      `data: ${JSON.stringify({ type: "done" })}\n`,
+      { status: 200, headers: { "Content-Type": "text/event-stream" } },
+    );
+  }
+
+  const preset = plan.tier === "fast" ? FAST_PRESET : BALANCED_PRESET;
 
   // ── 8+9. Retrieval + profile + memories (ALL in parallel for speed) ─────
   // These three are independent — running them concurrently saves 200-500ms
   // which is the difference between "instant" and "noticeable delay".
+  //
+  // Each is now CONDITIONAL. Previously every request ran a vector search, a profile
+  // query, and a memory query — including "hi", and including reference questions
+  // where personal memory cannot change the answer.
   const [retrieval, profile, memories] = await Promise.all([
-    optimizedRetrieve(latestUserMessage, {
-      ...preset,
-      workspaceId: workspaceId ?? "",
-      userId,
-    }),
-    getProfile(userId).catch(() => null),
-    getMemories({ userId, workspaceId: workspaceId ?? null }).catch(() => []),
+    plan.needsRetrieval
+      ? optimizedRetrieve(latestUserMessage, {
+          ...preset,
+          workspaceId: workspaceId ?? "",
+          userId,
+        })
+      : Promise.resolve(EMPTY_RETRIEVAL),
+    plan.needsMemory ? getProfile(userId).catch(() => null) : Promise.resolve(null),
+    plan.needsMemory
+      ? getMemories({ userId, workspaceId: workspaceId ?? null }).catch(() => [])
+      : Promise.resolve([]),
   ]);
 
   lineage.recordCache(retrieval.cached, retrieval.cacheLayer);
@@ -201,45 +258,58 @@ export async function POST(request: NextRequest) {
 
   lineage.recordPrompt(isRAGAugmented ? "chat-rag" : "chat-system", basePrompt.version ?? 1);
 
-  let systemPrompt = basePrompt.system;
-  if (isRAGAugmented) {
-    // Wrap retrieved context in XML delimiters to prevent prompt injection via
-    // malicious scan data (e.g. violation descriptions containing "ignore previous
-    // instructions"). The model treats content inside <context> as data, not instructions.
-    const escapedContext = `<context>\n${retrieval.context}\n</context>`;
-    systemPrompt = systemPrompt.replace("{{context}}", escapedContext);
-  }
-  if (profileContext) systemPrompt += `\n\n<user_profile>\n${profileContext}\n</user_profile>`;
-  if (memoryContext) systemPrompt += `\n\n<user_memory>\n${memoryContext}\n</user_memory>`;
-
   // ── 10b. Decision Engine — inject workspace decisions as constraints ────
   // This is RegLayer's moat: the AI enforces workspace-level decisions on
   // every response. If the workspace decided "WCAG 2.2 AA" and "TypeScript
   // required," the AI must follow those in all recommendations.
+  let decisionBlock = "";
   if (workspaceId) {
     const { loadDecisions, formatDecisionsForPrompt } = await import("@/lib/ai/decisions/engine");
-    const decisions = await loadDecisions(workspaceId);
-    const decisionBlock = formatDecisionsForPrompt(decisions);
-    if (decisionBlock) systemPrompt += decisionBlock;
+    decisionBlock = formatDecisionsForPrompt(await loadDecisions(workspaceId));
   }
 
-  // ── 11. Build final message array ───────────────────────────────────────
-  const messages: { role: "system" | "user" | "assistant"; content: string }[] = [
-    { role: "system", content: systemPrompt },
-    ...sanitizedMessages,
-  ];
+  // Composition is extracted and tested: previously retrieval was wrapped against
+  // injection but profile and memory were concatenated raw, so the protection was
+  // inconsistent in a way that was invisible inline.
+  const composed = composeSystemPrompt({
+    base: basePrompt.system,
+    retrievedContext: isRAGAugmented ? retrieval.context : undefined,
+    userProfile: profileContext || undefined,
+    userMemory: memoryContext || undefined,
+    workspaceDecisions: decisionBlock || undefined,
+  });
+  const systemPrompt = composed.system;
 
-  // Token budget protection
-  const estimatedTokens = messages.reduce((acc, m) => acc + m.content.length, 0) / 4;
-  if (estimatedTokens > 100_000) {
-    const systemMsg = messages[0];
-    const recent = messages.slice(-10);
-    messages.length = 0;
-    messages.push(systemMsg, ...recent);
+  // ── 11. Build final message array (model-aware token budget) ───────────
+  // The previous guard compared a character-based estimate against a hardcoded
+  // 100_000 and then kept `slice(-10)`. It ignored the routed model's real window
+  // (32k for local models, 1M for Gemini) and could sever a question from its answer.
+  const selection = selectContext({
+    system: systemPrompt,
+    history: sanitizedMessages,
+    budget: {
+      contextWindow: getModelConfig(modelId).contextWindow ?? 128_000,
+      reserveOutputTokens: dynamicMaxTokens,
+    },
+  });
+
+  if (selection.overflow) {
+    // The system prompt plus the current question alone exceed the window. Trimming
+    // cannot help, and answering from a mangled prompt would be confidently wrong.
+    return new Response(
+      "This request is too large for the available model. Try a shorter message or start a new conversation.",
+      { status: 413 },
+    );
   }
 
-  // ── 12. Tools (workspace-scoped) ────────────────────────────────────────
-  const tools = createChatTools({ workspaceId, userId });
+  const messages = selection.messages;
+  const estimatedTokens = selection.usedTokens;
+
+
+  // ── 12. Tools (workspace-scoped, and only when the plan needs them) ─────
+  // Offering tools for a question about the WCAG spec invites a pointless database
+  // round-trip and an extra model step.
+  const tools = plan.needsTools ? createChatTools({ workspaceId, userId }) : undefined;
 
   // ── 13. Stream LLM response ─────────────────────────────────────────────
   const streamStart = Date.now();
@@ -248,7 +318,10 @@ export async function POST(request: NextRequest) {
     messages,
     tools,
     temperature: basePrompt.defaultTemperature,
-    maxTokens: basePrompt.defaultMaxTokens,
+    // The ROUTED budget, not the prompt default. `dynamicMaxTokens` was previously
+    // computed from the routing tier, reported to telemetry, and then discarded here —
+    // so metrics described a limit the model was never given.
+    maxTokens: dynamicMaxTokens,
     metadata: {
       feature: isRAGAugmented ? "chat-rag" : "chat",
       userId: session.user.email,
@@ -293,7 +366,9 @@ export async function POST(request: NextRequest) {
     consentBasis: "legitimate_interest",
   }).catch(() => {}); // fire-and-forget
 
-  // ── Metrics: track AI request latency and token usage ───────────────────
+  // ── Metrics: latency and token usage ───────────────────────────────
+  // These describe the REQUEST, so they are recorded here. The completion counter is
+  // deliberately NOT here — see `ai.chat.completed`, emitted after the stream ends.
   const chatLatencyMs = Date.now() - streamStart;
   trackAILatency(modelId, chatLatencyMs, false);
   trackTokenUsage(modelId, Math.round(estimatedTokens), dynamicMaxTokens);
@@ -380,7 +455,14 @@ export async function POST(request: NextRequest) {
         };
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "lineage", data: lineageSummary })}\n`));
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "done" })}\n`));
+
+        // Emitted ONLY after `done` is written. `ai.chat.request` counts attempts and
+        // fires before the first token, so without this pair the success rate was
+        // unmeasurable and every dashboard silently counted died-mid-stream runs as
+        // successes.
+        incrementCounter("ai.chat.completed", { tier: routing.tier });
       } catch (err) {
+        incrementCounter("ai.chat.stream_failed", { tier: routing.tier });
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "error", message: err instanceof Error ? err.message : "Stream error" })}\n`));
       } finally {
         controller.close();

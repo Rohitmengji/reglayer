@@ -33,14 +33,69 @@
 import { useCallback, useRef } from "react";
 import { useChatStore } from "@/stores/chatStore";
 import type { MessageLineage } from "@/stores/chatStore";
+import { describeRequestFailure } from "@/lib/ai/chat/request-failure";
+import {
+  isRecoverableStatus,
+  pauseReasonForOutcome,
+  queueStatusOf,
+  type EnqueueRejection,
+} from "@/lib/ai/chat/queue";
+import { runCompletionSequence } from "@/lib/ai/chat/completion-pipeline";
+import { persistConversation } from "@/lib/ai/chat/persistence";
+import { TokenBuffer } from "@/lib/ai/chat/stream-format";
+import { browserTransport, ChatTelemetry } from "@/lib/ai/chat/telemetry";
+
+/**
+ * Longest gap permitted between stream chunks before a run is abandoned.
+ *
+ * WHY: `reader.read()` on a black-holed connection never resolves AND never rejects. A
+ * laptop sleeping, a NAT table dropping the flow, or a load balancer closing silently
+ * leaves the read pending forever — holding the queue lease with `isStreaming` stuck
+ * true. Only the user noticing and pressing Stop recovered it.
+ *
+ * Generous enough to survive a slow first token from a cold model; short enough that a
+ * dead connection cannot strand the queue for the rest of the session.
+ */
+const STREAM_IDLE_TIMEOUT_MS = 45_000;
+
+/**
+ * Module-level so batching spans a whole session rather than a single hook instance.
+ * Every failure mode in the queue engine was previously invisible in production.
+ */
+const telemetry = new ChatTelemetry(browserTransport);
+
+if (typeof window !== "undefined") {
+  // The final events of an ABANDONED session are exactly the ones that define the
+  // abandonment metric, so they must survive the page going away.
+  window.addEventListener("pagehide", () => telemetry.flush());
+}
+
+type StreamOutcome = "completed" | "failed" | "cancelled" | "interrupted";
+
+/** Result of a send: null when the prompt ran immediately, otherwise the queue verdict. */
+export type SendResult = null | { ok: true; id: string } | { ok: false; reason: EnqueueRejection };
+
+function isAbortError(error: unknown): boolean {
+  return typeof error === "object"
+    && error !== null
+    && "name" in error
+    && error.name === "AbortError";
+}
 
 export function useChat() {
   const {
     messages,
+    queuedPrompts,
     isStreaming,
+    runnerToken,
+    queuePauseReason,
+    avgRunMs,
     addMessage,
     updateMessage,
     appendToMessage,
+    transitionMessageStatus,
+    updateQueuedPrompt,
+    removeQueuedPrompt,
     setStreaming,
     clearMessages,
     truncateFrom,
@@ -54,39 +109,138 @@ export function useChat() {
 
   /** Core streaming logic — sends messages to the API and streams the response. */
   const streamResponse = useCallback(
-    async (apiMessages: Array<{ role: string; content: string }>) => {
-      const assistantId = addMessage("assistant", "");
+    async (apiMessages: Array<{ role: string; content: string }>): Promise<StreamOutcome> => {
+      const assistantId = addMessage("assistant", "", "sending");
+      const controller = new AbortController();
       setStreaming(true);
-      abortRef.current = new AbortController();
+      abortRef.current = controller;
+      let receivedDone = false;
+      let terminalFailure = false;
+
+      // Declared outside the try so the catch and finally paths can flush or discard it.
+      // Coalesces tokens: each append re-renders the transcript AND serialises the whole
+      // conversation to localStorage, so applying every chunk individually put hundreds
+      // of re-parses and serialisations on the main thread per answer.
+      const tokens = new TokenBuffer((chunk) => appendToMessage(assistantId, chunk));
+
+      const runStartedAt = Date.now();
+      let firstTokenAt: number | null = null;
+      // Distinguishes a watchdog abort from a user pressing Stop. Both surface as
+      // AbortError, but only one of them is the user's decision.
+      let timedOut = false;
+      let idleTimer: ReturnType<typeof setTimeout> | null = null;
+
+      const resetIdleWatchdog = () => {
+        if (idleTimer !== null) clearTimeout(idleTimer);
+        idleTimer = setTimeout(() => {
+          timedOut = true;
+          controller.abort();
+        }, STREAM_IDLE_TIMEOUT_MS);
+      };
+
+      telemetry.event("run.started");
+      telemetry.measure("queue_depth", useChatStore.getState().queuedPrompts.length);
 
       try {
+        // Armed before the request: a connection that never responds at all must also
+        // be abandoned, not just one that stalls mid-stream.
+        resetIdleWatchdog();
+
         const response = await fetch("/api/ai/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ messages: apiMessages }),
-          signal: abortRef.current.signal,
+          signal: controller.signal,
         });
 
         if (!response.ok) {
-          const errorText = await response.text();
-          updateMessage(assistantId,
-            `Sorry, I couldn't respond. ${response.status === 401 ? "Please sign in." : response.status === 429 ? "Rate limit reached — try again shortly." : errorText}`,
-          );
-          return;
+          // The response body is intentionally not read: it is server-generated text
+          // that can carry stack traces or HTML error pages, and it never tells the
+          // user what to do next.
+          updateMessage(assistantId, describeRequestFailure(response.status, response.headers));
+          transitionMessageStatus(assistantId, "failed");
+          terminalFailure = true;
+          return "failed";
         }
+
+        transitionMessageStatus(assistantId, "generating");
 
         const reader = response.body?.getReader();
         if (!reader) {
           appendToMessage(assistantId, "Sorry, streaming is not supported.");
-          return;
+          transitionMessageStatus(assistantId, "failed");
+          terminalFailure = true;
+          return "failed";
         }
 
         const decoder = new TextDecoder();
         let buffer = "";
 
+        const handleEvent = (event: {
+          type: string;
+          content?: string;
+          data?: MessageLineage;
+          id?: string;
+          name?: string;
+          args?: Record<string, unknown>;
+          result?: string;
+          durationMs?: number;
+          message?: string;
+        }) => {
+          switch (event.type) {
+            case "text":
+              if (event.content) {
+                if (firstTokenAt === null) {
+                  firstTokenAt = Date.now();
+                  // Time to first token is what a user experiences as "fast";
+                  // total duration is not.
+                  telemetry.measure("ttft_ms", firstTokenAt - runStartedAt);
+                }
+                transitionMessageStatus(assistantId, "streaming");
+                tokens.push(event.content);
+              }
+              break;
+            case "tool_start":
+              useChatStore.getState().addToolCall(assistantId, {
+                id: event.id ?? crypto.randomUUID(),
+                name: event.name ?? "unknown",
+                args: event.args ?? {},
+                status: "running",
+              });
+              break;
+            case "tool_end":
+              if (event.id) {
+                useChatStore.getState().updateToolCall(assistantId, event.id, {
+                  result: event.result,
+                  durationMs: event.durationMs,
+                  status: "completed",
+                });
+              }
+              break;
+            case "lineage":
+              if (event.data) setLineage(assistantId, event.data);
+              break;
+            case "error":
+              // Flush first: a completed/failed message is content-frozen, so buffered
+              // tokens applied after the transition would be silently discarded.
+              tokens.flush();
+              appendToMessage(assistantId, `\n\n*Error: ${event.message ?? "Stream error"}*`);
+              transitionMessageStatus(assistantId, "failed");
+              terminalFailure = true;
+              break;
+            case "done":
+              tokens.flush();
+              transitionMessageStatus(assistantId, "completed");
+              receivedDone = true;
+              break;
+          }
+        };
+
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
+          // Progress resets the deadline; the watchdog only fires on genuine silence.
+          resetIdleWatchdog();
           buffer += decoder.decode(value, { stream: true });
 
           // Parse line-delimited JSON events
@@ -98,7 +252,7 @@ export function useChat() {
             if (!trimmed.startsWith("data: ")) continue;
             const jsonStr = trimmed.slice(6);
             try {
-              const event = JSON.parse(jsonStr) as {
+              handleEvent(JSON.parse(jsonStr) as {
                 type: string;
                 content?: string;
                 data?: MessageLineage;
@@ -108,41 +262,11 @@ export function useChat() {
                 result?: string;
                 durationMs?: number;
                 message?: string;
-              };
-
-              switch (event.type) {
-                case "text":
-                  if (event.content) appendToMessage(assistantId, event.content);
-                  break;
-                case "tool_start":
-                  useChatStore.getState().addToolCall(assistantId, {
-                    id: event.id ?? crypto.randomUUID(),
-                    name: event.name ?? "unknown",
-                    args: event.args ?? {},
-                    status: "running",
-                  });
-                  break;
-                case "tool_end":
-                  if (event.id) {
-                    useChatStore.getState().updateToolCall(assistantId, event.id, {
-                      result: event.result,
-                      durationMs: event.durationMs,
-                      status: "completed",
-                    });
-                  }
-                  break;
-                case "lineage":
-                  if (event.data) setLineage(assistantId, event.data);
-                  break;
-                case "error":
-                  appendToMessage(assistantId, `\n\n*Error: ${event.message}*`);
-                  break;
-                case "done":
-                  break;
-              }
+              });
             } catch {
               // If JSON parse fails, treat as raw text (backward compat)
-              appendToMessage(assistantId, jsonStr);
+              transitionMessageStatus(assistantId, "streaming");
+              tokens.push(jsonStr);
             }
           }
         }
@@ -152,78 +276,276 @@ export function useChat() {
           const trimmed = buffer.trim();
           if (trimmed.startsWith("data: ")) {
             try {
-              const event = JSON.parse(trimmed.slice(6));
-              if (event.type === "text" && event.content) {
-                appendToMessage(assistantId, event.content);
-              } else if (event.type === "lineage" && event.data) {
-                setLineage(assistantId, event.data);
-              }
+              handleEvent(JSON.parse(trimmed.slice(6)));
             } catch {
-              appendToMessage(assistantId, trimmed.slice(6));
+              transitionMessageStatus(assistantId, "streaming");
+              tokens.push(trimmed.slice(6));
             }
           }
         }
+
+        // The stream ended. Anything still buffered is real output the user is owed,
+        // including when the connection died mid-answer.
+        tokens.flush();
+
+        if (!receivedDone && !terminalFailure) {
+          transitionMessageStatus(assistantId, "interrupted");
+          return "interrupted";
+        }
+        return terminalFailure ? "failed" : "completed";
       } catch (error) {
-        if (error instanceof Error && error.name === "AbortError") {
+        // Partial output is preserved on both paths: a cancelled or failed answer is
+        // still worth reading, and recovery relies on it being present.
+        tokens.flush();
+
+        if (isAbortError(error)) {
+          // A watchdog abort is NOT a user decision, so it must not be reported as one.
+          // `interrupted` is also recoverable, which offers Retry rather than leaving
+          // the user with a response they never chose to stop.
+          if (timedOut) {
+            appendToMessage(assistantId, "\n\n*(Connection stalled — no response received.)*");
+            transitionMessageStatus(assistantId, "interrupted");
+            return "interrupted";
+          }
           appendToMessage(assistantId, "\n\n*(Response cancelled)*");
+          transitionMessageStatus(assistantId, "cancelled");
+          return "cancelled";
         } else {
           appendToMessage(assistantId, "\n\nSorry, an error occurred. Please try again.");
+          transitionMessageStatus(assistantId, "failed");
+          return "failed";
         }
       } finally {
-        setStreaming(false);
-        abortRef.current = null;
+        // Must always clear: a surviving timer would abort a LATER run through the
+        // captured controller and leak the closure for the whole idle window.
+        if (idleTimer !== null) clearTimeout(idleTimer);
+        tokens.discard();
+        if (abortRef.current === controller) {
+          setStreaming(false);
+          abortRef.current = null;
+        }
       }
     },
-    [addMessage, appendToMessage, setStreaming, updateMessage, setLineage],
+    [addMessage, appendToMessage, setStreaming, transitionMessageStatus, updateMessage, setLineage],
   );
 
-  /** Send a new user message. */
-  const sendMessage = useCallback(
-    async (content: string) => {
-      if (!content.trim() || isStreaming) return;
-      addMessage("user", content.trim());
+  /**
+   * Run turns sequentially until the queue drains or a turn does not succeed.
+   *
+   * `initialContent` is null when resuming an existing prompt (retry), because the
+   * user message is already in the transcript and must not be duplicated.
+   */
+  const runTurns = useCallback(
+    async (initialContent: string | null) => {
+      const token = crypto.randomUUID();
+      // Exactly one drain loop may exist. Losing this race is not an error — the
+      // existing owner will pick up whatever this call would have run.
+      if (!useChatStore.getState().tryAcquireRunner(token)) return;
 
-      // Build API messages (full history minus the not-yet-existing assistant placeholder)
-      const apiMessages = useChatStore
-        .getState()
-        .messages.map((m) => ({ role: m.role, content: m.content }));
+      try {
+        let content = initialContent;
+        let isFirstTurn = true;
 
-      await streamResponse(apiMessages);
+        while (true) {
+          // Only the initiating prompt is appended here. Queued prompts are appended
+          // by `handoffToNext` in the same atomic update that dequeues them.
+          if (isFirstTurn && content) addMessage("user", content);
+          isFirstTurn = false;
+
+          const apiMessages = useChatStore
+            .getState()
+            .messages.map((message) => ({ role: message.role, content: message.content }));
+
+          const startedAt = Date.now();
+          const outcome = await streamResponse(apiMessages);
+
+          // These four outcomes must sum to `run.started`. A gap between them is itself
+          // the signal that something is escaping the state machine.
+          telemetry.event(`run.${outcome}`);
+          telemetry.measure("run_duration_ms", Date.now() - startedAt);
+
+          // Any non-success outcome pauses the queue. Pending prompts were written for
+          // a conversation that did not happen, so continuing automatically would
+          // answer follow-ups against missing context.
+          if (outcome !== "completed") {
+            const reason = pauseReasonForOutcome(outcome);
+            // Only a queue with work left needs a decision from the user.
+            if (reason && useChatStore.getState().queuedPrompts.length > 0) {
+              useChatStore.getState().pauseQueue(reason);
+              telemetry.event("queue.paused", reason);
+            }
+            return;
+          }
+
+          // ── Completion sequence ────────────────────────────────────────────
+          // Ordered and awaited. The next prompt must not start until the answer
+          // that precedes it is durable, otherwise a crash mid-drain loses answers
+          // the user has already read.
+          const report = await runCompletionSequence([
+            {
+              name: "persist",
+              policy: "pause",
+              maxAttempts: 3,
+              run: async () => {
+                const state = useChatStore.getState();
+                const result = await persistConversation({
+                  conversationId: state.conversationId,
+                  messages: state.messages,
+                });
+                if (!result.ok) {
+                  // A non-retryable failure still throws: the sequence treats attempts
+                  // as exhausted only after maxAttempts, so signalling failure here is
+                  // what stops the queue.
+                  throw new Error("persist failed");
+                }
+                if (result.conversationId && result.conversationId !== state.conversationId) {
+                  state.setConversationId(result.conversationId);
+                }
+              },
+            },
+            {
+              name: "analytics",
+              policy: "continue",
+              maxAttempts: 1,
+              run: async () => {
+                // Local only, and deliberately non-blocking: a metrics gap must never
+                // stall a user's queue.
+                useChatStore.getState().recordRunDuration(Date.now() - startedAt);
+              },
+            },
+          ]);
+
+          if (!report.ok) {
+            useChatStore.getState().pauseQueue("persistence");
+            telemetry.event("persist.failed");
+            telemetry.event("queue.paused", "persistence");
+            return;
+          }
+
+          // This save proves persistence recovered, so a leftover "could not be saved"
+          // banner is now claiming something untrue about a turn that demonstrably was
+          // saved. Only a persistence pause is cleared, and only with nothing queued:
+          // an interrupted or user-requested pause is not resolved by this, and
+          // clearing while prompts are waiting would spend the user's tokens on a
+          // queue they never chose to resume.
+          const paused = useChatStore.getState();
+          if (paused.queuePauseReason === "persistence" && paused.queuedPrompts.length === 0) {
+            paused.clearQueuePause();
+          }
+
+          // A pause requested mid-run takes effect at the TURN BOUNDARY: the answer
+          // already in flight is allowed to finish, but nothing new starts. Killing a
+          // half-written answer would destroy work the user is actively reading.
+          if (useChatStore.getState().queuePauseReason) return;
+
+          // Release, dequeue, and transcript append all happen atomically here.
+          const next = useChatStore.getState().handoffToNext(token);
+          if (!next) return;
+          content = null;
+        }
+      } finally {
+        useChatStore.getState().releaseRunner(token);
+      }
     },
-    [isStreaming, addMessage, streamResponse],
+    [addMessage, streamResponse],
   );
+
+  /** True while a drain loop owns the queue, so new prompts must be queued. */
+  const isQueueBusy = () => {
+    const state = useChatStore.getState();
+    return state.runnerToken !== null || state.isStreaming;
+  };
+
+  /** Send a new user message, or queue it when a run is already in flight. */
+  const sendMessage = useCallback(
+    async (content: string): Promise<SendResult> => {
+      const normalized = content.trim();
+      if (!normalized) return { ok: false, reason: "empty" };
+
+      if (isQueueBusy()) {
+        const result = useChatStore.getState().enqueuePrompt(normalized);
+        telemetry.event(result.ok ? "queue.enqueued" : "queue.rejected", result.ok ? undefined : result.reason);
+        return result;
+      }
+
+      await runTurns(normalized);
+      return null;
+    },
+    [runTurns],
+  );
+
+  /**
+   * Retry the turn that failed, was interrupted, or was cancelled.
+   * Reuses the original user prompt rather than asking the user to retype it.
+   */
+  const retryLastResponse = useCallback(async () => {
+    if (isQueueBusy()) return;
+    const state = useChatStore.getState();
+
+    const last = state.messages.at(-1);
+    if (!last || last.role !== "assistant" || !isRecoverableStatus(last.status)) return;
+
+    // Drop the unusable response so the retry does not append to broken output.
+    truncateFrom(last.id);
+    state.clearQueuePause();
+    telemetry.event("run.retried");
+    await runTurns(null);
+  }, [runTurns, truncateFrom]);
+
+  /** Skip the turn that paused the queue and continue with the next pending prompt. */
+  const resumeQueue = useCallback(async () => {
+    if (isQueueBusy()) return;
+    const state = useChatStore.getState();
+    if (state.queuedPrompts.length === 0) return;
+
+    state.clearQueuePause();
+    telemetry.event("queue.resumed");
+    const next = state.takeNextQueuedPrompt();
+    if (next) await runTurns(next.content);
+  }, [runTurns]);
+
+  /**
+   * Hold the queue at the next turn boundary.
+   *
+   * Deliberately does NOT stop the answer in flight — pausing a queue and destroying a
+   * half-written answer are different intents, and Stop already exists for the latter.
+   */
+  const pauseQueue = useCallback(() => {
+    useChatStore.getState().pauseQueue("user");
+    telemetry.event("queue.paused", "user");
+  }, []);
+
+  /** Discard every pending prompt. */
+  const clearQueue = useCallback(() => {
+    useChatStore.getState().clearQueue();
+    telemetry.event("queue.cleared");
+  }, []);
 
   /** Regenerate the last assistant response. */
   const regenerate = useCallback(async () => {
-    if (isStreaming) return;
+    // Read live state: the value captured at render time can be stale by the time
+    // the user clicks, which would allow a second overlapping request.
+    if (isQueueBusy()) return;
+
     const msgs = useChatStore.getState().messages;
-    // Find the last assistant message and remove it
-    const lastAssistantIdx = msgs.length - 1;
-    if (lastAssistantIdx < 0 || msgs[lastAssistantIdx].role !== "assistant") return;
-    truncateFrom(msgs[lastAssistantIdx].id);
+    const last = msgs.at(-1);
+    if (!last || last.role !== "assistant") return;
+    truncateFrom(last.id);
 
-    // Re-send everything up to (but not including) the removed assistant message
-    const apiMessages = useChatStore
-      .getState()
-      .messages.map((m) => ({ role: m.role, content: m.content }));
-
-    await streamResponse(apiMessages);
-  }, [isStreaming, truncateFrom, streamResponse]);
+    // runTurns re-sends the remaining transcript and then drains any queued prompts,
+    // so a regenerate behaves like any other turn instead of stalling the queue.
+    await runTurns(null);
+  }, [truncateFrom, runTurns]);
 
   /** Edit a user message and re-run from that point. */
   const editAndResend = useCallback(
     async (messageId: string, newContent: string) => {
-      if (isStreaming) return;
+      if (isQueueBusy()) return;
       editMessage(messageId, newContent);
 
-      // Re-send the conversation up to and including the edited message
-      const apiMessages = useChatStore
-        .getState()
-        .messages.map((m) => ({ role: m.role, content: m.content }));
-
-      await streamResponse(apiMessages);
+      await runTurns(null);
     },
-    [isStreaming, editMessage, streamResponse],
+    [editMessage, runTurns],
   );
 
   const stopStreaming = useCallback(() => {
@@ -232,11 +554,23 @@ export function useChat() {
 
   return {
     messages,
+    queuedPrompts,
     isStreaming,
+    /** "idle" | "running" | "paused" — the single value the UI should branch on. */
+    queueStatus: queueStatusOf(runnerToken !== null, queuePauseReason),
+    queuePauseReason,
+    /** Rolling average run duration, or null before any run has been measured. */
+    avgRunMs,
     sendMessage,
     regenerate,
+    retryLastResponse,
+    resumeQueue,
+    pauseQueue,
+    clearQueue,
     editAndResend,
     stopStreaming,
+    updateQueuedPrompt,
+    removeQueuedPrompt,
     clearMessages,
     setFeedback,
   };
