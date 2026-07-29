@@ -1637,6 +1637,18 @@ model ChatConversation {
   updatedAt   DateTime @updatedAt
   archivedAt  DateTime? // Soft delete
 
+  // Optimistic concurrency. Saving is a delete-all-and-recreate keyed on id, so two
+  // tabs saving the same conversation silently clobbered each other — last writer won
+  // and the loser's messages were gone with no error anywhere. A save must now carry
+  // the version it read; a mismatch is rejected rather than applied.
+  version     Int      @default(0)
+
+  // Cross-tab generation lease. The client-side lease prevents concurrent runs within
+  // ONE tab; it cannot span tabs, because each holds its own in-memory state. Ownership
+  // enforced here is the only kind that holds across tabs, devices, and restarts.
+  runOwner    String?   // opaque token identifying the owning tab/session
+  runExpires  DateTime? // heartbeat deadline — a dead owner's lease expires rather than deadlocking
+
   @@index([userId, updatedAt])
   @@index([workspaceId, updatedAt])
   @@map("chat_conversations")

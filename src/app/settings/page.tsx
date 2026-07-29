@@ -20,7 +20,7 @@ import { PageLoading } from "@/components/ui/page-loading";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2, Key, GitBranch, Bell, Copy, Eye, EyeOff, Sparkles, Zap, SlidersHorizontal, AlertTriangle, User, Download, Pencil, X, Shield, Brain } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
-import { signOut } from "next-auth/react";
+import { signOutAndClear } from "@/lib/auth/sign-out";
 import Link from "next/link";
 import { useFeatures } from "@/hooks/use-features";
 import { useSession } from "next-auth/react";
@@ -391,7 +391,7 @@ function AccountTab() {
   useEffect(() => {
     fetch("/api/account")
       .then((r) => {
-        if (r.status === 401) { signOut({ callbackUrl: "/auth/login" }); return null; }
+        if (r.status === 401) { signOutAndClear({ callbackUrl: "/auth/login" }); return null; }
         return r.ok ? r.json() : null;
       })
       .then((d) => {
@@ -415,7 +415,7 @@ function AccountTab() {
         body: JSON.stringify({ name: name.trim() || undefined, email: email.trim() || undefined }),
       });
       if (res.status === 401) {
-        signOut({ callbackUrl: "/auth/login" });
+        signOutAndClear({ callbackUrl: "/auth/login" });
         return;
       }
       if (res.ok) {
@@ -462,7 +462,7 @@ function AccountTab() {
         headers: { "x-confirm-delete": "DELETE_MY_ACCOUNT" },
       });
       if (res.ok) {
-        signOut({ callbackUrl: "/" });
+        signOutAndClear({ callbackUrl: "/" });
       } else {
         const data = await res.json();
         toast.error(data.error || "Failed to delete account");

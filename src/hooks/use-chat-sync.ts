@@ -18,6 +18,10 @@
 
 import { useEffect, useRef, useCallback, useState } from "react";
 import { useChatStore } from "@/stores/chatStore";
+import {
+  persistConversation,
+  resetPersistenceFingerprint,
+} from "@/lib/ai/chat/persistence";
 
 interface ConversationSummary {
   id: string;
@@ -29,7 +33,6 @@ interface ConversationSummary {
 export function useChatSync() {
   const {
     messages,
-    conversationId,
     isStreaming,
     isSaving,
     setConversationId,
@@ -41,7 +44,6 @@ export function useChatSync() {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [loadingList, setLoadingList] = useState(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastSavedRef = useRef<string>("");
   const hasFetchedRef = useRef(false);
 
   /** Fetch conversation list from server. Only shows loading on first fetch. */
@@ -63,36 +65,29 @@ export function useChatSync() {
     finally { setLoadingList(false); }
   }, []);
 
-  /** Save current conversation to server (debounced). */
+  /**
+   * Background save for changes the completion sequence does not cover — feedback
+   * ratings, edits, and any state left behind when a drain ends.
+   *
+   * The completed-run path does NOT rely on this: it persists synchronously as an
+   * ordered step before the next prompt starts. Both paths share a fingerprint inside
+   * `persistConversation`, so whichever runs second becomes a no-op instead of issuing
+   * a duplicate write to a delete-and-recreate endpoint.
+   */
   const saveToServer = useCallback(async () => {
     const state = useChatStore.getState();
     if (state.messages.length === 0 || state.isStreaming) return;
 
-    // Skip if nothing changed since last save
-    const fingerprint = JSON.stringify(state.messages.map((m) => m.id + m.content.length + (m.feedback ?? 0)));
-    if (fingerprint === lastSavedRef.current) return;
-
     setIsSaving(true);
     try {
-      const res = await fetch("/api/ai/conversations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: state.conversationId || undefined,
-          messages: state.messages.map((m) => ({
-            id: m.id,
-            role: m.role,
-            content: m.content,
-            feedback: m.feedback ?? 0,
-          })),
-        }),
+      const result = await persistConversation({
+        conversationId: state.conversationId,
+        messages: state.messages,
       });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.id && !state.conversationId) {
-          setConversationId(data.id);
+      if (result.ok && !result.skipped) {
+        if (result.conversationId && !state.conversationId) {
+          setConversationId(result.conversationId);
         }
-        lastSavedRef.current = fingerprint;
         // Silently refresh the conversation list so the sidebar stays current
         fetchConversations();
       }
@@ -150,8 +145,9 @@ export function useChatSync() {
             content: m.content,
             timestamp: Date.now(),
             feedback: (m.feedback ?? 0) as -1 | 0 | 1,
+            ...(m.role === "assistant" ? { status: "completed" as const } : {}),
           })));
-          lastSavedRef.current = ""; // reset fingerprint
+          resetPersistenceFingerprint();
         }
       }
     } catch { /* silent */ }
@@ -160,7 +156,7 @@ export function useChatSync() {
   /** Start a fresh conversation. */
   const startNew = useCallback(() => {
     newConversation();
-    lastSavedRef.current = "";
+    resetPersistenceFingerprint();
   }, [newConversation]);
 
   /** Delete a conversation (soft-delete on server). */
@@ -171,7 +167,7 @@ export function useChatSync() {
       // If we deleted the active conversation, start fresh
       if (useChatStore.getState().conversationId === id) {
         newConversation();
-        lastSavedRef.current = "";
+        resetPersistenceFingerprint();
       }
     } catch { /* silent */ }
   }, [newConversation]);

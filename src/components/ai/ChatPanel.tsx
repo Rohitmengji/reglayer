@@ -10,10 +10,13 @@
 import { useRef, useEffect, useState, useCallback } from "react";
 import { useChat } from "@/hooks/use-chat";
 import { useChatSync } from "@/hooks/use-chat-sync";
-import { useChatStore } from "@/stores/chatStore";
+import { useChatStore, MAX_QUEUED_PROMPTS } from "@/stores/chatStore";
+import type { EnqueueRejection, QueuePauseReason } from "@/lib/ai/chat/queue";
+import { queueAnnouncement } from "@/lib/ai/chat/queue";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
-import { MessageSquare, Trash2, X, ArrowDown, Download, Plus, History, Loader2, Clock, Zap } from "lucide-react";
+import { QueuedPrompts, COMPOSER_ID } from "./QueuedPrompts";
+import { MessageSquare, Trash2, X, ArrowDown, Download, Plus, History, Loader2, Clock, Zap, RotateCcw, SkipForward, TriangleAlert } from "lucide-react";
 import { useCredits } from "@/hooks/use-credits";
 import { useFollowUpSuggestions } from "@/hooks/use-follow-up-suggestions";
 
@@ -23,14 +26,76 @@ interface ChatPanelProps {
 }
 
 export function ChatPanel({ open, onClose }: ChatPanelProps) {
-  const { messages, isStreaming, sendMessage, regenerate, editAndResend, stopStreaming, clearMessages, setFeedback } =
-    useChat();
+  const {
+    messages,
+    queuedPrompts,
+    isStreaming,
+    queueStatus,
+    avgRunMs,
+    queuePauseReason,
+    sendMessage,
+    regenerate,
+    retryLastResponse,
+    resumeQueue,
+    pauseQueue,
+    clearQueue,
+    editAndResend,
+    stopStreaming,
+    clearMessages,
+    setFeedback,
+    updateQueuedPrompt,
+    removeQueuedPrompt,
+  } = useChat();
   const { conversations, loadingList, fetchConversations, switchConversation, startNew, deleteConversation } =
     useChatSync();
   const conversationId = useChatStore((s) => s.conversationId);
   const { credits } = useCredits();
   const followUps = useFollowUpSuggestions(messages);
+  // Only the newest turn can be retried — older turns are settled history.
+  const lastMessage = messages.at(-1);
+  const lastResponseStatus = !isStreaming && lastMessage?.role === "assistant"
+    ? lastMessage.status
+    : undefined;
   const scrollRef = useRef<HTMLDivElement>(null);
+  const restoreFocusRef = useRef<HTMLElement | null>(null);
+
+  /**
+   * Focus management for the panel.
+   *
+   * Replaces `autoFocus` on the composer, which fired on mount regardless of context
+   * and never returned focus anywhere on close — leaving keyboard users on <body>.
+   * Escape is added because the panel could previously only be dismissed by tabbing to
+   * the close button.
+   */
+  useEffect(() => {
+    if (!open) return;
+
+    restoreFocusRef.current = document.activeElement as HTMLElement | null;
+    const frame = requestAnimationFrame(() => document.getElementById(COMPOSER_ID)?.focus());
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      // Inner Escape handlers (queued-prompt editing) stop propagation, so this only
+      // fires when nothing more specific has claimed the key.
+      if (event.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      cancelAnimationFrame(frame);
+      document.removeEventListener("keydown", onKeyDown);
+      restoreFocusRef.current?.focus();
+    };
+  }, [open, onClose]);
+
+  const [sendNotice, setSendNotice] = useState<EnqueueRejection | null>(null);
+
+  // A rejected submission must say WHY. Silently dropping a prompt the user pressed
+  // Enter on is the single worst outcome a queue can produce.
+  const handleSend = async (text: string) => {
+    setSendNotice(null);
+    const result = await sendMessage(text);
+    if (result && !result.ok && result.reason !== "empty") setSendNotice(result.reason);
+  };
   const [showScrollDown, setShowScrollDown] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [historySearch, setHistorySearch] = useState("");
@@ -360,11 +425,59 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
           )}
         </div>
 
+        {/* Recovery bar — the queue pauses on any non-success outcome, so the user
+            is given an explicit way forward instead of a silently stalled queue. */}
+        <RecoveryBar
+          status={lastResponseStatus}
+          pauseReason={queuePauseReason}
+          queuedCount={queuedPrompts.length}
+          onRetry={retryLastResponse}
+          onResume={resumeQueue}
+        />
+
+        {/* Pending prompts accepted during generation */}
+        <QueuedPrompts
+          prompts={queuedPrompts}
+          onEdit={updateQueuedPrompt}
+          onRemove={removeQueuedPrompt}
+          onPause={pauseQueue}
+          onResume={resumeQueue}
+          onClear={clearQueue}
+          avgRunMs={avgRunMs}
+          queueStatus={queueStatus}
+        />
+
+        {/*
+          The ONLY live region for queue state. One region that states the whole
+          situation is quieter and more informative than a badge on every message.
+        */}
+        <p className="sr-only" role="status" aria-live="polite">
+          {queueAnnouncement({
+            status: queueStatus,
+            pendingCount: queuedPrompts.length,
+            avgRunMs,
+            pauseReason: queuePauseReason,
+          })}
+        </p>
+
+        {sendNotice && (
+          <p
+            className="border-t border-amber-200 bg-amber-50 px-4 py-2 text-[11px] text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-200"
+            role="status"
+            aria-live="polite"
+          >
+            {sendNotice === "duplicate"
+              ? "That prompt is already queued."
+              : "Queue is full — wait for a reply or remove a pending prompt."}
+          </p>
+        )}
+
         {/* Input */}
         <ChatInput
-          onSend={sendMessage}
+          onSend={handleSend}
           onStop={stopStreaming}
           isStreaming={isStreaming}
+          queueFull={queuedPrompts.length >= MAX_QUEUED_PROMPTS}
         />
       </div>
     </>
@@ -372,6 +485,67 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+const RECOVERY_COPY = {
+  failed: "That response failed.",
+  interrupted: "That response was interrupted before it finished.",
+  cancelled: "You stopped that response.",
+} as const;
+
+function RecoveryBar({
+  status,
+  pauseReason,
+  queuedCount,
+  onRetry,
+  onResume,
+}: {
+  status?: string;
+  pauseReason: QueuePauseReason | null;
+  queuedCount: number;
+  onRetry: () => void;
+  onResume: () => void;
+}) {
+  // A persistence pause follows a SUCCESSFUL answer, so the message status is
+  // "completed" and would not surface here on its own.
+  const message = pauseReason === "persistence"
+    ? "That answer could not be saved, so the queue stopped to avoid losing more."
+    : status && status in RECOVERY_COPY
+      ? RECOVERY_COPY[status as keyof typeof RECOVERY_COPY]
+      : null;
+
+  if (!message) return null;
+
+  return (
+    <div
+      className="flex flex-wrap items-center gap-2 border-t border-amber-200 bg-amber-50 px-4 py-2.5 dark:border-amber-900/40 dark:bg-amber-950/20"
+      role="status"
+      aria-live="polite"
+    >
+      <TriangleAlert className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-500" aria-hidden="true" />
+      <p className="flex-1 text-[12px] text-amber-900 dark:text-amber-200">
+        {message}
+        {queuedCount > 0 && ` ${queuedCount} queued prompt${queuedCount === 1 ? "" : "s"} paused.`}
+      </p>
+      <button
+        onClick={onRetry}
+        className="inline-flex items-center gap-1 rounded-lg border border-amber-300 bg-white px-2.5 py-1 text-[11px] font-medium text-amber-900 transition-colors hover:bg-amber-100 dark:border-amber-800 dark:bg-neutral-900 dark:text-amber-200 dark:hover:bg-neutral-800"
+      >
+        <RotateCcw className="h-3 w-3" aria-hidden="true" />
+        Retry
+      </button>
+      {queuedCount > 0 && (
+        <button
+          onClick={onResume}
+          className="inline-flex items-center gap-1 rounded-lg border border-amber-300 bg-white px-2.5 py-1 text-[11px] font-medium text-amber-900 transition-colors hover:bg-amber-100 dark:border-amber-800 dark:bg-neutral-900 dark:text-amber-200 dark:hover:bg-neutral-800"
+          title="Discard this turn and run the next queued prompt"
+        >
+          <SkipForward className="h-3 w-3" aria-hidden="true" />
+          Skip
+        </button>
+      )}
+    </div>
+  );
+}
 
 function formatTimeAgo(dateStr: string): string {
   const now = Date.now();
