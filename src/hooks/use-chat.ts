@@ -391,15 +391,19 @@ export function useChat() {
                 const result = await persistConversation({
                   conversationId: state.conversationId,
                   messages: state.messages,
+                  version: state.conversationVersion,
                 });
                 if (!result.ok) {
-                  // A non-retryable failure still throws: the sequence treats attempts
-                  // as exhausted only after maxAttempts, so signalling failure here is
-                  // what stops the queue.
-                  throw new Error("persist failed");
+                  // A stale write is NOT retryable: retrying would re-apply this older
+                  // message set over whatever another tab just saved. Surface it so the
+                  // queue pauses and the user can reload.
+                  throw new Error(result.stale ? "conversation changed elsewhere" : "persist failed");
                 }
                 if (result.conversationId && result.conversationId !== state.conversationId) {
                   state.setConversationId(result.conversationId);
+                }
+                if (result.version !== null && result.version !== state.conversationVersion) {
+                  state.setConversationVersion(result.version);
                 }
               },
             },
