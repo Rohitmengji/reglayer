@@ -14,7 +14,25 @@
 
 import { useState } from "react";
 import type { ChatMessage as ChatMessageType } from "@/stores/chatStore";
-import { MessageSquare, User, Copy, Check, RotateCcw, Pencil, ThumbsUp, ThumbsDown } from "lucide-react";
+import type { ChatResponseStatus } from "@/lib/ai/chat/message-status";
+import { stabilizeStreamingMarkdown } from "@/lib/ai/chat/stream-format";
+import {
+  MessageSquare,
+  User,
+  Copy,
+  Check,
+  RotateCcw,
+  Pencil,
+  ThumbsUp,
+  ThumbsDown,
+  Clock,
+  Loader2,
+  Radio,
+  RefreshCw,
+  Square,
+  TriangleAlert,
+  WifiOff,
+} from "lucide-react";
 import { ToolCallIndicator } from "./ToolCallIndicator";
 import { ExplainabilityPanel } from "./ExplainabilityPanel";
 
@@ -25,6 +43,48 @@ interface ChatMessageProps {
   onRegenerate?: () => void;
   onEdit?: (id: string, newContent: string) => void;
   onFeedback?: (id: string, feedback: -1 | 0 | 1) => void;
+}
+
+const STATUS_LABELS: Record<ChatResponseStatus, string> = {
+  sending: "Sending",
+  queued: "Queued",
+  generating: "Generating",
+  streaming: "Streaming",
+  completed: "Completed",
+  failed: "Failed",
+  cancelled: "Cancelled",
+  retrying: "Retrying",
+  interrupted: "Interrupted",
+};
+
+function ResponseStatus({ status }: { status: ChatResponseStatus }) {
+  const className = "h-3 w-3";
+  const icon = status === "sending" || status === "generating"
+    ? <Loader2 className={`${className} animate-spin`} />
+    : status === "queued"
+      ? <Clock className={className} />
+      : status === "streaming"
+        ? <Radio className={className} />
+        : status === "completed"
+          ? <Check className={className} />
+          : status === "failed"
+            ? <TriangleAlert className={className} />
+            : status === "cancelled"
+              ? <Square className={className} />
+              : status === "retrying"
+                ? <RefreshCw className={`${className} animate-spin`} />
+                : <WifiOff className={className} />;
+
+  return (
+    // NOT a live region. Every assistant message used to announce independently, so a
+    // queue drain produced N regions × four transitions each — a stream of chatter that
+    // buried the one fact the user needed. The panel owns a single announcer instead;
+    // this badge stays readable on demand but never interrupts.
+    <div className="mt-1 flex items-center gap-1 text-[10px] text-neutral-400 dark:text-neutral-500">
+      {icon}
+      <span>{STATUS_LABELS[status]}</span>
+    </div>
+  );
 }
 
 export function ChatMessage({ message, isLast, isStreaming, onRegenerate, onEdit, onFeedback }: ChatMessageProps) {
@@ -117,7 +177,7 @@ export function ChatMessage({ message, isLast, isStreaming, onRegenerate, onEdit
                 )}
                 {message.content ? (
                   <div className="prose-sm">
-                    <FormattedContent content={message.content} />
+                    <FormattedContent content={message.content} isStreaming={isStreaming} />
                   </div>
                 ) : isStreaming ? (
                   <div className="flex items-center gap-1.5 py-1">
@@ -134,6 +194,8 @@ export function ChatMessage({ message, isLast, isStreaming, onRegenerate, onEdit
             )}
           </div>
         )}
+
+        {!isUser && message.status && <ResponseStatus status={message.status} />}
 
         {/* Action bar — visible on hover */}
         {!editing && message.content && !isStreaming && (
@@ -205,13 +267,18 @@ function ActionButton({ onClick, title, active, children }: { onClick: () => voi
  * language label + copy button, bullet/numbered lists, links, horizontal
  * rules, and paragraph breaks.
  */
-function FormattedContent({ content }: { content: string }) {
+function FormattedContent({ content, isStreaming = false }: { content: string; isStreaming?: boolean }) {
   if (!content) {
     return <ThinkingIndicator />;
   }
 
+  // While streaming, an opened-but-unclosed fence would otherwise render as plain text
+  // with literal backticks and then snap into a dark bordered block — a late layout
+  // shift that moves everything below it, on essentially every answer containing code.
+  const display = stabilizeStreamingMarkdown(content, isStreaming);
+
   // Split by fenced code blocks first (```lang\n...\n```)
-  const parts = content.split(/(```[\s\S]*?```)/g);
+  const parts = display.split(/(```[\s\S]*?```)/g);
 
   return (
     <>

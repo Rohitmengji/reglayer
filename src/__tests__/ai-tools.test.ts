@@ -146,8 +146,11 @@ describe("AI chat tools", () => {
 
       const result = await tools.getRecentScans.execute!({}, {} as never) as string;
 
-      expect(result).toContain("Error fetching scans");
-      expect(result).toContain("connection reset");
+      // Labelled explicitly so the model reports a failure rather than "no data".
+      expect(result).toContain("TOOL_FAILED(getRecentScans)");
+      // A tool result becomes model context, and model context becomes user-visible
+      // prose — so driver detail must never appear here.
+      expect(result).not.toContain("connection reset");
     });
 
     it("explainWcag resolves a known criterion", async () => {

@@ -9,7 +9,8 @@
  */
 
 import { useEffect, useState } from "react";
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
+import { signOutAndClear } from "@/lib/auth/sign-out";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
@@ -135,7 +136,7 @@ export default function RequestAccessPage() {
                   <Button
                     variant="ghost"
                     className="w-full text-neutral-500"
-                    onClick={() => signOut({ callbackUrl: "/auth/login" })}
+                    onClick={() => signOutAndClear({ callbackUrl: "/auth/login" })}
                   >
                     <LogOut className="h-4 w-4 mr-2" /> {t("requestAccess.signOut")}
                   </Button>

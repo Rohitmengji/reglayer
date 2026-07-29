@@ -21,11 +21,15 @@ import {
   recordRatingTransitions,
   type RatingTransition,
 } from "@/lib/ai/learning/rating-transitions";
+import { bumpConversationVersion } from "@/lib/ai/chat/generation-lease";
 import { z } from "zod";
 
 const saveSchema = z.object({
   id: z.string().max(64).optional(), // Omit to create new, provide to update
   title: z.string().max(200).optional(),
+  // Version the client last saw. Optional so existing clients keep working; when
+  // supplied it is enforced, which is what makes concurrent saves safe.
+  version: z.number().int().min(0).optional(),
   messages: z.array(z.object({
     id: z.string().min(1).max(64),
     role: z.enum(["user", "assistant"]),
@@ -124,6 +128,7 @@ export async function POST(request: NextRequest) {
     // Update existing — verify ownership INSIDE transaction to prevent TOCTOU race.
     // Uses updateMany with userId in WHERE so ownership is atomically checked.
     let ratingTransitions: RatingTransition[] = [];
+    let newVersion = 0;
 
     const txError = await prisma.$transaction(async (tx) => {
       const existing = await tx.chatConversation.findFirst({
@@ -133,6 +138,16 @@ export async function POST(request: NextRequest) {
       if (!existing) {
         throw new Error("NOT_FOUND");
       }
+
+      // Version check BEFORE anything destructive. This save is a delete-all-and-
+      // recreate, so a stale write does not merely lose an edit — it replaces the whole
+      // message set with an older one. Rejecting here is the difference between "your
+      // change was refused" and "another tab's conversation was deleted".
+      const guard = await bumpConversationVersion(tx, id, parsed.data.version ?? null);
+      if (!guard.ok) {
+        throw new Error("STALE_VERSION");
+      }
+      newVersion = guard.version;
 
       // Capture prior ratings BEFORE the delete/recreate so we can tell a genuine
       // rating change from an unrelated re-sync. The client debounces and re-sends
@@ -145,17 +160,28 @@ export async function POST(request: NextRequest) {
       ratingTransitions = collectRatingTransitions(messages, new Map(previous.map((m) => [m.id, m.feedback])));
 
       await tx.chatMessage.deleteMany({ where: { conversationId: id } });
-      for (const m of messages) {
-        await tx.chatMessage.create({
-          data: {
-            id: m.id,
-            role: m.role,
-            content: m.content,
-            feedback: m.feedback,
-            conversationId: id,
-          },
-        });
-      }
+
+      // ONE round trip, not one per message.
+      //
+      // This was a `for` loop awaiting `create()` per message, which is N sequential
+      // round trips inside an interactive transaction with a 5s budget. Against a
+      // remote Postgres at ~60ms latency that is ~85 messages before it expires — and
+      // it did, in production, with P2028 at 5.6-6.1s.
+      //
+      // The loop was survivable only while saves were rare. Two changes removed that
+      // cover: the request schema now accepts 200 messages instead of 50, and the chat
+      // runtime persists after every completed turn rather than on a 3s debounce that
+      // was skipped mid-stream. Higher frequency and longer conversations turned a
+      // latent quadratic-ish cost into a hard failure.
+      await tx.chatMessage.createMany({
+        data: messages.map((m) => ({
+          id: m.id,
+          role: m.role,
+          content: m.content,
+          feedback: m.feedback,
+          conversationId: id,
+        })),
+      });
       await tx.chatConversation.update({
         where: { id },
         data: { title: effectiveTitle },
@@ -163,6 +189,14 @@ export async function POST(request: NextRequest) {
     }).catch((err) => {
       if (err instanceof Error && err.message === "NOT_FOUND") {
         return NextResponse.json({ error: "Not found" }, { status: 404 });
+      }
+      if (err instanceof Error && err.message === "STALE_VERSION") {
+        // 409 so the client can reload and merge rather than retrying blindly — a
+        // blind retry would re-apply the same stale message set.
+        return NextResponse.json(
+          { error: "Conversation changed elsewhere", code: "STALE_VERSION" },
+          { status: 409 },
+        );
       }
       throw err;
     });
@@ -176,7 +210,7 @@ export async function POST(request: NextRequest) {
     // secondary concern and must never fail or slow down saving the user's chat.
     void recordRatingTransitions(ratingTransitions, user.id, workspaceId);
 
-    return NextResponse.json({ id, saved: true });
+    return NextResponse.json({ id, saved: true, version: newVersion });
   }
 
   // Create new conversation

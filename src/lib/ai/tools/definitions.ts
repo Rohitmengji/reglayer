@@ -46,12 +46,27 @@ const MAX_RESULT_CHARS = 2000;
 /**
  * Wrap a tool execution with a timeout. If the DB query hangs,
  * the tool returns a graceful error instead of blocking the stream.
+ *
+ * LIMITATION, stated plainly: racing does not CANCEL the loser. A timed-out query keeps
+ * running and keeps its connection, so timeouts under load still push the pool toward
+ * exhaustion. The timer is now cleared — previously every successful call left a pending
+ * 10s timer holding a closure — but true cancellation needs the work to accept a signal.
+ * See `tools/orchestrator.ts` for the signal-aware version these should migrate to.
  */
 async function withTimeout<T>(fn: () => Promise<T>, label: string): Promise<T> {
-  const timeout = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error(`Tool "${label}" timed out after ${TOOL_TIMEOUT_MS}ms`)), TOOL_TIMEOUT_MS),
-  );
-  return Promise.race([fn(), timeout]);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(`Tool "${label}" timed out after ${TOOL_TIMEOUT_MS}ms`)),
+      TOOL_TIMEOUT_MS,
+    );
+  });
+
+  try {
+    return await Promise.race([fn(), timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /**
@@ -68,6 +83,20 @@ function truncateResult(result: string): string {
  */
 function logToolCall(tool: string, params: unknown, durationMs: number, success: boolean) {
   logger.info(`[ai-tool] ${success ? "OK" : "FAIL"} | ${tool} | ${durationMs}ms`, { tool, params, durationMs, success });
+}
+
+/**
+ * Failure text safe to hand back to the model.
+ *
+ * WHY NOT `error.message`: a tool result becomes model context, and model context
+ * becomes user-visible prose. Driver messages carry schema names, SQL fragments, and
+ * connection strings, so returning them put internal detail one paraphrase away from
+ * the end user. The detail is logged where operators can see it; the model is told only
+ * that the lookup failed — explicitly, so it does not report a failure as "no data".
+ */
+function toolFailure(label: string, error: unknown): string {
+  logger.error(`[ai-tool] ${label} failed`, { tool: label, error: error instanceof Error ? error.message : String(error) });
+  return `TOOL_FAILED(${label}): the lookup could not be completed. Tell the user it failed rather than treating this as an empty result.`;
 }
 
 // ── Tool Context ──────────────────────────────────────────────────────────────
@@ -119,7 +148,7 @@ function makeGetRecentScans(ctx: ToolContext) {
         }));
       } catch (error) {
         logToolCall("getRecentScans", { limit }, Date.now() - start, false);
-        return `Error fetching scans: ${error instanceof Error ? error.message : "unknown error"}`;
+        return toolFailure("getRecentScans", error);
       }
     },
   });
@@ -179,7 +208,7 @@ function makeGetViolations(ctx: ToolContext) {
         }));
       } catch (error) {
         logToolCall("getViolations", { scanId, impact }, Date.now() - start, false);
-        return `Error fetching violations: ${error instanceof Error ? error.message : "unknown error"}`;
+        return toolFailure("getViolations", error);
       }
     },
   });
@@ -303,7 +332,7 @@ function makeGetComplianceStatus(ctx: ToolContext) {
         });
       } catch (error) {
         logToolCall("getComplianceStatus", {}, Date.now() - start, false);
-        return `Error fetching compliance status: ${error instanceof Error ? error.message : "unknown error"}`;
+        return toolFailure("getComplianceStatus", error);
       }
     },
   });

@@ -208,6 +208,17 @@ export interface ModelConfig {
   supportsVision: boolean;
   /** Whether this model supports JSON mode. */
   supportsJsonMode: boolean;
+  /**
+   * Relative capability, 1-10.
+   *
+   * WHY EXPLICIT: routing needs to know "is this model good enough for this question",
+   * and the obvious shortcut — treating price as a proxy for capability — is a hidden
+   * assumption that breaks the moment a cheaper frontier model appears. Stating it as
+   * data keeps the router honest and makes adding a provider a registry edit.
+   */
+  quality: number;
+  /** Typical end-to-end latency in ms, used for latency-optimised routing. */
+  avgLatencyMs: number;
   /** Whether this model is currently available (env var set). */
   isAvailable: () => boolean;
 }

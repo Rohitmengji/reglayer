@@ -144,6 +144,25 @@ export async function performScan(
     // Persist to database — blocking, scan data is the product
     await persistScan(scanResult, complianceReport, request.userEmail);
 
+    // Index into the knowledge graph (fire-and-forget, workspace-scoped).
+    //
+    // WHY THIS WAS ADDED: `indexScan` is the only writer of KnowledgeEntity /
+    // KnowledgeEdge and had no caller anywhere in the codebase. Meanwhile
+    // `buildGraphContext` runs inside the retrieval pipeline on every RAG query,
+    // traversing a table nothing filled — paying latency for a guaranteed-empty result.
+    //
+    // Dynamically imported so the graph module is not pulled into every scan bundle,
+    // and non-blocking because a graph write must never fail a scan the user paid for.
+    if (workspaceId) {
+      void import("@/lib/ai/graph/service")
+        .then(({ indexScan }) => indexScan(scanResult.id, workspaceId))
+        .catch((err) => {
+          scanLogger.warn("Graph indexing failed", {
+            error: err instanceof Error ? err.message : "Unknown",
+          });
+        });
+    }
+
     // Evaluate alert rules (fire-and-forget, workspace-scoped)
     evaluateAlerts(scanResult, workspaceId).catch((err) => {
       scanLogger.warn("Failed to evaluate alerts", {

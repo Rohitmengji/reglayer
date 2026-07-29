@@ -24,6 +24,12 @@
 import "server-only";
 
 import { prisma } from "@/lib/database/prisma";
+import {
+  resolveConflict,
+  sanitizeMemoryValue,
+  selectMemoriesForPrompt,
+  shouldRemember,
+} from "./policy";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -43,6 +49,38 @@ export interface MemoryEntry {
 export interface MemoryContext {
   userId: string;
   workspaceId: string | null;
+}
+
+/** Thrown when a value trips a never-remember rule. Callers should swallow and log. */
+export class MemoryRejectedError extends Error {
+  constructor(public readonly reason: string) {
+    super(`Memory rejected: ${reason}`);
+    this.name = "MemoryRejectedError";
+  }
+}
+
+interface AiMemoryRow {
+  id: string;
+  key: string;
+  value: string;
+  scope: string;
+  confidence: number;
+  source: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+function toMemoryEntry(row: AiMemoryRow): MemoryEntry {
+  return {
+    id: row.id,
+    key: row.key,
+    value: row.value,
+    scope: row.scope as MemoryScope,
+    confidence: row.confidence,
+    source: row.source,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
 }
 
 // ── Core Operations ───────────────────────────────────────────────────────────
@@ -66,13 +104,29 @@ export async function setMemory(
   const confidence = opts?.confidence ?? 1.0;
   const source = opts?.source ?? "user_stated";
 
+  // A value that trips a never-remember rule must not reach storage at all. Rejecting
+  // here rather than at render time means a secret is never written down, which is the
+  // only version of this guarantee that survives a database dump.
+  const admissible = shouldRemember(value);
+  if (!admissible.ok) {
+    throw new MemoryRejectedError(admissible.reason ?? "rejected");
+  }
+
+  const identity = {
+    userId: scope === "USER" ? ctx.userId : "",
+    workspaceId: ctx.workspaceId ?? "",
+    key,
+  };
+
+  // Inference must not silently overwrite something the user stated outright.
+  const existing = await prisma.aiMemory.findUnique({ where: { userId_workspaceId_key: identity } });
+  if (resolveConflict(existing, { value, source, confidence }) === "reject") {
+    return toMemoryEntry(existing!);
+  }
+
   const result = await prisma.aiMemory.upsert({
     where: {
-      userId_workspaceId_key: {
-        userId: scope === "USER" ? ctx.userId : "",
-        workspaceId: ctx.workspaceId ?? "",
-        key,
-      },
+      userId_workspaceId_key: identity,
     },
     update: {
       value,
@@ -86,22 +140,17 @@ export async function setMemory(
       value,
       confidence,
       source,
-      userId: scope === "USER" ? ctx.userId : null,
-      workspaceId: scope !== "USER" ? ctx.workspaceId : null,
+      // MUST match the lookup key above. Previously `create` wrote `null` where the
+      // `where` clause looked for `""`, and because Postgres treats NULL as distinct in
+      // a unique index, nothing ever collided — so every write inserted a NEW row and
+      // the table grew by one per extracted memory, forever. `take: 50` on read hid it.
+      userId: identity.userId,
+      workspaceId: identity.workspaceId,
       expiresAt: opts?.expiresAt ?? null,
     },
   });
 
-  return {
-    id: result.id,
-    key: result.key,
-    value: result.value,
-    scope: result.scope as MemoryScope,
-    confidence: result.confidence,
-    source: result.source,
-    createdAt: result.createdAt,
-    updatedAt: result.updatedAt,
-  };
+  return toMemoryEntry(result);
 }
 
 /**
@@ -203,32 +252,37 @@ export async function clearAllMemories(userId: string): Promise<number> {
 export function formatMemoriesForPrompt(memories: MemoryEntry[]): string {
   if (memories.length === 0) return "";
 
-  const userMemories = memories.filter((m) => m.scope === "USER");
-  const workspaceMemories = memories.filter((m) => m.scope === "WORKSPACE");
-  const systemMemories = memories.filter((m) => m.scope === "SYSTEM");
+  // Rank and budget BEFORE grouping. Previously every memory was rendered in
+  // `updatedAt` order with no ceiling, so stale low-confidence guesses consumed context
+  // on every request and crowded out conversation history.
+  const selected = selectMemoriesForPrompt(memories);
+  if (selected.length === 0) return "";
+
+  const userMemories = selected.filter((m) => m.scope === "USER");
+  const workspaceMemories = selected.filter((m) => m.scope === "WORKSPACE");
+  const systemMemories = selected.filter((m) => m.scope === "SYSTEM");
 
   const sections: string[] = [];
 
+  // Values are user-authored text destined for the SYSTEM prompt. Without sanitising,
+  // a value containing the closing tag escapes its envelope and the remainder is read
+  // as instruction.
+  const render = (entries: typeof selected) =>
+    entries.map((m) => `- ${m.key}: ${sanitizeMemoryValue(m.value)}`).join("\n");
+
   if (userMemories.length > 0) {
-    sections.push(
-      "## User Preferences\n" +
-      userMemories.map((m) => `- ${m.key}: ${m.value}`).join("\n"),
-    );
+    sections.push("## User Preferences\n" + render(userMemories));
   }
 
   if (workspaceMemories.length > 0) {
-    sections.push(
-      "## Team Context\n" +
-      workspaceMemories.map((m) => `- ${m.key}: ${m.value}`).join("\n"),
-    );
+    sections.push("## Team Context\n" + render(workspaceMemories));
   }
 
   if (systemMemories.length > 0) {
-    sections.push(
-      "## Important Facts\n" +
-      systemMemories.map((m) => `- ${m.key}: ${m.value}`).join("\n"),
-    );
+    sections.push("## Important Facts\n" + render(systemMemories));
   }
+
+  if (sections.length === 0) return "";
 
   return "## Personalization (remembered from previous conversations)\n\n" + sections.join("\n\n");
 }
