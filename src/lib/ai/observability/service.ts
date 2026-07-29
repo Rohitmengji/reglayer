@@ -19,6 +19,25 @@ import "server-only";
 import { prisma } from "@/lib/database/prisma";
 import type { GatewayEvent, GatewayEventHandler } from "@/lib/ai/gateway/types";
 
+/**
+ * AiEvent rows describe two different things:
+ *   - SPEND    ("ai.completion", "ai.embedding") — tokens, cost, latency, success
+ *   - QUALITY  ("ai.guardrail")                  — a post-generation policy violation
+ *
+ * Quality rows carry zero tokens, zero cost, zero latency and success=false by design.
+ * Including them in usage aggregates would understate average latency, inflate request
+ * counts, and — worst — drag down the success-rate metric even though no request failed.
+ * Every usage/cost query must therefore scope to spend events.
+ */
+// NOTE: deliberately not `as const` — Prisma's `in` filter requires a mutable string[],
+// and a readonly tuple fails to satisfy StringFilter.
+const SPEND_EVENTS: { type: { in: string[] } } = {
+  type: { in: ["ai.completion", "ai.embedding"] },
+};
+
+/** Exported so callers outside this module (e.g. /api/ai/usage) scope consistently. */
+export const SPEND_EVENT_FILTER = SPEND_EVENTS;
+
 // ── Event Persistence ─────────────────────────────────────────────────────────
 
 /**
@@ -81,6 +100,7 @@ export async function getUsageSummary(options?: {
     createdAt: { gte: since, ...(offset > 0 ? { lt: until } : {}) },
     ...(options?.workspaceId ? { workspaceId: options.workspaceId } : {}),
     ...(options?.userId ? { userId: options.userId } : {}),
+    ...SPEND_EVENTS,
   };
 
   const [agg, total] = await Promise.all([
@@ -117,6 +137,7 @@ export async function getCostByFeature(options?: {
     where: {
       createdAt: { gte: since },
       ...(options?.workspaceId ? { workspaceId: options.workspaceId } : {}),
+      ...SPEND_EVENTS,
     },
     _sum: { costUsd: true },
     _count: true,
@@ -145,6 +166,7 @@ export async function getDailyUsage(options?: {
     where: {
       createdAt: { gte: since },
       ...(options?.workspaceId ? { workspaceId: options.workspaceId } : {}),
+      ...SPEND_EVENTS,
     },
     select: { createdAt: true, totalTokens: true, costUsd: true },
     orderBy: { createdAt: "asc" },

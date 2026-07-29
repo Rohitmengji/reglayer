@@ -11,7 +11,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
-import { getUsageSummary, getCostByFeature, getDailyUsage } from "@/lib/ai/observability/service";
+import { getUsageSummary, getCostByFeature, getDailyUsage, SPEND_EVENT_FILTER } from "@/lib/ai/observability/service";
 import { prisma } from "@/lib/database/prisma";
 
 export async function GET(request: NextRequest) {
@@ -59,6 +59,9 @@ async function getCostByModel(options: { workspaceId?: string; days: number }) {
     where: {
       createdAt: { gte: since },
       ...(options.workspaceId ? { workspaceId: options.workspaceId } : {}),
+      // Exclude quality events ("ai.guardrail"): zero cost/latency by design, so they
+      // would deflate avg latency and inflate request counts per model.
+      ...SPEND_EVENT_FILTER,
     },
     _sum: { costUsd: true, inputTokens: true, outputTokens: true },
     _count: true,

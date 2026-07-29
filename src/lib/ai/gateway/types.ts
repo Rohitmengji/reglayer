@@ -19,6 +19,7 @@
  */
 
 import type { z } from "zod";
+import type { ToolSet } from "ai";
 
 // ── Model Identifiers ─────────────────────────────────────────────────────────
 // These are RegLayer's internal model aliases. The registry maps them to
@@ -108,12 +109,30 @@ export interface CompletionRequest {
 
   /**
    * Tools the LLM can call during this request.
-   * Pass the AI SDK tool definitions directly (from `tool()` helper).
-   * The gateway passes them through to streamText/generateText.
-   * Uses `unknown` to avoid coupling gateway types to AI SDK internals.
+   *
+   * MUST be built with the `tool()` helper from "ai" — see lib/ai/tools/definitions.ts.
+   *
+   * WHY `ToolSet` and not `any`: this field was previously typed `any`, which let a
+   * tool set using the pre-v5 `parameters` field compile cleanly while the SDK
+   * (which reads `inputSchema`) silently ignored every schema. The result was five
+   * tools that never executed, with no type error, no test failure and no runtime
+   * error — the model simply answered without them. `ToolSet` makes that a compile error.
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  tools?: any;
+  tools?: ToolSet;
+
+  /**
+   * Maximum number of sequential model steps (tool call → result → follow-up).
+   * Without this the SDK stops after a single step, so the model can invoke a tool
+   * but never gets to use its result. Defaults to 5 in the gateway.
+   */
+  maxSteps?: number;
+
+  /**
+   * Retry attempts for retryable provider failures (429/5xx/network).
+   * Defaults to 2 in the gateway. Set 0 for latency-sensitive calls where a slow
+   * failure is worse than a fast one.
+   */
+  maxRetries?: number;
 
   /** Caller metadata — used for cost tracking, audit logging, and rate limiting. */
   metadata?: RequestMetadata;
@@ -220,7 +239,12 @@ export interface EmbedResponse {
 // future analytics) subscribe without coupling to the gateway internals.
 
 export interface GatewayEvent {
-  type: "ai.completion" | "ai.embedding";
+  /**
+   * "ai.guardrail" records a post-generation policy violation (e.g. a hallucinated
+   * WCAG criterion). It carries zero tokens/cost — it is a quality signal, not a
+   * spend signal — so aggregate cost queries must filter on type.
+   */
+  type: "ai.completion" | "ai.embedding" | "ai.guardrail";
   timestamp: Date;
   request: {
     model: ModelId;

@@ -38,7 +38,7 @@
 
 import "server-only";
 
-import { generateText, streamText, embed as aiEmbed, embedMany as aiEmbedMany, type ModelMessage, type LanguageModel } from "ai";
+import { generateText, streamText, stepCountIs, embed as aiEmbed, embedMany as aiEmbedMany, type ModelMessage, type LanguageModel } from "ai";
 import type {
   CompletionRequest,
   CompletionResponse,
@@ -57,6 +57,33 @@ import { createAnthropicModel } from "./providers/anthropic";
 import { createGoogleModel } from "./providers/google";
 import { consoleLogger } from "./logger";
 import { persistEventHandler } from "../observability/service";
+import { logger } from "@/lib/telemetry/logger";
+import * as Sentry from "@sentry/nextjs";
+
+// ── Resilience defaults ──────────────────────────────────────────────────────
+//
+// These exist because an LLM call is the slowest, least reliable dependency in the
+// request path. Without explicit bounds a degraded provider does not fail — it hangs,
+// holding a serverless function open until the platform kills it. Under load that
+// converts a provider slowdown into an application-wide outage.
+
+/** Hard ceiling for a non-streaming completion. */
+const REQUEST_TIMEOUT_MS = 30_000;
+
+/** Streaming responses legitimately take longer — the user sees tokens as they arrive. */
+const STREAM_TIMEOUT_MS = 120_000;
+
+/**
+ * Retries are handled by the AI SDK (exponential backoff, retryable errors only).
+ * Made explicit so the policy is visible and tunable rather than an undocumented default.
+ */
+const DEFAULT_MAX_RETRIES = 2;
+
+/**
+ * Max sequential model steps when tools are in play: tool call → result → answer.
+ * 5 allows a couple of chained lookups without risking a runaway loop.
+ */
+const DEFAULT_MAX_STEPS = 5;
 
 // ── Initialize Gateway ────────────────────────────────────────────────────────
 // Register default event handlers on module load.
@@ -203,7 +230,15 @@ export async function complete(
       instructions: extractSystemInstructions(request.messages),
       messages: toCoreMessages(request.messages),
       temperature: request.temperature ?? 0.3,
-      maxOutputTokens: request.maxTokens,
+      // Fall back to the model's own ceiling rather than leaving this undefined.
+      // Undefined means "provider default", which on some models is tens of thousands
+      // of tokens — unbounded latency and unbounded cost per request.
+      maxOutputTokens: request.maxTokens ?? modelConfig.maxOutputTokens,
+      // Without an explicit timeout a degraded provider holds the serverless function
+      // open for its whole duration. Under load that exhausts concurrency and takes
+      // down the entire app, not just AI.
+      abortSignal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      maxRetries: request.maxRetries ?? DEFAULT_MAX_RETRIES,
     });
 
     const latencyMs = Date.now() - startTime;
@@ -318,8 +353,18 @@ export function stream(request: CompletionRequest) {
       instructions: extractSystemInstructions(request.messages),
       messages: toCoreMessages(request.messages),
       temperature: request.temperature ?? 0.5,
-      maxOutputTokens: request.maxTokens,
-      ...(request.tools ? { tools: request.tools } : {}),
+      maxOutputTokens: request.maxTokens ?? modelConfig.maxOutputTokens,
+      abortSignal: AbortSignal.timeout(STREAM_TIMEOUT_MS),
+      maxRetries: request.maxRetries ?? DEFAULT_MAX_RETRIES,
+      ...(request.tools
+        ? {
+            tools: request.tools,
+            // A tool call and the model's follow-up answer are separate steps. The SDK
+            // default stops after the first, so without this the model can invoke a
+            // tool but never gets to use the result.
+            stopWhen: stepCountIs(request.maxSteps ?? DEFAULT_MAX_STEPS),
+          }
+        : {}),
       onFinish: async ({ usage, text }) => {
         const latencyMs = Date.now() - startTime;
         const inputTokens = usage?.inputTokens ?? 0;
@@ -349,21 +394,69 @@ export function stream(request: CompletionRequest) {
           },
         });
 
-        // Post-stream guardrails: validate the complete output for hallucinations,
-        // off-topic content, etc. This is fire-and-forget — can't retract a
-        // streamed response, but logs policy violations for monitoring/alerting.
-        if (text && request.metadata?.feature?.startsWith("chat")) {
+        // Post-stream guardrails: validate the complete output for hallucinated WCAG
+        // criteria, off-topic content, etc.
+        //
+        // Still fire-and-forget — a streamed response cannot be retracted — but the
+        // result is now routed to logger + Sentry + AiEvent instead of console.warn.
+        // Previously a detected hallucination was written to stdout and discarded:
+        // the fact-checker worked, and nobody could see that it had fired.
+        //
+        // Runs for EVERY feature, not just chat. Explainers, summaries and agents
+        // produce exactly the same class of factual claim and had no output check.
+        if (text) {
           try {
             const { runGuardrails } = await import("@/lib/ai/guardrails");
+            const feature = request.metadata?.feature ?? "unknown";
             const guardResult = runGuardrails(text, {
-              feature: request.metadata.feature,
-              ragAugmented: request.metadata.feature === "chat-rag",
+              feature,
+              ragAugmented: feature.endsWith("-rag"),
             });
+
             if (!guardResult.passed) {
-              console.warn("[AI Guardrails] Post-stream violation detected", {
-                feature: request.metadata.feature,
+              const violations = guardResult.results.filter(
+                (r: { severity: string }) => r.severity !== "pass",
+              );
+
+              logger.warn("ai.guardrail.violation", {
+                feature,
                 model: request.model,
-                results: guardResult.results.filter((r: { severity: string }) => r.severity !== "pass"),
+                provider: modelConfig.provider,
+                workspaceId: request.metadata?.workspaceId,
+                userId: request.metadata?.userId,
+                violations,
+              });
+
+              Sentry.captureMessage("AI guardrail violation", {
+                level: "warning",
+                tags: { feature, model: request.model, provider: modelConfig.provider },
+                extra: { violations },
+              });
+
+              // Persist so violation rate becomes a queryable KPI alongside cost and
+              // latency, rather than something only visible by tailing logs.
+              emitEvent({
+                type: "ai.guardrail",
+                timestamp: new Date(),
+                request: {
+                  model: request.model,
+                  feature,
+                  workspaceId: request.metadata?.workspaceId,
+                  userId: request.metadata?.userId,
+                },
+                response: {
+                  model: modelConfig.providerModelId,
+                  provider: modelConfig.provider,
+                  usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
+                  cost: { inputCost: 0, outputCost: 0, totalCost: 0 },
+                  latencyMs: 0,
+                  success: false,
+                  error: violations
+                    .map((v: { guardId?: string; reason?: string }) =>
+                      `${v.guardId ?? "guard"}: ${v.reason ?? "violation"}`)
+                    .join(" | ")
+                    .slice(0, 500),
+                },
               });
             }
           } catch { /* guardrail errors must never break the response */ }
