@@ -34,6 +34,7 @@ import { LineageBuilder, traceToHeaders } from "@/lib/ai/lineage/tracker";
 import { recordAuditEntry } from "@/lib/ai/audit/trail";
 import { getProfile, formatProfileForPrompt, trackUsage } from "@/lib/ai/profile/service";
 import { getMemories, formatMemoriesForPrompt, extractMemories, setMemory } from "@/lib/ai/memory/service";
+import { getViolationSummary, formatViolationSummaryForPrompt } from "@/lib/ai/chat/violation-summary";
 import { runGuardrails, CHAT_GUARDS, type GuardContext } from "@/lib/ai/guardrails";
 import { PLAN_LIMITS, type PlanType } from "@/lib/credits";
 
@@ -245,7 +246,7 @@ export async function POST(request: NextRequest) {
   // Each is now CONDITIONAL. Previously every request ran a vector search, a profile
   // query, and a memory query — including "hi", and including reference questions
   // where personal memory cannot change the answer.
-  const [retrieval, profile, memories] = await Promise.all([
+  const [retrieval, profile, memories, scanSummary] = await Promise.all([
     plan.needsRetrieval
       ? optimizedRetrieve(latestUserMessage, {
           ...preset,
@@ -257,11 +258,22 @@ export async function POST(request: NextRequest) {
     plan.needsMemory
       ? getMemories({ userId, workspaceId: workspaceId ?? null }).catch(() => [])
       : Promise.resolve([]),
+    // Only when the question is about the user's own data. `needsTools` is the
+    // planner's own "mentions my/our/scan/violations" signal, so a WCAG reference
+    // question does not pay for two extra queries it cannot use.
+    plan.needsTools
+      ? getViolationSummary({ workspaceId: workspaceId ?? null, userId, isMasterAdmin }).catch(() => null)
+      : Promise.resolve(null),
   ]);
 
   lineage.recordCache(retrieval.cached, retrieval.cacheLayer);
 
+  // Accumulated while recording rather than recomputed later, so the sample size the
+  // prompt states is the same number the "grounded in N sources" badge shows. Deriving
+  // it twice is how the prompt and the UI would drift apart.
+  let retrievedDocs = 0;
   for (const stage of retrieval.stages.filter((s) => !s.skipped && s.name.startsWith("retrieve") || s.name === "hybrid-search")) {
+    retrievedDocs += stage.resultCount;
     lineage.recordRetrieval({
       source: stage.name,
       resultCount: stage.resultCount,
@@ -282,6 +294,25 @@ export async function POST(request: NextRequest) {
 
   const profileContext = profile ? formatProfileForPrompt(profile) : "";
   const memoryContext = formatMemoriesForPrompt(memories);
+
+  // Authoritative totals, so "how many" is answered from the database rather than by
+  // counting the retrieval window. The retrieved document count is passed in so the
+  // block can state the size of the sample the model is actually looking at.
+  const scanSummaryContext = scanSummary
+    ? formatViolationSummaryForPrompt(scanSummary, retrievedDocs)
+    : "";
+
+  // Recorded as a retrieval source so the grounding badge tells the truth.
+  //
+  // `isGrounded` is driven by documentsRetrieved, which counts vector hits only. An
+  // answer built from these totals but no vector hits was being labelled "general
+  // guidance — not from your data" while quoting the user's own violation counts back
+  // at them. Observed: "You have a total of 94 violations... 4 critical" under exactly
+  // that badge. Understating grounding is a smaller lie than overstating it, but in a
+  // compliance tool it still teaches the user to ignore the label.
+  if (scanSummaryContext) {
+    lineage.recordRetrieval({ source: "scan-summary", resultCount: 1, durationMs: 0 });
+  }
 
   // ── 10. Build augmented system prompt ───────────────────────────────────
   const isRAGAugmented = retrieval.context.length > 0;
@@ -305,6 +336,7 @@ export async function POST(request: NextRequest) {
   const composed = composeSystemPrompt({
     base: basePrompt.system,
     retrievedContext: isRAGAugmented ? retrieval.context : undefined,
+    scanSummary: scanSummaryContext || undefined,
     userProfile: profileContext || undefined,
     userMemory: memoryContext || undefined,
     workspaceDecisions: decisionBlock || undefined,
