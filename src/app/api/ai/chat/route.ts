@@ -14,7 +14,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { z } from "zod";
 import { stream, getDefaultModelId, isAIAvailable } from "@/lib/ai/gateway";
-import { getModelConfig, getAvailableModels } from "@/lib/ai/gateway/providers/registry";
+import { getModelConfig, getAvailableModels, calculateCost } from "@/lib/ai/gateway/providers/registry";
 import { routeToModel } from "@/lib/ai/routing/model-router";
 import { selectModel } from "@/lib/ai/routing/selector";
 import { trackAILatency, trackTokenUsage, incrementCounter } from "@/lib/telemetry/metrics";
@@ -516,6 +516,27 @@ export async function POST(request: NextRequest) {
           guardrailsWarned = updated.summary.guardrailsWarned;
         } catch { /* guardrails are best-effort — never break the response */ }
 
+        // Real token usage and cost, now that the stream has finished.
+        //
+        // The lineage recorded costUsd: 0 at stream start because usage is unknown
+        // until the model stops. Nothing ever revised it, so the panel showed
+        // "$0.0000" on every paid answer and the cost dashboard under-counted chat by
+        // 100%. `totalUsage` resolves once the stream drains (it includes tool-call
+        // steps); cost uses the same `calculateCost` the gateway bills with, so the two
+        // cannot disagree.
+        let realTotalTokens = trace.summary.totalTokens;
+        let realCostUsd = 0;
+        try {
+          const usage = await result.totalUsage;
+          const inputTok = usage?.inputTokens ?? 0;
+          const outputTok = usage?.outputTokens ?? 0;
+          realTotalTokens = usage?.totalTokens ?? inputTok + outputTok;
+          realCostUsd = calculateCost(modelId, inputTok, outputTok).totalCost;
+        } catch {
+          // Usage is unavailable when the run was aborted mid-stream. Leaving cost at 0
+          // is correct there — we do not want to bill a cancelled answer to the display.
+        }
+
         // After text is done, emit lineage
         const lineageSummary = {
           traceId: trace.traceId,
@@ -527,8 +548,8 @@ export async function POST(request: NextRequest) {
           guardrailsPassed,
           guardrailsWarned,
           cached: trace.summary.cached,
-          totalTokens: trace.summary.totalTokens,
-          costUsd: trace.summary.costUsd,
+          totalTokens: realTotalTokens,
+          costUsd: realCostUsd,
           latencyMs: Date.now() - streamStart,
         };
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "lineage", data: lineageSummary })}\n`));
