@@ -14,8 +14,11 @@
  * persisting after every completed turn instead of on a skipped 3s debounce.
  *
  * The property pinned here is COST, not correctness: saving a conversation must issue a
- * fixed number of writes regardless of length. A correctness-only test would pass just
- * as happily against the loop that took the endpoint down.
+ * number of writes proportional to what CHANGED, not to the conversation's length. The
+ * save is now append-only (insert new, update changed, delete dropped) rather than
+ * delete-all + recreate-all, which is what keeps a long conversation's save cheap.
+ * A correctness-only test would pass just as happily against the loop that took the
+ * endpoint down.
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -36,6 +39,7 @@ const { chatMessage, chatConversation } = vi.hoisted(() => ({
     findMany: vi.fn(async () => []),
     deleteMany: vi.fn(async (_args: { where: { conversationId: string } }) => ({ count: 0 })),
     create: vi.fn(async () => ({})),
+    update: vi.fn(async () => ({})),
     // Typed explicitly so the inserted rows can be asserted on.
     createMany: vi.fn(
       async (_args: {
@@ -126,13 +130,38 @@ describe("conversation save issues a fixed number of writes", () => {
     expect(new Set(rows.map((r) => r.id)).size).toBe(50);
   });
 
-  it("still replaces the previous message set", async () => {
-    await POST(request(conversation(5)) as never);
+  it("deletes only the messages the client dropped, not the whole set", async () => {
+    // Existing has an extra message the incoming set no longer contains (an edit or
+    // regenerate truncated it). Append-only must delete THAT id, scoped to the
+    // conversation — never delete-all, which the old code did and which made every
+    // save O(n).
+    chatMessage.findMany.mockResolvedValueOnce([
+      { id: "m0", role: "user", content: "message 0", feedback: 0 },
+      { id: "m1", role: "assistant", content: "message 1", feedback: 0 },
+      { id: "dropped", role: "assistant", content: "old tail", feedback: 0 },
+    ] as never);
 
-    // Batching must not have skipped the delete — that would duplicate history.
+    await POST(request(conversation(2)) as never);
+
     expect(chatMessage.deleteMany).toHaveBeenCalledWith({
-      where: { conversationId: "conv-1" },
+      where: { conversationId: "conv-1", id: { in: ["dropped"] } },
     });
+  });
+
+  it("writes nothing when an identical conversation is re-synced", async () => {
+    // The client debounces and re-sends the whole transcript on every change. When
+    // nothing actually changed, append-only must issue zero row writes — the old
+    // delete-all + recreate rewrote every row on each of those no-op saves.
+    chatMessage.findMany.mockResolvedValueOnce([
+      { id: "m0", role: "user", content: "message 0", feedback: 0 },
+      { id: "m1", role: "assistant", content: "message 1", feedback: 0 },
+    ] as never);
+
+    await POST(request(conversation(2)) as never);
+
+    expect(chatMessage.createMany).not.toHaveBeenCalled();
+    expect(chatMessage.deleteMany).not.toHaveBeenCalled();
+    expect(chatMessage.update).not.toHaveBeenCalled();
   });
 
   it("scopes the write to the conversation being saved", async () => {
