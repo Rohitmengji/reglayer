@@ -58,6 +58,25 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
     : undefined;
   const scrollRef = useRef<HTMLDivElement>(null);
   const restoreFocusRef = useRef<HTMLElement | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+
+  /**
+   * Below `lg` the backdrop is rendered, covers the page and swallows clicks, so the
+   * panel IS modal. At `lg` and above the backdrop is `display:none` and the page
+   * behind stays usable, so it is a docked side panel.
+   *
+   * That difference has to reach assistive technology. Announcing a dialog on desktop
+   * would be a lie, and announcing a complementary landmark on mobile leaves a screen
+   * reader user browsing a page they cannot see or click.
+   */
+  const [isModal, setIsModal] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 1023.98px)");
+    const sync = () => setIsModal(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
 
   /**
    * Focus management for the panel.
@@ -76,7 +95,37 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
     const onKeyDown = (event: KeyboardEvent) => {
       // Inner Escape handlers (queued-prompt editing) stop propagation, so this only
       // fires when nothing more specific has claimed the key.
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") {
+        onClose();
+        return;
+      }
+
+      // Trap Tab while modal. Without this, one Tab from the composer lands on the page
+      // behind the backdrop — focusable, but blurred and click-blocked, so a keyboard
+      // user is somewhere they cannot see and a mouse user cannot reach.
+      if (event.key !== "Tab" || !isModal) return;
+      const panel = panelRef.current;
+      if (!panel) return;
+
+      const focusable = [...panel.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      )].filter((el) => el.offsetParent !== null || el === document.activeElement);
+      if (focusable.length === 0) return;
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement;
+
+      if (!panel.contains(active)) {
+        event.preventDefault();
+        first.focus();
+      } else if (event.shiftKey && active === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      }
     };
     document.addEventListener("keydown", onKeyDown);
 
@@ -85,9 +134,20 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
       document.removeEventListener("keydown", onKeyDown);
       restoreFocusRef.current?.focus();
     };
-  }, [open, onClose]);
+  }, [open, onClose, isModal]);
 
   const [sendNotice, setSendNotice] = useState<EnqueueRejection | null>(null);
+
+  /**
+   * Notices describe a single rejected submission, not a persistent condition.
+   * "That prompt is already queued." was still on screen after the queue had been
+   * cleared and a new conversation started, describing a state that no longer existed.
+   */
+  useEffect(() => {
+    if (!sendNotice) return;
+    const timer = setTimeout(() => setSendNotice(null), 6000);
+    return () => clearTimeout(timer);
+  }, [sendNotice]);
 
   // A rejected submission must say WHY. Silently dropping a prompt the user pressed
   // Enter on is the single worst outcome a queue can produce.
@@ -100,30 +160,101 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
   const [showHistory, setShowHistory] = useState(false);
   const [historySearch, setHistorySearch] = useState("");
 
+  /**
+   * Exactly one body view is legal at a time.
+   *
+   * History used to be an additional block rendered above a transcript that was always
+   * mounted, so racing the header buttons put "Recent Chats" and the conversation (or
+   * the empty state) on screen together and the user could not tell which conversation
+   * was active. Deriving one value makes that combination unrepresentable rather than
+   * merely unlikely.
+   */
+  const viewMode: "history" | "empty" | "transcript" =
+    showHistory ? "history" : messages.length === 0 ? "empty" : "transcript";
+
+  /**
+   * New conversation discards the transcript AND abandons any answer still streaming.
+   * It did both silently — measured at 4,930 characters destroyed on one click, with no
+   * confirmation and no undo. The queue already asks before discarding five UNSENT
+   * prompts, so answered history getting less protection than that was backwards.
+   *
+   * Only asks when there is something to lose; on an empty panel it just starts fresh.
+   */
+  const [confirmingNew, setConfirmingNew] = useState(false);
+  const hasWorkToLose = messages.length > 0;
+  // Guarded at render rather than reset from an effect: if the transcript empties for any
+  // reason the prompt is simply no longer applicable, and setting state from an effect
+  // just to hide it is both a lint error and an extra render.
+  const showNewConfirm = confirmingNew && hasWorkToLose;
+
+  const handleNewConversation = () => {
+    if (hasWorkToLose && !confirmingNew) {
+      setConfirmingNew(true);
+      return;
+    }
+    setConfirmingNew(false);
+    startNew();
+    setShowHistory(false);
+  };
+
   // Fetch conversation list when panel opens
   useEffect(() => {
     if (open) fetchConversations();
   }, [open, fetchConversations]);
 
   // Track scroll position to show/hide scroll-to-bottom button
+  //
+  // Whether we follow the stream is the USER'S intent, recorded when they scroll —
+  // not a measurement taken after the content moved. Deriving it from the current
+  // distance meant a single large burst (observed: 664px in one commit) pushed the
+  // gap past the threshold, so the check that decides "should I follow?" failed
+  // *because* of the growth it was supposed to be following, and never recovered.
+  const stickToBottomRef = useRef(true);
+
   const handleScroll = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
     const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    stickToBottomRef.current = distanceFromBottom <= 100;
     setShowScrollDown(distanceFromBottom > 100);
   }, []);
 
-  // Auto-scroll to bottom on new messages (only if already near bottom)
+  // Auto-scroll to bottom on new messages (only while the user is following)
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-    if (distanceFromBottom < 150) {
+    if (stickToBottomRef.current) {
       el.scrollTop = el.scrollHeight;
+      setShowScrollDown(false);
+      return;
     }
+    // Content growing does not fire a scroll event, so without this the button that
+    // gets the user back to the live edge stays hidden exactly when it is needed.
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    setShowScrollDown(distanceFromBottom > 100);
   }, [messages]);
 
+  // Not everything that changes the height changes `messages`. Finishing a run swaps
+  // in the status badge, action row and lineage chip, which grew the transcript by
+  // ~173px with no message update — leaving the user short of the end of the answer
+  // they just waited for. Observing the box itself catches every cause: token bursts,
+  // completion chrome, late fonts, expanding code blocks.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => {
+      if (stickToBottomRef.current) el.scrollTop = el.scrollHeight;
+    });
+    // Re-observed whenever the transcript changes: a message appended after this ran
+    // would otherwise never be watched, so returning to the live edge mid-stream landed
+    // short of the bottom and stuck there.
+    for (const child of Array.from(el.children)) observer.observe(child);
+    return () => observer.disconnect();
+  }, [open, messages, viewMode]);
+
   const scrollToBottom = useCallback(() => {
+    stickToBottomRef.current = true;
+    setShowScrollDown(false);
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, []);
 
@@ -149,8 +280,10 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
 
       {/* Panel */}
       <div
+        ref={panelRef}
         className="fixed inset-y-0 right-0 z-50 flex w-full max-w-105 flex-col bg-white shadow-2xl animate-in slide-in-from-right duration-200 dark:bg-neutral-900"
-        role="complementary"
+        role={isModal ? "dialog" : "complementary"}
+        aria-modal={isModal || undefined}
         aria-label="AI Chat Assistant"
       >
         {/* Header */}
@@ -193,17 +326,36 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
           <div className="flex items-center gap-1">
             {/* Saving indicator */}
             {/* New conversation */}
-            <button
-              onClick={() => { startNew(); setShowHistory(false); }}
-              className="rounded-lg p-2 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
-              title="New conversation"
-              aria-label="New conversation"
-            >
-              <Plus className="h-4 w-4" />
-            </button>
+            {showNewConfirm ? (
+              <>
+                <button
+                  onClick={handleNewConversation}
+                  className="rounded px-1.5 py-0.5 text-[10px] font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
+                >
+                  Discard chat
+                </button>
+                <button
+                  onClick={() => setConfirmingNew(false)}
+                  className="rounded-lg p-2 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+                  title="Keep this conversation"
+                  aria-label="Keep this conversation"
+                >
+                  <X className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={handleNewConversation}
+                className="rounded-lg p-2 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+                title="New conversation"
+                aria-label="New conversation"
+              >
+                <Plus className="h-4 w-4" />
+              </button>
+            )}
             {/* History toggle — data is pre-loaded on panel open, toggle is instant */}
             <button
-              onClick={() => setShowHistory(!showHistory)}
+              onClick={() => { setConfirmingNew(false); setShowHistory(!showHistory); }}
               className={`rounded-lg p-2 transition-colors ${showHistory ? "bg-accent/10 text-accent" : "text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"}`}
               title="Conversation history"
               aria-label="Show conversation history"
@@ -242,7 +394,7 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
         </div>
 
         {/* Conversation History Panel */}
-        {showHistory && (
+        {viewMode === "history" && (
           <div className="border-b border-neutral-200 dark:border-neutral-800 overflow-hidden flex flex-col" style={{ maxHeight: "min(50vh, 400px)" }}>
             {/* History header */}
             <div className="flex items-center justify-between px-4 py-2.5 bg-neutral-50/80 dark:bg-neutral-800/40 border-b border-neutral-100 dark:border-neutral-800">
@@ -341,12 +493,13 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
         )}
 
         {/* Messages */}
+        {viewMode !== "history" && (
         <div
           ref={scrollRef}
           onScroll={handleScroll}
           className="relative flex-1 overflow-y-auto"
         >
-          {messages.length === 0 ? (
+          {viewMode === "empty" ? (
             <div className="flex h-full flex-col items-center justify-center px-6 text-center">
               {/* AI avatar */}
               <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-accent/20 to-accent/5 dark:from-accent/30 dark:to-accent/10 shadow-sm">
@@ -424,6 +577,7 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
             </button>
           )}
         </div>
+        )}
 
         {/* Recovery bar — the queue pauses on any non-success outcome, so the user
             is given an explicit way forward instead of a silently stalled queue. */}

@@ -1,7 +1,8 @@
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useChat } from "@/hooks/use-chat";
 import { useChatStore } from "@/stores/chatStore";
+import { resetPersistenceFingerprint } from "@/lib/ai/chat/persistence";
 import { routeChatFetch, sequentialChatResponses } from "./helpers/chat-fetch";
 
 function completedStream(text: string): Response {
@@ -18,16 +19,27 @@ function failedResponse(): Response {
 
 describe("chat retry and queue recovery", () => {
   beforeEach(() => {
+    // Every field the runtime writes must be reset, not just the obvious ones. A leaked
+    // `queuePauseReason: "persistence"` was observed changing which branch a later test
+    // took, which made results depend on how many tests ran before it. Persistence also
+    // keeps module-level state (last fingerprint, learned conversation id).
+    resetPersistenceFingerprint();
     useChatStore.setState({
       messages: [],
       queuedPrompts: [],
       isStreaming: false,
       conversationId: null,
       isSaving: false,
+      runnerToken: null,
+      queuePauseReason: null,
+      conversationVersion: null,
     });
   });
 
   afterEach(() => {
+    // Auto-cleanup is not enabled in this project, so without this every renderHook stays
+    // mounted for the remainder of the file and keeps reacting to shared store state.
+    cleanup();
     vi.unstubAllGlobals();
   });
 
@@ -224,5 +236,58 @@ describe("chat retry and queue recovery", () => {
 
     expect(useChatStore.getState().queuedPrompts.length).toBeGreaterThan(0);
     expect(useChatStore.getState().queuePauseReason).toBe("persistence");
+  });
+  // Losing the connection mid-stream left the message showing a live "Streaming"
+  // indicator for the full 45s idle window with no error and no Retry — a progress state
+  // that was actively lying. The browser already knows the connection dropped.
+  //
+  // DELIBERATELY LAST. This test leaves an aborted run behind, and something in that
+  // teardown perturbs whichever test runs next into making a second chat request
+  // (`expected 2 to be 1`). Unmounting hooks and resetting every store field the runtime
+  // writes did NOT fix it, so the shared state is elsewhere — most likely the
+  // module-level write chain in persistence.ts, which has no reset. A trivial test that
+  // only sends one message reproduces the same downstream effect, so this is a property
+  // of the file, not of this test. Tracked rather than papered over by loosening the
+  // assertions of the test that follows.
+  it("ends the run immediately when the browser goes offline mid-stream", async () => {
+    const fetchMock = routeChatFetch((_url, init) => {
+      const signal = init?.signal;
+      return new Response(
+        new ReadableStream({
+          start(controller) {
+            controller.enqueue(
+              new TextEncoder().encode(`data: ${JSON.stringify({ type: "text", content: "partial" })}\n`),
+            );
+            // Mirrors a real fetch: the body errors when the request is aborted. Without
+            // this the stream hangs forever and never exercises the fix.
+            signal?.addEventListener("abort", () => {
+              controller.error(new DOMException("Aborted", "AbortError"));
+            });
+          },
+        }),
+        { status: 200 },
+      );
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const { result } = renderHook(() => useChat());
+
+    let pending: Promise<unknown>;
+    act(() => {
+      pending = result.current.sendMessage("Q1");
+    });
+    await waitFor(() => {
+      expect(useChatStore.getState().isStreaming).toBe(true);
+    });
+
+    await act(async () => {
+      window.dispatchEvent(new Event("offline"));
+      await pending;
+    });
+
+    const last = useChatStore.getState().messages.at(-1);
+    expect(last?.status).toBe("interrupted");
+    expect(last?.content).toContain("offline");
+    // Partial output is preserved so the user keeps what already arrived.
+    expect(last?.content).toContain("partial");
   });
 });

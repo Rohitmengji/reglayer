@@ -106,6 +106,8 @@ export function useChat() {
 
   // AbortController ref for cancelling in-flight requests
   const abortRef = useRef<AbortController | null>(null);
+  /** Guards Retry against same-tick double activation. See `retryLastResponse`. */
+  const retryInFlightRef = useRef(false);
 
   /** Core streaming logic — sends messages to the API and streams the response. */
   const streamResponse = useCallback(
@@ -128,7 +130,18 @@ export function useChat() {
       // Distinguishes a watchdog abort from a user pressing Stop. Both surface as
       // AbortError, but only one of them is the user's decision.
       let timedOut = false;
+      // The idle watchdog is a backstop, not a detector. Losing the connection mid-stream
+      // left the message showing a live "Streaming" indicator for the full 45s window with
+      // no error and no Retry — a progress state that was actively lying. The browser
+      // already knows the connection dropped, so use that and fail in ~0s instead.
+      let wentOffline = false;
       let idleTimer: ReturnType<typeof setTimeout> | null = null;
+
+      const onOffline = () => {
+        wentOffline = true;
+        controller.abort();
+      };
+      if (typeof window !== "undefined") window.addEventListener("offline", onOffline);
 
       const resetIdleWatchdog = () => {
         if (idleTimer !== null) clearTimeout(idleTimer);
@@ -299,6 +312,14 @@ export function useChat() {
         tokens.flush();
 
         if (isAbortError(error)) {
+          // Checked before the watchdog: losing the network also stalls the stream, and
+          // "you went offline" is a cause the user can act on, where "connection stalled"
+          // is not. Both are `interrupted` so Retry stays available.
+          if (wentOffline) {
+            appendToMessage(assistantId, "\n\n*(You went offline — this answer stopped partway. Reconnect and retry.)*");
+            transitionMessageStatus(assistantId, "interrupted");
+            return "interrupted";
+          }
           // A watchdog abort is NOT a user decision, so it must not be reported as one.
           // `interrupted` is also recoverable, which offers Retry rather than leaving
           // the user with a response they never chose to stop.
@@ -319,6 +340,7 @@ export function useChat() {
         // Must always clear: a surviving timer would abort a LATER run through the
         // captured controller and leak the closure for the whole idle window.
         if (idleTimer !== null) clearTimeout(idleTimer);
+        if (typeof window !== "undefined") window.removeEventListener("offline", onOffline);
         tokens.discard();
         if (abortRef.current === controller) {
           setStreaming(false);
@@ -483,17 +505,28 @@ export function useChat() {
    * Reuses the original user prompt rather than asking the user to retype it.
    */
   const retryLastResponse = useCallback(async () => {
+    // Synchronous, unlike the store read below: `isQueueBusy` cannot see a lease that
+    // `runTurns` has not taken yet, so same-tick double activation (a double-click, or a
+    // held Enter) slips past it. Cheap idempotency guard rather than a fix for a
+    // reproduced defect — an adversarial run left Retry in a dead end, but the cause was
+    // never isolated to this path and a regression test could not reproduce it here.
+    if (retryInFlightRef.current) return;
     if (isQueueBusy()) return;
     const state = useChatStore.getState();
 
     const last = state.messages.at(-1);
     if (!last || last.role !== "assistant" || !isRecoverableStatus(last.status)) return;
 
-    // Drop the unusable response so the retry does not append to broken output.
-    truncateFrom(last.id);
-    state.clearQueuePause();
-    telemetry.event("run.retried");
-    await runTurns(null);
+    retryInFlightRef.current = true;
+    try {
+      // Drop the unusable response so the retry does not append to broken output.
+      truncateFrom(last.id);
+      state.clearQueuePause();
+      telemetry.event("run.retried");
+      await runTurns(null);
+    } finally {
+      retryInFlightRef.current = false;
+    }
   }, [runTurns, truncateFrom]);
 
   /** Skip the turn that paused the queue and continue with the next pending prompt. */

@@ -116,6 +116,8 @@ export function ChatInput({ onSend, onStop, isStreaming, queueFull = false }: Ch
   const charCount = input.length;
   const showCharCount = charCount > 200;
   const nearLimit = charCount > MAX_CHARS * 0.9;
+  const atLimit = charCount >= MAX_CHARS;
+  const countId = `${COMPOSER_ID}-charcount`;
 
   return (
     <div className="border-t border-neutral-200 dark:border-neutral-700 px-4 py-3">
@@ -147,6 +149,10 @@ export function ChatInput({ onSend, onStop, isStreaming, queueFull = false }: Ch
           className="flex-1 resize-none bg-transparent px-3.5 py-2.5 text-[13px] text-neutral-900 placeholder-neutral-400 disabled:opacity-50 dark:text-neutral-100 dark:placeholder-neutral-500 overflow-hidden focus:outline-none focus-visible:outline-none"
           style={{ outline: "none" }}
           aria-label="Chat message input"
+          // Without this the limit is sighted-only: the counter is a detached span, so a
+          // screen reader user gets no warning and no explanation when `maxLength`
+          // silently discards the tail of a long paste.
+          aria-describedby={showCharCount ? countId : undefined}
         />
 
         {isStreaming && (
@@ -184,11 +190,29 @@ export function ChatInput({ onSend, onStop, isStreaming, queueFull = false }: Ch
           )}
         </span>
         {showCharCount && (
-          <span className={`text-[10px] tabular-nums ${nearLimit ? "text-red-500" : "text-neutral-400"}`}>
-            {charCount.toLocaleString()}/{(MAX_CHARS / 1000).toFixed(0)}K
+          <span
+            id={countId}
+            className={`text-[10px] tabular-nums ${nearLimit ? "text-red-500" : "text-neutral-400"}`}
+          >
+            <span aria-hidden="true">
+              {charCount.toLocaleString()}/{(MAX_CHARS / 1000).toFixed(0)}K
+            </span>
+            {/* Spelled out for assistive tech — "9,990/10K" is read as digits and
+                punctuation, which does not convey that a limit is being approached. */}
+            <span className="sr-only">
+              {atLimit
+                ? `Character limit reached. Maximum ${MAX_CHARS.toLocaleString()} characters; further text will not be added.`
+                : `${(MAX_CHARS - charCount).toLocaleString()} characters remaining of ${MAX_CHARS.toLocaleString()}.`}
+            </span>
           </span>
         )}
       </div>
+
+      {/* Announced once on crossing the limit, not per keystroke: a live region tied to
+          every character would talk over the user as they type. */}
+      <span className="sr-only" role="status" aria-live="polite">
+        {atLimit ? "Character limit reached." : ""}
+      </span>
     </div>
   );
 }
