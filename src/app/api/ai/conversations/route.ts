@@ -16,24 +16,39 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
 import { applyRateLimit } from "@/lib/rate-limit-middleware";
+import { logger } from "@/lib/telemetry/logger";
 import {
   collectRatingTransitions,
   recordRatingTransitions,
   type RatingTransition,
 } from "@/lib/ai/learning/rating-transitions";
 import { bumpConversationVersion } from "@/lib/ai/chat/generation-lease";
+import { stripUnstorableChars } from "@/lib/ai/chat/db-safe-text";
 import { z } from "zod";
+
+/**
+ * The save is an interactive transaction against a remote Postgres, and Prisma's
+ * default budget for one is 5s. Production saves were measured at 4-12s and threw
+ * `P2028 ... timeout 5000ms, however 6010ms passed` — a 500 that loses the user's
+ * transcript. The ceiling below has to sit under the function's own ceiling, or the
+ * platform kills the request first and the transaction budget is decorative.
+ */
+export const maxDuration = 30;
+const TX_TIMEOUT_MS = 20_000;
+const TX_MAX_WAIT_MS = 5_000;
 
 const saveSchema = z.object({
   id: z.string().max(64).optional(), // Omit to create new, provide to update
-  title: z.string().max(200).optional(),
+  title: z.string().max(200).optional().transform((t) => (t === undefined ? t : stripUnstorableChars(t))),
   // Version the client last saw. Optional so existing clients keep working; when
   // supplied it is enforced, which is what makes concurrent saves safe.
   version: z.number().int().min(0).optional(),
   messages: z.array(z.object({
     id: z.string().min(1).max(64),
     role: z.enum(["user", "assistant"]),
-    content: z.string().max(50000),
+    // Length is validated against what the user actually sent; the strip runs after,
+    // so a payload cannot dodge the cap by padding it with characters we remove.
+    content: z.string().max(50000).transform(stripUnstorableChars),
     feedback: z.number().min(-1).max(1).default(0),
   })).max(200),
 });
@@ -80,7 +95,29 @@ export async function GET(request: NextRequest) {
   });
 }
 
+/**
+ * Nothing here may reach the client as an empty body.
+ *
+ * This route is how a conversation becomes durable, so its failures are exactly the
+ * ones the user most needs to hear about — and an unhandled throw produces a 500 with
+ * no body, which the client cannot even parse to show a message. It then looks like
+ * the save worked. Every exit path below returns JSON.
+ */
 export async function POST(request: NextRequest) {
+  try {
+    return await saveConversation(request);
+  } catch (err) {
+    logger.error("[conversations] save failed", {
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return NextResponse.json(
+      { error: "Could not save conversation", code: "SAVE_FAILED" },
+      { status: 500 },
+    );
+  }
+}
+
+async function saveConversation(request: NextRequest) {
   const blocked = await applyRateLimit(request, "api");
   if (blocked) return blocked;
 
@@ -186,7 +223,7 @@ export async function POST(request: NextRequest) {
         where: { id },
         data: { title: effectiveTitle },
       });
-    }).catch((err) => {
+    }, { timeout: TX_TIMEOUT_MS, maxWait: TX_MAX_WAIT_MS }).catch((err) => {
       if (err instanceof Error && err.message === "NOT_FOUND") {
         return NextResponse.json({ error: "Not found" }, { status: 404 });
       }
@@ -198,6 +235,14 @@ export async function POST(request: NextRequest) {
           { status: 409 },
         );
       }
+      // Anything else is a genuine fault — a blown transaction budget, a value the
+      // database refuses. Rethrowing produced a bodiless 500; the outer handler now
+      // turns it into JSON, and this logs the cause before it gets there.
+      logger.error("[conversations] save transaction failed", {
+        conversationId: id,
+        messageCount: messages.length,
+        error: err instanceof Error ? err.message : String(err),
+      });
       throw err;
     });
 
