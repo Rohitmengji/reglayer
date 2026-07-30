@@ -35,7 +35,7 @@ import { recordAuditEntry } from "@/lib/ai/audit/trail";
 import { getProfile, formatProfileForPrompt, trackUsage } from "@/lib/ai/profile/service";
 import { getMemories, formatMemoriesForPrompt, extractMemories, setMemory } from "@/lib/ai/memory/service";
 import { getViolationSummary, formatViolationSummaryForPrompt } from "@/lib/ai/chat/violation-summary";
-import { runGuardrails, CHAT_GUARDS, type GuardContext } from "@/lib/ai/guardrails";
+import { runGuardrails, CHAT_GUARDS, wcagHallucinationGuard, type GuardContext } from "@/lib/ai/guardrails";
 import { PLAN_LIMITS, type PlanType } from "@/lib/credits";
 
 export const runtime = "nodejs";
@@ -495,6 +495,15 @@ export async function POST(request: NextRequest) {
     async start(controller) {
       try {
         let fullText = "";
+        // Fire the fabricated-criterion warning at most once per answer.
+        //
+        // The full guardrail suite runs post-stream and is authoritative, but for a
+        // compliance tool a made-up "SC 5.2.1" is the highest-stakes thing the model
+        // can emit, and waiting for `done` means the user may have already read and
+        // acted on it. Streaming makes the text impossible to retract, so the least we
+        // can do is flag it the instant it appears. Runs on accumulated text, so a
+        // criterion split across chunks is still caught once complete.
+        let wcagWarned = false;
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
@@ -502,6 +511,14 @@ export async function POST(request: NextRequest) {
           const textChunk = value as string;
           fullText += textChunk;
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "text", content: textChunk })}\n`));
+
+          if (!wcagWarned) {
+            const check = wcagHallucinationGuard(fullText, guardContext);
+            if (check.severity === "warn") {
+              wcagWarned = true;
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "warning", warningId: "wcag-hallucination", message: check.reason ?? "This answer may cite a WCAG criterion incorrectly." })}\n`));
+            }
+          }
         }
 
         // Run guardrails on the accumulated response, then record the results

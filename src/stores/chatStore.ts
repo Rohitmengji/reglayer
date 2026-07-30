@@ -86,6 +86,14 @@ export interface ChatMessage {
   toolCalls?: ToolCall[];
   /** Lineage/provenance data for this response */
   lineage?: MessageLineage;
+  /**
+   * An early caution surfaced WHILE the answer is still streaming — currently a
+   * fabricated WCAG criterion detected as it arrives. Distinct from the post-stream
+   * guardrail banner in the lineage: this shows the moment the problem appears, next
+   * to the text, instead of only once the whole answer has finished. Cleared/superseded
+   * by `lineage` once the stream completes.
+   */
+  streamingWarning?: string;
   /** Lifecycle of an assistant response. User messages do not carry this state. */
   status?: ChatResponseStatus;
 }
@@ -214,6 +222,8 @@ interface ChatState {
   updateToolCall: (messageId: string, toolCallId: string, updates: Partial<ToolCall>) => void;
   /** Set lineage data on a message */
   setLineage: (messageId: string, lineage: MessageLineage) => void;
+  /** Surface an early streaming caution (e.g. a fabricated WCAG criterion). Idempotent. */
+  setStreamingWarning: (messageId: string, warning: string) => void;
 }
 
 // ── Store ─────────────────────────────────────────────────────────────────────
@@ -475,6 +485,17 @@ export const useChatStore = create<ChatState>()(
         set((state) => ({
           messages: state.messages.map((msg) =>
             msg.id === messageId ? { ...msg, lineage } : msg,
+          ),
+        })),
+
+      // Set only when not already set: the server emits the early warning once, but
+      // a defensive no-op on repeat keeps this idempotent if that ever changes.
+      setStreamingWarning: (messageId, warning) =>
+        set((state) => ({
+          messages: state.messages.map((msg) =>
+            msg.id === messageId && !msg.streamingWarning
+              ? { ...msg, streamingWarning: warning }
+              : msg,
           ),
         })),
     }),
