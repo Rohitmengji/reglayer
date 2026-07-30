@@ -85,7 +85,10 @@ export function useChatSync() {
         messages: state.messages,
       });
       if (result.ok && !result.skipped) {
-        if (result.conversationId && !state.conversationId) {
+        // Adopt the id whenever it differs — not only on the first save. A save that
+        // recovered from a stale-id 404 comes back with a freshly created id, and
+        // keeping the old one would 404-loop into a new conversation on every save.
+        if (result.conversationId && result.conversationId !== state.conversationId) {
           setConversationId(result.conversationId);
         }
         // Silently refresh the conversation list so the sidebar stays current
