@@ -36,6 +36,7 @@ import { getProfile, formatProfileForPrompt, trackUsage } from "@/lib/ai/profile
 import { getMemories, formatMemoriesForPrompt, extractMemories, setMemory } from "@/lib/ai/memory/service";
 import { getViolationSummary, formatViolationSummaryForPrompt } from "@/lib/ai/chat/violation-summary";
 import { runGuardrails, CHAT_GUARDS, wcagHallucinationGuard, type GuardContext } from "@/lib/ai/guardrails";
+import { acquireGenerationLease, releaseGenerationLease } from "@/lib/ai/chat/generation-lease";
 import { PLAN_LIMITS, type PlanType } from "@/lib/credits";
 
 export const runtime = "nodejs";
@@ -66,6 +67,12 @@ const chatRequestSchema = z.object({
   // permanently bricked any conversation past the limit, because every retry of an
   // over-length history failed identically.
   messages: z.array(chatMessageSchema).min(1).max(200),
+  // Optional: present once a conversation has been saved. Together they let the server
+  // hold a per-conversation generation lease so two tabs cannot answer into the same
+  // conversation at once. Absent for a brand-new conversation, where there is nothing
+  // to collide with yet.
+  conversationId: z.string().max(64).optional(),
+  tabId: z.string().max(64).optional(),
 });
 
 /**
@@ -384,6 +391,45 @@ export async function POST(request: NextRequest) {
   // round-trip and an extra model step.
   const tools = plan.needsTools ? createChatTools({ workspaceId, userId }) : undefined;
 
+  // ── 12b. Generation lease ───────────────────────────────────────────────
+  //
+  // Stops two tabs open on the SAME saved conversation from generating into it at once
+  // — the client runnerToken only guards within one tab. Keyed by conversation, owned
+  // by the tab, expiring on a TTL so a crashed tab cannot lock a conversation forever.
+  //
+  // Acquired here, immediately before the spend, so the earlier rejections (daily
+  // limit, context overflow) return without ever holding it. Fail-OPEN: a lease
+  // infrastructure error must never block a legitimate answer, so on a thrown lease
+  // call we proceed unguarded rather than 500 the chat.
+  const conversationId = parsed.data.conversationId;
+  const tabId = parsed.data.tabId;
+  let leaseHeld = false;
+  if (conversationId && tabId) {
+    try {
+      const lease = await acquireGenerationLease(conversationId, tabId);
+      if (!lease.acquired) {
+        incrementCounter("ai.chat.lease_denied", {});
+        return new Response(
+          JSON.stringify({
+            error: "conversation_busy",
+            message: "This conversation is being answered in another tab.",
+            expiresAt: lease.expiresAt,
+          }),
+          { status: 423, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      leaseHeld = true;
+    } catch {
+      // Fail open — never let lease infra take down chat.
+    }
+  }
+
+  const releaseLease = () => {
+    if (leaseHeld && conversationId && tabId) {
+      releaseGenerationLease(conversationId, tabId).catch(() => {});
+    }
+  };
+
   // ── 13. Stream LLM response ─────────────────────────────────────────────
   const streamStart = Date.now();
   const result = await stream({
@@ -408,6 +454,7 @@ export async function POST(request: NextRequest) {
   });
 
   if (!result) {
+    releaseLease();
     return new Response("AI provider unavailable", { status: 503 });
   }
 
@@ -581,6 +628,9 @@ export async function POST(request: NextRequest) {
         incrementCounter("ai.chat.stream_failed", { tier: routing.tier });
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: "error", message: err instanceof Error ? err.message : "Stream error" })}\n`));
       } finally {
+        // The turn is over however it ended — hand the conversation back so the next
+        // message (this tab or another) is not blocked until the lease's TTL lapses.
+        releaseLease();
         controller.close();
       }
     },
@@ -593,6 +643,7 @@ export async function POST(request: NextRequest) {
      */
     async cancel() {
       incrementCounter("ai.chat.stream_cancelled", { tier: routing.tier });
+      releaseLease();
       try { await reader.cancel(); } catch { /* already closed */ }
     },
   });

@@ -67,6 +67,13 @@ export function describeRequestFailure(
     return "You have reached your daily chat limit for your plan. It resets tomorrow, or you can upgrade for a higher limit.";
   }
 
+  // 423 Locked: another tab (or device) is already generating into this conversation.
+  // Retrying works the moment that finishes, so this points at the cause rather than
+  // implying something is broken.
+  if (status === 423) {
+    return "This conversation is being answered in another tab. Wait for that to finish, then retry.";
+  }
+
   if (status === 503) {
     return "The AI service is unavailable right now. Nothing was lost — retry in a moment.";
   }
