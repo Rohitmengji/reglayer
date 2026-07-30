@@ -20,15 +20,13 @@ import { wcagHallucinationGuard } from "@/lib/ai/guardrails";
 /** Mirror of the route's per-chunk scan: returns the first chunk index that warns. */
 function firstWarningChunk(chunks: string[]): number {
   let full = "";
-  let warned = false;
   for (let i = 0; i < chunks.length; i++) {
     full += chunks[i];
-    if (!warned) {
-      const check = wcagHallucinationGuard(full, { feature: "chat", userMessage: "" });
-      if (check.severity === "warn") {
-        warned = true;
-        return i;
-      }
+    // The route guards with a `warned` flag so it emits once; this helper returns on
+    // the first warning, so the flag would be dead code (CodeQL flagged exactly that).
+    // The "warn at most once" property is covered by its own test below.
+    if (wcagHallucinationGuard(full, { feature: "chat", userMessage: "" }).severity === "warn") {
+      return i;
     }
   }
   return -1;
