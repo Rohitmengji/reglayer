@@ -20,6 +20,7 @@
 
 export type PromptSectionTag =
   | "context"
+  | "scan_summary"
   | "user_profile"
   | "user_memory"
   | "workspace_decisions";
@@ -45,6 +46,15 @@ export interface ComposeSystemPromptInput {
   base: string;
   /** Retrieved knowledge. Untrusted — may contain scan data authored by third parties. */
   retrievedContext?: string;
+  /**
+   * Authoritative counts for the caller's most recent scan, read from our own database.
+   *
+   * Kept separate from `retrievedContext` on purpose. Retrieval returns a relevance-
+   * ranked sample, and a model asked "how many" will count whatever it can see; this
+   * block is the only place totals may come from. It is still wrapped, because the URL
+   * and rule ids inside it originate from scanned third-party pages.
+   */
+  scanSummary?: string;
   /** Formatted user profile. Untrusted — derived from user input. */
   userProfile?: string;
   /** Formatted memories. Untrusted — derived from user input. */
@@ -87,6 +97,7 @@ export function composeSystemPrompt(input: ComposeSystemPromptInput): ComposedPr
     sections.push(tag);
   };
 
+  append("scan_summary", input.scanSummary);
   append("user_profile", input.userProfile);
   append("user_memory", input.userMemory);
   append("workspace_decisions", input.workspaceDecisions);
