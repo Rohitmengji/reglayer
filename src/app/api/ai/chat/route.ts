@@ -41,6 +41,16 @@ import { PLAN_LIMITS, type PlanType } from "@/lib/credits";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
+/**
+ * Provider budget for one streamed answer, kept under `maxDuration`.
+ *
+ * The provider timeout MUST fire before the platform's 60s kill, or it never fires at
+ * all — an abort we raise is a diagnosable "the model stalled", a platform kill is an
+ * opaque dropped connection the client can only report as "interrupted". 50s leaves
+ * headroom for the post-stream finalisation (guardrails, lineage, the done frame).
+ */
+const CHAT_STREAM_BUDGET_MS = 50_000;
+
 // ── Request Validation ────────────────────────────────────────────────────────
 
 const chatMessageSchema = z.object({
@@ -385,6 +395,11 @@ export async function POST(request: NextRequest) {
     // computed from the routing tier, reported to telemetry, and then discarded here —
     // so metrics described a limit the model was never given.
     maxTokens: dynamicMaxTokens,
+    // Stop generating when the user cancels or the browser disconnects. Without this,
+    // "Stop" only hid the client's reader while the model ran to completion on our bill.
+    abortSignal: request.signal,
+    // Below maxDuration so our own timeout fires first and is diagnosable.
+    timeoutMs: CHAT_STREAM_BUDGET_MS,
     metadata: {
       feature: isRAGAugmented ? "chat-rag" : "chat",
       userId: session.user.email,
@@ -530,6 +545,17 @@ export async function POST(request: NextRequest) {
       } finally {
         controller.close();
       }
+    },
+
+    /**
+     * The consumer (the HTTP response) was cancelled — the client disconnected or
+     * navigated away. Release the upstream reader so the provider stream is torn down
+     * rather than left draining into a controller nobody is listening to. The abort
+     * signal already stops generation; this stops the plumbing.
+     */
+    async cancel() {
+      incrementCounter("ai.chat.stream_cancelled", { tier: routing.tier });
+      try { await reader.cancel(); } catch { /* already closed */ }
     },
   });
 
