@@ -186,6 +186,26 @@ export function ChatMessage({ message, isLast, isStreaming, onRegenerate, onEdit
                     <span className="h-1.5 w-1.5 rounded-full bg-neutral-400 animate-bounce" style={{ animationDelay: "300ms" }} />
                   </div>
                 ) : null}
+                {/*
+                  Early streaming caution. Shown the instant a fabricated WCAG criterion
+                  is detected mid-answer, so the warning sits next to the text rather
+                  than arriving only with the post-stream panel. Hidden once `lineage`
+                  lands — the ExplainabilityPanel's own banner is then authoritative, so
+                  we don't show two warnings for the same thing.
+                */}
+                {message.streamingWarning && !message.lineage && (
+                  <p
+                    role="status"
+                    className="mt-1.5 flex items-start gap-1.5 rounded-md border border-amber-300 bg-amber-50 px-2 py-1.5 text-[11px] text-amber-800 dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-200"
+                  >
+                    <TriangleAlert className="mt-px h-3 w-3 shrink-0" aria-hidden="true" />
+                    <span>
+                      <span className="font-medium">Automated check flagged this answer</span>
+                      {" — "}
+                      {message.streamingWarning}
+                    </span>
+                  </p>
+                )}
                 {/* Explainability Panel */}
                 {message.lineage && !isStreaming && (
                   <ExplainabilityPanel lineage={message.lineage} />

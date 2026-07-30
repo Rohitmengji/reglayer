@@ -233,6 +233,14 @@ export function useChat() {
             case "lineage":
               if (event.data) setLineage(assistantId, event.data);
               break;
+            case "warning":
+              // An early, mid-stream caution (e.g. a fabricated WCAG criterion). Shown
+              // next to the text immediately; the authoritative post-stream guardrail
+              // banner in the lineage supersedes it once `done` arrives.
+              if (event.message) {
+                useChatStore.getState().setStreamingWarning(assistantId, event.message);
+              }
+              break;
             case "error":
               // Flush first: a completed/failed message is content-frozen, so buffered
               // tokens applied after the transition would be silently discarded.
