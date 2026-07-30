@@ -6,6 +6,7 @@
 export const PLAN_LIMITS = {
   FREE: {
     aiCredits: 25,
+    chatMessagesPerDay: 30,
     scansPerMonth: 3,
     pagesPerScan: 5,
     teamMembers: 2,
@@ -23,6 +24,7 @@ export const PLAN_LIMITS = {
   },
   PRO: {
     aiCredits: 500,
+    chatMessagesPerDay: 300,
     scansPerMonth: 30,
     pagesPerScan: 50,
     teamMembers: 10,
@@ -40,6 +42,7 @@ export const PLAN_LIMITS = {
   },
   ENTERPRISE: {
     aiCredits: 2000,
+    chatMessagesPerDay: -1, // unlimited
     scansPerMonth: -1, // unlimited
     pagesPerScan: -1, // unlimited
     teamMembers: -1, // unlimited
@@ -74,6 +77,13 @@ export const ADMIN_SCAN_LIMITS: Record<string, number> = {
 
 /**
  * AI action credit costs
+ *
+ * Chat is deliberately absent. Credits are the budget for the expensive, deliberate
+ * actions a user takes on a scan; a FREE user only has 25 of them and one
+ * `insightsAnalysis` costs 5. Billing conversation from the same pool would let a
+ * user talk away the budget they need for the actual product. Chat is metered
+ * separately by `chatMessagesPerDay` — free-feeling, but still bounded, because an
+ * uncapped model endpoint behind free signup is just a free LLM proxy.
  */
 export const AI_CREDIT_COSTS = {
   explanation: 1, // Explain a single issue

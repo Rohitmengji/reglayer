@@ -16,8 +16,7 @@ import { queueAnnouncement } from "@/lib/ai/chat/queue";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
 import { QueuedPrompts, COMPOSER_ID } from "./QueuedPrompts";
-import { MessageSquare, Trash2, X, ArrowDown, Download, Plus, History, Loader2, Clock, Zap, RotateCcw, SkipForward, TriangleAlert } from "lucide-react";
-import { useCredits } from "@/hooks/use-credits";
+import { MessageSquare, Trash2, X, ArrowDown, Download, Plus, History, Loader2, Clock, RotateCcw, SkipForward, TriangleAlert } from "lucide-react";
 import { useFollowUpSuggestions } from "@/hooks/use-follow-up-suggestions";
 
 interface ChatPanelProps {
@@ -49,7 +48,7 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
   const { conversations, loadingList, fetchConversations, switchConversation, startNew, deleteConversation } =
     useChatSync();
   const conversationId = useChatStore((s) => s.conversationId);
-  const { credits } = useCredits();
+
   const followUps = useFollowUpSuggestions(messages);
   // Only the newest turn can be retried — older turns are settled history.
   const lastMessage = messages.at(-1);
@@ -304,24 +303,12 @@ export function ChatPanel({ open, onClose }: ChatPanelProps) {
                 Accessibility assistant
               </p>
             </div>
-            {/* Credit balance indicator */}
-            {credits && (
-              <span
-                className={`ml-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                  credits.unlimited
-                    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
-                    : credits.remaining <= 5
-                      ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
-                      : credits.remaining <= 20
-                        ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
-                        : "bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400"
-                }`}
-                title={credits.unlimited ? "Unlimited AI credits" : `${credits.remaining} AI credits remaining (${credits.used}/${credits.limit} used)`}
-              >
-                <Zap className="h-2.5 w-2.5" aria-hidden="true" />
-                {credits.unlimited ? "∞" : credits.remaining}
-              </span>
-            )}
+            {/*
+              No credit badge here on purpose. Chat does not spend AI credits, so a
+              balance next to the composer is a number that never moves while you use
+              it — which reads as "the meter is broken". Credits live on the dashboard
+              and in settings, where they describe the actions that actually spend them.
+            */}
           </div>
           <div className="flex items-center gap-1">
             {/* Saving indicator */}

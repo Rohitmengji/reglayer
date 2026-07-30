@@ -60,6 +60,13 @@ export function describeRequestFailure(
       : "You have reached the message limit. Wait a moment before sending another message.";
   }
 
+  // Distinct from 429: 429 is "too fast, slow down" and clears in seconds. 402 is the
+  // daily chat allowance for the plan, which does not clear until tomorrow — telling
+  // someone in that state to "wait a moment" wastes their time.
+  if (status === 402) {
+    return "You have reached your daily chat limit for your plan. It resets tomorrow, or you can upgrade for a higher limit.";
+  }
+
   if (status === 503) {
     return "The AI service is unavailable right now. Nothing was lost — retry in a moment.";
   }
