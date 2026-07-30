@@ -194,15 +194,23 @@ export async function POST(request: NextRequest) {
   });
 
   // ── 6. Resolve user + workspace ─────────────────────────────────────────
+  // The primary-workspace membership is fetched inline (was a second sequential
+  // query) so this resolution costs one round-trip instead of two on the pre-stream
+  // critical path, which is where the user is waiting for the first token.
   const user = await prisma.user.findUnique({
     where: { email: session.user.email },
-    select: { id: true, plan: true, isMasterAdmin: true },
+    select: {
+      id: true,
+      plan: true,
+      isMasterAdmin: true,
+      memberships: {
+        select: { workspaceId: true },
+        orderBy: { joinedAt: "asc" },
+        take: 1,
+      },
+    },
   });
-  const membership = user ? await prisma.workspaceMember.findFirst({
-    where: { userId: user.id },
-    select: { workspaceId: true },
-    orderBy: { joinedAt: "asc" },
-  }) : null;
+  const membership = user?.memberships[0] ?? null;
 
   const userId = user?.id ?? session.user.email;
   const workspaceId = membership?.workspaceId ?? null;
@@ -263,7 +271,7 @@ export async function POST(request: NextRequest) {
   // Each is now CONDITIONAL. Previously every request ran a vector search, a profile
   // query, and a memory query — including "hi", and including reference questions
   // where personal memory cannot change the answer.
-  const [retrieval, profile, memories, scanSummary] = await Promise.all([
+  const [retrieval, profile, memories, scanSummary, decisionBlock] = await Promise.all([
     plan.needsRetrieval
       ? optimizedRetrieve(latestUserMessage, {
           ...preset,
@@ -281,6 +289,16 @@ export async function POST(request: NextRequest) {
     plan.needsTools
       ? getViolationSummary({ workspaceId: workspaceId ?? null, userId, isMasterAdmin }).catch(() => null)
       : Promise.resolve(null),
+    // Workspace decisions were loaded serially just before prompt composition, adding
+    // a DB round-trip to the critical path. They depend only on workspaceId (already
+    // resolved), so they belong in this parallel block with the other context fetches.
+    workspaceId
+      ? import("@/lib/ai/decisions/engine")
+          .then(({ loadDecisions, formatDecisionsForPrompt }) =>
+            loadDecisions(workspaceId).then(formatDecisionsForPrompt),
+          )
+          .catch(() => "")
+      : Promise.resolve(""),
   ]);
 
   lineage.recordCache(retrieval.cached, retrieval.cacheLayer);
@@ -340,12 +358,8 @@ export async function POST(request: NextRequest) {
   // ── 10b. Decision Engine — inject workspace decisions as constraints ────
   // This is RegLayer's moat: the AI enforces workspace-level decisions on
   // every response. If the workspace decided "WCAG 2.2 AA" and "TypeScript
-  // required," the AI must follow those in all recommendations.
-  let decisionBlock = "";
-  if (workspaceId) {
-    const { loadDecisions, formatDecisionsForPrompt } = await import("@/lib/ai/decisions/engine");
-    decisionBlock = formatDecisionsForPrompt(await loadDecisions(workspaceId));
-  }
+  // required," the AI must follow those in all recommendations. Loaded in the
+  // parallel context block above (step 8/9), not serially here.
 
   // Composition is extracted and tested: previously retrieval was wrapped against
   // injection but profile and memory were concatenated raw, so the protection was
