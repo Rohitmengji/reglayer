@@ -75,8 +75,19 @@ describe("describeRequestFailure", () => {
     );
   });
 
+  // 402 and 429 both mean "no answer right now", but only one of them is fixed by
+  // waiting. 429 clears in seconds; the daily chat allowance does not clear until
+  // tomorrow, so "retry in a moment" sends the user into a loop that cannot succeed.
+  it("tells a user who hit the daily chat limit when it comes back, not to wait", () => {
+    const message = describeRequestFailure(402, headers(), NOW);
+    expect(message).toMatch(/daily/i);
+    expect(message).toMatch(/tomorrow|upgrade/i);
+    expect(message).not.toMatch(/wait a moment|in a moment/i);
+    expect(message).not.toBe(describeRequestFailure(429, headers(), NOW));
+  });
+
   it("always produces actionable, non-empty text for any status", () => {
-    for (const status of [400, 401, 403, 404, 422, 429, 500, 502, 503]) {
+    for (const status of [400, 401, 402, 403, 404, 422, 429, 500, 502, 503]) {
       const message = describeRequestFailure(status, headers(), NOW);
       expect(message.length).toBeGreaterThan(0);
       // A bare status code is not an explanation.

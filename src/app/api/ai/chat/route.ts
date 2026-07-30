@@ -35,6 +35,7 @@ import { recordAuditEntry } from "@/lib/ai/audit/trail";
 import { getProfile, formatProfileForPrompt, trackUsage } from "@/lib/ai/profile/service";
 import { getMemories, formatMemoriesForPrompt, extractMemories, setMemory } from "@/lib/ai/memory/service";
 import { runGuardrails, CHAT_GUARDS, type GuardContext } from "@/lib/ai/guardrails";
+import { PLAN_LIMITS, type PlanType } from "@/lib/credits";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -177,7 +178,7 @@ export async function POST(request: NextRequest) {
   // ── 6. Resolve user + workspace ─────────────────────────────────────────
   const user = await prisma.user.findUnique({
     where: { email: session.user.email },
-    select: { id: true },
+    select: { id: true, plan: true, isMasterAdmin: true },
   });
   const membership = user ? await prisma.workspaceMember.findFirst({
     where: { userId: user.id },
@@ -187,6 +188,8 @@ export async function POST(request: NextRequest) {
 
   const userId = user?.id ?? session.user.email;
   const workspaceId = membership?.workspaceId ?? null;
+  const userPlan = (user?.plan ?? "FREE") as PlanType;
+  const isMasterAdmin = user?.isMasterAdmin ?? false;
 
   lineage.recordInput(latestUserMessage, userId, workspaceId ?? "");
 
@@ -206,6 +209,34 @@ export async function POST(request: NextRequest) {
   }
 
   const preset = plan.tier === "fast" ? FAST_PRESET : BALANCED_PRESET;
+
+  // ── 7b. Daily chat allowance ────────────────────────────────────────────
+  //
+  // Chat costs no AI credits (see the note on AI_CREDIT_COSTS), but it is still a
+  // model call sitting behind a free signup, so it cannot be unbounded. The burst
+  // limiter in step 2 stops hammering; this stops a slow drip running all day.
+  //
+  // Deliberately AFTER the direct-answer branch above: that path answers from the
+  // WCAG database with no model call, so it costs nothing and shouldn't count
+  // against the user's day.
+  const dailyLimit = PLAN_LIMITS[userPlan].chatMessagesPerDay;
+  if (dailyLimit !== -1 && !isMasterAdmin) {
+    const daily = await rateLimit(userId, { limit: dailyLimit, windowSec: 86_400 }, "ai-chat-daily");
+    if (!daily.success) {
+      incrementCounter("ai.chat.daily_limit_reached", { plan: userPlan });
+      return new Response(
+        JSON.stringify({
+          error: "chat_daily_limit",
+          message: `You have reached your daily limit of ${dailyLimit} chat messages.`,
+          resetAt: daily.resetAt,
+        }),
+        {
+          status: 402,
+          headers: { "Content-Type": "application/json", ...rateLimitHeaders(daily) },
+        },
+      );
+    }
+  }
 
   // ── 8+9. Retrieval + profile + memories (ALL in parallel for speed) ─────
   // These three are independent — running them concurrently saves 200-500ms
