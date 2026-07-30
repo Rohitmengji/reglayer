@@ -20,6 +20,7 @@ import {
   Brain, Shield, Zap,
   ChevronDown, ChevronUp, Cpu, Search, CheckCircle2, AlertTriangle,
 } from "lucide-react";
+import { InfoHint } from "@/components/ui/info-hint";
 
 interface ExplainabilityPanelProps {
   lineage: MessageLineage;
@@ -174,13 +175,25 @@ export function ExplainabilityPanel({ lineage }: ExplainabilityPanelProps) {
                 </p>
               )}
               {lineage.guardrailsPassed.length > 0 && (
-                <p className="flex items-start gap-1 text-[10px] text-muted-foreground">
-                  <CheckCircle2 className="mt-px h-2.5 w-2.5 shrink-0 text-emerald-500" aria-hidden="true" />
+                <p className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                  <CheckCircle2 className="h-2.5 w-2.5 shrink-0 text-emerald-500" aria-hidden="true" />
                   <span>
                     {lineage.guardrailsPassed.length} check
                     {lineage.guardrailsPassed.length === 1 ? "" : "s"} passed
-                    <span className="opacity-70"> — {lineage.guardrailsPassed.join(", ")}</span>
                   </span>
+                  {/*
+                    The names sit behind a hint rather than inline. Spelled out they run
+                    to ~100 characters and wrap onto a second line purely to report that
+                    nothing happened. InfoHint is used instead of a `title` attribute
+                    because it opens on keyboard focus as well as hover and is wired up
+                    with aria-describedby; a native title reaches neither keyboard nor
+                    touch users.
+                  */}
+                  <InfoHint
+                    side="top"
+                    label="Which checks passed"
+                    content={lineage.guardrailsPassed.join(", ")}
+                  />
                 </p>
               )}
             </div>
