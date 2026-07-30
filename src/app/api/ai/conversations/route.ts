@@ -24,6 +24,7 @@ import {
 } from "@/lib/ai/learning/rating-transitions";
 import { bumpConversationVersion } from "@/lib/ai/chat/generation-lease";
 import { stripUnstorableChars } from "@/lib/ai/chat/db-safe-text";
+import { diffMessages } from "@/lib/ai/chat/message-diff";
 import { z } from "zod";
 
 /**
@@ -186,39 +187,57 @@ async function saveConversation(request: NextRequest) {
       }
       newVersion = guard.version;
 
-      // Capture prior ratings BEFORE the delete/recreate so we can tell a genuine
-      // rating change from an unrelated re-sync. The client debounces and re-sends
-      // the whole conversation on every edit; without this diff we would create a
-      // duplicate FeedbackEntry on every keystroke-triggered save.
+      // Capture prior ratings BEFORE writing so we can tell a genuine rating change
+      // from an unrelated re-sync. The client debounces and re-sends the whole
+      // conversation on every edit; without this diff we would create a duplicate
+      // FeedbackEntry on every keystroke-triggered save.
+      //
+      // Content is fetched too, so the append-only diff below can tell which rows
+      // actually changed. One read either way — this replaces the old id+feedback read.
       const previous = await tx.chatMessage.findMany({
         where: { conversationId: id },
-        select: { id: true, feedback: true },
+        select: { id: true, role: true, content: true, feedback: true },
       });
       ratingTransitions = collectRatingTransitions(messages, new Map(previous.map((m) => [m.id, m.feedback])));
 
-      await tx.chatMessage.deleteMany({ where: { conversationId: id } });
+      // Append-only: write what CHANGED, not the whole transcript.
+      //
+      // This was delete-all + recreate-all of up to 200 rows on every save, so the
+      // cost scaled with conversation length rather than with the change. A normal
+      // turn appends two messages; it now does two inserts and nothing else. That is
+      // what kept the transaction inside its budget under load, not just a bigger
+      // budget. The client is still the source of truth — the diff only decides how to
+      // reach its state.
+      const diff = diffMessages(
+        previous,
+        messages.map((m) => ({ id: m.id, role: m.role, content: m.content, feedback: m.feedback })),
+      );
 
-      // ONE round trip, not one per message.
-      //
-      // This was a `for` loop awaiting `create()` per message, which is N sequential
-      // round trips inside an interactive transaction with a 5s budget. Against a
-      // remote Postgres at ~60ms latency that is ~85 messages before it expires — and
-      // it did, in production, with P2028 at 5.6-6.1s.
-      //
-      // The loop was survivable only while saves were rare. Two changes removed that
-      // cover: the request schema now accepts 200 messages instead of 50, and the chat
-      // runtime persists after every completed turn rather than on a 3s debounce that
-      // was skipped mid-stream. Higher frequency and longer conversations turned a
-      // latent quadratic-ish cost into a hard failure.
-      await tx.chatMessage.createMany({
-        data: messages.map((m) => ({
-          id: m.id,
-          role: m.role,
-          content: m.content,
-          feedback: m.feedback,
-          conversationId: id,
-        })),
-      });
+      if (diff.toDeleteIds.length > 0) {
+        await tx.chatMessage.deleteMany({
+          where: { conversationId: id, id: { in: diff.toDeleteIds } },
+        });
+      }
+      if (diff.toInsert.length > 0) {
+        await tx.chatMessage.createMany({
+          data: diff.toInsert.map((m) => ({
+            id: m.id,
+            role: m.role as "user" | "assistant",
+            content: m.content,
+            feedback: m.feedback,
+            conversationId: id,
+          })),
+        });
+      }
+      // Prisma has no bulk update with per-row values; these are the rows that
+      // genuinely changed (edited text or flipped feedback), usually zero or one.
+      for (const m of diff.toUpdate) {
+        await tx.chatMessage.update({
+          where: { id: m.id },
+          data: { content: m.content, feedback: m.feedback, role: m.role as "user" | "assistant" },
+        });
+      }
+
       await tx.chatConversation.update({
         where: { id },
         data: { title: effectiveTitle },
