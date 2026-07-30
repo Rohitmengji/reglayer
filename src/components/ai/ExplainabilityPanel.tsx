@@ -17,7 +17,7 @@
 import { useState } from "react";
 import type { MessageLineage } from "@/stores/chatStore";
 import {
-  Brain, Database, Shield, Zap, Clock, DollarSign,
+  Brain, Shield, Zap,
   ChevronDown, ChevronUp, Cpu, Search, CheckCircle2, AlertTriangle,
 } from "lucide-react";
 
@@ -88,120 +88,115 @@ export function ExplainabilityPanel({ lineage }: ExplainabilityPanelProps) {
       </button>
 
       {expanded && (
-        <div className="mt-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 p-3 space-y-3">
-          {/* Model & Provider */}
-          <div className="flex items-center gap-4 text-xs">
-            <div className="flex items-center gap-1.5">
-              <Cpu className="h-3 w-3 text-blue-500" />
-              <span className="font-medium">{lineage.model}</span>
-            </div>
+        <div className="mt-1.5 space-y-2 rounded-lg border border-neutral-200 bg-neutral-50 px-2.5 py-2 text-[11px] dark:border-neutral-700 dark:bg-neutral-800/50">
+          {/*
+            DENSE BY DESIGN. This panel sits under every answer in a 420px drawer, so
+            its height is borrowed from the thing the user actually came for. The old
+            layout spent ~90px on a four-tile grid that stacked icon/value/label three
+            deep to show four numbers, then repeated the model and latency that the
+            collapsed trigger above already states. Detail belongs here; repetition
+            does not.
+          */}
+          <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+            <Cpu className="h-3 w-3 shrink-0 text-blue-500" aria-hidden="true" />
+            <span className="font-medium">{lineage.model}</span>
             <span className="text-muted-foreground">via {lineage.provider}</span>
           </div>
 
-          {/* Metrics Row */}
-          <div className="grid grid-cols-4 gap-2">
-            <MetricBadge
-              icon={Clock}
-              label="Latency"
-              value={`${lineage.latencyMs}ms`}
-              color="text-amber-500"
-            />
-            <MetricBadge
-              icon={Zap}
-              label="Tokens"
-              value={lineage.totalTokens.toLocaleString()}
-              color="text-blue-500"
-            />
-            <MetricBadge
-              icon={DollarSign}
-              label="Cost"
-              value={`$${lineage.costUsd.toFixed(4)}`}
-              color="text-emerald-500"
-            />
-            <MetricBadge
-              icon={Database}
-              label="Sources"
-              value={String(lineage.documentsRetrieved)}
-              color="text-violet-500"
-            />
-          </div>
+          <p className="text-muted-foreground">
+            {lineage.latencyMs.toLocaleString()} ms
+            {" · "}
+            {lineage.totalTokens.toLocaleString()} tokens
+            {/*
+              Cost is shown only when we actually have one. The chat route records
+              costUsd: 0 at stream start and never revises it, so printing "$0.0000"
+              here asserted that a paid model call was free. An omitted figure is
+              honest about not knowing; a zero is not.
+            */}
+            {lineage.costUsd > 0 && ` · ${formatCost(lineage.costUsd)}`}
+            {" · "}
+            {lineage.documentsRetrieved} source{lineage.documentsRetrieved === 1 ? "" : "s"}
+          </p>
 
           {/* Retrieval Sources */}
           {lineage.retrievalSources.length > 0 && (
-            <div>
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1 flex items-center gap-1">
-                <Search className="h-2.5 w-2.5" /> Retrieval Pipeline
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {lineage.retrievalSources.map((src) => (
-                  <span
-                    key={src}
-                    className="px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-[10px]"
-                  >
-                    {src.replace("retrieve-", "")}
-                  </span>
-                ))}
-              </div>
-            </div>
+            <p className="flex flex-wrap items-center gap-1 text-[10px]">
+              <Search className="h-2.5 w-2.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <span className="sr-only">Retrieval pipeline:</span>
+              {lineage.retrievalSources.map((src) => (
+                <span
+                  key={src}
+                  className="rounded-full bg-blue-100 px-1.5 py-0.5 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+                >
+                  {src.replace("retrieve-", "")}
+                </span>
+              ))}
+            </p>
           )}
 
           {/* Tools Called */}
           {lineage.toolsCalled.length > 0 && (
-            <div>
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1 flex items-center gap-1">
-                <Zap className="h-2.5 w-2.5" /> Tools Used
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {lineage.toolsCalled.map((tool) => (
-                  <span
-                    key={tool}
-                    className="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 text-[10px]"
-                  >
-                    {tool}
-                  </span>
-                ))}
-              </div>
-            </div>
+            <p className="flex flex-wrap items-center gap-1 text-[10px]">
+              <Zap className="h-2.5 w-2.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <span className="sr-only">Tools used:</span>
+              {lineage.toolsCalled.map((tool) => (
+                <span
+                  key={tool}
+                  className="rounded-full bg-amber-100 px-1.5 py-0.5 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                >
+                  {tool}
+                </span>
+              ))}
+            </p>
           )}
 
-          {/* Guardrails */}
-          {(lineage.guardrailsPassed.length > 0 || (lineage.guardrailsWarned?.length ?? 0) > 0) && (
-            <div>
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1 flex items-center gap-1">
-                <Shield className="h-2.5 w-2.5" /> Guardrails
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {(lineage.guardrailsWarned ?? []).map((guard) => (
-                  <span
-                    key={guard}
-                    className="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 text-[10px] flex items-center gap-0.5"
-                  >
-                    <AlertTriangle className="h-2.5 w-2.5" /> {guard}
+          {/*
+            Guardrails: failures are pills, passes are a sentence.
+            Every check passing is the normal case, and rendering it as five green
+            badges wrapped over three rows gave the loudest treatment in the panel to
+            the least informative state — while burying the one row that means
+            something. The names are still listed, just not shouted.
+          */}
+          {(hasWarnings || lineage.guardrailsPassed.length > 0) && (
+            <div className="space-y-1">
+              {hasWarnings && (
+                <p className="flex flex-wrap items-center gap-1 text-[10px]">
+                  <Shield className="h-2.5 w-2.5 shrink-0 text-amber-600" aria-hidden="true" />
+                  <span className="sr-only">Checks that flagged this answer:</span>
+                  {warnings.map((guard) => (
+                    <span
+                      key={guard}
+                      className="flex items-center gap-0.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                    >
+                      <AlertTriangle className="h-2.5 w-2.5" aria-hidden="true" /> {guard}
+                    </span>
+                  ))}
+                </p>
+              )}
+              {lineage.guardrailsPassed.length > 0 && (
+                <p className="flex items-start gap-1 text-[10px] text-muted-foreground">
+                  <CheckCircle2 className="mt-px h-2.5 w-2.5 shrink-0 text-emerald-500" aria-hidden="true" />
+                  <span>
+                    {lineage.guardrailsPassed.length} check
+                    {lineage.guardrailsPassed.length === 1 ? "" : "s"} passed
+                    <span className="opacity-70"> — {lineage.guardrailsPassed.join(", ")}</span>
                   </span>
-                ))}
-                {lineage.guardrailsPassed.map((guard) => (
-                  <span
-                    key={guard}
-                    className="px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-[10px] flex items-center gap-0.5"
-                  >
-                    <CheckCircle2 className="h-2.5 w-2.5" /> {guard}
-                  </span>
-                ))}
-              </div>
+                </p>
+              )}
             </div>
           )}
 
           {/* Cache Status */}
           {lineage.cached && (
-            <div className="flex items-center gap-1.5 text-[11px] text-green-600 dark:text-green-400">
-              <Zap className="h-3 w-3" />
+            <p className="flex items-center gap-1.5 text-[11px] text-green-600 dark:text-green-400">
+              <Zap className="h-3 w-3 shrink-0" aria-hidden="true" />
               <span>Response served from cache</span>
-            </div>
+            </p>
           )}
 
-          {/* Trace ID */}
-          <p className="text-[10px] text-muted-foreground font-mono">
-            Trace: {lineage.traceId}
+          {/* Trace ID — a support artefact, so it gets the quietest treatment. */}
+          <p className="truncate font-mono text-[10px] text-muted-foreground/70" title={lineage.traceId}>
+            {lineage.traceId}
           </p>
         </div>
       )}
@@ -209,17 +204,10 @@ export function ExplainabilityPanel({ lineage }: ExplainabilityPanelProps) {
   );
 }
 
-function MetricBadge({ icon: Icon, label, value, color }: {
-  icon: typeof Clock;
-  label: string;
-  value: string;
-  color: string;
-}) {
-  return (
-    <div className="flex flex-col items-center p-1.5 rounded-md bg-white dark:bg-neutral-900">
-      <Icon className={`h-3 w-3 ${color} mb-0.5`} />
-      <span className="text-[11px] font-medium">{value}</span>
-      <span className="text-[9px] text-muted-foreground">{label}</span>
-    </div>
-  );
+/**
+ * A single chat turn costs a fraction of a cent, so `toFixed(4)` rendered "$0.0000"
+ * on essentially every answer — a number that looks like a bug rather than a cost.
+ */
+function formatCost(usd: number): string {
+  return usd < 0.0001 ? "<$0.0001" : `$${usd.toFixed(4)}`;
 }
