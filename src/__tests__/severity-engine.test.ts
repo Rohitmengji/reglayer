@@ -125,7 +125,7 @@ describe("Severity Engine — generateScanSummary", () => {
     expect(summary.score).toBe(100);
   });
 
-  it("counts nodes per severity level", () => {
+  it("counts rules per severity level, not affected nodes", () => {
     const violations = [
       {
         id: "rule-1",
@@ -152,11 +152,16 @@ describe("Severity Engine — generateScanSummary", () => {
 
     const summary = generateScanSummary(violations as any);
 
+    // One rule per severity, regardless of how many nodes each rule affects — so the
+    // buckets sum to totalViolations and match the Violation table drill-down.
     expect(summary.totalViolations).toBe(2);
-    expect(summary.critical).toBe(2); // 2 nodes
-    expect(summary.moderate).toBe(1); // 1 node
+    expect(summary.critical).toBe(1); // 1 critical rule (2 nodes, not counted)
+    expect(summary.moderate).toBe(1); // 1 moderate rule
     expect(summary.serious).toBe(0);
     expect(summary.minor).toBe(0);
+    expect(summary.critical + summary.serious + summary.moderate + summary.minor).toBe(
+      summary.totalViolations,
+    );
   });
 });
 

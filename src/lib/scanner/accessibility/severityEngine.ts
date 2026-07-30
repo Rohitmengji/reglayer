@@ -62,6 +62,15 @@ export function calculateComplianceScore(violations: AxeViolation[]): number {
 
 /**
  * Generate a structured summary from raw violations.
+ *
+ * Severity buckets count violation RULES (one axe rule = one row in the Violation
+ * table), not affected DOM nodes. This is deliberate: `totalViolations` is a rule
+ * count, the drill-down list and chat (see violation-summary.ts) are rule counts, and
+ * a Scan's stored `critical/serious/moderate/minor` are read alongside `totalViolations`
+ * on the dashboard and reports. Counting nodes here made the buckets ~3.3x larger than
+ * the total and unable to sum to it. Node/element counts, where needed, come from an
+ * individual violation's `affectedElements`. The compliance score is unaffected — it is
+ * computed separately in calculateComplianceScore, which still weighs node counts.
  */
 export function generateScanSummary(violations: AxeViolation[]): ScanSummary {
   const counts = { critical: 0, serious: 0, moderate: 0, minor: 0 };
@@ -69,7 +78,7 @@ export function generateScanSummary(violations: AxeViolation[]): ScanSummary {
   for (const violation of violations) {
     const impact = violation.impact as ViolationImpact;
     if (impact in counts) {
-      counts[impact] += violation.nodes.length;
+      counts[impact] += 1;
     }
   }
 
