@@ -134,6 +134,26 @@ export interface CompletionRequest {
    */
   maxRetries?: number;
 
+  /**
+   * Caller's abort signal — usually the incoming request's `request.signal`.
+   *
+   * Threaded into the provider call so that when the user cancels or the browser
+   * disconnects, generation actually STOPS. Without it a "Stop" click only hides the
+   * client's reader; the model keeps producing tokens to completion and we keep paying
+   * for an answer nobody will read.
+   */
+  abortSignal?: AbortSignal;
+
+  /**
+   * Overall wall-clock budget for this call, in milliseconds.
+   *
+   * Defaults to the gateway's streaming ceiling. Serverless callers MUST pass a value
+   * below their function's `maxDuration`, or the platform kills the request before this
+   * fires and the timeout is decorative — an abort we control produces a diagnosable
+   * error, a platform kill produces an opaque one.
+   */
+  timeoutMs?: number;
+
   /** Caller metadata — used for cost tracking, audit logging, and rate limiting. */
   metadata?: RequestMetadata;
 }

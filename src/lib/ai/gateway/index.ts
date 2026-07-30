@@ -75,6 +75,24 @@ const REQUEST_TIMEOUT_MS = 30_000;
 const STREAM_TIMEOUT_MS = 120_000;
 
 /**
+ * Build the abort signal for a provider call.
+ *
+ * Two independent reasons to abort a generation, combined into one signal:
+ *  - our own wall-clock budget (`AbortSignal.timeout`), so a hung provider cannot hold
+ *    the function open until the platform kills it;
+ *  - the caller's signal (the incoming request), so a user pressing Stop or a browser
+ *    disconnecting stops the model — and stops the bill — instead of streaming into the
+ *    void.
+ *
+ * `AbortSignal.any` fires as soon as either does. When the caller passes no signal this
+ * is just the timeout, exactly as before.
+ */
+function buildAbortSignal(timeoutMs: number, caller?: AbortSignal): AbortSignal {
+  const timeout = AbortSignal.timeout(timeoutMs);
+  return caller ? AbortSignal.any([timeout, caller]) : timeout;
+}
+
+/**
  * Retries are handled by the AI SDK (exponential backoff, retryable errors only).
  * Made explicit so the policy is visible and tunable rather than an undocumented default.
  */
@@ -294,8 +312,9 @@ export async function complete(
         maxOutputTokens: request.maxTokens ?? modelConfig.maxOutputTokens,
         // Without an explicit timeout a degraded provider holds the serverless function
         // open for its whole duration. Under load that exhausts concurrency and takes
-        // down the entire app, not just AI.
-        abortSignal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        // down the entire app, not just AI. The caller's signal is folded in too, so a
+        // cancelled request stops here rather than running to completion unread.
+        abortSignal: buildAbortSignal(request.timeoutMs ?? REQUEST_TIMEOUT_MS, request.abortSignal),
         maxRetries: request.maxRetries ?? DEFAULT_MAX_RETRIES,
       });
 
@@ -472,7 +491,7 @@ export async function stream(request: CompletionRequest) {
       messages: toCoreMessages(request.messages),
       temperature: request.temperature ?? 0.5,
       maxOutputTokens: request.maxTokens ?? modelConfig.maxOutputTokens,
-      abortSignal: AbortSignal.timeout(STREAM_TIMEOUT_MS),
+      abortSignal: buildAbortSignal(request.timeoutMs ?? STREAM_TIMEOUT_MS, request.abortSignal),
       maxRetries: request.maxRetries ?? DEFAULT_MAX_RETRIES,
       ...(request.tools
         ? {
