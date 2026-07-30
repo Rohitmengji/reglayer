@@ -240,6 +240,29 @@ describe("conversation persistence", () => {
     expect(sentIds[1]).toBe("conv-1");        // second updates that conversation
   });
 
+  // A stale id — a conversation removed on another device, or one left in localStorage
+  // after re-logging as a different user — makes every update 404. Treated as a plain
+  // failure it pauses the queue and loses the transcript, so the write must self-heal
+  // by recreating the conversation for the current user.
+  it("recreates the conversation when a stale id makes the update 404", async () => {
+    resetPersistenceFingerprint();
+    const sentIds: (string | undefined)[] = [];
+    const fetchImpl = vi.fn().mockImplementation(async (_url: string, init?: RequestInit) => {
+      const id = JSON.parse(String(init?.body)).id;
+      sentIds.push(id);
+      // The stale id is unknown to the server; the id-less recreate succeeds.
+      return id
+        ? new Response(JSON.stringify({ error: "Not found" }), { status: 404 })
+        : new Response(JSON.stringify({ id: "conv-fresh" }), { status: 201 });
+    });
+    const messages = [{ id: "m1", role: "user" as const, content: "hello" }];
+
+    const result = await persistConversation({ conversationId: "conv-gone", messages, fetchImpl });
+
+    expect(sentIds).toEqual(["conv-gone", undefined]); // update 404s, then recreates
+    expect(result).toMatchObject({ ok: true, skipped: false, conversationId: "conv-fresh" });
+  });
+
   it("marks transport failures retryable and auth failures not", async () => {
     const messages = [{ id: "m1", role: "user" as const, content: "hi" }];
 

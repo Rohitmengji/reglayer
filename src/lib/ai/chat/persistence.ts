@@ -141,6 +141,17 @@ async function sendConversation(args: {
     return { ok: false, retryable: false, stale: true };
   }
 
+  if (response.status === 404 && conversationId) {
+    // The id we sent no longer exists for this user — a conversation removed on
+    // another device, or an id left in localStorage after re-logging as someone else.
+    // The update can never succeed, and treating it as a plain non-retryable failure
+    // pauses the queue and loses the transcript. Recover by forgetting the stale id
+    // and recreating the conversation for the current user. This recurses at most once:
+    // the retry carries no id, and a create cannot 404.
+    knownConversationId = null;
+    return sendConversation({ ...args, conversationId: null });
+  }
+
   if (!response.ok) {
     return { ok: false, retryable: isRetryableStatus(response.status) };
   }
