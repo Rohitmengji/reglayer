@@ -10,8 +10,13 @@
  *       is a real button with an aria-label, and the tooltip text is linked via
  *       aria-describedby so screen readers announce it.
  * HOW: CSS-driven visibility (group-hover + group-focus-within) — no JS state,
- *       no portal — and it respects prefers-reduced-motion via the global rules.
- */
+ *       no portal — and it respects prefers-reduced-motion via the global rules. *
+ *      The group is NAMED (`group/info-hint`). Tailwind's bare `group-*` variants
+ *      match ANY ancestor carrying `.group`, not the nearest one, so an unnamed
+ *      group here silently binds to whatever `.group` happens to wrap the hint —
+ *      e.g. the chat message row in ExplainabilityPanel, which made the tooltip
+ *      appear whenever the pointer was anywhere over the message, or when any
+ *      button inside it took focus. Naming the group scopes it to this trigger. */
 
 import { useId } from "react";
 import { Info } from "lucide-react";
@@ -30,7 +35,7 @@ interface InfoHintProps {
 export function InfoHint({ content, label, side = "top", className }: InfoHintProps) {
   const id = useId();
   return (
-    <span className={cn("group relative inline-flex align-middle", className)}>
+    <span className={cn("group/info-hint relative inline-flex align-middle", className)}>
       <button
         type="button"
         aria-label={label}
@@ -44,7 +49,7 @@ export function InfoHint({ content, label, side = "top", className }: InfoHintPr
         role="tooltip"
         className={cn(
           "pointer-events-none absolute left-1/2 z-50 w-max max-w-[min(16rem,calc(100vw-2rem))] -translate-x-1/2 rounded-lg bg-neutral-900 dark:bg-neutral-800 px-2.5 py-1.5 text-left text-xs font-normal leading-relaxed text-white shadow-lg ring-1 ring-black/5",
-          "opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100",
+          "opacity-0 transition-opacity duration-150 group-hover/info-hint:opacity-100 group-focus-within/info-hint:opacity-100",
           side === "top" ? "bottom-full mb-1.5" : "top-full mt-1.5"
         )}
       >
