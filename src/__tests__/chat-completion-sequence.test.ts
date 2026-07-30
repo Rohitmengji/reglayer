@@ -186,6 +186,60 @@ describe("conversation persistence", () => {
     expect(retried).toMatchObject({ ok: true, skipped: false });
   });
 
+  // Found by stress-testing the live UI: mashing Enter produced `POST 201` immediately
+  // followed by `POST 500`. The fingerprint guard is claimed only after the request
+  // resolves, so two saves issued in the same tick both passed it, and with no id yet
+  // both took the server's create branch. Client-generated message ids are unique, so
+  // the second create died on a constraint and the user was told the answer could not
+  // be saved.
+  it("does not issue overlapping writes when two saves start in the same tick", async () => {
+    let inFlight = 0;
+    let maxConcurrent = 0;
+    const fetchImpl = vi.fn().mockImplementation(async () => {
+      inFlight += 1;
+      maxConcurrent = Math.max(maxConcurrent, inFlight);
+      await new Promise((r) => setTimeout(r, 10));
+      inFlight -= 1;
+      return new Response(JSON.stringify({ id: "conv-1" }), { status: 201 });
+    });
+    const messages = [{ id: "m1", role: "user" as const, content: "hello" }];
+
+    await Promise.all([
+      persistConversation({ conversationId: null, messages, fetchImpl }),
+      persistConversation({ conversationId: null, messages, fetchImpl }),
+    ]);
+
+    expect(maxConcurrent).toBe(1);
+  });
+
+  // The duplicate-create half of the same bug: even with different content, a save
+  // queued behind a create still carries `conversationId: null`. It must adopt the id
+  // the create returned rather than asking the server for a second conversation.
+  it("adopts the id from an in-flight create instead of creating twice", async () => {
+    const sentIds: (string | undefined)[] = [];
+    const fetchImpl = vi.fn().mockImplementation(async (_url: string, init?: RequestInit) => {
+      sentIds.push(JSON.parse(String(init?.body)).id);
+      await new Promise((r) => setTimeout(r, 10));
+      return new Response(JSON.stringify({ id: "conv-1" }), { status: 201 });
+    });
+
+    await Promise.all([
+      persistConversation({
+        conversationId: null,
+        messages: [{ id: "m1", role: "user" as const, content: "one" }],
+        fetchImpl,
+      }),
+      persistConversation({
+        conversationId: null,
+        messages: [{ id: "m1", role: "user" as const, content: "one" }, { id: "m2", role: "assistant" as const, content: "two" }],
+        fetchImpl,
+      }),
+    ]);
+
+    expect(sentIds[0]).toBeUndefined();      // first genuinely creates
+    expect(sentIds[1]).toBe("conv-1");        // second updates that conversation
+  });
+
   it("marks transport failures retryable and auth failures not", async () => {
     const messages = [{ id: "m1", role: "user" as const, content: "hi" }];
 

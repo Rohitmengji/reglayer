@@ -40,9 +40,31 @@ export function conversationFingerprint(messages: readonly PersistableMessage[])
 
 let lastPersistedFingerprint = "";
 
+/**
+ * Conversation id learned from a completed create.
+ *
+ * The caller passes the id it knew when it decided to save. A save queued behind a
+ * create still carries `null`, and without this would take the create branch a second
+ * time — producing either a duplicate conversation or, because message ids are client
+ * generated and unique, a P2002 that surfaces to the user as a failed save.
+ */
+let knownConversationId: string | null = null;
+
+/**
+ * Serialises writes.
+ *
+ * The fingerprint guard alone is not enough: it is claimed AFTER the request resolves,
+ * so two saves issued in the same tick both pass it and both hit the server. Observed
+ * in practice as `POST 201` immediately followed by `POST 500`. Chaining means the
+ * second save sees the first one's result — including the id it created.
+ */
+let writeChain: Promise<unknown> = Promise.resolve();
+
 /** Forget what was last written — required whenever the active conversation changes. */
 export function resetPersistenceFingerprint(): void {
   lastPersistedFingerprint = "";
+  // Must clear too, or the next conversation would be written over the previous one.
+  knownConversationId = null;
 }
 
 /**
@@ -62,12 +84,30 @@ export async function persistConversation(args: {
   version?: number | null;
   fetchImpl?: typeof fetch;
 }): Promise<PersistOutcome> {
-  const { conversationId, messages, version = null, fetchImpl = fetch } = args;
+  // Queue behind any write already in flight, whether it succeeded or not — a failed
+  // write must not let the next one overlap either.
+  const run = writeChain.then(() => sendConversation(args), () => sendConversation(args));
+  writeChain = run.then(() => undefined, () => undefined);
+  return run;
+}
+
+async function sendConversation(args: {
+  conversationId: string | null;
+  messages: readonly PersistableMessage[];
+  version?: number | null;
+  fetchImpl?: typeof fetch;
+}): Promise<PersistOutcome> {
+  const { messages, version = null, fetchImpl = fetch } = args;
+  // Resolved here, not at call time, so a save queued before the create finished still
+  // updates that conversation instead of creating another.
+  const conversationId = args.conversationId ?? knownConversationId;
 
   if (messages.length === 0) {
     return { ok: true, conversationId, version, skipped: true };
   }
 
+  // Re-checked after acquiring the slot: an identical save that was superseded while
+  // queued is now a no-op rather than a redundant round trip.
   const fingerprint = conversationFingerprint(messages);
   if (fingerprint === lastPersistedFingerprint) {
     return { ok: true, conversationId, version, skipped: true };
@@ -118,6 +158,10 @@ export async function persistConversation(args: {
   } catch {
     // A malformed body does not undo a successful write.
   }
+
+  // Publish the id so any save already queued behind this one updates rather than
+  // creates.
+  if (newId) knownConversationId = newId;
 
   return { ok: true, conversationId: newId, version: newVersion, skipped: false };
 }
