@@ -86,8 +86,19 @@ describe("describeRequestFailure", () => {
     expect(message).not.toBe(describeRequestFailure(429, headers(), NOW));
   });
 
+  // 423 Locked: another tab is generating into this conversation. The message must
+  // point at that cause (so the user knows retrying will work), and must be distinct
+  // from the rate-limit and daily-limit copy, which describe different situations.
+  it("tells a user that another tab is answering, not that they hit a limit", () => {
+    const message = describeRequestFailure(423, headers(), NOW);
+    expect(message).toMatch(/another tab/i);
+    expect(message).toMatch(/retry/i);
+    expect(message).not.toBe(describeRequestFailure(429, headers(), NOW));
+    expect(message).not.toBe(describeRequestFailure(402, headers(), NOW));
+  });
+
   it("always produces actionable, non-empty text for any status", () => {
-    for (const status of [400, 401, 402, 403, 404, 422, 429, 500, 502, 503]) {
+    for (const status of [400, 401, 402, 403, 404, 422, 423, 429, 500, 502, 503]) {
       const message = describeRequestFailure(status, headers(), NOW);
       expect(message.length).toBeGreaterThan(0);
       // A bare status code is not an explanation.

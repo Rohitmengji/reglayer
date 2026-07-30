@@ -64,6 +64,19 @@ const STREAM_IDLE_TIMEOUT_MS = 45_000;
  */
 const telemetry = new ChatTelemetry(browserTransport);
 
+/**
+ * A per-tab identity, stable for the life of this page.
+ *
+ * The server generation lease is keyed by conversation and owned by a tab: it stops two
+ * tabs open on the SAME conversation from generating into it at once (the client-side
+ * runnerToken only guards within one tab). A module-level id is exactly per-tab — a
+ * second tab loads its own module instance and gets its own id — which is all the lease
+ * needs to tell "me again" from "another tab".
+ */
+const TAB_ID = typeof crypto !== "undefined" && crypto.randomUUID
+  ? crypto.randomUUID()
+  : `tab_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+
 if (typeof window !== "undefined") {
   // The final events of an ABANDONED session are exactly the ones that define the
   // abandonment metric, so they must survive the page going away.
@@ -162,7 +175,14 @@ export function useChat() {
         const response = await fetch("/api/ai/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages: apiMessages }),
+          // conversationId + tabId let the server hold a per-conversation generation
+          // lease. Both are optional server-side: a brand-new conversation has no id
+          // yet, and there is no collision to prevent until it has been saved once.
+          body: JSON.stringify({
+            messages: apiMessages,
+            conversationId: useChatStore.getState().conversationId ?? undefined,
+            tabId: TAB_ID,
+          }),
           signal: controller.signal,
         });
 
