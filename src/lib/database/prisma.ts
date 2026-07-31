@@ -21,8 +21,19 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
+const IS_SERVERLESS = !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME;
+
 function createPrismaClient() {
-  const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
+  // Bound the per-instance pool. Each serverless instance opens its own pool, so
+  // the pg default (max 10) multiplies across concurrent instances and exhausts
+  // Postgres. A small cap + short idle timeout keeps connection use conservative;
+  // for real scale the DATABASE_URL must point at a pooled endpoint (Neon -pooler).
+  const adapter = new PrismaPg({
+    connectionString: process.env.DATABASE_URL!,
+    max: IS_SERVERLESS ? 5 : 10,
+    idleTimeoutMillis: 10_000,
+    connectionTimeoutMillis: 10_000,
+  });
   return new PrismaClient({ adapter });
 }
 

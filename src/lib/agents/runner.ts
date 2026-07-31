@@ -25,7 +25,7 @@ import { type Page, type Browser } from "playwright-core";
 import { launchBrowser, isServerless } from "@/lib/scanner/browser/launch";
 import { prisma } from "@/lib/database/prisma";
 import { logger } from "@/lib/telemetry/logger";
-import OpenAI from "openai";
+import { complete } from "@/lib/ai/gateway";
 import {
   PERSONA_CONSTRAINTS,
   enforceConstraints,
@@ -360,7 +360,6 @@ async function askAgent(
   cognitive: CognitiveState
 ): Promise<LLMResponse> {
   const constraints = PERSONA_CONSTRAINTS[config.persona];
-  const openai = new OpenAI();
 
   const stepHistory = previousSteps.slice(-5).map(
     (s) => `Step ${s.stepIndex}: ${s.action} on "${s.target}" → ${s.outcome}${s.annotation ? ` (${s.annotation})` : ""}`
@@ -398,15 +397,16 @@ Respond in JSON:
 If stuck, explain what barrier prevents you from proceeding. If goalComplete, explain how you verified success.`;
 
   try {
-    const response = await openai.chat.completions.create({
+    const response = await complete({
       model: "gpt-4o-mini",
       messages: [{ role: "user", content: prompt }],
-      response_format: { type: "json_object" },
-      max_tokens: 500,
+      jsonMode: true,
+      maxTokens: 500,
       temperature: 0.2,
+      metadata: { feature: "agents.askAgent" },
     });
 
-    const content = response.choices[0]?.message?.content;
+    const content = response?.content;
     if (!content) return { action: "wait", target: null, reasoning: "No LLM response", goalComplete: false, stuck: true };
 
     const parsed = JSON.parse(content);
