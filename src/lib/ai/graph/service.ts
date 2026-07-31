@@ -54,12 +54,18 @@ import { Prisma } from "@/generated/prisma/client";
 
 export type EntityType =
   | "site" | "violation" | "wcag" | "regulation"
-  | "team_member" | "policy" | "document" | "scan";
+  | "team_member" | "policy" | "document" | "scan"
+  // Component/rule identity nodes used by the knowledge-graph builder
+  // (src/lib/ai/graph/knowledge-graph.ts) to link recurring UI components to the
+  // rules they exhibit.
+  | "component" | "rule";
 
 export type RelationType =
   | "owns" | "found" | "violates" | "required_by"
   | "manages" | "fixed" | "governs" | "references"
-  | "part_of" | "member_of" | "related_to";
+  | "part_of" | "member_of" | "related_to"
+  // component ──exhibits──→ rule, from the knowledge-graph builder.
+  | "exhibits";
 
 export interface GraphEntity {
   id: string;
