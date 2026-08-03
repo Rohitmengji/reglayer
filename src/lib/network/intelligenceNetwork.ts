@@ -82,7 +82,7 @@ export async function setNetworkConsent(
 }
 
 /** The set of workspace ids currently contributing to (and eligible to read) the network. */
-async function consentingWorkspaceIds(): Promise<string[]> {
+export async function consentingWorkspaceIds(): Promise<string[]> {
   const rows = await prisma.workspaceFeature.findMany({
     where: {
       feature: NETWORK_FEATURE,

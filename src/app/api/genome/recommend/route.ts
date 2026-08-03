@@ -23,6 +23,7 @@ import {
   type FixOutcome,
   type GroupBy,
 } from "@/lib/genome/fixGenome";
+import { consentingWorkspaceIds } from "@/lib/network/intelligenceNetwork";
 
 const MAX_ROWS = 5000;
 
@@ -51,9 +52,14 @@ export async function GET(request: NextRequest): Promise<Response> {
       }
     }
 
+    // Global aggregation only includes workspaces that opted into the Intelligence
+    // Network. Sharing a non-consenting tenant's anonymized outcomes would be a
+    // privacy leak; an empty consenting set yields an empty (not global) result.
     const where = {
       ...(ruleId ? { ruleId } : {}),
-      ...(scope === "workspace" ? { workspaceId: { in: workspaceIds } } : {}),
+      ...(scope === "workspace"
+        ? { workspaceId: { in: workspaceIds } }
+        : { workspaceId: { in: await consentingWorkspaceIds() } }),
     };
 
     let rows: Array<{
