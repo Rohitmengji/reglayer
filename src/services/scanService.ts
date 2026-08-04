@@ -36,7 +36,6 @@ import { evaluateAlerts } from "@/lib/intelligence/alertEngine";
 import { dispatchWebhookEvent } from "@/lib/integrations/webhookDispatcher";
 import { sendScanCompleteEmail } from "@/lib/email/service";
 import { dispatchToIntegrations } from "@/lib/integrations/dispatcher";
-import { enqueueJob } from "@/lib/queue/jobQueue";
 import { getOrCreateWorkspace } from "@/lib/database/workspace";
 import { embedScanViolations } from "@/lib/ai/vector/search";
 import type { ScanRequest, ScanResult, ComplianceReport } from "@/lib/types";
@@ -180,11 +179,10 @@ export async function performScan(
       duration: scanResult.metadata.scanDuration,
     }, workspaceId).catch(() => {/* non-blocking */});
 
-    // Enqueue durable jobs for post-scan work (survives cold starts, retries on failure)
-    enqueueJob({
-      type: "webhook_delivery",
-      data: { event: "scan.completed", scanId: scanResult.id, workspaceId },
-    }, undefined, workspaceId ?? undefined).catch(() => {});
+    // Webhook durability is handled by dispatchWebhookEvent (inline retries +
+    // a webhook.failed DLQ row) plus the redeliverFailedWebhooks() sweep in the
+    // run-schedules cron. A background job here was redundant, had no consumer,
+    // and would double-deliver scan.completed if drained.
 
     // Send email notifications + integration dispatches (fire-and-forget)
     notifyScanComplete(scanResult, request.userEmail).catch((err) => {
