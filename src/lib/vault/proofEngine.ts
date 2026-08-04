@@ -121,16 +121,53 @@ export async function issueProof(input: CreateProofInput): Promise<{
       .slice(0, 20),
   };
 
+  return appendProofToChain({
+    workspaceId: input.workspaceId,
+    siteId: input.siteId,
+    scanId: input.scanId,
+    type: input.type,
+    title: input.title,
+    description: input.description,
+    standard: input.standard,
+    score: scan.score,
+    evidence,
+    expiresAt: input.expiresAt,
+  });
+}
+
+interface AppendProofParams {
+  workspaceId: string;
+  siteId: string;
+  scanId: string | null;
+  type: ProofType;
+  title: string;
+  description?: string;
+  standard: string;
+  score: number | null;
+  evidence: ProofEvidence;
+  expiresAt?: Date;
+}
+
+/**
+ * Append a proof to the workspace's tamper-evident hash chain. Shared by issueProof
+ * (scan-backed) and issueRemediationProof (evidence-only). The hash covers
+ * (evidence + prevHash + chainIndex + issuedAt); the retry loop resolves the
+ * @@unique([workspaceId, chainIndex]) race under concurrent issuance.
+ */
+async function appendProofToChain(params: AppendProofParams): Promise<{
+  id: string;
+  hash: string;
+  issuedAt: Date;
+  chainIndex: number;
+  prevHash: string | null;
+}> {
   // Fix issuedAt BEFORE hashing so the value committed by the hash is the value stored.
   const issuedAt = new Date();
-  const evidenceJson = JSON.parse(JSON.stringify(evidence)) as Prisma.InputJsonValue;
-
-  // Retry loop to handle the @@unique([workspaceId, chainIndex]) race: two concurrent
-  // issues might compute the same chainIndex; the loser re-reads, recomputes, and retries.
+  const evidenceJson = JSON.parse(JSON.stringify(params.evidence)) as Prisma.InputJsonValue;
   let lastError: unknown;
   for (let attempt = 0; attempt < MAX_CHAIN_RETRIES; attempt++) {
     const latest = await prisma.complianceProof.findFirst({
-      where: { workspaceId: input.workspaceId },
+      where: { workspaceId: params.workspaceId },
       orderBy: { chainIndex: "desc" },
       select: { hash: true, chainIndex: true },
     });
@@ -138,7 +175,7 @@ export async function issueProof(input: CreateProofInput): Promise<{
     const prevHash = latest?.hash ?? null;
     const chainIndex = latest ? latest.chainIndex + 1 : 0;
     const hash = computeProofHash({
-      evidence,
+      evidence: params.evidence,
       prevHash,
       chainIndex,
       issuedAt: issuedAt.toISOString(),
@@ -150,14 +187,14 @@ export async function issueProof(input: CreateProofInput): Promise<{
     try {
       const proof = await prisma.complianceProof.create({
         data: {
-          siteId: input.siteId,
-          scanId: input.scanId,
-          workspaceId: input.workspaceId,
-          type: input.type,
-          title: input.title,
-          description: input.description,
-          score: scan.score,
-          standard: input.standard,
+          siteId: params.siteId,
+          scanId: params.scanId,
+          workspaceId: params.workspaceId,
+          type: params.type,
+          title: params.title,
+          description: params.description,
+          score: params.score,
+          standard: params.standard,
           evidence: evidenceJson,
           hash,
           prevHash,
@@ -165,7 +202,7 @@ export async function issueProof(input: CreateProofInput): Promise<{
           issuedAt,
           anchoredAt: anchorProof ? new Date() : null,
           anchorProof,
-          expiresAt: input.expiresAt,
+          expiresAt: params.expiresAt,
         },
       });
 
@@ -190,6 +227,58 @@ export async function issueProof(input: CreateProofInput): Promise<{
     `Failed to append proof to chain after ${MAX_CHAIN_RETRIES} attempts (concurrent issuance contention)`,
     { cause: lastError }
   );
+}
+
+export interface RemediationProofInput {
+  workspaceId: string;
+  siteId: string;
+  url: string;
+  ruleId: string;
+  summary: { score: number; totalViolations: number; critical: number; serious: number; moderate: number; minor: number };
+  title: string;
+  description?: string;
+  standard: string;
+}
+
+/**
+ * Issue a REMEDIATION_RECORD proof from a fix-verification re-scan that is deliberately
+ * NOT persisted as a Scan — verification re-scans are kept out of the scans table so they
+ * can't pollute history, trends, or analytics. Evidence is built directly from the re-scan
+ * summary and appended to the same tamper-evident chain as scan-backed proofs.
+ */
+export async function issueRemediationProof(input: RemediationProofInput): Promise<{
+  id: string;
+  hash: string;
+  issuedAt: Date;
+  chainIndex: number;
+  prevHash: string | null;
+}> {
+  const evidence: ProofEvidence = {
+    scanId: `verify:${input.ruleId}`,
+    url: input.url,
+    score: input.summary.score,
+    totalViolations: input.summary.totalViolations,
+    critical: input.summary.critical,
+    serious: input.summary.serious,
+    moderate: input.summary.moderate,
+    minor: input.summary.minor,
+    compliance: null,
+    scannedAt: new Date().toISOString(),
+    pageTitle: null,
+    rulesSummary: [],
+  };
+
+  return appendProofToChain({
+    workspaceId: input.workspaceId,
+    siteId: input.siteId,
+    scanId: null,
+    type: "REMEDIATION_RECORD",
+    title: input.title,
+    description: input.description,
+    standard: input.standard,
+    score: input.summary.score,
+    evidence,
+  });
 }
 
 export interface VerifyProofResult {

@@ -3,17 +3,10 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
 import { isContentEditor } from "@/lib/auth/roles";
-import OpenAI from "openai";
+import { complete } from "@/lib/ai/gateway";
 
 interface RouteParams {
   params: Promise<{ slug: string }>;
-}
-
-// Lazy: `new OpenAI()` reads OPENAI_API_KEY and throws if absent. At module
-// top-level that crashes `next build` page-data collection (the key is a RUNTIME
-// secret, not present at build time). Construct it per-request instead.
-function getOpenAI() {
-  return new OpenAI();
 }
 
 /**
@@ -35,8 +28,6 @@ export async function POST(request: Request, { params }: RouteParams) {
     return NextResponse.json({ error: "instruction required" }, { status: 400 });
   }
 
-  const openai = getOpenAI();
-
   const article = await prisma.article.findUnique({ where: { slug } });
   if (!article) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -45,7 +36,7 @@ export async function POST(request: Request, { params }: RouteParams) {
   const currentContent = article.content as { sections?: Array<{ id: string; title: string; paragraphs: string[] }> };
 
   try {
-    const response = await openai.chat.completions.create({
+    const response = await complete({
       model: "gpt-4o-mini",
       temperature: 0.3,
       messages: [
@@ -76,10 +67,11 @@ Instruction: ${body.instruction}
 Return the updated content JSON:`,
         },
       ],
-      response_format: { type: "json_object" },
+      jsonMode: true,
+      metadata: { feature: "blog.aiEdit" },
     });
 
-    const aiContent = response.choices[0]?.message?.content;
+    const aiContent = response?.content;
     if (!aiContent) {
       return NextResponse.json({ error: "AI returned empty response" }, { status: 500 });
     }

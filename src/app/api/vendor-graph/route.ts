@@ -21,6 +21,7 @@ import {
   detectVendorTrend,
   type VendorObservationInput,
 } from "@/lib/vendorgraph/vendorGraph";
+import { consentingWorkspaceIds } from "@/lib/network/intelligenceNetwork";
 
 const MAX_ROWS = 5000;
 const DAY_MS = 86_400_000;
@@ -49,9 +50,14 @@ export async function GET(request: NextRequest): Promise<Response> {
       }
     }
 
+    // Global aggregation only includes workspaces that opted into the Intelligence
+    // Network. Sharing a non-consenting tenant's anonymized observations would be a
+    // privacy leak; an empty consenting set yields an empty (not global) result.
     const where = {
       ...(vendor ? { vendor } : {}),
-      ...(scope === "workspace" ? { workspaceId: { in: workspaceIds } } : {}),
+      ...(scope === "workspace"
+        ? { workspaceId: { in: workspaceIds } }
+        : { workspaceId: { in: await consentingWorkspaceIds() } }),
     };
 
     let rows: Array<{

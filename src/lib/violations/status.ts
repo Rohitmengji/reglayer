@@ -14,6 +14,8 @@
 import { prisma } from "@/lib/database/prisma";
 import { ViolationStatus } from "@/generated/prisma/client";
 import { runAccessibilityScan } from "@/lib/scanner/accessibility/axeScanner";
+import { generateScanSummary } from "@/lib/scanner/accessibility/severityEngine";
+import { issueRemediationProof } from "@/lib/vault/proofEngine";
 import { recordFixOutcome, firstSelector } from "@/lib/genome/recordOutcome";
 
 // ─────────────── Types ───────────────
@@ -39,6 +41,8 @@ export interface VerifyFixResult {
   verified: boolean;
   verifiedAt?: string;
   stillFailing?: boolean;
+  /** Tamper-evident proof minted when a fix is confirmed (site-scoped scans only). */
+  proofId?: string;
 }
 
 export interface ViolationFilter {
@@ -220,9 +224,35 @@ export async function verifyViolationFix(
       },
     });
 
+    // Mint a tamper-evident proof of the fixed state. Proofs are site-scoped, and the
+    // verification re-scan is intentionally NOT persisted as a Scan (kept out of history/
+    // analytics), so evidence is built directly from the re-scan summary. Best-effort:
+    // proof failure must never fail verification.
+    let proofId: string | undefined;
+    const { workspaceId, siteId } = violation.scan;
+    if (workspaceId && siteId) {
+      try {
+        const summary = generateScanSummary(scanResult.violations);
+        const proof = await issueRemediationProof({
+          workspaceId,
+          siteId,
+          url: violation.scan.url,
+          ruleId: violation.ruleId,
+          summary,
+          title: `Fix verification — ${violation.ruleId}`,
+          description: `Re-scan confirmed "${violation.ruleId}" no longer present at ${violation.scan.url}.`,
+          standard: "WCAG 2.2 AA",
+        });
+        proofId = proof.id;
+      } catch {
+        // Best-effort — verification still succeeds without a proof.
+      }
+    }
+
     return {
       verified: true,
       verifiedAt: verifiedAt.toISOString(),
+      proofId,
     };
   }
 
