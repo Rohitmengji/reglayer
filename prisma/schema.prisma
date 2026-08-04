@@ -612,6 +612,40 @@ model LitigationWeight {
   @@map("litigation_weights")
 }
 
+// One row per real legal event, paired with the risk prediction that preceded it.
+// Standalone (no enforced relations) so an outcome survives deletion of its source
+// scan/site — mirroring FixOutcomeRecord/VendorObservation. This is the ground-truth
+// half of the litigation dataset: over time it calibrates the predicted-risk engine.
+model LitigationOutcome {
+  id                String                @id @default(cuid())
+  workspaceId       String?
+  siteId            String?
+  scanId            String? // scan whose risk score this outcome is paired with, if known
+  outcomeType       LitigationOutcomeType
+  amountUsd         Float? // settlement or demand amount, if any
+  occurredAt        DateTime // when the legal event actually happened
+  source            String                @default("manual") // manual | imported | integration
+  notes             String?
+  // Prediction snapshot at logging time — lets us calibrate without re-deriving a
+  // historical score (which drifts as LitigationWeight values are retrained).
+  predictedTier     String?
+  predictedExposure Float?
+  createdAt         DateTime              @default(now())
+
+  @@index([workspaceId, occurredAt])
+  @@index([siteId, occurredAt])
+  @@index([outcomeType, occurredAt])
+  @@map("litigation_outcomes")
+}
+
+enum LitigationOutcomeType {
+  DEMAND_LETTER
+  LAWSUIT_FILED
+  SETTLED
+  DISMISSED
+  NO_ACTION
+}
+
 // ─────────────────────────────────────────────
 // Compliance Proof Vault
 // ─────────────────────────────────────────────
