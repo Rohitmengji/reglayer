@@ -2,14 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { isContentEditor } from "@/lib/auth/roles";
-import OpenAI from "openai";
-
-// Lazy: `new OpenAI()` reads OPENAI_API_KEY and throws if absent. At module
-// top-level that crashes `next build` page-data collection (the key is a RUNTIME
-// secret, not present at build time). Construct it per-request instead.
-function getOpenAI() {
-  return new OpenAI();
-}
+import { complete } from "@/lib/ai/gateway";
 
 /**
  * POST /api/blog/generate — AI full article generation
@@ -28,8 +21,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "topic required" }, { status: 400 });
   }
 
-  const openai = getOpenAI();
-
   const { topic, category = "Technical", tone = "practitioner" } = body;
 
   const toneMap: Record<string, string> = {
@@ -40,7 +31,7 @@ export async function POST(request: Request) {
   const toneGuide = toneMap[tone] || toneMap.practitioner;
 
   try {
-    const response = await openai.chat.completions.create({
+    const response = await complete({
       model: "gpt-4o-mini",
       temperature: 0.7,
       messages: [
@@ -86,10 +77,11 @@ Return ONLY valid JSON. No markdown, no explanations.`,
           content: `Write a complete article about: ${topic}`,
         },
       ],
-      response_format: { type: "json_object" },
+      jsonMode: true,
+      metadata: { feature: "blog.generate" },
     });
 
-    const content = response.choices[0]?.message?.content;
+    const content = response?.content;
     if (!content) {
       return NextResponse.json({ error: "AI returned empty response" }, { status: 500 });
     }

@@ -38,6 +38,16 @@ const eslintConfig = defineConfig([
         destructuredArrayIgnorePattern: "^_",
       }],
 
+      // Governance: every LLM call must flow through the AI gateway (cost tracking,
+      // routing, failover, guardrails). Importing the OpenAI SDK directly bypasses all
+      // of it. The gateway's own provider adapters use "@ai-sdk/openai", not "openai".
+      "no-restricted-imports": ["error", {
+        paths: [{
+          name: "openai",
+          message: "Use the AI gateway (@/lib/ai/gateway) instead of the OpenAI SDK directly — it handles cost tracking, routing, failover, and guardrails.",
+        }],
+      }],
+
       // These map directly to WCAG failures found in the audit. They are "warn" rather than
       // "error" ON PURPOSE: there is an existing backlog of 74 jsx-a11y findings (43 of them
       // `label-has-associated-control`). Turning them into errors today would wall off all

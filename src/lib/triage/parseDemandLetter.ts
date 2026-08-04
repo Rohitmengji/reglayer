@@ -5,7 +5,7 @@
  *      alleged barriers, mapped to the automated rules RegLayer can check.
  * WHAT: Uses gpt-4o-mini to extract { rawText, ruleId, wcagCriteria, allegedDate } per
  *       alleged claim, validated with Zod and normalized against a known rule set.
- * HOW: Mirrors the repo's AI convention (violationExplainer.ts): OpenAI client, withRetry,
+ * HOW: Mirrors the repo's AI convention (violationExplainer.ts): AI gateway with
  *      json_object response, zod-validated, graceful null/empty on missing key or failure.
  *      The pure triage core (demandLetter.ts) never depends on this — letters can also be
  *      triaged from a manually-supplied claims array.
@@ -13,9 +13,8 @@
 
 import "server-only";
 
-import OpenAI from "openai";
 import { z } from "zod";
-import { withRetry } from "@/lib/retry";
+import { complete } from "@/lib/ai/gateway";
 import type { DemandClaim } from "@/lib/triage/demandLetter";
 
 /**
@@ -65,10 +64,6 @@ const parsedClaimsSchema = z.object({
 
 const KNOWN_SET = new Set<string>(KNOWN_TRIAGE_RULES);
 
-function getOpenAIClient() {
-  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY ?? "" });
-}
-
 /** Normalize an AI-suggested allegedDate into an ISO date string, or null. */
 function normalizeDate(raw: string | null): string | null {
   if (!raw) return null;
@@ -82,35 +77,32 @@ function normalizeDate(raw: string | null): string | null {
  */
 export async function parseDemandLetter(letterText: string): Promise<DemandClaim[]> {
   const text = letterText.trim();
-  if (!text || !process.env.OPENAI_API_KEY) return [];
+  if (!text) return [];
 
   try {
-    const response = await withRetry(
-      () =>
-        getOpenAIClient().chat.completions.create({
-          model: "gpt-4o-mini",
-          messages: [
-            {
-              role: "system",
-              content:
-                `You extract alleged web-accessibility barriers from ADA/Section 508 demand letters. ` +
-                `Return JSON: { "claims": [ { "rawText": string (the alleged barrier, <= 600 chars), ` +
-                `"ruleId": one of [${KNOWN_TRIAGE_RULES.join(", ")}] or null if none clearly applies, ` +
-                `"wcagCriteria": a WCAG criterion like "1.4.3" or null, ` +
-                `"allegedDate": an ISO date (YYYY-MM-DD) the letter says the barrier was observed, or null ] }. ` +
-                `One entry per distinct alleged barrier. Do not invent claims that are not in the text. ` +
-                `Only use a ruleId from the provided list; otherwise null.`,
-            },
-            { role: "user", content: text.slice(0, 12000) },
-          ],
-          response_format: { type: "json_object" },
-          temperature: 0.1,
-          max_tokens: 1500,
-        }),
-      { maxAttempts: 3, baseDelayMs: 1000 }
-    );
+    const response = await complete({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content:
+            `You extract alleged web-accessibility barriers from ADA/Section 508 demand letters. ` +
+            `Return JSON: { "claims": [ { "rawText": string (the alleged barrier, <= 600 chars), ` +
+            `"ruleId": one of [${KNOWN_TRIAGE_RULES.join(", ")}] or null if none clearly applies, ` +
+            `"wcagCriteria": a WCAG criterion like "1.4.3" or null, ` +
+            `"allegedDate": an ISO date (YYYY-MM-DD) the letter says the barrier was observed, or null ] }. ` +
+            `One entry per distinct alleged barrier. Do not invent claims that are not in the text. ` +
+            `Only use a ruleId from the provided list; otherwise null.`,
+        },
+        { role: "user", content: text.slice(0, 12000) },
+      ],
+      jsonMode: true,
+      temperature: 0.1,
+      maxTokens: 1500,
+      metadata: { feature: "triage.parseDemandLetter" },
+    });
 
-    const content = response.choices[0]?.message?.content;
+    const content = response?.content;
     if (!content) return [];
 
     const parsed = parsedClaimsSchema.safeParse(JSON.parse(content));
