@@ -1,16 +1,12 @@
-# RegLayer — Deploy Pipeline
+# RegLayer — Manual Deploy Fallback
 #
-# WHY: Main branch merges should auto-deploy to Vercel production.
-# WHAT: Triggers Vercel deployment on push to main, runs post-deploy smoke tests.
-# HOW: Uses Vercel CLI to deploy, then runs e2e/smoke.spec.ts against production URL.
+# WHY: Vercel's Git integration owns automatic production deployments from main.
+# WHAT: An explicit manual fallback, never a second deployment after CI.
+# HOW: Dispatch on main to build and deploy with the Vercel CLI.
 #
 name: Deploy
 
 on:
-  workflow_run:
-    workflows: [CI]
-    types: [completed]
-    branches: [main]
   workflow_dispatch:
 
 concurrency:
@@ -22,20 +18,16 @@ env:
 
 jobs:
   deploy:
-    name: Deploy to Vercel
+    name: Manual Deploy to Vercel
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: production
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'workflow_run' &&
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.head_branch == 'main')
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
 
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          ref: ${{ github.sha }}
           persist-credentials: false
 
       - uses: actions/setup-node@v4

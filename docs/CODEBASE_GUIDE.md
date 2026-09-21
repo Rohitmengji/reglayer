@@ -25,6 +25,11 @@ This is the authoritative map of the RegLayer codebase. AI agents and developers
 | Hosting | Vercel (serverless, 60s max, 2048MB for scan routes) |
 | Monitoring | Sentry (errors + performance + profiling) |
 
+**Production deployment**: Vercel's Git integration owns automatic deployment of
+`main`. `.github/workflows/deploy.yml` is a main-only `workflow_dispatch` fallback,
+not a second automatic deployment after CI. Keep PR checks as the merge gate and
+verify the exact commit's Vercel status before requesting a manual rebuild.
+
 ---
 
 ## Directory Structure

@@ -473,7 +473,20 @@ An existing feature branch is reused. The helper commits staged files, pushes
 the feature branch, and opens a PR to `main` (or prints its existing PR URL).
 It does not stage files automatically, force-push, push directly to `main`, or
 merge. Review the PR and require green CI checks before explicitly approving a
-merge: successful CI on `main` triggers the production deployment workflow.
+merge: Vercel's Git integration deploys the resulting `main` commit automatically.
+
+### Production Deployment
+
+Vercel's Git integration is the single automatic production deployment owner.
+The GitHub `Deploy` workflow is a manual fallback only; it does not run after CI
+or on push. Dispatch it on `main` only when an intentional CLI rebuild/deploy is
+needed. Dispatches on other branches are skipped, and the workflow checks out the
+exact dispatch SHA. The existing production environment protections still apply.
+
+Normal releases should be merged only after the PR checks pass. Do not manually
+dispatch `Deploy` just because Vercel is already building the same commit: that
+would create another production deployment. Verify the commit's Vercel status
+and the public site before deciding a rebuild is needed.
 
 ### Environment Variables
 
