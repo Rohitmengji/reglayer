@@ -10,6 +10,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
+import { requireWorkspacePermission } from "@/lib/auth/api-guard";
 
 /**
  * GET /api/dashboard/stats
@@ -27,24 +28,11 @@ export async function GET() {
   }
 
   try {
-  // Scope: users see only their own scans; master admins see all workspace scans
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-    select: { id: true, isMasterAdmin: true },
-  });
-
-  if (!user) {
-    return NextResponse.json({ error: "User not found" }, { status: 404 });
-  }
-
-  const membership = await prisma.workspaceMember.findFirst({
-    where: { userId: user.id },
-    select: { workspaceId: true },
-  });
-
-  const scopeFilter = user.isMasterAdmin && membership
-    ? { workspaceId: membership.workspaceId }
-    : { userId: user.id };
+  const permission = await requireWorkspacePermission("scans.view");
+  if (!permission.ok) return permission.response;
+  const scopeFilter = permission.ctx.workspaceId
+    ? { workspaceId: permission.ctx.workspaceId }
+    : { userId: permission.ctx.userId, workspaceId: null };
 
   const [scanAgg, recentScans, violationStats, distinctUrls] = await Promise.all([
     // Headline numbers reflect the FULL scoped dataset, not just the last 10.

@@ -360,11 +360,16 @@ async function handleOutputAction(
         // Fire-and-forget email (import dynamically to avoid circular deps)
         try {
           const { sendEmail } = await import("@/lib/email/service");
+          const { renderEmailLayout, escapeHtml } = await import("@/lib/email/layout");
           await sendEmail({
             to: schedule.notifyEmail,
             subject: "RegLayer Agent Report",
             text: output,
-            html: `<pre style="white-space:pre-wrap;font-family:monospace">${output}</pre>`,
+            html: renderEmailLayout({
+              preheader: "Your scheduled RegLayer agent report",
+              title: "Agent report",
+              contentHtml: `<pre style="white-space:pre-wrap;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;line-height:1.6;color:#334155;margin:0;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:16px;overflow:auto;">${escapeHtml(output)}</pre>`,
+            }),
           });
         } catch {
           log.warn("Agent notification email failed", { email: schedule.notifyEmail });

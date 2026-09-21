@@ -38,6 +38,7 @@ import { getViolationSummary, formatViolationSummaryForPrompt } from "@/lib/ai/c
 import { runGuardrails, CHAT_GUARDS, wcagHallucinationGuard, type GuardContext } from "@/lib/ai/guardrails";
 import { acquireGenerationLease, releaseGenerationLease } from "@/lib/ai/chat/generation-lease";
 import { PLAN_LIMITS, type PlanType } from "@/lib/credits";
+import { readWorkspaceSelection, selectWorkspaceMembership } from "@/lib/auth/workspace-selection";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -194,9 +195,6 @@ export async function POST(request: NextRequest) {
   });
 
   // ── 6. Resolve user + workspace ─────────────────────────────────────────
-  // The primary-workspace membership is fetched inline (was a second sequential
-  // query) so this resolution costs one round-trip instead of two on the pre-stream
-  // critical path, which is where the user is waiting for the first token.
   const user = await prisma.user.findUnique({
     where: { email: session.user.email },
     select: {
@@ -206,13 +204,17 @@ export async function POST(request: NextRequest) {
       memberships: {
         select: { workspaceId: true },
         orderBy: { joinedAt: "asc" },
-        take: 1,
       },
     },
   });
-  const membership = user?.memberships[0] ?? null;
+  if (!user) return new Response("Authentication required", { status: 401 });
+  const selectedId = await readWorkspaceSelection();
+  const membership = selectWorkspaceMembership(user.memberships, selectedId);
+  if (selectedId && !membership) {
+    return new Response("Selected workspace is unavailable. Choose another workspace.", { status: 403 });
+  }
 
-  const userId = user?.id ?? session.user.email;
+  const userId = user.id;
   const workspaceId = membership?.workspaceId ?? null;
   const userPlan = (user?.plan ?? "FREE") as PlanType;
   const isMasterAdmin = user?.isMasterAdmin ?? false;

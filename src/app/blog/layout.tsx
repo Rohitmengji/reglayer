@@ -1,15 +1,9 @@
-import type { Metadata } from "next";
+import { publicMetadata } from "@/lib/seo";
+import { PublicHeader } from "@/components/layout/public-header";
+import { Footer } from "@/components/layout/footer";
 
-export const metadata: Metadata = {
-  title: "Blog — Web Accessibility Insights",
-  description: "Expert articles on WCAG compliance, European Accessibility Act, ADA lawsuits, remediation strategies, and accessibility automation.",
-  openGraph: {
-    title: "RegLayer Blog — Web Accessibility Insights",
-    description: "Expert articles on WCAG compliance, EAA, ADA lawsuits, and accessibility automation.",
-    url: "/blog",
-  },
-};
+export const metadata = publicMetadata("/blog", "Blog - Web Accessibility Insights", "Read articles on WCAG, accessibility testing, remediation, design, and web accessibility regulations.");
 
 export default function BlogLayout({ children }: { children: React.ReactNode }) {
-  return children;
+  return <><PublicHeader /><main className="py-8">{children}</main><Footer /></>;
 }

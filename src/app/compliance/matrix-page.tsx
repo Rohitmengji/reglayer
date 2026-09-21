@@ -9,6 +9,7 @@
  */
 
 import { Suspense, useEffect, useState } from "react";
+import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,6 +46,7 @@ interface MatrixData {
 interface ScanOption {
   id: string;
   url: string;
+  status: string;
   score: number | null;
   createdAt: string;
 }
@@ -74,52 +76,51 @@ function ComplianceContent() {
   const [filter, setFilter] = useState<"all" | "pass" | "fail" | "not-tested">("all");
   const [scans, setScans] = useState<ScanOption[]>([]);
   const [activeScanId, setActiveScanId] = useState<string | null>(scanId);
+  const [error, setError] = useState<string | null>(null);
+  const [retry, setRetry] = useState(0);
   const { t } = useI18n();
 
-  // Load available scans for the selector
   useEffect(() => {
-    fetch("/api/scans?limit=50")
-      .then((r) => r.ok ? r.json() : Promise.reject())
-      .then((d) => { if (d.scans) setScans(d.scans); })
-      .catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    function doFetch(id: string) {
-      fetch(`/api/scans/${id}/wcag-matrix`)
-        .then((r) => {
-          if (!r.ok) throw new Error("Failed");
-          return r.json();
-        })
-        .then((d) => { if (!cancelled) { setData(d); setActiveScanId(id); setLoading(false); } })
-        .catch(() => { if (!cancelled) setLoading(false); });
+    let disposed = false;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15_000);
+    async function load() {
+      setLoading(true);
+      setError(null);
+      setData(null);
+      try {
+        const response = await fetch("/api/scans?limit=50", { signal: controller.signal, cache: "no-store" });
+        if (!response.ok) throw new Error("Scan list unavailable");
+        const payload = await response.json();
+        if (!Array.isArray(payload.scans)) throw new Error("Invalid scan list");
+        const completed = (payload.scans as ScanOption[]).filter(scan => scan.status === "COMPLETED");
+        const selected = scanId || completed[0]?.id;
+        if (disposed) return;
+        setScans(completed);
+        setActiveScanId(selected ?? null);
+        if (!selected) return;
+        const matrixResponse = await fetch(`/api/scans/${encodeURIComponent(selected)}/wcag-matrix`, { signal: controller.signal, cache: "no-store" });
+        if (!matrixResponse.ok) throw new Error("Matrix unavailable");
+        const matrix = await matrixResponse.json();
+        if (!matrix.summary || !Array.isArray(matrix.matrix)) throw new Error("Invalid matrix");
+        if (!disposed) setData(matrix);
+      } catch {
+        if (!disposed) setError("Could not load the compliance matrix. Check your access or try again.");
+      } finally {
+        clearTimeout(timeout);
+        if (!disposed) setLoading(false);
+      }
     }
-
-    if (!scanId) {
-      fetch("/api/scans?limit=1")
-        .then((r) => {
-          if (!r.ok) throw new Error("Failed");
-          return r.json();
-        })
-        .then((d) => {
-          if (cancelled) return;
-          if (d.scans?.[0]) doFetch(d.scans[0].id);
-          else setLoading(false);
-        })
-        .catch(() => { if (!cancelled) setLoading(false); });
-    } else {
-      doFetch(scanId);
-    }
-    return () => { cancelled = true; };
-  }, [scanId]);
+    void load();
+    return () => { disposed = true; clearTimeout(timeout); controller.abort(); };
+  }, [scanId, retry]);
 
   if (loading) {
     return (
       <AppShell>
-        <div className="flex-1 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-neutral-300" />
+        <div role="status" className="flex items-center justify-center gap-3 py-12 text-sm text-neutral-600 dark:text-neutral-300">
+          <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
+          Loading compliance matrix...
         </div>
       </AppShell>
     );
@@ -130,7 +131,14 @@ function ComplianceContent() {
       <AppShell>
         <div className="text-center py-20">
           <Grid3X3 className="h-12 w-12 text-neutral-200 mx-auto mb-4" />
-          <p className="text-neutral-600 dark:text-neutral-300">{t("compliance.emptyState")}</p>
+          {error ? <>
+            <p role="alert" className="text-neutral-700 dark:text-neutral-200">{error}</p>
+            <button type="button" onClick={() => setRetry(value => value + 1)} className="mt-4 min-h-11 rounded-lg border border-neutral-300 px-4 py-2 text-sm font-medium dark:border-neutral-700">{t("common.retry")}</button>
+          </> : <>
+            <p className="font-medium text-neutral-800 dark:text-neutral-100">No completed scans available</p>
+            <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-300">Run a scan, then review its automated coverage and remaining manual checks here.</p>
+            <Link href="/dashboard" className="mt-4 inline-flex min-h-11 items-center text-sm font-medium text-blue-700 underline dark:text-blue-300">Run a scan</Link>
+          </>}
         </div>
       </AppShell>
     );
@@ -170,7 +178,8 @@ function ComplianceContent() {
                 label: `${new URL(s.url).hostname} — ${new Date(s.createdAt).toLocaleDateString()} (${s.score ?? "?"}%)`,
               }))}
               value={activeScanId || ""}
-              onChange={(v) => router.push(`/compliance?scan=${v}`)}
+              onChange={(value) => router.push(`/compliance?tab=matrix&scan=${encodeURIComponent(value)}`)}
+              label="Completed scan"
               className="w-full sm:w-auto sm:max-w-65"
             />
           )}
@@ -180,13 +189,13 @@ function ComplianceContent() {
         <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-5">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <p className="text-sm font-medium text-neutral-700 dark:text-neutral-200">Overall Compliance</p>
+              <p className="text-sm font-medium text-neutral-700 dark:text-neutral-200">Automated criteria pass rate</p>
               <p className="text-xs text-neutral-500 dark:text-neutral-400">
                 {data.summary.passed} of {data.summary.passed + data.summary.failed} testable criteria passing
               </p>
             </div>
             <div className={`text-3xl font-bold tabular-nums ${passRate >= 80 ? "text-green-600" : passRate >= 50 ? "text-amber-600" : "text-red-600"}`}>
-              {passRate}%
+              {data.summary.passed + data.summary.failed > 0 ? `${passRate}%` : "Not assessed"}
             </div>
           </div>
           <div className="w-full h-3 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
@@ -197,9 +206,10 @@ function ComplianceContent() {
           </div>
           <div className="flex justify-between mt-2 text-[10px] text-neutral-500 dark:text-neutral-400">
             <span>0%</span>
-            <span>WCAG 2.1 Level AA Target: 100%</span>
+            <span>{data.summary.passed + data.summary.failed > 0 ? "Automated checks only" : "No automated criteria assessed"}</span>
             <span>100%</span>
           </div>
+          <p className="mt-3 text-xs text-neutral-600 dark:text-neutral-300">Passing automated checks is not proof of WCAG conformance. Review not-tested criteria and complete manual testing.</p>
         </div>
 
         {data.summary.humanVerified && data.summary.humanVerified.total > 0 && (

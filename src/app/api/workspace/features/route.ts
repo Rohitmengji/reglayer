@@ -11,6 +11,8 @@ import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
 import { getWorkspaceFeatures, getWorkspaceFeaturesDetailed } from "@/lib/features/feature-access";
 import { z } from "zod";
+import { readWorkspaceSelection, selectWorkspaceMembership } from "@/lib/auth/workspace-selection";
+import { getPermissions, type WorkspaceRole } from "@/lib/auth/rbac";
 
 /**
  * GET — Returns enabled feature IDs for the user's workspace.
@@ -24,7 +26,7 @@ export async function GET(request: NextRequest) {
 
   const user = await prisma.user.findUnique({
     where: { email: session.user.email },
-    include: { memberships: { include: { workspace: true } } },
+    include: { memberships: { include: { workspace: true }, orderBy: { joinedAt: "asc" } } },
   });
 
   if (!user) {
@@ -45,15 +47,24 @@ export async function GET(request: NextRequest) {
   }
 
   // Regular user: get their workspace features
-  const membership = user.memberships[0];
+  const selectedId = await readWorkspaceSelection();
+  const membership = selectWorkspaceMembership(user.memberships, selectedId);
+  if (selectedId && !membership) {
+    return NextResponse.json({ error: "Selected workspace is unavailable. Choose another workspace." }, { status: 403 });
+  }
   if (!membership) {
-    return NextResponse.json({ features: [] });
+    return NextResponse.json({ features: [], permissions: [], workspaceId: null }, { headers: { "Cache-Control": "private, no-store" } });
   }
 
   const features = await getWorkspaceFeatures(membership.workspaceId);
   return NextResponse.json(
-    { features, plan: membership.workspace.plan },
-    { headers: { "Cache-Control": "private, max-age=60" } }
+    {
+      features,
+      plan: membership.workspace.plan,
+      workspaceId: membership.workspaceId,
+      permissions: getPermissions(user.isMasterAdmin ? "MASTER_ADMIN" : "USER", membership.role as WorkspaceRole),
+    },
+    { headers: { "Cache-Control": "private, no-store" } }
   );
 }
 

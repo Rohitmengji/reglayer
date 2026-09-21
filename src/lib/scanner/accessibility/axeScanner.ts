@@ -44,7 +44,8 @@
 import type { Page, Browser } from "playwright-core";
 import type { ScanOptions } from "@/lib/types";
 import { SCAN_DEFAULTS } from "@/lib/constants";
-import { launchBrowser, isServerless, getViewport } from "@/lib/scanner/browser/launch";
+import { isServerless, getViewport } from "@/lib/scanner/browser/launch";
+import { createBrowserLifetime } from "@/lib/scanner/browser/lifetime";
 import { applyAuthToContext } from "@/lib/scanner/auth";
 import { getRegionConfig } from "@/lib/scanner/regions";
 import { runDeepPasses, type DeepScanReport, type AxeViolationLike, type EvaluablePage } from "./deepScan";
@@ -163,9 +164,10 @@ export async function runAccessibilityScan(
   options?: ScanOptions
 ): Promise<AxeScanResult> {
   let browser: Browser | null = null;
+  const lifetime = createBrowserLifetime(options?.signal);
 
   try {
-    browser = await launchBrowser();
+    browser = await lifetime.launch();
     const page: Page = await browser.newPage();
 
     // Set consistent viewport for reproducible results
@@ -452,6 +454,7 @@ export async function runAccessibilityScan(
       }
     }
 
+    options?.signal?.throwIfAborted();
     return {
       violations: results.violations.map((v) => ({
         id: v.id,
@@ -478,8 +481,6 @@ export async function runAccessibilityScan(
       ...(pageStructure && { pageStructure }),
     };
   } finally {
-    if (browser) {
-      await browser.close();
-    }
+    await lifetime.dispose();
   }
 }

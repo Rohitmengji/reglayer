@@ -2,7 +2,7 @@
 #
 # WHY: Every PR must pass linting, type checking, and tests before merge.
 # WHAT: Runs on push/PR: install deps, lint, type-check, unit tests, build.
-# HOW: GitHub Actions with Node 20, pnpm cache, Postgres service container for integration tests.
+# HOW: GitHub Actions with Node 22, pnpm cache, Postgres service container for integration tests.
 #
 name: CI
 
@@ -23,7 +23,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  NODE_VERSION: "20"
+  NODE_VERSION: "22"
   NEXT_PUBLIC_APP_NAME: RegLayer
   NEXT_PUBLIC_APP_VERSION: 0.1.0
   NEXTAUTH_SECRET: ci-test-secret
@@ -167,6 +167,9 @@ jobs:
         env:
           NEXT_PUBLIC_APP_NAME: RegLayer
           NEXTAUTH_SECRET: ci-test-secret
+
+      - name: PostgreSQL crawl integration tests
+        run: npm run test:postgres
 
       - name: Coverage threshold check
         run: |

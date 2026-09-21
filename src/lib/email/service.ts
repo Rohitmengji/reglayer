@@ -7,6 +7,18 @@
  */
 
 import nodemailer from "nodemailer";
+import {
+  EMAIL_FONT,
+  EMAIL_ACCENT,
+  escapeHtml,
+  emailAppUrl,
+  emailParagraph,
+  emailButton,
+  renderEmailLayout,
+  emailStatTable,
+  emailCallout,
+  emailManagePrefs,
+} from "./layout";
 
 let transporter: nodemailer.Transporter | null = null;
 
@@ -30,6 +42,37 @@ function getTransporter(): nodemailer.Transporter | null {
   return transporter;
 }
 
+let devTransporter: nodemailer.Transporter | null = null;
+let devTransporterPromise: Promise<nodemailer.Transporter | null> | null = null;
+
+/**
+ * Development-only fallback: a free, auto-provisioned Ethereal test inbox
+ * (nodemailer.createTestAccount). No signup and no cost — messages are captured
+ * and viewable at a logged preview URL instead of being delivered to a real
+ * inbox. Gated to NODE_ENV=development so tests and production never touch it.
+ */
+async function getDevTransporter(): Promise<nodemailer.Transporter | null> {
+  if (process.env.NODE_ENV !== "development") return null;
+  if (devTransporter) return devTransporter;
+  devTransporterPromise ??= (async () => {
+    try {
+      const account = await nodemailer.createTestAccount();
+      devTransporter = nodemailer.createTransport({
+        host: account.smtp.host,
+        port: account.smtp.port,
+        secure: account.smtp.secure,
+        auth: { user: account.user, pass: account.pass },
+      });
+      console.log(`[email] No SMTP configured — using a free Ethereal test inbox (${account.user}). Emails are captured, not delivered; each message logs a preview link.`);
+      return devTransporter;
+    } catch (err) {
+      console.warn("[email] Could not create an Ethereal test inbox:", err instanceof Error ? err.message : err);
+      return null;
+    }
+  })();
+  return devTransporterPromise;
+}
+
 const FROM_EMAIL = process.env.EMAIL_FROM || process.env.SMTP_USER || "notifications@reglayer.eu";
 
 export interface EmailPayload {
@@ -46,7 +89,7 @@ export interface EmailPayload {
  * Send an email via SMTP (Nodemailer)
  */
 export async function sendEmail(payload: EmailPayload) {
-  const transport = getTransporter();
+  const transport = getTransporter() ?? (await getDevTransporter());
   if (!transport) {
     return {
       success: false,
@@ -64,7 +107,11 @@ export async function sendEmail(payload: EmailPayload) {
       replyTo: payload.replyTo,
     });
 
-    return { success: true, id: info.messageId };
+    // Ethereal returns a preview URL; real SMTP returns false. Surface it in dev.
+    const previewUrl = nodemailer.getTestMessageUrl(info) || undefined;
+    if (previewUrl) console.log(`[email] Preview: ${previewUrl}`);
+
+    return { success: true, id: info.messageId, previewUrl };
   } catch (err) {
     console.error("[email] Send failed:", err);
     return { success: false, error: err instanceof Error ? err.message : String(err) };
@@ -93,34 +140,19 @@ export async function sendScanCompleteEmail(to: string, scanData: {
   return sendEmail({
     to,
     subject: `Scan Complete: ${scanData.url} — Score ${scanData.score}%`,
-    html: `
-      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto;">
-        <div style="border-bottom: 1px solid #e5e5e5; padding: 20px 0;">
-          <h2 style="margin: 0; font-size: 18px; color: #171717;">🛡️ RegLayer Scan Complete</h2>
-        </div>
-        <div style="padding: 24px 0;">
-          <p style="color: #525252; margin: 0 0 16px;">Your accessibility scan has finished.</p>
-          <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-            <tr>
-              <td style="padding: 12px; border: 1px solid #e5e5e5; font-size: 14px; color: #525252;">URL</td>
-              <td style="padding: 12px; border: 1px solid #e5e5e5; font-size: 14px; font-weight: 600;">${scanData.url}</td>
-            </tr>
-            <tr>
-              <td style="padding: 12px; border: 1px solid #e5e5e5; font-size: 14px; color: #525252;">Score</td>
-              <td style="padding: 12px; border: 1px solid #e5e5e5; font-size: 14px; font-weight: 700; color: ${scoreColor};">${scanData.score}%</td>
-            </tr>
-            <tr>
-              <td style="padding: 12px; border: 1px solid #e5e5e5; font-size: 14px; color: #525252;">Violations</td>
-              <td style="padding: 12px; border: 1px solid #e5e5e5; font-size: 14px;">${scanData.violations} total (${scanData.critical} critical)</td>
-            </tr>
-          </table>
-          <a href="${scanData.reportUrl}" style="display: inline-block; background: #171717; color: #fff; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-size: 14px; font-weight: 500;">View Full Report</a>
-        </div>
-        <div style="border-top: 1px solid #e5e5e5; padding: 16px 0; font-size: 12px; color: #a3a3a3;">
-          <p style="margin: 0;">You're receiving this because you have scan notifications enabled. <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://reglayer.vercel.app"}/notifications" style="color: #525252;">Manage preferences</a></p>
-        </div>
-      </div>
-    `,
+    html: renderEmailLayout({
+      preheader: `${scanData.url} scored ${scanData.score}% — ${scanData.violations} violations`,
+      title: "Scan complete",
+      contentHtml: `
+          ${emailParagraph("Your accessibility scan has finished.")}
+          ${emailStatTable([
+            { label: "URL", value: scanData.url },
+            { label: "Score", value: `${scanData.score}%`, valueColor: scoreColor },
+            { label: "Violations", value: `${scanData.violations} total (${scanData.critical} critical)` },
+          ])}
+          ${emailButton(scanData.reportUrl, "View full report")}
+          ${emailManagePrefs()}`,
+    }),
     text: `Scan Complete: ${scanData.url}\nScore: ${scanData.score}%\nViolations: ${scanData.violations} (${scanData.critical} critical)\nView report: ${scanData.reportUrl}`,
   });
 }
@@ -137,23 +169,15 @@ export async function sendNewViolationsEmail(to: string, data: {
   return sendEmail({
     to,
     subject: `⚠️ ${data.newCount} new violations detected on ${data.url}`,
-    html: `
-      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto;">
-        <div style="border-bottom: 1px solid #e5e5e5; padding: 20px 0;">
-          <h2 style="margin: 0; font-size: 18px; color: #171717;">⚠️ New Accessibility Violations</h2>
-        </div>
-        <div style="padding: 24px 0;">
-          <p style="color: #525252; margin: 0 0 16px;">New issues were found during a scan of <strong>${data.url}</strong>.</p>
-          <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
-            <p style="margin: 0; font-size: 14px; color: #991b1b;"><strong>${data.newCount}</strong> new violations detected${data.criticalCount > 0 ? ` (${data.criticalCount} critical)` : ""}</p>
-          </div>
-          <a href="${data.reportUrl}" style="display: inline-block; background: #171717; color: #fff; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-size: 14px; font-weight: 500;">Review Violations</a>
-        </div>
-        <div style="border-top: 1px solid #e5e5e5; padding: 16px 0; font-size: 12px; color: #a3a3a3;">
-          <p style="margin: 0;"><a href="${process.env.NEXT_PUBLIC_APP_URL || "https://reglayer.vercel.app"}/notifications" style="color: #525252;">Manage notification preferences</a></p>
-        </div>
-      </div>
-    `,
+    html: renderEmailLayout({
+      preheader: `${data.newCount} new violations on ${data.url}`,
+      title: "New accessibility violations",
+      contentHtml: `
+          ${emailParagraph(`New issues were found during a scan of <strong>${data.url}</strong>.`)}
+          ${emailCallout(`<strong>${data.newCount}</strong> new violations detected${data.criticalCount > 0 ? ` (${data.criticalCount} critical)` : ""}`, "danger")}
+          ${emailButton(data.reportUrl, "Review violations")}
+          ${emailManagePrefs()}`,
+    }),
   });
 }
 
@@ -170,41 +194,20 @@ export async function sendWeeklyDigestEmail(to: string, data: {
   return sendEmail({
     to,
     subject: `📊 Weekly Accessibility Digest — Avg Score: ${data.avgScore}%`,
-    html: `
-      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto;">
-        <div style="border-bottom: 1px solid #e5e5e5; padding: 20px 0;">
-          <h2 style="margin: 0; font-size: 18px; color: #171717;">📊 Your Weekly Accessibility Digest</h2>
-        </div>
-        <div style="padding: 24px 0;">
-          <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-            <tr>
-              <td style="padding: 12px; border: 1px solid #e5e5e5; font-size: 14px; color: #525252;">Scans this week</td>
-              <td style="padding: 12px; border: 1px solid #e5e5e5; font-size: 14px; font-weight: 600;">${data.totalScans}</td>
-            </tr>
-            <tr>
-              <td style="padding: 12px; border: 1px solid #e5e5e5; font-size: 14px; color: #525252;">Average score</td>
-              <td style="padding: 12px; border: 1px solid #e5e5e5; font-size: 14px; font-weight: 600;">${data.avgScore}%</td>
-            </tr>
-            <tr>
-              <td style="padding: 12px; border: 1px solid #e5e5e5; font-size: 14px; color: #525252;">Issues resolved</td>
-              <td style="padding: 12px; border: 1px solid #e5e5e5; font-size: 14px; font-weight: 600; color: #16a34a;">${data.resolvedCount}</td>
-            </tr>
-            <tr>
-              <td style="padding: 12px; border: 1px solid #e5e5e5; font-size: 14px; color: #525252;">New violations</td>
-              <td style="padding: 12px; border: 1px solid #e5e5e5; font-size: 14px; font-weight: 600; color: #dc2626;">${data.newViolations}</td>
-            </tr>
-            <tr>
-              <td style="padding: 12px; border: 1px solid #e5e5e5; font-size: 14px; color: #525252;">Top issue</td>
-              <td style="padding: 12px; border: 1px solid #e5e5e5; font-size: 14px;">${data.topIssue}</td>
-            </tr>
-          </table>
-          <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://reglayer.vercel.app"}/dashboard" style="display: inline-block; background: #171717; color: #fff; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-size: 14px; font-weight: 500;">View Dashboard</a>
-        </div>
-        <div style="border-top: 1px solid #e5e5e5; padding: 16px 0; font-size: 12px; color: #a3a3a3;">
-          <p style="margin: 0;"><a href="${process.env.NEXT_PUBLIC_APP_URL || "https://reglayer.vercel.app"}/notifications" style="color: #525252;">Manage notification preferences</a></p>
-        </div>
-      </div>
-    `,
+    html: renderEmailLayout({
+      preheader: `Avg score ${data.avgScore}% · ${data.totalScans} scans this week`,
+      title: "Your weekly accessibility digest",
+      contentHtml: `
+          ${emailStatTable([
+            { label: "Scans this week", value: String(data.totalScans) },
+            { label: "Average score", value: `${data.avgScore}%` },
+            { label: "Issues resolved", value: String(data.resolvedCount), valueColor: "#16a34a" },
+            { label: "New violations", value: String(data.newViolations), valueColor: "#dc2626" },
+            { label: "Top issue", value: data.topIssue },
+          ])}
+          ${emailButton(`${emailAppUrl()}/dashboard`, "View dashboard")}
+          ${emailManagePrefs()}`,
+    }),
   });
 }
 
@@ -220,20 +223,14 @@ export async function sendComplianceAlertEmail(to: string, data: {
   return sendEmail({
     to,
     subject: `🚨 Compliance dropped: ${data.url} (${data.previousScore}% → ${data.currentScore}%)`,
-    html: `
-      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto;">
-        <div style="border-bottom: 1px solid #e5e5e5; padding: 20px 0;">
-          <h2 style="margin: 0; font-size: 18px; color: #171717;">🚨 Compliance Score Dropped</h2>
-        </div>
-        <div style="padding: 24px 0;">
-          <p style="color: #525252; margin: 0 0 16px;">The compliance score for <strong>${data.url}</strong> has decreased.</p>
-          <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 16px; margin-bottom: 20px; text-align: center;">
-            <span style="font-size: 24px; font-weight: 700; color: #991b1b;">${data.previousScore}% → ${data.currentScore}%</span>
-          </div>
-          <a href="${data.reportUrl}" style="display: inline-block; background: #171717; color: #fff; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-size: 14px; font-weight: 500;">Investigate Changes</a>
-        </div>
-      </div>
-    `,
+    html: renderEmailLayout({
+      preheader: `${data.url} dropped to ${data.currentScore}%`,
+      title: "Compliance score dropped",
+      contentHtml: `
+          ${emailParagraph(`The compliance score for <strong>${data.url}</strong> has decreased.`)}
+          ${emailCallout(`<div style="text-align:center;font-size:24px;font-weight:700;">${data.previousScore}% → ${data.currentScore}%</div>`, "danger")}
+          ${emailButton(data.reportUrl, "Investigate changes")}`,
+    }),
   });
 }
 
@@ -267,52 +264,28 @@ export async function sendRegressionAlert(to: string, data: {
   return sendEmail({
     to,
     subject: `🚨 Regression detected: ${new URL(data.url).hostname} (${data.previousScore}% → ${data.currentScore}%)`,
-    html: `
-      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto;">
-        <div style="border-bottom: 1px solid #e5e5e5; padding: 20px 0;">
-          <h2 style="margin: 0; font-size: 18px; color: #171717;">🚨 Accessibility Regression Detected</h2>
-          <p style="margin: 4px 0 0; font-size: 13px; color: #737373;">Triggered by: ${data.scheduleName}</p>
-        </div>
-        <div style="padding: 24px 0;">
-          <p style="color: #525252; margin: 0 0 16px;">A scheduled scan of <strong>${data.url}</strong> detected a regression.</p>
-
-          <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 20px; margin-bottom: 20px; text-align: center;">
-            <div style="font-size: 28px; font-weight: 700; color: #991b1b;">${data.previousScore}% → ${data.currentScore}%</div>
-            <div style="font-size: 13px; color: #991b1b; margin-top: 4px;">${data.scoreDelta} points</div>
-          </div>
-
+    html: renderEmailLayout({
+      preheader: `${new URL(data.url).hostname} dropped to ${data.currentScore}% (${data.scoreDelta} pts)`,
+      title: "Accessibility regression detected",
+      contentHtml: `
+          ${emailParagraph(`Triggered by <strong>${data.scheduleName}</strong>. A scheduled scan of <strong>${data.url}</strong> detected a regression.`)}
+          ${emailCallout(`<div style="text-align:center;"><div style="font-size:28px;font-weight:700;">${data.previousScore}% → ${data.currentScore}%</div><div style="font-size:13px;margin-top:4px;">${data.scoreDelta} points</div></div>`, "danger")}
           ${data.newViolations.length > 0 ? `
-          <h3 style="font-size: 14px; color: #171717; margin: 0 0 8px;">⚠️ New Violations (${data.newViolations.length})</h3>
-          <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; background: #fef2f2; border-radius: 6px;">
+          <p style="margin:18px 0 8px;font-family:${EMAIL_FONT};font-size:14px;font-weight:600;color:#0f172a;">New violations (${data.newViolations.length})</p>
+          <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;border-collapse:separate;">
             ${newViolationRows}
-            ${data.newViolations.length > 5 ? `<tr><td style="padding:8px 12px;font-size:12px;color:#737373;">...and ${data.newViolations.length - 5} more</td></tr>` : ""}
+            ${data.newViolations.length > 5 ? `<tr><td style="padding:8px 14px;font-family:${EMAIL_FONT};font-size:12px;color:#737373;">…and ${data.newViolations.length - 5} more</td></tr>` : ""}
           </table>` : ""}
-
           ${data.fixedViolations.length > 0 ? `
-          <h3 style="font-size: 14px; color: #171717; margin: 0 0 8px;">✅ Fixed (${data.fixedViolations.length})</h3>
-          <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; background: #f0fdf4; border-radius: 6px;">
+          <p style="margin:18px 0 8px;font-family:${EMAIL_FONT};font-size:14px;font-weight:600;color:#0f172a;">Fixed (${data.fixedViolations.length})</p>
+          <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;border-collapse:separate;">
             ${fixedViolationRows}
           </table>` : ""}
-
-          <a href="${data.reportUrl}" style="display: inline-block; background: #171717; color: #fff; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-size: 14px; font-weight: 500;">View Scan Details</a>
-        </div>
-        <div style="border-top: 1px solid #e5e5e5; padding: 16px 0; font-size: 12px; color: #a3a3a3;">
-          <p style="margin: 0;">This alert was triggered by your scheduled monitoring rule. <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://reglayer.vercel.app"}/settings" style="color: #525252;">Manage schedules</a></p>
-        </div>
-      </div>
-    `,
+          ${emailButton(data.reportUrl, "View scan details")}
+          ${emailParagraph(`This alert was triggered by your scheduled monitoring rule. <a href="${emailAppUrl()}/settings" style="color:#64748b;">Manage schedules</a>`, { muted: true })}`,
+    }),
     text: `Regression detected on ${data.url}\nScore: ${data.previousScore}% → ${data.currentScore}% (${data.scoreDelta})\nNew violations: ${data.newViolations.length}\nFixed: ${data.fixedViolations.length}\nView details: ${data.reportUrl}`,
   });
-}
-
-/** Escape user-controlled text before interpolating into email HTML. */
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
 }
 
 /**
@@ -329,46 +302,61 @@ export interface TeamInviteData {
   inviterName: string;
   role: string;
   isNewUser: boolean;
+  /** One-time password for a brand-new account, replaced at first sign-in. */
+  temporaryPassword?: string;
 }
 
 /** Pure builder for the invite email payload — unit-tested independently of SMTP. */
 export function buildTeamInviteEmail(to: string, data: TeamInviteData): EmailPayload {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://reglayer.vercel.app";
+  const appUrl = emailAppUrl();
   const loginUrl = `${appUrl}/auth/login`;
   const setupUrl = `${appUrl}/auth/forgot-password`;
   const workspace = escapeHtml(data.workspaceName);
   const inviter = escapeHtml(data.inviterName);
   const roleLabel = escapeHtml(data.role.charAt(0) + data.role.slice(1).toLowerCase());
 
-  const cta = data.isNewUser
+  const lead = emailParagraph(`<strong>${inviter}</strong> added you to the <strong>${workspace}</strong> workspace on RegLayer as <strong>${roleLabel}</strong>.`);
+
+  const credentials = `
+          ${emailParagraph("An account was created for you. Sign in with this temporary password, then choose your own password — RegLayer asks for it straight away.")}
+          <table role="presentation" cellpadding="0" cellspacing="0" style="margin:16px 0;border-collapse:separate;border-spacing:0;width:100%;">
+            <tr>
+              <td style="padding:10px 14px;border:1px solid #e2e8f0;border-radius:8px 8px 0 0;font-family:${EMAIL_FONT};font-size:13px;color:#64748b;">Email</td>
+              <td style="padding:10px 14px;border:1px solid #e2e8f0;border-left:0;border-radius:0 8px 0 0;font-family:${EMAIL_FONT};font-size:13px;font-weight:600;color:#0f172a;">${escapeHtml(to)}</td>
+            </tr>
+            <tr>
+              <td style="padding:10px 14px;border:1px solid #e2e8f0;border-top:0;border-radius:0 0 0 8px;font-family:${EMAIL_FONT};font-size:13px;color:#64748b;">Temporary password</td>
+              <td style="padding:10px 14px;border:1px solid #e2e8f0;border-top:0;border-left:0;border-radius:0 0 8px 0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:16px;font-weight:700;letter-spacing:1px;color:#0f172a;">${escapeHtml(data.temporaryPassword ?? "")}</td>
+            </tr>
+          </table>
+          ${emailButton(loginUrl, "Sign in to RegLayer")}
+          ${emailParagraph(`The temporary password expires in 7 days and stops working once you choose your own. If it expires, request a new code at <a href="${setupUrl}" style="color:${EMAIL_ACCENT};">${setupUrl}</a>.`, { muted: true })}`;
+
+  const cta = data.isNewUser && data.temporaryPassword
+    ? credentials
+    : data.isNewUser
     ? `
-          <p style="color: #525252; font-size: 14px; line-height: 1.6;">
-            An account was created for you. To get started, set your password:
-          </p>
-          <a href="${setupUrl}" style="display: inline-block; background: #171717; color: #fff; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-size: 14px; font-weight: 500; margin: 8px 0;">Set your password</a>
-          <p style="color: #737373; font-size: 13px; line-height: 1.6;">
-            On that page, enter <strong>${escapeHtml(to)}</strong> to receive a one-time code, choose a password, then sign in at
-            <a href="${loginUrl}" style="color: #2563eb;">${loginUrl}</a>.
-          </p>`
+          ${emailParagraph("An account was created for you. To get started, set your password:")}
+          ${emailButton(setupUrl, "Set your password")}
+          ${emailParagraph(`On that page, enter <strong>${escapeHtml(to)}</strong> to receive a one-time code, choose a password, then sign in at <a href="${loginUrl}" style="color:${EMAIL_ACCENT};">${loginUrl}</a>.`, { muted: true })}`
     : `
-          <a href="${loginUrl}" style="display: inline-block; background: #171717; color: #fff; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-size: 14px; font-weight: 500; margin: 8px 0;">Open RegLayer</a>`;
+          ${emailParagraph("You can jump straight in.")}
+          ${emailButton(loginUrl, "Open RegLayer")}`;
+
+  const contentHtml = `${lead}${cta}
+          ${emailParagraph("If you weren't expecting this, you can safely ignore this email.", { muted: true })}`;
 
   return {
     to,
     subject: `You've been added to ${data.workspaceName} on RegLayer`,
-    html: `
-        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 520px; margin: 0 auto; padding: 40px 20px;">
-          <h2 style="color: #0a0a0a; margin-bottom: 8px;">You've been added to ${workspace}</h2>
-          <p style="color: #525252; font-size: 14px; line-height: 1.6;">
-            <strong>${inviter}</strong> added you to the <strong>${workspace}</strong> workspace on RegLayer as <strong>${roleLabel}</strong>.
-          </p>
-          ${cta}
-          <p style="color: #a3a3a3; font-size: 12px; margin-top: 24px;">
-            If you weren't expecting this, you can safely ignore this email.
-          </p>
-        </div>
-      `,
-    text: data.isNewUser
+    html: renderEmailLayout({
+      preheader: `${data.inviterName} added you to ${data.workspaceName} on RegLayer`,
+      title: `You've been added to ${workspace}`,
+      contentHtml,
+    }),
+    text: data.isNewUser && data.temporaryPassword
+      ? `${data.inviterName} added you to ${data.workspaceName} on RegLayer as ${roleLabel}. Sign in at ${loginUrl} with ${to} and the temporary password ${data.temporaryPassword}, then choose your own password when RegLayer asks for it. The temporary password expires in 7 days.`
+      : data.isNewUser
       ? `${data.inviterName} added you to ${data.workspaceName} on RegLayer as ${roleLabel}. An account was created for you — set your password at ${setupUrl} (enter ${to} to get a one-time code), then sign in at ${loginUrl}.`
       : `${data.inviterName} added you to ${data.workspaceName} on RegLayer as ${roleLabel}. Sign in at ${loginUrl}.`,
   };
@@ -377,6 +365,89 @@ export function buildTeamInviteEmail(to: string, data: TeamInviteData): EmailPay
 /** Send a team-invitation email (best-effort; no-op return if SMTP unconfigured). */
 export async function sendTeamInviteEmail(to: string, data: TeamInviteData) {
   return sendEmail(buildTeamInviteEmail(to, data));
+}
+
+export interface PasswordSetData {
+  name?: string | null;
+  workspaceName?: string | null;
+}
+
+/**
+ * Welcome note sent once an invited member replaces their temporary password.
+ *
+ * Deliberately contains NO password. Mail is stored, searchable and forwardable,
+ * so a live credential must never travel through it — the same reason the
+ * temporary password is single-use and short-lived.
+ */
+export function buildPasswordSetEmail(to: string, data: PasswordSetData = {}): EmailPayload {
+  const appUrl = emailAppUrl();
+  const greeting = data.name?.trim() ? `Welcome, ${escapeHtml(data.name.trim())}!` : "Welcome to RegLayer!";
+  const place = data.workspaceName?.trim()
+    ? ` You're all set in <strong>${escapeHtml(data.workspaceName.trim())}</strong>.`
+    : " You're all set.";
+
+  const contentHtml = `
+          ${emailParagraph(`Your password is set and your temporary one no longer works.${place}`)}
+          ${emailParagraph("From here you can run accessibility scans, work through violations with guidance, and share compliance reports with your team.")}
+          ${emailButton(`${appUrl}/dashboard`, "Open your dashboard")}
+          ${emailParagraph(`For your security we never include passwords in email. If you didn't set this password, reset it now at <a href="${appUrl}/auth/forgot-password" style="color:${EMAIL_ACCENT};">${appUrl}/auth/forgot-password</a> and tell your workspace administrator.`, { muted: true })}`;
+
+  return {
+    to,
+    subject: "Welcome to RegLayer — your account is ready",
+    html: renderEmailLayout({
+      preheader: "Your RegLayer account is ready — open your dashboard.",
+      title: greeting,
+      contentHtml,
+      footnote: `Account: ${escapeHtml(to)} · ${new Date().toUTCString()}`,
+    }),
+    text: `${data.name?.trim() ? `Welcome, ${data.name.trim()}!` : "Welcome to RegLayer!"} Your password is set and your temporary one no longer works.${data.workspaceName?.trim() ? ` You're all set in ${data.workspaceName.trim()}.` : ""} Open your dashboard at ${appUrl}/dashboard. For your security we never include passwords in email — if you didn't set this password, reset it at ${appUrl}/auth/forgot-password and tell your workspace administrator. Account: ${to} (${new Date().toUTCString()}).`,
+  };
+}
+
+/** Send the welcome note after first-time password setup (best-effort). */
+export async function sendPasswordSetEmail(to: string, data: PasswordSetData = {}) {
+  return sendEmail(buildPasswordSetEmail(to, data));
+}
+
+/** Password-reset one-time code email. */
+export function buildPasswordResetEmail(to: string, otp: string): EmailPayload {
+  return {
+    to,
+    subject: "RegLayer — Password Reset Code",
+    html: renderEmailLayout({
+      preheader: "Your RegLayer password reset code — expires in 10 minutes.",
+      title: "Reset your password",
+      contentHtml: `
+          ${emailParagraph("Enter this code to reset your RegLayer password. It expires in 10 minutes.")}
+          <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin:16px 0;"><tr><td align="center" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:20px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:32px;font-weight:700;letter-spacing:8px;color:#0f172a;">${escapeHtml(otp)}</td></tr></table>
+          ${emailParagraph("If you didn't request this, you can safely ignore this email.", { muted: true })}`,
+    }),
+    text: `Your RegLayer password reset code is: ${otp}. It expires in 10 minutes.`,
+  };
+}
+
+/** Security confirmation sent after a password is changed or reset. */
+export function buildPasswordChangedEmail(to: string): EmailPayload {
+  const app = emailAppUrl();
+  return {
+    to,
+    subject: "RegLayer — Your password was changed",
+    html: renderEmailLayout({
+      preheader: "Your RegLayer password was just changed.",
+      title: "Password changed successfully",
+      contentHtml: `
+          ${emailParagraph("Your RegLayer account password was just updated. If you made this change, no further action is needed.")}
+          ${emailCallout(`If you did <strong>not</strong> make this change, your account may be compromised. Reset your password immediately at <a href="${app}/auth/forgot-password" style="color:#991b1b;">${app}/auth/forgot-password</a>, or contact support@reglayer.eu.`, "danger")}
+          ${emailParagraph(`Account: ${escapeHtml(to)} · ${new Date().toUTCString()}`, { muted: true })}`,
+    }),
+    text: `Your RegLayer password was changed on ${new Date().toUTCString()}. If you did not make this change, contact support@reglayer.eu immediately.`,
+  };
+}
+
+/** Send the password-changed security confirmation (best-effort). */
+export async function sendPasswordChangedEmail(to: string) {
+  return sendEmail(buildPasswordChangedEmail(to));
 }
 
 /**
@@ -395,54 +466,27 @@ export async function sendComplianceReportEmail(data: {
   scoreImproved: boolean;
   reportUrl: string;
 }) {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://reglayer.vercel.app";
-  const trendIcon = data.scoreImproved ? "📈" : "📉";
+  const trendIcon = data.scoreImproved ? "↑" : "↓";
   const trendColor = data.scoreImproved ? "#059669" : "#dc2626";
 
   return sendEmail({
     to: data.to,
     subject: `Compliance Report: ${data.siteName} — ${data.period}`,
-    html: `
-      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 560px; margin: 0 auto; padding: 40px 20px;">
-        <div style="margin-bottom: 24px;">
-          <h2 style="color: #0a0a0a; margin: 0 0 4px;">Compliance Report</h2>
-          <p style="color: #737373; margin: 0; font-size: 14px;">${escapeHtml(data.siteName)} — ${escapeHtml(data.period)}</p>
-        </div>
-
-        <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
-          <div style="text-align: center; margin-bottom: 16px;">
-            <div style="font-size: 48px; font-weight: 800; color: ${trendColor};">${data.currentScore}%</div>
-            <div style="font-size: 13px; color: #6b7280;">${trendIcon} Current Accessibility Score</div>
-          </div>
-
-          <table style="width: 100%; border-collapse: collapse;">
-            <tr>
-              <td style="padding: 8px 0; border-top: 1px solid #e5e7eb; font-size: 13px; color: #6b7280;">Average Score</td>
-              <td style="padding: 8px 0; border-top: 1px solid #e5e7eb; font-size: 13px; font-weight: 600; color: #111827; text-align: right;">${data.averageScore}%</td>
-            </tr>
-            <tr>
-              <td style="padding: 8px 0; border-top: 1px solid #e5e7eb; font-size: 13px; color: #6b7280;">Scans Completed</td>
-              <td style="padding: 8px 0; border-top: 1px solid #e5e7eb; font-size: 13px; font-weight: 600; color: #111827; text-align: right;">${data.totalScans}</td>
-            </tr>
-            <tr>
-              <td style="padding: 8px 0; border-top: 1px solid #e5e7eb; font-size: 13px; color: #6b7280;">Open Violations</td>
-              <td style="padding: 8px 0; border-top: 1px solid #e5e7eb; font-size: 13px; font-weight: 600; color: #111827; text-align: right;">${data.totalViolations}</td>
-            </tr>
-            <tr>
-              <td style="padding: 8px 0; border-top: 1px solid #e5e7eb; font-size: 13px; color: #6b7280;">Evidence Proofs Issued</td>
-              <td style="padding: 8px 0; border-top: 1px solid #e5e7eb; font-size: 13px; font-weight: 600; color: #111827; text-align: right;">${data.proofsIssued}</td>
-            </tr>
-          </table>
-        </div>
-
-        <a href="${escapeHtml(data.reportUrl)}" style="display: inline-block; background: #171717; color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 500;">View Full Report</a>
-
-        <p style="color: #a3a3a3; font-size: 12px; margin-top: 24px; line-height: 1.5;">
-          This report was sent by RegLayer Compliance Autopilot.
-          <a href="${appUrl}/settings" style="color: #6b7280;">Manage report settings</a>
-        </p>
-      </div>
-    `,
+    html: renderEmailLayout({
+      preheader: `${data.siteName} — ${data.currentScore}% current score for ${data.period}`,
+      title: "Compliance report",
+      contentHtml: `
+          ${emailParagraph(`<strong>${escapeHtml(data.siteName)}</strong> · ${escapeHtml(data.period)}`)}
+          ${emailCallout(`<div style="text-align:center;"><div style="font-size:44px;font-weight:800;color:${trendColor};line-height:1;">${data.currentScore}%</div><div style="font-size:13px;color:#64748b;margin-top:6px;">${trendIcon} Current accessibility score</div></div>`, data.scoreImproved ? "success" : "danger")}
+          ${emailStatTable([
+            { label: "Average score", value: `${data.averageScore}%` },
+            { label: "Scans completed", value: String(data.totalScans) },
+            { label: "Open violations", value: String(data.totalViolations) },
+            { label: "Evidence proofs issued", value: String(data.proofsIssued) },
+          ])}
+          ${emailButton(data.reportUrl, "View full report")}
+          ${emailParagraph(`Sent by RegLayer Compliance Autopilot. <a href="${emailAppUrl()}/settings" style="color:#64748b;">Manage report settings</a>`, { muted: true })}`,
+    }),
     text: `Compliance Report: ${data.siteName} (${data.period})\n\nCurrent Score: ${data.currentScore}%\nAverage Score: ${data.averageScore}%\nScans: ${data.totalScans}\nViolations: ${data.totalViolations}\nProofs Issued: ${data.proofsIssued}\n\nView full report: ${data.reportUrl}`,
   });
 }

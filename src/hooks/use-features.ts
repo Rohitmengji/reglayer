@@ -3,22 +3,37 @@
 /**
  * RegLayer — useFeatures hook
  *
- * Fetches workspace feature set once per mount.
+ * Shares one workspace feature request across mounted consumers.
  * Single source of truth for feature access — no optimistic/pessimistic split.
  * Master admins see all features without network call.
  */
 
-import { useState, useEffect, useCallback, useMemo, useReducer } from "react";
+import { createContext, createElement, useContext, useEffect, useReducer, type ReactNode } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { FEATURE_CATALOG } from "@/lib/features/feature-catalog";
 
 const ALL_FEATURE_IDS = FEATURE_CATALOG.map((f) => f.id);
 const INVALIDATE_EVENT = "reglayer:features-invalidated";
 
-export function useFeatures() {
+interface FeatureAccess {
+  features: string[];
+  loading: boolean;
+  hasFeature: (featureId: string) => boolean;
+  canRunScans: boolean;
+  accessLoading: boolean;
+  accessError: boolean;
+  retryAccess: () => void;
+}
+
+const FeaturesContext = createContext<FeatureAccess | null>(null);
+
+export function FeaturesProvider({ children }: { children: ReactNode }) {
   const { data: session, status } = useSession();
-  const [features, setFeatures] = useState<string[] | null>(null);
   const [refetchKey, bump] = useReducer((x: number) => x + 1, 0);
+  const identity = session?.user?.email ?? session?.user?.id ?? "";
+  const isMasterAdmin = status === "authenticated" && Boolean(session?.user?.isMasterAdmin);
+  const enabled = status === "authenticated" && Boolean(identity) && !isMasterAdmin;
 
   // Listen for invalidation events (triggered by workspace switch, plan upgrade, etc.)
   useEffect(() => {
@@ -27,49 +42,45 @@ export function useFeatures() {
     return () => window.removeEventListener(INVALIDATE_EVENT, handler);
   }, []);
 
-  useEffect(() => {
-    if (status === "loading") return;
-    if (!session?.user) return;
-
-    // Master admin — all features, no network needed
-    if (session.user.isMasterAdmin) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: master admins get all features synchronously, no network round-trip
-      setFeatures(ALL_FEATURE_IDS);
-      return;
-    }
-
-    const controller = new AbortController();
-
-    fetch("/api/workspace/features", { signal: controller.signal })
-      .then((r) => r.ok ? r.json() : Promise.reject(new Error(`${r.status}`)))
-      .then((data) => {
-        if (!controller.signal.aborted) {
-          setFeatures(data.features ?? []);
-        }
-      })
-      .catch((err) => {
-        if (!controller.signal.aborted) {
-          // Fallback: show minimal features on error
-          setFeatures(["dashboard", "scans", "settings"]);
-        }
-      });
-
-    return () => controller.abort();
-  }, [session, status, refetchKey]);
-
-  const loading = features === null;
-
-  const hasFeature = useCallback(
-    (featureId: string): boolean => {
-      if (loading) return false;
-      return features!.includes(featureId);
+  const access = useQuery({
+    queryKey: ["workspace-feature-access", status, identity, isMasterAdmin, refetchKey],
+    enabled,
+    queryFn: async () => {
+      const response = await fetch("/api/workspace/features", { signal: AbortSignal.timeout(15_000), cache: "no-store" });
+      if (!response.ok) throw new Error("Workspace capabilities unavailable");
+      const data = await response.json();
+      if (!Array.isArray(data.permissions) || !data.permissions.every((permission: unknown) => typeof permission === "string") ||
+          !Array.isArray(data.features) || !data.features.every((feature: unknown) => typeof feature === "string")) {
+        throw new Error("Workspace capabilities unavailable");
+      }
+      return data as { features: string[]; permissions: string[] };
     },
-    [features, loading]
-  );
+    retry: false,
+    staleTime: 30_000,
+    gcTime: 0,
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
+  });
+  const accessLoading = status === "loading" || (enabled && (access.isPending || access.isFetching));
+  const accessError = enabled && access.isError;
+  const current = enabled && !accessLoading && !accessError ? access.data : undefined;
+  const features = isMasterAdmin ? ALL_FEATURE_IDS : (enabled ? access.data?.features : undefined) ?? (accessError ? ["dashboard", "scans", "settings"] : []);
+  const value: FeatureAccess = {
+    features,
+    loading: status === "loading" || (enabled && access.isPending),
+    hasFeature: featureId => features.includes(featureId),
+    canRunScans: isMasterAdmin || Boolean(current?.permissions.includes("scans.run")),
+    accessLoading,
+    accessError,
+    retryAccess: bump,
+  };
+  return createElement(FeaturesContext.Provider, { value }, children);
+}
 
-  const resolvedFeatures = useMemo(() => features ?? [], [features]);
-
-  return { features: resolvedFeatures, loading, hasFeature };
+export function useFeatures(): FeatureAccess {
+  const features = useContext(FeaturesContext);
+  if (!features) throw new Error("useFeatures requires FeaturesProvider");
+  return features;
 }
 
 /**

@@ -56,7 +56,7 @@ export function EmptyState({
       </p>
 
       {/* Action Buttons */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full max-w-sm">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center justify-center gap-3 w-full max-w-sm">
         {actionLabel && actionHref && (
           <Link
             href={actionHref}

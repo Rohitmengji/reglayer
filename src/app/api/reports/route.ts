@@ -45,12 +45,12 @@ export async function POST(request: NextRequest) {
     // Header
     doc.setFontSize(20);
     doc.setFont("helvetica", "bold");
-    doc.text("RegLayer Compliance Report", 20, 25);
+    doc.text("RegLayer Accessibility Report", 20, 25);
 
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(100);
-    doc.text("Developer-native compliance infrastructure", 20, 32);
+    doc.text("Automated scan evidence for qualified review", 20, 32);
 
     // Scan Info
     doc.setDrawColor(200);
@@ -68,20 +68,26 @@ export async function POST(request: NextRequest) {
       `Page Title: ${scan.metadata.pageTitle}`,
       `Scan Date: ${new Date(scan.timestamp).toLocaleString()}`,
       `Duration: ${scan.metadata.scanDuration}ms`,
-      `Compliance Score: ${scan.summary.score}/100`,
-      `Overall Compliance: ${compliance.overallCompliance}%`,
+      `Automated accessibility score: ${scan.summary.score}/100`,
+      `Policy rules without detected findings: ${compliance.overallCompliance}%`,
     ];
-    info.forEach((line, i) => {
-      doc.text(line, 20, 56 + i * 6);
+    let summaryY = 56;
+    info.forEach((line) => {
+      const lines = doc.splitTextToSize(line, 170);
+      doc.text(lines, 20, summaryY);
+      summaryY += lines.length * 5 + 1;
     });
+    const limitations = doc.splitTextToSize("Based on submitted automated scan data. Not a WCAG conformance certification. Manual testing is required. Policy rules without detected findings may still need assessment.", 170);
+    doc.text(limitations, 20, summaryY + 3);
+    const violationsY = summaryY + limitations.length * 5 + 13;
 
     // Severity Summary
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
-    doc.text("Violation Summary", 20, 98);
+    doc.text("Violation Summary", 20, violationsY);
 
     autoTable(doc, {
-      startY: 104,
+      startY: violationsY + 6,
       head: [["Severity", "Count"]],
       body: [
         ["Critical", String(scan.summary.critical)],
@@ -99,7 +105,7 @@ export async function POST(request: NextRequest) {
     const rulesY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 15;
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
-    doc.text("Compliance Rules", 20, rulesY);
+    doc.text("Automated Policy Findings", 20, rulesY);
 
     autoTable(doc, {
       startY: rulesY + 6,
@@ -107,7 +113,7 @@ export async function POST(request: NextRequest) {
       body: compliance.ruleResults.map((r) => [
         r.rule.name,
         r.rule.regulation,
-        r.passed ? "PASS" : "FAIL",
+        r.passed ? "No findings detected" : "Findings detected",
       ]),
       theme: "grid",
       headStyles: { fillColor: [23, 23, 23] },

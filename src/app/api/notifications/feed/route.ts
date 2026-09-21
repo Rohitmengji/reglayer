@@ -8,17 +8,15 @@
  * data that ALREADY exists — completed scans, their critical issue counts, and
  * workspace audit-log activity — gated by the user's existing
  * NotificationPreference flags. No new table, no writes: unread state is tracked
- * client-side via a localStorage `lastSeenAt` timestamp.
+ * client-side through scoped read IDs in localStorage.
  *
  * HOW: Mirrors the auth + workspace-scoping pattern of /api/scans and
  * /api/audit-log. Sibling segment to /api/notifications — that route is untouched.
  */
 
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
-import { getOrCreateWorkspace } from "@/lib/database/workspace";
+import { requireWorkspacePermission } from "@/lib/auth/api-guard";
 
 export interface NotificationItem {
   id: string;
@@ -39,40 +37,21 @@ function humanizeAction(action: string): string {
 }
 
 export async function GET() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   try {
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      select: {
-        id: true,
-        isMasterAdmin: true,
-        memberships: { select: { workspaceId: true }, take: 1 },
-      },
-    });
-
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    const workspaceId =
-      user.memberships[0]?.workspaceId ??
-      (await getOrCreateWorkspace(user.id, session.user.email));
+    const guard = await requireWorkspacePermission("scans.view");
+    if (!guard.ok) return guard.response;
+    const { userId, workspaceId } = guard.ctx;
 
     // Read existing preferences (no write). Default everything on if absent.
     const prefs = await prisma.notificationPreference.findUnique({
-      where: { userId: user.id },
+      where: { userId },
       select: { scanComplete: true, newViolations: true, teamActivity: true },
     });
     const wantScans = prefs?.scanComplete ?? true;
     const wantViolations = prefs?.newViolations ?? true;
     const wantActivity = prefs?.teamActivity ?? true;
 
-    const scopeFilter =
-      user.isMasterAdmin && workspaceId ? { workspaceId } : { userId: user.id };
+    const scopeFilter = workspaceId ? { workspaceId } : { userId, workspaceId: null };
 
     const items: NotificationItem[] = [];
 
@@ -151,7 +130,9 @@ export async function GET() {
 
     items.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
 
-    return NextResponse.json({ items: items.slice(0, FEED_LIMIT) });
+    return NextResponse.json({ scope: JSON.stringify([userId, workspaceId]), items: items.slice(0, FEED_LIMIT) }, {
+      headers: { "Cache-Control": "private, no-store" },
+    });
   } catch {
     return NextResponse.json({ error: "Failed to load notifications", items: [] }, { status: 500 });
   }

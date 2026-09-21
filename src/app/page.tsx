@@ -15,66 +15,20 @@
 
 import type { Metadata } from "next";
 import { LandingContent } from "@/components/landing/landing-content";
+import { getSiteUrl, publicMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = {
-  title: "RegLayer — Web Accessibility Compliance, Fully Automated",
-  description:
-    "Enterprise accessibility compliance platform. Automated WCAG 2.2 scanning, litigation risk scoring, compliance forecasting, and continuous monitoring for ADA, EAA, Section 508, and EN 301 549.",
-  authors: [{ name: "RegLayer", url: "https://reglayer.vercel.app" }],
-  openGraph: {
-    title: "RegLayer — Web Accessibility Compliance, Fully Automated",
-    description:
-      "Automated WCAG scanning, AI fix suggestions, audit-ready reports, and continuous monitoring. One platform for worldwide accessibility standards.",
-    url: "https://reglayer.vercel.app",
-    siteName: "RegLayer",
-    type: "website",
-    images: [
-      {
-        url: "/assests/reglayer-og.png",
-        width: 1200,
-        height: 630,
-        alt: "RegLayer — Web Accessibility Compliance Platform",
-      },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "RegLayer — Web Accessibility Compliance, Fully Automated",
-    description: "Automated WCAG scanning, litigation risk scoring, and compliance forecasting for enterprise teams.",
-    images: ["/assests/reglayer-og.png"],
-  },
-  other: {
-    "article:author": "https://reglayer.vercel.app",
-    "article:published_time": "2025-01-01T00:00:00Z",
-  },
+  ...publicMetadata("/", "RegLayer - Web Accessibility Testing", "Find accessibility issues with automated WCAG scans, review affected elements, track fixes, and prepare reports for your web team."),
+  title: { absolute: "RegLayer | Web Accessibility Testing" },
 };
 
 export default function Home() {
   const jsonLd = {
     "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    name: "RegLayer",
-    applicationCategory: "DeveloperApplication",
-    operatingSystem: "Web",
-    description: "Enterprise accessibility compliance platform. Automated WCAG scanning, litigation risk scoring, compliance forecasting, and continuous monitoring.",
-    url: "https://reglayer.vercel.app",
-    offers: {
-      "@type": "AggregateOffer",
-      priceCurrency: "USD",
-      lowPrice: "0",
-      highPrice: "199",
-      offerCount: "3",
-    },
-    featureList: [
-      "WCAG 2.1/2.2 automated scanning",
-      "EN 301 549 compliance",
-      "ADA Title III monitoring",
-      "Litigation risk scoring",
-      "Compliance forecasting",
-      "Auto-remediation engine",
-      "CI/CD regression guard",
-      "Executive compliance dashboard",
-      "Human testing marketplace",
+    "@graph": [
+      { "@type": "Organization", "@id": `${getSiteUrl()}/#organization`, name: "RegLayer", url: getSiteUrl(), logo: `${getSiteUrl()}/assests/favicon-512.png` },
+      { "@type": "WebSite", "@id": `${getSiteUrl()}/#website`, name: "RegLayer", url: getSiteUrl(), publisher: { "@id": `${getSiteUrl()}/#organization` }, inLanguage: "en" },
+      { "@type": "SoftwareApplication", "@id": `${getSiteUrl()}/#application`, name: "RegLayer", url: getSiteUrl(), applicationCategory: "DeveloperApplication", operatingSystem: "Web browser", description: "Automated web accessibility scanning, issue tracking, and reporting.", publisher: { "@id": `${getSiteUrl()}/#organization` } },
     ],
   };
 
@@ -82,7 +36,7 @@ export default function Home() {
     <div className="min-h-screen bg-white dark:bg-neutral-950">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
       />
       <LandingContent />
     </div>

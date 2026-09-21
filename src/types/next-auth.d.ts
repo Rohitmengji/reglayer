@@ -6,6 +6,7 @@ declare module "next-auth" {
     role?: string;
     isMasterAdmin?: boolean;
     workspaceRole?: string | null;
+    mustSetPassword?: boolean;
   }
 
   interface Session {
@@ -17,6 +18,7 @@ declare module "next-auth" {
       role?: string;
       isMasterAdmin?: boolean;
       workspaceRole?: string | null;
+      mustSetPassword?: boolean;
     };
   }
 }
@@ -26,5 +28,6 @@ declare module "next-auth/jwt" {
     role?: string;
     isMasterAdmin?: boolean;
     workspaceRole?: string | null;
+    mustSetPassword?: boolean;
   }
 }

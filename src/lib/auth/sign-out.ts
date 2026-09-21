@@ -17,6 +17,7 @@
 import { signOut, type SignOutParams } from "next-auth/react";
 import { useChatStore } from "@/stores/chatStore";
 import { resetPersistenceFingerprint } from "@/lib/ai/chat/persistence";
+import { useScanStore } from "@/stores/scanStore";
 
 /**
  * Remove every trace of the signed-in user's AI state from this browser.
@@ -36,6 +37,12 @@ export function clearLocalAiState(): void {
     // Never block sign-out. Failing to clear is bad; trapping someone in an
     // authenticated session because cleanup threw is worse.
   }
+}
+
+export function clearLocalWorkspaceState(): void {
+  clearLocalAiState();
+  useScanStore.setState({ scanHistory: [] });
+  useScanStore.persist.clearStorage();
 }
 
 /** Sign out, clearing local AI state first. Use this instead of next-auth's signOut. */

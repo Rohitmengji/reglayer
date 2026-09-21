@@ -9,7 +9,7 @@
  */
 
 import { useEffect, useState } from "react";
-import { toast } from "sonner";
+import Link from "next/link";
 import { ModernSelect } from "@/components/ui/modern-select";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent } from "@/components/ui/card";
@@ -51,69 +51,77 @@ export default function VPATPage() {
   const [standard, setStandard] = useState("WCAG21-AA");
   const [scanId, setScanId] = useState("");
   const [scans, setScans] = useState<Array<{ id: string; url: string; score: number }>>([]);
-  const [scansLoaded, setScansLoaded] = useState(false);
+  const [scansLoading, setScansLoading] = useState(true);
+  const [scansError, setScansError] = useState(false);
+  const [retry, setRetry] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
 
-  async function loadScans() {
-    if (scansLoaded) return;
-    const res = await fetch("/api/scans");
-    if (res.ok) {
-      const data = await res.json();
-      setScans(data.scans || []);
-      if (data.scans?.length > 0) setScanId(data.scans[0].id);
-    }
-    setScansLoaded(true);
-  }
-
-  // Populate the "Scan (optional)" dropdown on mount — loadScans existed but was
-  // never called, so the selector never listed real scans. (Guarded by scansLoaded.)
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- mount-only fetch; loadScans sets state only after an await
-    void loadScans();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional mount-only; loadScans self-guards re-runs
-  }, []);
+    let disposed = false;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15_000);
+    async function load() {
+      setScansLoading(true);
+      setScansError(false);
+      try {
+        const response = await fetch("/api/scans", { cache: "no-store", signal: controller.signal });
+        if (!response.ok) throw new Error("Scan history unavailable");
+        const data = await response.json();
+        if (!Array.isArray(data.scans)) throw new Error("Invalid scan history");
+        const completed = data.scans.filter((scan: { status: string }) => scan.status === "COMPLETED");
+        if (!disposed) {
+          setScans(completed);
+          setScanId(completed[0]?.id ?? "");
+        }
+      } catch {
+        if (!disposed) setScansError(true);
+      } finally {
+        clearTimeout(timeout);
+        if (!disposed) setScansLoading(false);
+      }
+    }
+    void load();
+    return () => { disposed = true; clearTimeout(timeout); controller.abort(); };
+  }, [retry]);
 
   async function generate() {
+    if (loading || !scanId) return;
     setLoading(true);
+    setError(null);
+    setResult(null);
     try {
-      // If no scanId selected, load scans and use the first one
-      let id = scanId;
-      if (!id) {
-        const scansRes = await fetch("/api/scans");
-        if (scansRes.ok) {
-          const data = await scansRes.json();
-          if (data.scans?.length > 0) {
-            id = data.scans[0].id;
-            setScanId(id);
-          }
-        }
-      }
-      if (!id) {
-        toast.error("No scans available. Run a scan first.");
-        setLoading(false);
-        return;
-      }
       const res = await fetch("/api/compliance/vpat", {
         method: "POST",
+        signal: AbortSignal.timeout(30_000),
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          scanId: id,
+          scanId,
           productName: productName || "My Application",
           vendorName: vendorName || "My Company",
           standard,
           format: "json",
         }),
       });
-      if (res.ok) {
-        setResult(await res.json());
-      }
+      if (!res.ok) throw new Error("Generation failed");
+      const data = await res.json();
+      if (!data.summary || !Array.isArray(data.criteria)) throw new Error("Invalid draft");
+      setResult(data);
+    } catch {
+      setError("Could not generate the draft. Your inputs are unchanged; please try again.");
     } finally {
       setLoading(false);
     }
   }
 
   async function downloadHTML() {
+    if (downloading || !result) return;
+    setDownloading(true);
+    setError(null);
+    try {
     const res = await fetch("/api/compliance/vpat", {
       method: "POST",
+      signal: AbortSignal.timeout(30_000),
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         scanId: scanId,
@@ -132,7 +140,12 @@ export default function VPATPage() {
       a.download = `VPAT-${productName || "report"}.html`;
       a.click();
       URL.revokeObjectURL(url);
+    } else {
+      throw new Error("Download failed");
     }
+    } catch {
+      setError("Could not download the draft. Please try again.");
+    } finally { setDownloading(false); }
   }
 
   function conformanceIcon(c: string) {
@@ -146,62 +159,70 @@ export default function VPATPage() {
     <AppShell>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold">Legal Shield — VPAT/ACR Generator</h1>
+          <h1 className="text-2xl font-bold">VPAT / ACR Draft</h1>
           <p className="text-muted-foreground">
-            Generate legally defensible VPAT/ACR documents for procurement RFPs. Companies pay $10K-$50K for these.
+            Prepare a draft from scan evidence for qualified review. Complete manual testing and verify every conformance claim before sharing it; this is not a legal assurance or certification.
           </p>
         </div>
 
         {/* Input Form */}
         <Card>
           <CardContent className="pt-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <fieldset disabled={loading || downloading || scansLoading} className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium block mb-1">Product Name</label>
+                <label htmlFor="vpat-product" className="text-sm font-medium block mb-1">Product Name</label>
                 <input
+                  id="vpat-product"
                   type="text"
+                  disabled={loading || downloading}
                   value={productName}
-                  onChange={(e) => setProductName(e.target.value)}
+                  onChange={(e) => { setProductName(e.target.value); setResult(null); }}
                   placeholder="My Application"
                   className="w-full rounded-md border px-3 py-2 text-sm bg-background"
                 />
               </div>
               <div>
-                <label className="text-sm font-medium block mb-1">Vendor Name</label>
+                <label htmlFor="vpat-vendor" className="text-sm font-medium block mb-1">Vendor Name</label>
                 <input
+                  id="vpat-vendor"
                   type="text"
+                  disabled={loading || downloading}
                   value={vendorName}
-                  onChange={(e) => setVendorName(e.target.value)}
+                  onChange={(e) => { setVendorName(e.target.value); setResult(null); }}
                   placeholder="My Company"
                   className="w-full rounded-md border px-3 py-2 text-sm bg-background"
                 />
               </div>
               <div>
-                <label className="text-sm font-medium block mb-1">Standard</label>
                 <ModernSelect
+              label="Standard"
               options={[{ value: "WCAG21-AA", label: "WCAG 2.1 Level AA" }, { value: "WCAG21-A", label: "WCAG 2.1 Level A" }, { value: "WCAG21-AAA", label: "WCAG 2.1 Level AAA" }, { value: "Section508", label: "Section 508" }, { value: "EN301549", label: "EN 301 549" }]}
               value={standard}
-              onChange={setStandard}
+              onChange={(value) => { setStandard(value); setResult(null); }}
             />
               </div>
               <div>
-                <label className="text-sm font-medium block mb-1">Scan (optional)</label>
                 <ModernSelect
-              options={[{ value: "", label: "Use latest scan" }, ...scans.map((s) => ({ value: s.id, label: `${s.url} (Score: ${s.score})` }))]}
+              label="Completed scan"
+              options={scans.map((scan) => ({ value: scan.id, label: `${scan.url} (Score: ${scan.score})` }))}
               value={scanId}
-              onChange={setScanId}
+              onChange={(value) => { setScanId(value); setResult(null); }}
             />
               </div>
-            </div>
-            <div className="flex gap-3 mt-4">
-              <Button onClick={generate} disabled={loading}>
+            </fieldset>
+            {scansLoading && <p role="status" className="mt-3 text-sm">Loading completed scans...</p>}
+            {scansError && <div className="mt-3"><p role="alert" className="text-sm">Could not load completed scans. Please try again.</p><Button variant="outline" onClick={() => setRetry(value => value + 1)} className="mt-2">{t("common.retry")}</Button></div>}
+            {!scansLoading && !scansError && scans.length === 0 && <p className="mt-3 text-sm">No completed scans available. <Link href="/dashboard" className="underline">Run a scan</Link> first.</p>}
+            {error && <p role="alert" className="mt-3 text-sm text-red-700 dark:text-red-300">{error}</p>}
+            <div className="flex flex-wrap gap-3 mt-4">
+              <Button onClick={generate} disabled={loading || downloading || scansLoading || scansError || !scanId}>
                 <FileText className="h-4 w-4 mr-2" />
-                {loading ? "Generating..." : "Generate VPAT"}
+                {loading ? "Generating..." : "Generate draft"}
               </Button>
               {result && (
-                <Button variant="outline" onClick={downloadHTML}>
+                <Button variant="outline" onClick={downloadHTML} disabled={downloading || loading}>
                   <Download className="h-4 w-4 mr-2" />
-                  Download HTML
+                  {downloading ? "Downloading..." : "Download HTML"}
                 </Button>
               )}
             </div>

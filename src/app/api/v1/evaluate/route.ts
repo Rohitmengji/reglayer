@@ -49,12 +49,12 @@ export async function GET(request: NextRequest) {
   const promptId = request.nextUrl.searchParams.get("promptId");
 
   if (promptId) {
-    const analysis = await analyzeFeedback(promptId);
+    const analysis = await analyzeFeedback(promptId, auth.ctx.workspaceId);
     auditLog(auth.ctx, "/v1/evaluate", "GET", Date.now() - start, 200);
     return apiResponse(analysis);
   }
 
-  const overview = await getLearningOverview();
+  const overview = await getLearningOverview(auth.ctx.workspaceId);
   auditLog(auth.ctx, "/v1/evaluate", "GET", Date.now() - start, 200);
   return apiResponse(overview);
 }

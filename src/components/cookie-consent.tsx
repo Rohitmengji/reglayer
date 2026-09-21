@@ -34,6 +34,7 @@ interface ConsentState {
 }
 
 const CONSENT_KEY = "reglayer-gdpr-consent";
+const CONSENT_CHANGE_EVENT = "reglayer:consent-changed";
 
 function getStoredConsent(): ConsentState | null {
   if (typeof window === "undefined") return null;
@@ -72,6 +73,7 @@ export function CookieConsent() {
   function saveConsent(state: ConsentState) {
     const updated = { ...state, timestamp: new Date().toISOString() };
     localStorage.setItem(CONSENT_KEY, JSON.stringify(updated));
+    window.dispatchEvent(new Event(CONSENT_CHANGE_EVENT));
     setConsent(updated);
     setVisible(false);
   }
@@ -191,9 +193,21 @@ export function CookieConsent() {
 
 /** Hook to check consent status */
 export function useConsent(): ConsentState & { hasConsented: boolean } {
-  const [state] = useState<ConsentState>(() => {
+  const [state, setState] = useState<ConsentState>(() => {
     return getStoredConsent() ?? { essential: true, analytics: false, marketing: false, timestamp: null };
   });
+
+  useEffect(() => {
+    function syncConsent() {
+      setState(getStoredConsent() ?? { essential: true, analytics: false, marketing: false, timestamp: null });
+    }
+    window.addEventListener(CONSENT_CHANGE_EVENT, syncConsent);
+    window.addEventListener("storage", syncConsent);
+    return () => {
+      window.removeEventListener(CONSENT_CHANGE_EVENT, syncConsent);
+      window.removeEventListener("storage", syncConsent);
+    };
+  }, []);
 
   return { ...state, hasConsented: !!state.timestamp };
 }

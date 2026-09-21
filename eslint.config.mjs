@@ -75,6 +75,12 @@ const eslintConfig = defineConfig([
       "jsx-a11y/aria-role": "error",
     },
   },
+  {
+    files: ["src/components/docs/docs-article.tsx"],
+    rules: {
+      "jsx-a11y/no-noninteractive-tabindex": ["warn", { roles: ["tabpanel", "region"] }],
+    },
+  },
 ]);
 
 export default eslintConfig;

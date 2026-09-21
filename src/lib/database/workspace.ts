@@ -7,6 +7,7 @@
  */
 
 import { prisma } from "@/lib/database/prisma";
+import { readWorkspaceSelection } from "@/lib/auth/workspace-selection";
 
 /**
  * Get or create a default workspace for a user.
@@ -15,11 +16,16 @@ import { prisma } from "@/lib/database/prisma";
  * Returns the workspaceId or null if user has no workspace.
  */
 export async function getOrCreateWorkspace(userId: string, email: string): Promise<string> {
-  // Check if user already has a workspace membership. ORDER BY joinedAt asc so
-  // "primary workspace" is defined IDENTICALLY here and in the RBAC guard
-  // (requireWorkspacePermission) — an unordered findFirst can return a different
-  // row than the guard, letting a permission verified in workspace A authorize a
-  // write into workspace B (cross-workspace privilege divergence).
+  const selectedId = await readWorkspaceSelection();
+  if (selectedId) {
+    const selected = await prisma.workspaceMember.findUnique({
+      where: { userId_workspaceId: { userId, workspaceId: selectedId } },
+      select: { workspaceId: true },
+    });
+    if (!selected) throw new Error("Selected workspace is unavailable. Choose another workspace.");
+    return selected.workspaceId;
+  }
+
   const membership = await prisma.workspaceMember.findFirst({
     where: { userId },
     orderBy: { joinedAt: "asc" },

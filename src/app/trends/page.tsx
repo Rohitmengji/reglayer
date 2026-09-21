@@ -232,6 +232,7 @@ function TrendsPageInner() {
         <DeltaCards
           delta={data.delta}
           streak={data.streak}
+          currentScore={data.scoreTrend.at(-1)?.score}
           // Pass the CURRENT counts (latest point) — without these the Violations
           // card showed the delta (not the count) and Critical Issues showed 0.
           currentViolations={data.violationTrend.at(-1)?.total ?? 0}

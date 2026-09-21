@@ -1,15 +1,7 @@
-import type { Metadata } from "next";
+import { publicMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "API Reference — RESTful Endpoints for Developers",
-  description: "Complete API documentation for RegLayer. Scan, monitor, report, and manage accessibility compliance programmatically. Authentication, rate limits, and webhook configuration.",
-  openGraph: {
-    title: "RegLayer API Reference",
-    description: "RESTful API for accessibility scanning, monitoring, and reporting. Full endpoint documentation with examples.",
-    url: "/api-reference",
-  },
-};
+export const metadata = publicMetadata("/api-reference", "API Reference", "Explore RegLayer API endpoints for accessibility scans and reports, with authentication, rate limits, and request examples.");
 
 export default function ApiReferenceLayout({ children }: { children: React.ReactNode }) {
-  return children;
+  return <main>{children}</main>;
 }

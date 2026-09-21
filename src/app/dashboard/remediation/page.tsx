@@ -118,6 +118,9 @@ function RemediationPageInner() {
   const [selectedScanId, setSelectedScanId] = useState("");
   const [analyzing, setAnalyzing] = useState(false);
   const [fixability, setFixability] = useState<FixabilitySummary | null>(null);
+  const [scansLoading, setScansLoading] = useState(true);
+  const [scansError, setScansError] = useState(false);
+  const [scansRetry, setScansRetry] = useState(0);
 
   const enabledCount = Object.values(config).filter(Boolean).length;
   const isValidUrl = (s: string) => /^https?:\/\/.+\..+/.test(s.trim());
@@ -126,21 +129,33 @@ function RemediationPageInner() {
   // Load the user's recent completed scans for the fixability picker.
   useEffect(() => {
     let active = true;
-    fetch("/api/scans?limit=25")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (!active || !Array.isArray(data?.scans)) return;
-        setScans(
-          (data.scans as Array<Record<string, unknown>>)
-            .filter((s) => (s.status ?? "COMPLETED") === "COMPLETED")
-            .map((s) => ({ id: String(s.id), url: String(s.url ?? ""), totalViolations: Number(s.totalViolations ?? 0), createdAt: String(s.createdAt ?? "") }))
-        );
-      })
-      .catch(() => {});
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15_000);
+    async function loadScans() {
+      setScansLoading(true);
+      setScansError(false);
+      try {
+        const response = await fetch("/api/scans?limit=25", { signal: controller.signal, cache: "no-store" });
+        if (!response.ok) throw new Error("Scan history unavailable");
+        const data = await response.json();
+        if (!Array.isArray(data?.scans)) throw new Error("Invalid scan history");
+        if (active) setScans((data.scans as Array<Record<string, unknown>>)
+          .filter(scan => scan.status === "COMPLETED")
+          .map(scan => ({ id: String(scan.id), url: String(scan.url ?? ""), totalViolations: Number(scan.totalViolations ?? 0), createdAt: String(scan.createdAt ?? "") })));
+      } catch {
+        if (active) setScansError(true);
+      } finally {
+        clearTimeout(timeout);
+        if (active) setScansLoading(false);
+      }
+    }
+    void loadScans();
     return () => {
       active = false;
+      clearTimeout(timeout);
+      controller.abort();
     };
-  }, []);
+  }, [scansRetry]);
 
   // Preload from the scan the user arrived from: "Auto-fix what we can" on
   // /scans/[id] links here with ?scanId=<id>, so we immediately select + analyze
@@ -275,12 +290,18 @@ function RemediationPageInner() {
             <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-4">
               {t("remediation.fixabilityCardSubtitle")}
             </p>
-            {scans.length === 0 ? (
-              <p className="text-sm text-neutral-400 dark:text-neutral-500">
+            {scansLoading ? <p role="status" className="text-sm text-neutral-600 dark:text-neutral-300">Loading completed scans...</p> : scansError ? (
+              <div>
+                <p role="alert" className="text-sm text-neutral-700 dark:text-neutral-200">Could not load completed scans. Check your access or try again.</p>
+                <Button variant="outline" className="mt-3" onClick={() => setScansRetry(value => value + 1)}>{t("common.retry")}</Button>
+              </div>
+            ) : scans.length === 0 ? (
+              <p className="text-sm text-neutral-600 dark:text-neutral-400">
                 {t("remediation.fixabilityNoScans")}
               </p>
             ) : (
               <ModernSelect
+                label="Completed scan"
                 value={selectedScanId}
                 onChange={analyzeScan}
                 placeholder={t("remediation.selectScanPlaceholder")}

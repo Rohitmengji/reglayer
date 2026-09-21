@@ -15,6 +15,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { rateLimit, rateLimitHeaders } from "@/lib/rate-limit";
 import { sendEmail, isEmailConfigured } from "@/lib/email/service";
+import { renderEmailLayout, emailParagraph, emailStatTable, emailCallout } from "@/lib/email/layout";
 
 const SUBJECTS = ["general", "support", "enterprise", "partnership", "bug"] as const;
 type Subject = (typeof SUBJECTS)[number];
@@ -92,20 +93,19 @@ export async function POST(request: NextRequest) {
   };
   const submittedAt = new Date().toISOString();
 
-  const html = `
-    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto;">
-      <div style="border-bottom: 1px solid #e5e5e5; padding: 16px 0;">
-        <h2 style="margin: 0; font-size: 18px; color: #171717;">New ${escapeHtml(route.label)} message</h2>
-      </div>
-      <table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px;">
-        <tr><td style="padding:8px 12px;border:1px solid #e5e5e5;color:#525252;">Name</td><td style="padding:8px 12px;border:1px solid #e5e5e5;font-weight:600;">${safe.name}</td></tr>
-        <tr><td style="padding:8px 12px;border:1px solid #e5e5e5;color:#525252;">Email</td><td style="padding:8px 12px;border:1px solid #e5e5e5;">${safe.email}</td></tr>
-        ${safe.company ? `<tr><td style="padding:8px 12px;border:1px solid #e5e5e5;color:#525252;">Company</td><td style="padding:8px 12px;border:1px solid #e5e5e5;">${safe.company}</td></tr>` : ""}
-        <tr><td style="padding:8px 12px;border:1px solid #e5e5e5;color:#525252;">Subject</td><td style="padding:8px 12px;border:1px solid #e5e5e5;">${escapeHtml(route.label)}</td></tr>
-      </table>
-      <div style="padding: 12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; font-size:14px; color:#1a1a1a; white-space:normal;">${safe.message}</div>
-      <p style="margin-top:16px; font-size:12px; color:#a3a3a3;">Submitted ${escapeHtml(submittedAt)} · Reply directly to respond to ${safe.email}.</p>
-    </div>`;
+  const html = renderEmailLayout({
+    preheader: `New ${route.label} message from ${name.replace(/[\r\n]+/g, " ")}`,
+    title: `New ${escapeHtml(route.label)} message`,
+    contentHtml: `
+      ${emailStatTable([
+        { label: "Name", value: safe.name },
+        { label: "Email", value: safe.email },
+        ...(safe.company ? [{ label: "Company", value: safe.company }] : []),
+        { label: "Subject", value: escapeHtml(route.label) },
+      ])}
+      ${emailCallout(safe.message, "neutral")}
+      ${emailParagraph(`Submitted ${escapeHtml(submittedAt)} · Reply directly to respond to ${safe.email}.`, { muted: true })}`,
+  });
 
   const text = `New ${route.label} message
 Name: ${name}

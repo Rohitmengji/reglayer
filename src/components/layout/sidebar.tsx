@@ -29,7 +29,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { signOutAndClear } from "@/lib/auth/sign-out";
+import { clearLocalWorkspaceState, signOutAndClear } from "@/lib/auth/sign-out";
 import { cn } from "@/lib/utils/cn";
 import { useTheme } from "@/components/theme-provider";
 import { Shield, LayoutDashboard, Scan, Grid3X3, Moon, Sun, Crown, ChevronDown, Settings, BarChart3, Zap, Plug, LogOut, AlertTriangle, TrendingUp, Building2, ChevronsUpDown, Check, BookOpen, Search, HelpCircle, Trophy, Radar, Flame, Sparkles, Bot, Workflow, Store, Activity } from "lucide-react";
@@ -39,6 +39,14 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useFeatures, invalidateFeatureCache } from "@/hooks/use-features";
 import { SIDEBAR_FEATURE_MAP } from "@/lib/features/feature-catalog";
 import { NotificationBell } from "@/components/notifications/notification-bell";
+import { broadcastEvent } from "@/hooks/use-tab-sync";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+
+interface WorkspaceList {
+  workspaces: { id: string; name: string; slug: string; plan: string; role: string; memberCount: number }[];
+  activeWorkspaceId: string | null;
+  selectionInvalid: boolean;
+}
 
 type NavLeaf = {
   name: string;
@@ -50,7 +58,7 @@ type NavLeaf = {
   anyFeatures?: string[];
   activePaths?: string[];
 };
-type NavSection = { labelKey?: TranslationKey; items: NavLeaf[] };
+type NavSection = { labelKey?: TranslationKey; advanced?: boolean; items: NavLeaf[] };
 
 /**
  * Sidebar IA — related routes are consolidated into tabbed hubs (the same pattern
@@ -77,14 +85,7 @@ const navSections: NavSection[] = [
         activePaths: ["/test", "/scans", "/crawl", "/manual-testing"],
       },
       { name: "Violations", key: "nav.violations", href: "/violations", icon: AlertTriangle },
-      { name: "Red Team", key: "nav.redteam", href: "/chaos?tab=red-team", icon: Shield },
-      { name: "Chaos", key: "nav.chaos", href: "/chaos", icon: Flame },
-      { name: "Analysis", key: "nav.analysis", href: "/analysis?tab=screen-reader", icon: BarChart3 },
       { name: "Automation", key: "nav.automation", href: "/automation?tab=remediation", icon: Zap },
-      { name: "Agents", key: "nav.agents", href: "/agents", icon: Bot },
-      { name: "Workflows", key: "nav.workflows", href: "/workflows", icon: Workflow },
-      { name: "Marketplace", key: "nav.marketplace", href: "/marketplace", icon: Store },
-      { name: "Blog", key: "nav.blog", href: "/blog", icon: BookOpen },
     ],
   },
   {
@@ -99,20 +100,31 @@ const navSections: NavSection[] = [
         anyFeatures: ["trends", "executive"],
         activePaths: ["/reports", "/trends", "/executive"],
       },
-      { name: "Warranty", key: "nav.warranty", href: "/warranty", icon: Shield },
-      { name: "Competitive", key: "nav.competitive", href: "/competitive", icon: Trophy },
-      { name: "Radar", key: "nav.radar", href: "/radar", icon: Radar },
     ],
   },
   {
     labelKey: "nav.group.workspace",
     items: [
       { name: "Manage", key: "nav.manage", href: "/manage?tab=team", icon: Plug },
+      { name: "Settings", key: "nav.settings", href: "/settings", icon: Settings },
+    ],
+  },
+  {
+    advanced: true,
+    items: [
+      { name: "Analysis", key: "nav.analysis", href: "/analysis?tab=screen-reader", icon: BarChart3 },
+      { name: "Chaos", key: "nav.chaos", href: "/chaos", icon: Flame },
+      { name: "Agents", key: "nav.agents", href: "/agents", icon: Bot },
+      { name: "Workflows", key: "nav.workflows", href: "/workflows", icon: Workflow },
+      { name: "Marketplace", key: "nav.marketplace", href: "/marketplace", icon: Store },
+      { name: "Warranty", key: "nav.warranty", href: "/warranty", icon: Shield },
+      { name: "Competitive", key: "nav.competitive", href: "/competitive", icon: Trophy },
+      { name: "Radar", key: "nav.radar", href: "/radar", icon: Radar },
       { name: "Knowledge", key: "nav.knowledge", href: "/knowledge", icon: BookOpen },
       { name: "AI Costs", key: "nav.aiCosts", href: "/dashboard/ai-costs", icon: Sparkles },
       { name: "Timeline", key: "nav.timeline", href: "/dashboard/timeline", icon: Activity },
       { name: "Agency", key: "nav.agency", href: "/agency", icon: Building2 },
-      { name: "Settings", key: "nav.settings", href: "/settings", icon: Settings },
+      { name: "Blog", key: "nav.blog", href: "/blog", icon: BookOpen },
     ],
   },
 ];
@@ -129,7 +141,7 @@ function NavItem({ item, pathname, onNavigate, t }: {
   t: (key: TranslationKey) => string;
 }) {
   const paths = item.activePaths ?? [item.href.split("?")[0]];
-  const isActive = paths.some((p) => pathname === p || pathname.startsWith(p + "/"));
+  const isActive = paths.some((path) => pathname === path || (path !== "/dashboard" && pathname.startsWith(path + "/")));
   return (
     <Link
       href={item.href}
@@ -169,7 +181,8 @@ function useClickOutside(ref: React.RefObject<HTMLElement | null>, handler: () =
 
 export function Sidebar({ onNavigate }: SidebarProps) {
   const pathname = usePathname();
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
+  const queryClient = useQueryClient();
   const { resolvedTheme, setTheme, mounted } = useTheme();
   const { locale, setLocale, t } = useI18n();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -178,8 +191,9 @@ export function Sidebar({ onNavigate }: SidebarProps) {
   const userMenuRef = useRef<HTMLDivElement>(null);
   const { hasFeature, loading: featuresLoading } = useFeatures();
   const [wsOpen, setWsOpen] = useState(false);
-  const [workspaces, setWorkspaces] = useState<{ id: string; name: string; slug: string; plan: string; role: string; memberCount: number }[]>([]);
-  const [activeWs, setActiveWs] = useState<string>("");
+  const [switchError, setWorkspaceError] = useState<string | null>(null);
+  const [switchingWorkspace, setSwitchingWorkspace] = useState(false);
+  const switchPendingRef = useRef(false);
   const wsRef = useRef<HTMLDivElement>(null);
 
   // Consolidated click-outside handlers (replaces 3 duplicated useEffects)
@@ -190,35 +204,58 @@ export function Sidebar({ onNavigate }: SidebarProps) {
   useClickOutside(userMenuRef, closeUserMenu, userMenuOpen);
   useClickOutside(wsRef, closeWs, wsOpen);
 
-  // Fetch workspaces
-  useEffect(() => {
-    if (!session?.user) return;
-    fetch("/api/workspaces")
-      .then((r) => r.ok ? r.json() : Promise.reject())
-      .then((data) => {
-        setWorkspaces(data.workspaces ?? []);
-        // Set active from cookie or first workspace
-        const cookieWs = document.cookie.match(/reglayer-workspace=([^;]+)/)?.[1];
-        const active = data.workspaces?.find((w: { id: string }) => w.id === cookieWs) || data.workspaces?.[0];
-        if (active) setActiveWs(active.id);
-      })
-      .catch(() => {});
-  }, [session]);
+  const identity = session?.user?.email ?? session?.user?.id ?? "";
+  const workspaceQuery = useQuery({
+    queryKey: ["workspace-list", status, identity],
+    enabled: status === "authenticated" && Boolean(identity),
+    queryFn: async () => {
+      const response = await fetch("/api/workspaces", { cache: "no-store", signal: AbortSignal.timeout(15_000) });
+      if (!response.ok) throw new Error("Workspace list unavailable");
+      const data = await response.json();
+      if (!Array.isArray(data.workspaces) || typeof data.selectionInvalid !== "boolean") throw new Error("Invalid workspace list");
+      return data as WorkspaceList;
+    },
+    retry: false,
+    staleTime: 30_000,
+    gcTime: 0,
+    refetchOnWindowFocus: true,
+  });
+  const workspaces = workspaceQuery.data?.workspaces ?? [];
+  const activeWs = workspaceQuery.data?.activeWorkspaceId ?? "";
+  const workspaceError = switchError ?? (workspaceQuery.isError ? "Workspaces could not be loaded. Please try again." : workspaceQuery.data?.selectionInvalid ? "Selected workspace is unavailable. Choose another workspace." : null);
 
-  const switchWorkspace = (wsId: string) => {
-    setActiveWs(wsId);
-    setWsOpen(false);
-    fetch("/api/workspaces", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ workspaceId: wsId }),
-    }).then(() => {
+  const switchWorkspace = async (wsId: string) => {
+    if (switchPendingRef.current || wsId === activeWs) return;
+    if (!window.confirm("Switch workspace in all open tabs? Local scan results and chat drafts will be cleared. Saved conversations remain available.")) return;
+    switchPendingRef.current = true;
+    setSwitchingWorkspace(true);
+    setWorkspaceError(null);
+    try {
+      const response = await fetch("/api/workspaces", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workspaceId: wsId }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok || data?.workspaceId !== wsId || data?.success !== true) {
+        throw new Error("Workspace switch failed. Your current workspace is unchanged. Please try again.");
+      }
+      queryClient.setQueryData<WorkspaceList>(["workspace-list", status, identity], current => current ? { ...current, activeWorkspaceId: wsId, selectionInvalid: false } : current);
+      setWsOpen(false);
+      clearLocalWorkspaceState();
       invalidateFeatureCache();
-      window.location.reload();
-    });
+      broadcastEvent({ type: "workspace_changed", workspaceId: wsId });
+      window.location.assign("/dashboard");
+    } catch {
+      setWorkspaceError("Workspace switch failed. Please reload to confirm your current workspace before trying again.");
+    } finally {
+      switchPendingRef.current = false;
+      setSwitchingWorkspace(false);
+    }
   };
 
   const currentWs = workspaces.find((w) => w.id === activeWs);
+  const canSwitchWorkspace = workspaces.length > 1 || (!activeWs && workspaces.length > 0);
 
   // A nav item is visible unless gated. Hub items expose several routes, so they
   // show if ANY of their features is enabled; simple items use the route's gate.
@@ -235,10 +272,13 @@ export function Sidebar({ onNavigate }: SidebarProps) {
       {/* Workspace Switcher */}
       <div className="px-3 pt-3 pb-3 border-b border-neutral-200/60 dark:border-neutral-800" ref={wsRef}>
         <button
-          onClick={() => workspaces.length > 1 ? setWsOpen(!wsOpen) : undefined}
+          onClick={() => canSwitchWorkspace ? setWsOpen(!wsOpen) : undefined}
+          aria-label={`Workspace: ${currentWs?.name || "Choose workspace"}`}
+          aria-expanded={canSwitchWorkspace ? wsOpen : undefined}
+          disabled={switchingWorkspace}
           className={cn(
             "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2.5 transition-colors",
-            workspaces.length > 1
+            canSwitchWorkspace
               ? "hover:bg-neutral-200/60 dark:hover:bg-neutral-800 cursor-pointer"
               : "cursor-default"
           )}
@@ -252,24 +292,29 @@ export function Sidebar({ onNavigate }: SidebarProps) {
           </div>
           <div className="min-w-0 flex-1 text-left">
             <p className="truncate text-[13px] font-semibold text-neutral-900 dark:text-white">
-              {currentWs?.name || "RegLayer"}
+              {currentWs?.name || (workspaces.length > 0 ? "Choose workspace" : "RegLayer")}
             </p>
             {currentWs && (
-              <p className="text-[10px] text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">{currentWs.plan}</p>
+              <p className="text-[10px] text-neutral-600 dark:text-neutral-400 uppercase tracking-wider">{currentWs.plan}</p>
             )}
           </div>
-          {workspaces.length > 1 && (
+          {canSwitchWorkspace && (
             <ChevronsUpDown className="h-3.5 w-3.5 text-neutral-500 dark:text-neutral-400 shrink-0" />
           )}
         </button>
 
-        {wsOpen && workspaces.length > 1 && (
+        {workspaceError && <p role="alert" className="mt-2 px-2 text-xs text-red-700 dark:text-red-300">{workspaceError}</p>}
+        {workspaceQuery.isError && <button type="button" disabled={workspaceQuery.isFetching} onClick={() => { void workspaceQuery.refetch(); }} className="mt-1 min-h-11 px-2 text-xs underline">{t("common.retry")}</button>}
+        {switchingWorkspace && <p role="status" className="mt-2 px-2 text-xs text-neutral-600 dark:text-neutral-300">Switching workspace...</p>}
+
+        {wsOpen && canSwitchWorkspace && (
           <div className="mt-1 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-lg py-1 z-50 relative">
             <p className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">Workspaces</p>
             {workspaces.map((ws) => (
               <button
                 key={ws.id}
                 onClick={() => switchWorkspace(ws.id)}
+                disabled={switchingWorkspace || ws.id === activeWs}
                 className={cn(
                   "flex w-full items-center gap-2.5 px-3 py-2 text-[13px] transition-colors",
                   ws.id === activeWs
@@ -298,6 +343,15 @@ export function Sidebar({ onNavigate }: SidebarProps) {
         {navSections.map((section, i) => {
           const items = section.items.filter(isItemVisible);
           if (items.length === 0) return null;
+          if (section.advanced) {
+            const containsCurrent = items.some((item) => pathname === item.href.split("?")[0] || pathname.startsWith(item.href.split("?")[0] + "/"));
+            return (
+              <details key="more-tools" open={containsCurrent} className="space-y-1">
+                <summary className="cursor-pointer rounded-lg px-3 py-2 text-[13px] font-medium text-neutral-600 dark:text-neutral-300">More tools</summary>
+                {items.map((item) => <NavItem key={item.name} item={item} pathname={pathname} onNavigate={onNavigate} t={t} />)}
+              </details>
+            );
+          }
           return (
             <div key={section.labelKey ?? `primary-${i}`} className="space-y-0.5">
               {section.labelKey && (
@@ -314,8 +368,8 @@ export function Sidebar({ onNavigate }: SidebarProps) {
 
         {/* Master Admin */}
         {session?.user?.isMasterAdmin && (
-          <div className="space-y-0.5">
-            <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-red-400">Admin</p>
+          <details open={pathname.startsWith("/admin")} className="space-y-0.5">
+            <summary className="cursor-pointer rounded-lg px-3 py-2 text-[13px] font-medium text-neutral-600 dark:text-neutral-300">Administration</summary>
             <Link
               href="/admin"
               onClick={onNavigate}
@@ -342,7 +396,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
               <Shield className="h-4 w-4" />
               Feature Gates
             </Link>
-          </div>
+          </details>
         )}
       </nav>
 
@@ -350,12 +404,12 @@ export function Sidebar({ onNavigate }: SidebarProps) {
       <div className="border-t border-neutral-200/60 dark:border-neutral-800 p-3 space-y-1">
         {/* Search (command palette) — make the ⌘K shortcut discoverable */}
         <button
-          onClick={() => window.dispatchEvent(new Event("reglayer:open-command-palette"))}
+          onClick={() => { onNavigate?.(); window.dispatchEvent(new Event("reglayer:open-command-palette")); }}
           className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200/60 dark:hover:bg-neutral-800 hover:text-neutral-900 dark:hover:text-white transition-colors"
         >
           <Search className="h-4 w-4 shrink-0" />
           <span className="flex-1 text-left">{t("nav.search")}</span>
-          <kbd className="rounded border border-neutral-300 dark:border-neutral-600 px-1.5 py-0.5 text-[10px] font-medium text-neutral-400 dark:text-neutral-500">⌘K</kbd>
+          <kbd className="rounded border border-neutral-300 dark:border-neutral-600 px-1.5 py-0.5 text-[10px] font-medium text-neutral-600 dark:text-neutral-400">⌘K</kbd>
         </button>
 
         {/* User */}

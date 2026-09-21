@@ -18,6 +18,8 @@ import { logger } from "@/lib/telemetry/logger";
 import bcrypt from "bcryptjs";
 import { PLAN_LIMITS, type PlanType } from "@/lib/credits/plan-limits";
 import { z } from "zod";
+import { readWorkspaceSelection, selectWorkspaceMembership } from "@/lib/auth/workspace-selection";
+import { issueInviteCredential, revokeInviteCredential } from "@/lib/auth/invite-credential";
 
 const log = logger.withContext({ service: "team-api" });
 
@@ -55,7 +57,9 @@ export async function GET() {
     select: {
       isMasterAdmin: true,
       memberships: {
+        orderBy: { joinedAt: "asc" },
         select: {
+          workspaceId: true,
           role: true,
           workspace: {
             select: {
@@ -83,7 +87,8 @@ export async function GET() {
     return NextResponse.json({ members: [], workspace: null });
   }
 
-  const membership = user.memberships[0];
+  const membership = selectWorkspaceMembership(user.memberships, await readWorkspaceSelection());
+  if (!membership) return NextResponse.json({ error: "Selected workspace is unavailable. Choose another workspace.", code: "WORKSPACE_SELECTION_INVALID" }, { status: 403 });
   const workspace = membership.workspace;
 
   return NextResponse.json({
@@ -128,14 +133,15 @@ export async function POST(request: NextRequest) {
   // Verify current user is OWNER or ADMIN
   const currentUser = await prisma.user.findUnique({
     where: { email: session.user.email },
-    include: { memberships: { include: { workspace: { select: { name: true } } } } },
+    include: { memberships: { orderBy: { joinedAt: "asc" }, include: { workspace: { select: { name: true, plan: true } } } } },
   });
 
   if (!currentUser || currentUser.memberships.length === 0) {
     return NextResponse.json({ error: "No workspace found" }, { status: 404 });
   }
 
-  const membership = currentUser.memberships[0];
+  const membership = selectWorkspaceMembership(currentUser.memberships, await readWorkspaceSelection());
+  if (!membership) return NextResponse.json({ error: "Selected workspace is unavailable. Choose another workspace.", code: "WORKSPACE_SELECTION_INVALID" }, { status: 403 });
   if (!["OWNER", "ADMIN"].includes(membership.role)) {
     return NextResponse.json({ error: "Only owners and admins can invite members" }, { status: 403 });
   }
@@ -166,8 +172,38 @@ export async function POST(request: NextRequest) {
   }
 
   // Enforce team member limit based on user's plan
-  if (!currentUser.isMasterAdmin) {
-    const plan = currentUser.plan as PlanType;
+  // (Validated up front so it also governs a resend to an existing member.)
+  const validRoles = ["ADMIN", "MEMBER", "VIEWER"];
+  if (!validRoles.includes(role)) {
+    return NextResponse.json({ error: "Invalid role" }, { status: 400 });
+  }
+
+  // Find or create the invited user. A password-less account — brand-new, or
+  // invited before but never onboarded — still needs sign-in details, so we
+  // resend a temporary password rather than rejecting it.
+  let invitedUser = await prisma.user.findUnique({ where: { email } });
+  const isNewUser = !invitedUser;
+  const accountHasPassword = !!invitedUser?.passwordHash;
+  if (!invitedUser) {
+    invitedUser = await prisma.user.create({
+      data: { email, name: email.split("@")[0] },
+    });
+  }
+
+  const existing = await prisma.workspaceMember.findUnique({
+    where: { userId_workspaceId: { userId: invitedUser.id, workspaceId: membership.workspaceId } },
+    include: { user: { select: { id: true, name: true, email: true } } },
+  });
+
+  // An already-active member (one who has set a password) can't be re-invited.
+  // A member who was invited but never set one gets a fresh credential below.
+  if (existing && accountHasPassword) {
+    return NextResponse.json({ error: "User is already a team member" }, { status: 409 });
+  }
+
+  // A new seat counts against the plan; a resend to an existing member does not.
+  if (!existing && !currentUser.isMasterAdmin) {
+    const plan = membership.workspace.plan as PlanType;
     const memberLimit = PLAN_LIMITS[plan].teamMembers;
     if (memberLimit !== -1) {
       const currentCount = await prisma.workspaceMember.count({
@@ -182,33 +218,9 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Find or create the invited user. A freshly-created user has no password —
-  // the invite email routes them through the reset flow to set one (their only
-  // way in), so we track isNewUser to tailor that email.
-  let invitedUser = await prisma.user.findUnique({ where: { email } });
-  const isNewUser = !invitedUser;
-  if (!invitedUser) {
-    invitedUser = await prisma.user.create({
-      data: { email, name: email.split("@")[0] },
-    });
-  }
-
-  // Check if already a member
-  const existing = await prisma.workspaceMember.findUnique({
-    where: { userId_workspaceId: { userId: invitedUser.id, workspaceId: membership.workspaceId } },
-  });
-
-  if (existing) {
-    return NextResponse.json({ error: "User is already a team member" }, { status: 409 });
-  }
-
-  // Validate role
-  const validRoles = ["ADMIN", "MEMBER", "VIEWER"];
-  if (!validRoles.includes(role)) {
-    return NextResponse.json({ error: "Invalid role" }, { status: 400 });
-  }
-
-  const newMember = await prisma.workspaceMember.create({
+  const resent = !!existing;
+  const needsSetup = !accountHasPassword;
+  const newMember = existing ?? await prisma.workspaceMember.create({
     data: {
       userId: invitedUser.id,
       workspaceId: membership.workspaceId,
@@ -217,20 +229,43 @@ export async function POST(request: NextRequest) {
     include: { user: { select: { id: true, name: true, email: true } } },
   });
 
-  // Notify the invitee. Email failure must NOT fail the invite — the membership
-  // already exists — so this is best-effort and we report the outcome back.
+  // Deliver sign-in details. A password-less account gets a temporary password
+  // that must be replaced at first sign-in; it only exists in the delivered
+  // message, never in this response. A credential is created only when it can
+  // actually be delivered.
   let emailSent = false;
-  if (isEmailConfigured()) {
+  let credentialDelivery: "email" | "server-console" | "existing-account" | "none" = "none";
+  const emailConfigured = isEmailConfigured();
+  const localFallback = !emailConfigured && process.env.NODE_ENV === "development";
+  const credential = needsSetup && (emailConfigured || localFallback)
+    ? await issueInviteCredential(email)
+    : null;
+
+  if (emailConfigured) {
     const result = await sendTeamInviteEmail(email, {
       workspaceName: membership.workspace.name,
       inviterName: currentUser.name || currentUser.email || "A teammate",
-      role,
-      isNewUser,
+      role: newMember.role,
+      isNewUser: needsSetup,
+      ...(credential ? { temporaryPassword: credential.password } : {}),
     }).catch((err) => {
       log.error("Failed to send invite email", { action: "POST", error: err instanceof Error ? err.message : String(err) });
       return { success: false };
     });
     emailSent = result.success === true;
+    if (emailSent) credentialDelivery = needsSetup ? "email" : "existing-account";
+  }
+
+  if (credential && !emailSent) {
+    if (localFallback) {
+      // Local development without SMTP: the inviting operator is the only reader
+      // of this console, and it is the sole way to test the flow end to end.
+      process.stdout.write(`[dev invite] ${email} temporary password: ${credential.password} (expires ${credential.expiresAt.toISOString()})\n`);
+      credentialDelivery = "server-console";
+    } else {
+      // Undelivered credentials must not stay usable.
+      await revokeInviteCredential(credential.id).catch(() => {});
+    }
   }
 
   return NextResponse.json({
@@ -241,8 +276,10 @@ export async function POST(request: NextRequest) {
     role: newMember.role,
     joinedAt: newMember.joinedAt,
     isNewUser,
+    resent,
     emailSent,
-  }, { status: 201 });
+    credentialDelivery,
+  }, { status: resent ? 200 : 201 });
   } catch (err) {
     log.error("Failed to invite member", { action: "POST", error: err instanceof Error ? err.message : String(err) });
     return NextResponse.json({ error: "Failed to invite member" }, { status: 500 });
@@ -268,14 +305,15 @@ export async function PATCH(request: NextRequest) {
 
     const currentUser = await prisma.user.findUnique({
       where: { email: session.user.email },
-      include: { memberships: { include: { workspace: true } } },
+      include: { memberships: { orderBy: { joinedAt: "asc" }, include: { workspace: true } } },
     });
 
     if (!currentUser || currentUser.memberships.length === 0) {
       return NextResponse.json({ error: "No workspace found" }, { status: 404 });
     }
 
-    const myMembership = currentUser.memberships[0];
+    const myMembership = selectWorkspaceMembership(currentUser.memberships, await readWorkspaceSelection());
+    if (!myMembership) return NextResponse.json({ error: "Selected workspace is unavailable. Choose another workspace.", code: "WORKSPACE_SELECTION_INVALID" }, { status: 403 });
 
     // ── Change user plan (Master Admin only) ────────────────────
     if (plan) {
@@ -367,14 +405,15 @@ export async function DELETE(request: NextRequest) {
 
   const currentUser = await prisma.user.findUnique({
     where: { email: session.user.email },
-    include: { memberships: true },
+    include: { memberships: { orderBy: { joinedAt: "asc" } } },
   });
 
   if (!currentUser || currentUser.memberships.length === 0) {
     return NextResponse.json({ error: "No workspace found" }, { status: 404 });
   }
 
-  const myMembership = currentUser.memberships[0];
+  const myMembership = selectWorkspaceMembership(currentUser.memberships, await readWorkspaceSelection());
+  if (!myMembership) return NextResponse.json({ error: "Selected workspace is unavailable. Choose another workspace.", code: "WORKSPACE_SELECTION_INVALID" }, { status: 403 });
   if (!["OWNER", "ADMIN"].includes(myMembership.role)) {
     return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
   }
@@ -402,7 +441,7 @@ export async function DELETE(request: NextRequest) {
 }
 
 /**
- * PUT /api/team — Reset password for a workspace member (OWNER/ADMIN only)
+ * PUT /api/team — System-admin password reset for a member of the selected workspace
  */
 export async function PUT(request: NextRequest) {
   // Password resets get the stricter auth-tier limit (brute-force surface)
@@ -422,20 +461,25 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "userId and newPassword are required" }, { status: 400 });
     }
 
-    if (newPassword.length < 6) {
-      return NextResponse.json({ error: "Password must be at least 6 characters" }, { status: 400 });
+    if (newPassword.length < 12 || Buffer.byteLength(newPassword, "utf8") > 72) {
+      return NextResponse.json({ error: "Password must contain at least 12 characters and fit within 72 UTF-8 bytes" }, { status: 400 });
     }
 
     const currentUser = await prisma.user.findUnique({
       where: { email: session.user.email },
-      include: { memberships: true },
+      include: { memberships: { orderBy: { joinedAt: "asc" } } },
     });
 
     if (!currentUser || currentUser.memberships.length === 0) {
       return NextResponse.json({ error: "No workspace found" }, { status: 404 });
     }
 
-    const myMembership = currentUser.memberships[0];
+    if (!currentUser.isMasterAdmin) {
+      return NextResponse.json({ error: "Account passwords belong to the account holder. Ask the member to use Forgot password.", code: "ACCOUNT_OWNER_RESET_REQUIRED" }, { status: 403 });
+    }
+
+    const myMembership = selectWorkspaceMembership(currentUser.memberships, await readWorkspaceSelection());
+    if (!myMembership) return NextResponse.json({ error: "Selected workspace is unavailable. Choose another workspace.", code: "WORKSPACE_SELECTION_INVALID" }, { status: 403 });
     if (!["OWNER", "ADMIN"].includes(myMembership.role)) {
       return NextResponse.json({ error: "Only owners and admins can reset passwords" }, { status: 403 });
     }
@@ -462,7 +506,7 @@ export async function PUT(request: NextRequest) {
     const hashedPassword = await bcrypt.hash(newPassword, 12);
     await prisma.user.update({
       where: { id: userId },
-      data: { passwordHash: hashedPassword },
+      data: { passwordHash: hashedPassword, sessionsRevokedAt: new Date() },
     });
 
     return NextResponse.json({ success: true });

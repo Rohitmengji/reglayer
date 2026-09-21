@@ -14,26 +14,24 @@
 import { TrendingUp, TrendingDown, Minus, Flame, AlertTriangle, Bug, Zap } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import type { ScoreDelta, StreakData } from "@/lib/analytics/trends";
-import { useI18n } from "@/components/i18n-provider";
 
 interface DeltaCardsProps {
   delta: ScoreDelta | null;
   streak: StreakData | null;
   currentViolations?: number;
   currentCritical?: number;
+  currentScore?: number;
 }
 
-export function DeltaCards({ delta, streak, currentViolations, currentCritical }: DeltaCardsProps) {
-  const { t } = useI18n();
+export function DeltaCards({ delta, streak, currentViolations, currentCritical, currentScore }: DeltaCardsProps) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
       {/* AIS Score */}
       <DeltaCard
         label="AIS Score"
-        value={delta?.currentScore ?? 0}
+        value={currentScore ?? delta?.currentScore ?? null}
         delta={delta?.scoreDelta ?? null}
         icon={<Zap className="h-4 w-4 text-blue-500" />}
-        format="score"
       />
 
       {/* Total Violations */}
@@ -42,7 +40,6 @@ export function DeltaCards({ delta, streak, currentViolations, currentCritical }
         value={currentViolations ?? (delta ? (delta.violationDelta < 0 ? 0 : delta.violationDelta) : 0)}
         delta={delta?.violationDelta ? -delta.violationDelta : null}
         icon={<Bug className="h-4 w-4 text-orange-500" />}
-        format="count"
         invertDelta
       />
 
@@ -52,7 +49,6 @@ export function DeltaCards({ delta, streak, currentViolations, currentCritical }
         value={currentCritical ?? 0}
         delta={delta?.criticalDelta ? -delta.criticalDelta : null}
         icon={<AlertTriangle className="h-4 w-4 text-red-500" />}
-        format="count"
         invertDelta
       />
 
@@ -76,9 +72,11 @@ export function DeltaCards({ delta, streak, currentViolations, currentCritical }
             )}
           </p>
           <p className="text-xs text-neutral-500 mt-1">
-            {streak && streak.currentStreak >= 3
+            {!delta
+              ? "Run another scan to compare progress"
+              : streak && streak.currentStreak >= 3
               ? `${streak.currentStreak} scans improving`
-              : streak && streak.currentStreak === 0
+              : delta.scoreDelta < 0
               ? "Score dropped — check recent changes"
               : "Keep scanning to build a streak"}
           </p>
@@ -92,14 +90,13 @@ export function DeltaCards({ delta, streak, currentViolations, currentCritical }
 
 interface DeltaCardProps {
   label: string;
-  value: number;
+  value: number | null;
   delta: number | null;
   icon: React.ReactNode;
-  format: "score" | "count";
   invertDelta?: boolean;
 }
 
-function DeltaCard({ label, value, delta, icon, format, invertDelta }: DeltaCardProps) {
+function DeltaCard({ label, value, delta, icon, invertDelta }: DeltaCardProps) {
   const displayDelta = delta !== null && delta !== 0;
   const isPositive = invertDelta ? (delta ?? 0) > 0 : (delta ?? 0) > 0;
   const isNegative = invertDelta ? (delta ?? 0) < 0 : (delta ?? 0) < 0;
@@ -115,7 +112,7 @@ function DeltaCard({ label, value, delta, icon, format, invertDelta }: DeltaCard
         </div>
         <div className="flex items-end gap-2">
           <p className="text-2xl font-bold text-neutral-900 dark:text-white">
-            {format === "score" ? value : value}
+            {value ?? "Not available"}
           </p>
           {displayDelta && (
             <span

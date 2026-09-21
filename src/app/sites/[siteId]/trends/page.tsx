@@ -146,6 +146,7 @@ export default function SiteTrendsPage() {
           <DeltaCards
             delta={delta}
             streak={streak}
+            currentScore={scoreTrend.at(-1)?.score}
             currentViolations={violationTrend.length > 0 ? violationTrend[violationTrend.length - 1].total : undefined}
             currentCritical={violationTrend.length > 0 ? violationTrend[violationTrend.length - 1].critical : undefined}
           />

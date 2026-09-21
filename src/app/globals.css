@@ -176,6 +176,11 @@ input:not([type="checkbox"]):not([type="radio"]) {
     line-height: 1.6;
     max-width: 65ch;  /* Optimal reading width */
   }
+
+  :where(.text-center) p,
+  p:where(.text-center) {
+    margin-inline: auto;
+  }
 }
 
 /* Small/label text */

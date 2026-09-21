@@ -28,6 +28,7 @@ import { prisma } from "@/lib/database/prisma";
 import Link from "next/link";
 import { Shield, CheckCircle2, AlertTriangle, XCircle, ExternalLink, ArrowRight } from "lucide-react";
 import { scoreFromStoredViolations } from "@/lib/scoring/reportScore";
+import { PRIVATE_ROBOTS, publicMetadata } from "@/lib/seo";
 
 interface PageProps {
   params: Promise<{ scanId: string }>;
@@ -40,28 +41,18 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     select: { url: true, violations: { select: { impact: true, affectedElements: true } } },
   }).catch(() => null);
 
-  if (!scan) return { title: "Report Not Found — RegLayer" };
+  if (!scan) notFound();
 
   // Same canonical score as the page body, so the social-preview title agrees.
   const score = Math.round(scoreFromStoredViolations(scan.violations));
 
   return {
-    title: `Accessibility Score ${score}/100 — ${scan.url} | RegLayer`,
-    description: `Automated accessibility scan for ${scan.url}. Score: ${score}/100. Automated WCAG scanning by RegLayer — not a conformance determination.`,
-    openGraph: {
-      title: `Accessibility Score ${score}/100`,
-      description: `${scan.url} scored ${score}/100 on RegLayer's automated WCAG scan.`,
-      type: "website",
-    },
-    twitter: {
-      card: "summary_large_image",
-      title: `Accessibility Score ${score}/100 — ${scan.url}`,
-    },
+    ...publicMetadata(`/report/public/${encodeURIComponent(scanId)}`, `Accessibility Score ${score}/100 - ${scan.url}`, `Automated accessibility scan for ${scan.url}. Score: ${score}/100. Automated WCAG scanning, not a conformance determination.`),
     // SECURITY: do NOT let search engines index by-link reports — that passively
     // exposed every scanned site's URL + violation profile to anyone searching.
     // Reports remain viewable by direct link (the intended share behavior); a
     // proper opt-in `isPublic` flag is the follow-up (needs a DB migration).
-    robots: { index: false, follow: false },
+    robots: PRIVATE_ROBOTS,
   };
 }
 

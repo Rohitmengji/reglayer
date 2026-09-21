@@ -49,7 +49,7 @@ export default function FeaturesPage() {
               className="rounded-xl border border-neutral-200 dark:border-neutral-800 p-6 hover:shadow-md transition-shadow"
             >
               <feature.icon className="h-8 w-8 text-neutral-700 dark:text-neutral-300 mb-4" />
-              <h3 className="font-semibold text-neutral-900 dark:text-white mb-2">{feature.title}</h3>
+              <h2 className="text-base font-semibold text-neutral-900 dark:text-white mb-2">{feature.title}</h2>
               <p className="text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed">
                 {feature.description}
               </p>

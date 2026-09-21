@@ -517,6 +517,7 @@ export async function hybridSearch(
   query: string,
   options?: HybridSearchOptions,
 ): Promise<HybridSearchResult[]> {
+  if (!options?.workspaceId?.trim()) throw new Error("Workspace scope is required");
   const opts: HybridSearchOptions = {
     limit: 10,
     minScore: 0,
@@ -578,6 +579,7 @@ export async function multiQuerySearch(
   query: string,
   options?: HybridSearchOptions,
 ): Promise<HybridSearchResult[]> {
+  if (!options?.workspaceId?.trim()) throw new Error("Workspace scope is required");
   const opts: HybridSearchOptions = {
     limit: 10,
     minScore: 0,

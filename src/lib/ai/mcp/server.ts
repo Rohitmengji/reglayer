@@ -33,6 +33,18 @@ import "server-only";
 
 import { prisma } from "@/lib/database/prisma";
 import { searchViolations } from "@/lib/ai/vector/search";
+import { z } from "zod";
+
+export interface MCPContext {
+  workspaceId: string;
+}
+
+export class MCPInputError extends Error {}
+
+function requireContext(context: MCPContext): string {
+  if (!context?.workspaceId) throw new MCPInputError("Workspace is required");
+  return context.workspaceId;
+}
 
 // ── MCP Types ─────────────────────────────────────────────────────────────────
 
@@ -74,9 +86,11 @@ export async function listResources(): Promise<MCPResource[]> {
   ];
 }
 
-export async function readResource(uri: string): Promise<string> {
+export async function readResource(uri: string, context: MCPContext): Promise<string> {
+  const workspaceId = requireContext(context);
   if (uri === "reglayer://scans") {
     const scans = await prisma.scan.findMany({
+      where: { workspaceId },
       orderBy: { createdAt: "desc" },
       take: 10,
       select: {
@@ -89,15 +103,17 @@ export async function readResource(uri: string): Promise<string> {
 
   if (uri === "reglayer://compliance") {
     const scans = await prisma.scan.findMany({
+      where: { workspaceId, status: "COMPLETED", score: { not: null } },
       orderBy: { createdAt: "desc" },
       take: 20,
       select: { score: true, totalViolations: true, critical: true, serious: true },
     });
     const avgScore = scans.length > 0
       ? scans.reduce((sum, s) => sum + (s.score ?? 0), 0) / scans.length
-      : 0;
+      : null;
     return JSON.stringify({
-      averageScore: Math.round(avgScore * 10) / 10,
+      averageScore: avgScore === null ? null : Math.round(avgScore * 10) / 10,
+      scope: "Latest 20 completed scans in the selected workspace; automated findings are not a conformance determination.",
       totalScans: scans.length,
       totalViolations: scans.reduce((sum, s) => sum + s.totalViolations, 0),
       criticalIssues: scans.reduce((sum, s) => sum + s.critical, 0),
@@ -106,15 +122,18 @@ export async function readResource(uri: string): Promise<string> {
 
   if (uri.startsWith("reglayer://scans/")) {
     const scanId = uri.replace("reglayer://scans/", "");
+    if (!scanId || scanId.length > 200 || scanId.includes("/")) throw new MCPInputError("Invalid scan resource");
+    const scan = await prisma.scan.findFirst({ where: { id: scanId, workspaceId }, select: { id: true } });
+    if (!scan) throw new MCPInputError("Scan not found in the selected workspace");
     const violations = await prisma.violation.findMany({
-      where: { scanId },
+      where: { scanId, scan: { workspaceId } },
       select: { ruleId: true, impact: true, description: true, help: true, wcagCriteria: true, status: true },
       take: 50,
     });
     return JSON.stringify({ scanId, violations, count: violations.length }, null, 2);
   }
 
-  return JSON.stringify({ error: `Unknown resource: ${uri}` });
+  throw new MCPInputError("Unknown resource");
 }
 
 // ── Tools ─────────────────────────────────────────────────────────────────────
@@ -127,8 +146,8 @@ export function listTools(): MCPTool[] {
       inputSchema: {
         type: "object",
         properties: {
-          query: { type: "string", description: "Natural language search query" },
-          limit: { type: "number", description: "Max results (default 5)" },
+          query: { type: "string", minLength: 1, maxLength: 2000, description: "Natural language search query" },
+          limit: { type: "integer", minimum: 1, maximum: 20, description: "Max results (default 5)" },
         },
         required: ["query"],
       },
@@ -152,27 +171,23 @@ export function listTools(): MCPTool[] {
   ];
 }
 
-export async function callTool(name: string, args: Record<string, unknown>): Promise<string> {
+export async function callTool(name: string, args: Record<string, unknown>, context: MCPContext): Promise<string> {
+  const workspaceId = requireContext(context);
   switch (name) {
     case "search_violations": {
-      const query = args.query as string;
-      const limit = (args.limit as number) ?? 5;
-      try {
-        const results = await searchViolations(query, { limit });
-        return JSON.stringify({ results, count: results.length });
-      } catch {
-        return JSON.stringify({ results: [], count: 0, note: "Vector search unavailable" });
-      }
+      const { query, limit } = z.object({ query: z.string().trim().min(1).max(2000), limit: z.number().int().min(1).max(20).default(5) }).parse(args);
+      const results = await searchViolations(query, { limit, workspaceId });
+      return JSON.stringify({ results, count: results.length });
     }
     case "get_scan_details": {
-      const scanId = args.scanId as string;
-      return readResource(`reglayer://scans/${scanId}`);
+      const { scanId } = z.object({ scanId: z.string().min(1).max(200) }).parse(args);
+      return readResource(`reglayer://scans/${scanId}`, context);
     }
     case "get_compliance_status": {
-      return readResource("reglayer://compliance");
+      return readResource("reglayer://compliance", context);
     }
     default:
-      return JSON.stringify({ error: `Unknown tool: ${name}` });
+      throw new MCPInputError("Unknown tool");
   }
 }
 
@@ -192,12 +207,13 @@ export function listPrompts(): MCPPrompt[] {
 
 export function getPromptMessages(name: string, args: Record<string, string>): { role: string; content: string }[] {
   if (name === "compliance_review") {
+    const { url } = z.object({ url: z.string().url().max(2048) }).parse(args);
     return [
       {
         role: "user",
-        content: `Perform a comprehensive accessibility compliance review for ${args.url}. Include: WCAG 2.1 AA assessment, regulatory risk (EAA, ADA), top violations by severity, and a prioritized remediation plan.`,
+        content: `Perform a comprehensive accessibility compliance review for ${url}. Include: WCAG 2.1 AA assessment, regulatory risk (EAA, ADA), top violations by severity, and a prioritized remediation plan.`,
       },
     ];
   }
-  return [{ role: "user", content: `Unknown prompt: ${name}` }];
+  throw new MCPInputError("Unknown prompt");
 }

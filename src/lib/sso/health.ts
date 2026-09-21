@@ -18,6 +18,7 @@
  * fleet would want batching.
  */
 import "server-only";
+import { renderEmailLayout, emailParagraph, emailButton, emailCallout, escapeHtml, emailAppUrl } from "@/lib/email/layout";
 import { prisma } from "@/lib/database/prisma";
 import { logger } from "@/lib/telemetry/logger";
 import { validateScanUrl, resolvesToInternalIp } from "@/lib/validations/ssrf";
@@ -180,17 +181,17 @@ async function workspaceAdminEmails(workspaceId: string): Promise<string[]> {
 async function alertCertExpiring(workspaceId: string, label: string, days: number): Promise<boolean> {
   const { sendEmail, isEmailConfigured } = await import("@/lib/email/service");
   if (!isEmailConfigured()) return false;
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://reglayer.vercel.app";
+  const appUrl = emailAppUrl();
   const plural = days === 1 ? "day" : "days";
   const subject = `SSO certificate expiring in ${days} ${plural} — ${label}`;
-  const html = `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:600px;margin:0 auto">
-    <h2 style="font-size:18px;color:#991b1b;margin:0 0 12px">⚠️ SSO certificate expiring</h2>
-    <p style="color:#525252;margin:0 0 16px">The identity-provider signing certificate for your SSO connection
-      <strong>${label}</strong> expires in <strong>${days} ${plural}</strong>. When it expires, sign-in through this
-      connection will stop working.</p>
-    <p style="color:#525252;margin:0 0 16px">Update the connection's IdP metadata in RegLayer before then.</p>
-    <p><a href="${appUrl}/settings/sso" style="color:#2563eb">Manage SSO connections →</a></p>
-  </div>`;
+  const html = renderEmailLayout({
+    preheader: `SSO certificate for ${label} expires in ${days} ${plural}`,
+    title: "SSO certificate expiring",
+    contentHtml: `
+      ${emailCallout(`The identity-provider signing certificate for <strong>${escapeHtml(label)}</strong> expires in <strong>${days} ${plural}</strong>. When it expires, sign-in through this connection will stop working.`, "warning")}
+      ${emailParagraph("Update the connection's IdP metadata in RegLayer before then.")}
+      ${emailButton(`${appUrl}/settings/sso`, "Manage SSO connections")}`,
+  });
   const text = `SSO certificate for "${label}" expires in ${days} ${plural}. Update the IdP metadata at ${appUrl}/settings/sso before it expires, or sign-in will stop working.`;
 
   let sent = false;
@@ -209,18 +210,19 @@ async function alertCertExpiring(workspaceId: string, label: string, days: numbe
 async function alertConnectionUnhealthy(workspaceId: string, label: string, reason: "INVALID_METADATA" | "VALIDATION_FAILED"): Promise<boolean> {
   const { sendEmail, isEmailConfigured } = await import("@/lib/email/service");
   if (!isEmailConfigured()) return false;
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://reglayer.vercel.app";
+  const appUrl = emailAppUrl();
   const what =
     reason === "INVALID_METADATA"
       ? "its SAML metadata could not be fetched or parsed"
       : "its OIDC discovery endpoint is unreachable";
   const subject = `SSO connection unhealthy — ${label}`;
-  const html = `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:600px;margin:0 auto">
-    <h2 style="font-size:18px;color:#991b1b;margin:0 0 12px">⚠️ SSO connection unhealthy</h2>
-    <p style="color:#525252;margin:0 0 16px">A health check found that your SSO connection <strong>${label}</strong> is
-      unhealthy: ${what}. Sign-in through this connection may be failing.</p>
-    <p><a href="${appUrl}/settings/sso" style="color:#2563eb">Review SSO connections →</a></p>
-  </div>`;
+  const html = renderEmailLayout({
+    preheader: `SSO connection ${label} is unhealthy`,
+    title: "SSO connection unhealthy",
+    contentHtml: `
+      ${emailCallout(`A health check found that your SSO connection <strong>${escapeHtml(label)}</strong> is unhealthy: ${what}. Sign-in through this connection may be failing.`, "danger")}
+      ${emailButton(`${appUrl}/settings/sso`, "Review SSO connections")}`,
+  });
   const text = `SSO connection "${label}" is unhealthy: ${what}. Review it at ${appUrl}/settings/sso.`;
 
   let sent = false;

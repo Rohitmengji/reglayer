@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { generateVPAT, type VPATInput } from "@/lib/compliance/vpat-generator";
+import { generateVPAT, vpatToHTML, vpatToMarkdown, type VPATInput } from "@/lib/compliance/vpat-generator";
 import { isManualOnly } from "@/lib/wcag/criteria";
 
 const baseScan = {
@@ -30,6 +30,25 @@ function gen(extra: Partial<VPATInput> = {}) {
 }
 
 describe("generateVPAT — F008 testability-aware conformance", () => {
+  it("does not declare overall support while manual criteria remain unevaluated", () => {
+    expect(gen().summary.overallConformance).toBe("Not Evaluated");
+  });
+
+  it("limits a Level A draft to Level A criteria", () => {
+    const document = gen({ standard: "WCAG21-A" });
+    expect(document.criteria.length).toBeGreaterThan(0);
+    expect(document.criteria.every(criterion => criterion.level === "A")).toBe(true);
+  });
+
+  it("identifies both exports as drafts and discloses the catalog scope", () => {
+    const document = gen();
+    for (const output of [vpatToHTML(document), vpatToMarkdown(document)]) {
+      expect(output).toContain("Draft - Accessibility Conformance Report");
+      expect(output).toContain("Draft for qualified review.");
+      expect(output).toContain("does not assess every requirement");
+    }
+  });
+
   it("marks a manual-only criterion 'Not Evaluated' (not 'Supports') when automation finds nothing", () => {
     const doc = gen();
     // 2.1.1 Keyboard is manual-only — axe cannot verify full keyboard operation.

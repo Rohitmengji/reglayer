@@ -12,6 +12,28 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
+describe("LLM PII detection and sanitization agree", () => {
+  it.each([
+    ["password=synthetic-secret", "synthetic-secret"],
+    ["PASSWORD: synthetic-secret", "synthetic-secret"],
+    ["passport AB12345678", "AB12345678"],
+    ["SSN 123-45-6789", "123-45-6789"],
+    ["card 1234567890123456", "1234567890123456"],
+  ])("redacts detected sensitive content: %s", async (input, sensitive) => {
+    const { containsPII, sanitizeForLLM } = await import("@/lib/ai/hardening");
+    expect(containsPII(input)).toBe(true);
+    expect(sanitizeForLLM(input)).not.toContain(sensitive);
+    expect(containsPII(sanitizeForLLM(input))).toBe(false);
+  });
+
+  it("preserves ordinary accessibility questions", async () => {
+    const { containsPII, sanitizeForLLM } = await import("@/lib/ai/hardening");
+    const input = "How do I label the password field for a screen reader?";
+    expect(containsPII(input)).toBe(false);
+    expect(sanitizeForLLM(input)).toBe(input);
+  });
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. Rate Limiter — Redis Failure Behavior
 // ─────────────────────────────────────────────────────────────────────────────
@@ -84,6 +106,7 @@ describe("authenticateApiKey — security", () => {
 
   beforeEach(() => {
     vi.resetModules();
+    mockFindFirst.mockReset();
     vi.doMock("@/lib/database/prisma", () => ({
       prisma: {
         apiKey: { findFirst: mockFindFirst },
@@ -99,7 +122,7 @@ describe("authenticateApiKey — security", () => {
     expect(await authenticateApiKey("Bearer ")).toBeNull();
   });
 
-  it("returns null when no key record found by prefix", async () => {
+  it("returns null when no unexpired key record matches", async () => {
     mockFindFirst.mockResolvedValue(null);
     const { authenticateApiKey } = await import("@/lib/auth/api-key");
 
@@ -151,6 +174,24 @@ describe("authenticateApiKey — security", () => {
       workspaceId: "ws-1",
       userId: "user-1",
     });
+  });
+
+  it("distinguishes keys sharing a prefix using the full unique hash", async () => {
+    const { createHash } = await import("crypto");
+    const keys = ["rl_abc12first-synthetic-key", "rl_abc12second-synthetic-key"];
+    const records = keys.map((key, index) => ({
+      id: `key-${index}`, prefix: key.slice(0, 8),
+      keyHash: createHash("sha256").update(key).digest("hex"),
+      workspaceId: `workspace-${index}`, userId: `user-${index}`,
+    }));
+    mockFindFirst.mockImplementation(async ({ where }) => records.find((record) =>
+      record.prefix === where.prefix && (!where.keyHash || record.keyHash === where.keyHash)
+    ) ?? null);
+    const { authenticateApiKey } = await import("@/lib/auth/api-key");
+    expect(await authenticateApiKey(`Bearer ${keys[1]}`)).toMatchObject({ id: "key-1", workspaceId: "workspace-1" });
+    expect(mockFindFirst).toHaveBeenCalledWith({ where: {
+      keyHash: records[1].keyHash, prefix: "rl_abc12", expiresAt: { gt: expect.any(Date) },
+    } });
   });
 });
 

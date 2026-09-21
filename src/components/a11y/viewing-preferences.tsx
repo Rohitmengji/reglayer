@@ -16,7 +16,8 @@
  * ---------------------------------------------------------
  */
 
-import { useEffect, useRef, useState } from "react";
+import { createContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { Accessibility, Contrast, Eye, Type, X } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { useI18n } from "@/components/i18n-provider";
@@ -29,13 +30,26 @@ import {
 } from "@/lib/a11y/preferences";
 import { useChatStore } from "@/stores/chatStore";
 
-export function ViewingPreferences() {
+export const ViewingPreferencesTarget = createContext<(target: HTMLDivElement | null) => void>(() => {});
+
+export function ViewingPreferencesHost({ children }: { children: ReactNode }) {
+  const [target, setTarget] = useState<HTMLDivElement | null>(null);
+  return (
+    <ViewingPreferencesTarget.Provider value={setTarget}>
+      {children}
+      <ViewingPreferences target={target} />
+    </ViewingPreferencesTarget.Provider>
+  );
+}
+
+export function ViewingPreferences({ target = null }: { target?: HTMLDivElement | null } = {}) {
   const { t } = useI18n();
   const chatPanelOpen = useChatStore((s) => s.panelOpen);
   const [prefs, setPrefs] = useState<ViewingPreferences>(readPreferences);
   const [open, setOpen] = useState(false);
   const [scrolling, setScrolling] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const scrollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Apply on mount + whenever another surface changes prefs.
@@ -71,8 +85,18 @@ export function ViewingPreferences() {
     function handleClick(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     }
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape" && ref.current?.contains(document.activeElement)) {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
+    }
     document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
   }, []);
 
   function update(partial: Partial<ViewingPreferences>) {
@@ -85,18 +109,22 @@ export function ViewingPreferences() {
   const anyActive =
     prefs.contrast !== "normal" || prefs.motion !== "normal" || prefs.text !== "normal";
 
-  return (
-    <div ref={ref} className={`fixed bottom-20 right-6 z-9998 print:hidden transition-opacity duration-200${chatPanelOpen || scrolling ? " opacity-0 pointer-events-none" : ""}`}>
+  const content = (
+    <div
+      ref={ref}
+      inert={chatPanelOpen || scrolling}
+      className={`${target ? "relative" : "fixed bottom-20 right-6"} z-9998 print:hidden transition-opacity duration-200${chatPanelOpen || scrolling ? " opacity-0 pointer-events-none" : ""}`}
+    >
       {open && (
-        <div className="absolute bottom-14 right-0 w-72 rounded-xl border border-neutral-200 bg-white shadow-2xl dark:border-neutral-700 dark:bg-neutral-900 animate-in slide-in-from-bottom-2 fade-in duration-150">
+        <div className={`absolute ${target ? "top-14 lg:top-auto lg:bottom-14" : "bottom-14"} right-0 w-72 max-w-[calc(100vw-2rem)] rounded-xl border border-neutral-200 bg-white shadow-2xl dark:border-neutral-700 dark:bg-neutral-900 animate-in fade-in duration-150`}>
           <div className="flex items-center justify-between border-b border-neutral-100 px-4 py-3 dark:border-neutral-800">
             <p className="text-sm font-semibold text-neutral-900 dark:text-white">
               {t("a11y.title")}
             </p>
             <button
-              onClick={() => setOpen(false)}
+              onClick={() => { setOpen(false); triggerRef.current?.focus(); }}
               aria-label={t("a11y.close")}
-              className="rounded-md p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-neutral-600 hover:bg-neutral-100 hover:text-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
             >
               <X className="h-4 w-4" />
             </button>
@@ -125,6 +153,7 @@ export function ViewingPreferences() {
       )}
 
       <button
+        ref={triggerRef}
         onClick={() => setOpen((o) => !o)}
         aria-label={t("a11y.title")}
         aria-haspopup="true"
@@ -145,6 +174,7 @@ export function ViewingPreferences() {
       </button>
     </div>
   );
+  return target ? createPortal(content, target) : content;
 }
 
 function Toggle({

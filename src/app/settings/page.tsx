@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { PageLoading } from "@/components/ui/page-loading";
+import { PageError } from "@/components/ui/page-error";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2, Key, GitBranch, Bell, Copy, Eye, EyeOff, Sparkles, Zap, SlidersHorizontal, AlertTriangle, User, Download, Pencil, X, Shield, Brain } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
@@ -39,7 +40,7 @@ type Tab = "plan" | "general" | "account" | "api-keys" | "integrations" | "alert
 
 export default function SettingsPage() {
   const searchParams = useSearchParams();
-  const [activeTab, setActiveTab] = useState<Tab>((searchParams.get("tab") as Tab) || "plan");
+  const requestedTab = searchParams.get("tab");
   const { t } = useI18n();
   const { hasFeature } = useFeatures();
   const { data: session } = useSession();
@@ -56,6 +57,7 @@ export default function SettingsPage() {
     { id: "alerts", label: t("settings.tabAlerts"), icon: <AlertTriangle className="h-4 w-4" /> },
     { id: "decisions", label: "AI Decisions", icon: <Brain className="h-4 w-4" /> },
   ];
+  const activeTab = tabs.some((tab) => tab.id === requestedTab) ? requestedTab : "plan";
 
   return (
     <AppShell>
@@ -68,12 +70,14 @@ export default function SettingsPage() {
         </div>
 
         {/* Tab Navigation */}
-        <div className="grid grid-cols-3 sm:flex sm:gap-1 border-b border-neutral-200 dark:border-neutral-700 pb-px overflow-x-auto">
+        <nav aria-label="Settings sections" className="grid grid-cols-3 sm:flex sm:flex-wrap sm:gap-1 border-b border-neutral-200 dark:border-neutral-700 pb-px">
           {tabs.map((tab) => (
-            <button
+            <Link
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center justify-center sm:justify-start gap-2 px-2 py-3 sm:px-4 sm:py-2.5 text-sm font-medium transition-colors relative ${
+              href={`/settings?tab=${tab.id}`}
+              scroll={false}
+              aria-current={activeTab === tab.id ? "page" : undefined}
+              className={`flex min-h-11 items-center justify-center sm:justify-start gap-2 px-2 py-3 sm:px-4 sm:py-2.5 text-xs sm:text-sm font-medium transition-colors relative ${
                 activeTab === tab.id
                   ? "text-neutral-900 dark:text-white after:absolute after:bottom-0 after:left-2 after:right-2 after:h-0.5 after:bg-neutral-900 after:dark:bg-white after:rounded-full"
                   : "text-neutral-500 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-white"
@@ -81,19 +85,20 @@ export default function SettingsPage() {
               title={tab.label}
             >
               {tab.icon}
-              <span className="hidden sm:inline">{tab.label}</span>
-            </button>
+              <span>{tab.label}</span>
+            </Link>
           ))}
           {hasFeature("sso") && canManageSso && (
             <Link
               href="/settings/sso"
+              aria-label="SSO"
               className="flex items-center justify-center sm:justify-start gap-2 px-2 py-3 sm:px-4 sm:py-2.5 text-sm font-medium transition-colors text-neutral-500 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-white"
             >
               <Shield className="h-4 w-4" />
-              <span className="hidden sm:inline">SSO</span>
+              <span>SSO</span>
             </Link>
           )}
-        </div>
+        </nav>
 
         {/* Tab Content */}
         {activeTab === "plan" && <PlanUsageTab />}
@@ -120,6 +125,8 @@ function PlanUsageTab() {
   const { t } = useI18n();
   const [billingBusy, setBillingBusy] = useState(false);
   const [billingError, setBillingError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   // Start a Stripe Checkout upgrade. The route returns { url } on success, or 503
   // when billing isn't configured — surface that honestly instead of a dead button.
@@ -171,14 +178,29 @@ function PlanUsageTab() {
   };
 
   useEffect(() => {
-    fetch("/api/credits")
-      .then((r) => r.ok ? r.json() : null)
-      .then((d) => d && setData(d))
-      .catch(() => {});
-  }, []);
+    const controller = new AbortController();
+    let disposed = false;
+    const timeout = setTimeout(() => controller.abort(), 15_000);
+    fetch("/api/credits", { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) throw new Error("Plan unavailable");
+        return response.json();
+      })
+      .then((result) => {
+        if (!result?.credits || !result?.limits) throw new Error("Plan unavailable");
+        if (!disposed) setData(result);
+      })
+      .catch(() => { if (!disposed) setLoadError(true); })
+      .finally(() => clearTimeout(timeout));
+    return () => { disposed = true; controller.abort(); clearTimeout(timeout); };
+  }, [reloadKey]);
+
+  if (loadError) {
+    return <PageError title="Plan and usage unavailable" message="Your plan details could not be loaded. Try again to refresh them." onRetry={() => { setLoadError(false); setReloadKey((key) => key + 1); }} />;
+  }
 
   if (!data) {
-    return <div className="text-center py-8 text-sm text-neutral-500">{t("common.loading")}</div>;
+    return <PageLoading message="Loading plan and usage..." />;
   }
 
   const planLabels: Record<string, string> = { FREE: "Free", PRO: "Pro", ENTERPRISE: "Enterprise" };
@@ -196,13 +218,14 @@ function PlanUsageTab() {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="text-sm">{t("settings.currentPlan")}</CardTitle>
+            <CardTitle className="text-sm">Account plan and AI credits</CardTitle>
             <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${planColors[data.plan]}`}>
               {planLabels[data.plan] || data.plan}
             </span>
           </div>
         </CardHeader>
         <CardContent>
+          <p className="mb-4 text-sm text-neutral-600 dark:text-neutral-300">These are your account&apos;s base allowances. The selected workspace plan and your role may provide different scan limits, team seats, and features.</p>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div>
               <p className="text-xs text-neutral-500 dark:text-neutral-400">{t("settings.aiCredits")}</p>
@@ -500,8 +523,9 @@ function AccountTab() {
         <CardContent>
           <form onSubmit={handleProfileUpdate} className="space-y-4 max-w-md">
             <div>
-              <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1 block">Display Name</label>
+              <label htmlFor="profile-display-name" className="text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1 block">Display Name</label>
               <Input
+                id="profile-display-name"
                 type="text"
                 placeholder="Your name"
                 value={name}
@@ -511,8 +535,9 @@ function AccountTab() {
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1 block">Email Address</label>
+              <label htmlFor="profile-email-address" className="text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1 block">Email Address</label>
               <Input
+                id="profile-email-address"
                 type="email"
                 placeholder="your@email.com"
                 value={email}

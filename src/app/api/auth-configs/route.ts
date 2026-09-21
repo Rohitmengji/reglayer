@@ -105,19 +105,12 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Resolve the caller's PRIMARY workspace deterministically (earliest-joined),
-  // matching how POST + the RBAC guard define it — an unordered take:1 could list
-  // a different workspace's configs for a multi-workspace user.
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-    select: { id: true, memberships: { select: { workspaceId: true }, orderBy: { joinedAt: "asc" }, take: 1 } },
-  });
-
-  if (!user || !user.memberships[0]) {
+  const permission = await requireWorkspacePermission("scans.view");
+  if (!permission.ok) return permission.response;
+  const workspaceId = permission.ctx.workspaceId;
+  if (!workspaceId) {
     return NextResponse.json({ error: "User or workspace not found" }, { status: 404 });
   }
-
-  const workspaceId = user.memberships[0].workspaceId;
 
   const configs = await prisma.authConfig.findMany({
     where: { workspaceId },

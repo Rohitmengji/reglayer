@@ -57,7 +57,7 @@ export async function GET(
 
   // Fallback (R-5): the in-memory job is gone — different lambda instance or
   // after a cold start. Read durable state so status/result still resolve.
-  const record = await prisma.crawlJobRecord.findUnique({ where: { id: jobId } });
+  let record = await prisma.crawlJobRecord.findUnique({ where: { id: jobId } });
   if (!record) {
     return NextResponse.json({ error: "Job not found" }, { status: 404 });
   }
@@ -68,8 +68,21 @@ export async function GET(
   // seen an update in 65s (60s maxDuration + 5s DB write grace), the function
   // is dead. Surface it as failed so the client stops polling.
   const STALE_MS = 65_000;
-  const isStale = record.status === "processing" && Date.now() - record.updatedAt.getTime() > STALE_MS;
-  const effectiveStatus = isStale ? "failed" : record.status;
+  const staleBefore = new Date(Date.now() - STALE_MS);
+  if (record.status === "processing" && record.updatedAt < staleBefore) {
+    await prisma.crawlJobRecord.updateMany({
+      where: { id: jobId, status: "processing", updatedAt: { lt: staleBefore } },
+      data: {
+        status: "failed",
+        error: "The audit stopped unexpectedly (it may have exceeded the time limit). Please try again with fewer pages.",
+      },
+    });
+    record = await prisma.crawlJobRecord.findUnique({ where: { id: jobId } });
+    if (!record) {
+      return NextResponse.json({ error: "Job not found" }, { status: 404 });
+    }
+  }
+  const effectiveStatus = record.status;
   const terminal = effectiveStatus === "complete" || effectiveStatus === "failed" || effectiveStatus === "cancelled";
   // record.result holds EITHER the live snapshot ({__live,...}) while the crawl
   // is in flight, OR the full CrawlResult once finished. Disambiguate so the
@@ -104,11 +117,9 @@ export async function GET(
     progress,
     startedAt: record.createdAt.getTime(),
     completedAt: terminal ? record.updatedAt.getTime() : undefined,
-    error: isStale
-      ? "The audit stopped unexpectedly (it may have exceeded the time limit). Please try again with fewer pages."
-      : (record.error ?? undefined),
+    error: record.error ?? undefined,
     // Only the FULL CrawlResult is a result; a stale record's partial live blob is not.
-    result: terminal && !isStale ? (record.result ?? undefined) : undefined,
+    result: terminal && raw?.__live === undefined ? (record.result ?? undefined) : undefined,
     live, // drives the live viewport / site-map / filmstrip via polling
   });
 }
@@ -138,27 +149,28 @@ export async function DELETE(
   const perm = await requireWorkspacePermission("scans.run", { workspaceId: access.workspaceId });
   if (!perm.ok) return perm.response;
 
-  // Cancel the in-memory job IF this lambda is the one running it.
-  const cancelledInMemory = jobManager.cancelJob(jobId);
-
   // Durable cancel: on serverless the DELETE almost always lands on a DIFFERENT
-  // lambda than the crawl, so the in-memory cancel above is a no-op. Persist the
+  // lambda than the crawl. Persist the
   // intent to the record — the crawl's progress ticker (on the running instance)
   // reads this each tick and stops, and the client poll sees "cancelled" and
-  // leaves the running view. Best-effort; don't fail the request on a write error.
+  // leaves the running view.
   try {
     const rec = await prisma.crawlJobRecord.findUnique({ where: { id: jobId }, select: { status: true } });
     if (!rec) {
       return NextResponse.json({ error: "Job not found" }, { status: 404 });
     }
     if (rec.status === "processing") {
-      await prisma.crawlJobRecord.update({ where: { id: jobId }, data: { status: "cancelled" } });
+      const updated = await prisma.crawlJobRecord.updateMany({
+        where: { id: jobId, status: "processing" },
+        data: { status: "cancelled" },
+      });
+      if (updated.count > 0) jobManager.cancelJob(jobId);
     }
   } catch {
-    if (!cancelledInMemory) {
-      // couldn't reach the record and not in memory — nothing we can do
-      return NextResponse.json({ status: "cancelling", jobId });
-    }
+    return NextResponse.json(
+      { error: "Unable to cancel the audit. Please try again shortly." },
+      { status: 503 }
+    );
   }
 
   return NextResponse.json({ status: "cancelling", jobId });

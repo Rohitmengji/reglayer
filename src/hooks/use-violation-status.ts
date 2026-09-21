@@ -89,6 +89,7 @@ export function useViolationStatus(
       try {
         const response = await fetch("/api/violations/status", {
           method: "PATCH",
+          signal: AbortSignal.timeout(15_000),
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ violationId, status: newStatus, note }),
         });

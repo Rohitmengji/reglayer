@@ -222,6 +222,7 @@ model Scan {
   user          User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
   violations    Violation[]
   riskScore     LitigationRiskScore?
+  crawlPageCheckpoint CrawlPageCheckpoint?
 
   @@index([workspaceId, createdAt])
   @@index([userId])
@@ -1093,9 +1094,40 @@ model CrawlJobRecord {
   error        String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  pageCheckpoints CrawlPageCheckpoint[]
+  attemptLease CrawlAttemptLease?
 
   @@index([workspaceId, createdAt])
   @@map("crawl_jobs")
+}
+
+model CrawlPageCheckpoint {
+  id          String   @id
+  workspaceId String
+  jobId       String
+  url         String
+  scanId      String   @unique
+  snapshot    Json
+  createdAt   DateTime @default(now())
+
+  job         CrawlJobRecord @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  scan        Scan @relation(fields: [scanId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, jobId])
+  @@map("crawl_page_checkpoints")
+}
+
+model CrawlAttemptLease {
+  jobId       String   @id
+  workspaceId String
+  token       String
+  generation  Int      @default(1)
+  expiresAt   DateTime
+
+  job         CrawlJobRecord @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, expiresAt])
+  @@map("crawl_attempt_leases")
 }
 
 // ─────────────────────────────────────────────

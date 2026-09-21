@@ -14,7 +14,8 @@
  *      tabs trigger refetch.
  */
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
 import { useI18n } from "@/components/i18n-provider";
 import type { TranslationKey } from "@/lib/i18n/translations";
@@ -73,7 +74,13 @@ function ViolationsPageInner() {
   const [data, setData] = useState<ViolationsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useUrlState<string>("status", "ALL");
+  const [statusFilter, setActiveTab] = useUrlState<string>("status", "ALL");
+  const activeTab = STATUS_TAB_DEFS.some((tab) => tab.key === statusFilter.toUpperCase()) ? statusFilter.toUpperCase() : "ALL";
+  const [impactFilter, setImpactFilter] = useUrlState<string>("impact", "all");
+  const impact = ["critical", "serious", "moderate", "minor", "minor,moderate"].includes(impactFilter) ? impactFilter : "all";
+  const [noScans, setNoScans] = useState(false);
+  const [reloadLatest, setReloadLatest] = useState(0);
+  const requestRef = useRef<AbortController | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkUpdating, setBulkUpdating] = useState(false);
@@ -88,24 +95,31 @@ function ViolationsPageInner() {
 
   useEffect(() => {
     if (scanIdParam) return;
-    fetch("/api/scans?limit=1")
+    const controller = new AbortController();
+    let disposed = false;
+    const timeout = setTimeout(() => controller.abort(), 15_000);
+    fetch("/api/scans?limit=1", { signal: controller.signal })
       .then((resp) => {
         if (!resp.ok) throw new Error(t("violations.errLoadLatestScan"));
         return resp.json();
       })
       .then((json) => {
+        if (disposed) return;
         if (json?.scans?.[0]?.id) {
           setResolvedScanId(json.scans[0].id);
         } else {
-          setError(t("violations.errNoScans"));
+          setNoScans(true);
           setLoading(false);
         }
       })
       .catch((err) => {
+        if (disposed) return;
         setError(err instanceof Error ? err.message : t("violations.errLoadLatestScan"));
         setLoading(false);
-      });
-  }, [scanIdParam, t]);
+      })
+      .finally(() => clearTimeout(timeout));
+    return () => { disposed = true; controller.abort(); clearTimeout(timeout); };
+  }, [scanIdParam, t, reloadLatest]);
 
   const fetchViolations = useCallback(async () => {
     if (!effectiveScanId) {
@@ -114,6 +128,10 @@ function ViolationsPageInner() {
 
     setLoading(true);
     setError(null);
+    requestRef.current?.abort();
+    const controller = new AbortController();
+    requestRef.current = controller;
+    const timeout = setTimeout(() => controller.abort(), 15_000);
 
     // Map tab to status query
     let statusParam = "";
@@ -132,25 +150,28 @@ function ViolationsPageInner() {
       limit: "25",
     });
     if (statusParam) params.set("status", statusParam);
+    if (impact !== "all") params.set("impact", impact);
 
     try {
-      const response = await fetch(`/api/violations?${params}`);
+      const response = await fetch(`/api/violations?${params}`, { signal: controller.signal });
       if (!response.ok) {
         const errData = await response.json().catch(() => ({ message: "Failed to load" }));
         throw new Error(errData.message ?? `Error ${response.status}`);
       }
       const result: ViolationsResponse = await response.json();
-      setData(result);
+      if (requestRef.current === controller) setData(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("violations.errLoadViolations"));
+      if (requestRef.current === controller) setError(err instanceof Error ? err.message : t("violations.errLoadViolations"));
     } finally {
-      setLoading(false);
+      clearTimeout(timeout);
+      if (requestRef.current === controller) setLoading(false);
     }
-  }, [effectiveScanId, activeTab, currentPage, t]);
+  }, [effectiveScanId, activeTab, impact, currentPage, t]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- data fetching pattern requires setState
     fetchViolations();
+    return () => { requestRef.current?.abort(); requestRef.current = null; };
   }, [fetchViolations]);
 
   const handleTabChange = useCallback((tab: string) => {
@@ -235,14 +256,11 @@ function ViolationsPageInner() {
 
   // ─────────────── Render ───────────────
 
-  if (!effectiveScanId && !loading && error) {
+  if (!effectiveScanId && !loading && (error || noScans)) {
     return (
       <AppShell>
-        <div className="flex-1 flex items-center justify-center">
-          <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-12 text-center">
-            <p className="text-neutral-500">{error}</p>
-          </div>
-        </div>
+        {noScans ? <EmptyState icon={AlertTriangle} title="No scans yet" description="Run an accessibility scan to identify issues to review and fix." actionLabel="Run a scan" actionHref="/dashboard#scan-url" /> :
+          <PageError title="Scans unavailable" message="Your scans could not be loaded. Try again to find issues to review." onRetry={() => { setLoading(true); setError(null); setReloadLatest((value) => value + 1); }} />}
       </AppShell>
     );
   }
@@ -260,8 +278,23 @@ function ViolationsPageInner() {
           </div>
         </div>
 
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          {effectiveScanId && <Link className="text-sm font-medium text-accent underline" href={`/scans/${encodeURIComponent(effectiveScanId)}`}>View scan details</Link>}
+          <label className="flex items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300">
+            Severity
+            <select aria-label="Violation severity" value={impact} onChange={(event) => { setImpactFilter(event.target.value); setCurrentPage(1); setSelectedIds(new Set()); }} className="min-h-11 rounded-md border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3">
+              <option value="all">All severities</option>
+              <option value="critical">Critical</option>
+              <option value="serious">Serious</option>
+              <option value="moderate">Moderate</option>
+              <option value="minor">Minor</option>
+              <option value="minor,moderate">Minor and moderate</option>
+            </select>
+          </label>
+        </div>
+
         {/* Summary Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        {data && !error && <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
           <SummaryCard
             label={t("violations.open")}
             value={totalOpen}
@@ -297,7 +330,7 @@ function ViolationsPageInner() {
             active={activeTab === "EXCEPTIONS"}
             onClick={() => handleTabChange("EXCEPTIONS")}
           />
-        </div>
+        </div>}
 
         {/* Filter Tabs */}
         {/* role="tab" REQUIRES an ancestor with role="tablist" (axe `aria-required-parent`,
@@ -315,7 +348,18 @@ function ViolationsPageInner() {
             return (
               <button
                 key={tab.key}
+                id={`violation-tab-${tab.key}`}
+                aria-controls="violations-panel"
                 onClick={() => handleTabChange(tab.key)}
+                onKeyDown={(event) => {
+                  if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+                  event.preventDefault();
+                  const currentIndex = STATUS_TABS.findIndex((item) => item.key === tab.key);
+                  const nextIndex = event.key === "Home" ? 0 : event.key === "End" ? STATUS_TABS.length - 1 : (currentIndex + (event.key === "ArrowRight" ? 1 : -1) + STATUS_TABS.length) % STATUS_TABS.length;
+                  const nextTab = STATUS_TABS[nextIndex];
+                  document.getElementById(`violation-tab-${nextTab.key}`)?.focus();
+                  handleTabChange(nextTab.key);
+                }}
                 className={`inline-flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${
                   isActive
                     ? "border-neutral-900 dark:border-white text-neutral-900 dark:text-white"
@@ -366,7 +410,7 @@ function ViolationsPageInner() {
         )}
 
         {/* Select All + Violations List */}
-        <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 overflow-hidden">
+        <div id="violations-panel" role="tabpanel" aria-labelledby={`violation-tab-${activeTab}`} tabIndex={0} className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 overflow-hidden">
           {/* Select All Header */}
           {data && data.violations.length > 0 && (
             <div className="flex items-center gap-3 px-4 py-3 border-b border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/50">
@@ -415,7 +459,7 @@ function ViolationsPageInner() {
                 ]}
               />
             ) : (
-              <div className="text-center py-16 px-4">
+              <div className="flex flex-col items-center text-center py-16 px-4">
                 <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-3" />
                 <p className="text-neutral-600 dark:text-neutral-300 font-medium">
                   {t("violations.noneInCategory")}

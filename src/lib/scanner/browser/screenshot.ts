@@ -23,9 +23,11 @@
 
 import type { Browser } from "playwright-core";
 import { SCAN_DEFAULTS } from "@/lib/constants";
-import { launchBrowser, isServerless } from "@/lib/scanner/browser/launch";
+import { isServerless } from "@/lib/scanner/browser/launch";
+import { createBrowserLifetime } from "./lifetime";
 
 export interface ScreenshotOptions {
+  signal?: AbortSignal;
   fullPage?: boolean;
   selector?: string;
   timeout?: number;
@@ -46,9 +48,10 @@ export async function captureScreenshot(
   options: ScreenshotOptions = {}
 ): Promise<ScreenshotResult> {
   let browser: Browser | null = null;
+  const lifetime = createBrowserLifetime(options.signal);
 
   try {
-    browser = await launchBrowser();
+    browser = await lifetime.launch();
     const page = await browser.newPage();
     if (!isServerless()) {
       await (page as unknown as { setViewportSize: (s: { width: number; height: number }) => Promise<void> }).setViewportSize({ width: 1280, height: 720 });
@@ -81,6 +84,7 @@ export async function captureScreenshot(
 
     const viewport = page.viewportSize();
 
+    options.signal?.throwIfAborted();
     return {
       data: screenshot.toString("base64"),
       width: viewport?.width ?? 1280,
@@ -88,6 +92,6 @@ export async function captureScreenshot(
       timestamp: new Date().toISOString(),
     };
   } finally {
-    if (browser) await browser.close();
+    await lifetime.dispose();
   }
 }

@@ -30,6 +30,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { AccessibilityViolation } from "@/lib/types";
 import { AlertTriangle, ExternalLink, ArrowRight } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
+import { analyzeContrastViolation } from "@/lib/a11y/contrast-violation";
+import { analyzeLangTagViolation, LANG_VALIDITY_RULES } from "@/lib/a11y/lang-tag-violation";
+import Link from "next/link";
 
 interface ViolationCardProps {
   violation: AccessibilityViolation;
@@ -39,6 +42,20 @@ interface ViolationCardProps {
 
 export function ViolationCard({ violation, scanId }: ViolationCardProps) {
   const { t } = useI18n();
+  const contrastFix = violation.id === "color-contrast"
+    ? violation.nodes.map((node) => analyzeContrastViolation(node.failureSummary)).find((fix) => fix?.report.suggestion?.meetsTarget)
+    : null;
+  const langFix = LANG_VALIDITY_RULES.has(violation.id)
+    ? violation.nodes.map((node) => analyzeLangTagViolation(node.html)).find(Boolean)
+    : null;
+
+  const renderNode = (node: AccessibilityViolation["nodes"][number], index: number) => (
+    <div key={index} className="min-w-0 rounded-md bg-neutral-50 dark:bg-neutral-800 p-2 text-xs space-y-1">
+      <p className="font-mono break-all text-neutral-700 dark:text-neutral-300">{node.target.join(" ")}</p>
+      <pre className="overflow-x-auto whitespace-pre-wrap break-all text-neutral-700 dark:text-neutral-300"><code>{node.html}</code></pre>
+      {node.failureSummary && <p className="text-neutral-600 dark:text-neutral-400 whitespace-pre-line">{node.failureSummary}</p>}
+    </div>
+  );
   return (
     <Card className="border-l-4 border-l-transparent" style={{
       borderLeftColor: getImpactColor(violation.impact),
@@ -79,25 +96,24 @@ export function ViolationCard({ violation, scanId }: ViolationCardProps) {
           <p className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
             {t("violationCard.affectedElements", { count: String(violation.nodes.length) })}
           </p>
-          {violation.nodes.slice(0, 3).map((node, i) => (
-            <div
-              key={i}
-              className="rounded-md bg-neutral-50 dark:bg-neutral-800 p-2 font-mono text-xs"
-            >
-              <code className="text-neutral-700 dark:text-neutral-300">{node.html}</code>
-              {node.failureSummary && (
-                <p className="mt-1 font-sans text-neutral-500 dark:text-neutral-400">
-                  {node.failureSummary}
-                </p>
-              )}
-            </div>
-          ))}
+          {violation.nodes.slice(0, 3).map(renderNode)}
           {violation.nodes.length > 3 && (
-            <p className="text-xs text-neutral-500">
-              {t("violationCard.moreElements", { count: String(violation.nodes.length - 3) })}
-            </p>
+            <details className="space-y-2">
+              <summary className="cursor-pointer py-2 text-xs font-medium text-neutral-700 dark:text-neutral-300">{t("violationCard.moreElements", { count: String(violation.nodes.length - 3) })}</summary>
+              {violation.nodes.slice(3).map(renderNode)}
+            </details>
           )}
         </div>
+
+        {contrastFix?.report.suggestion && <div className="mt-3 space-y-1 text-sm text-neutral-700 dark:text-neutral-300">
+          <p className="font-medium">Suggested color correction</p>
+          <p>Foreground <code>{contrastFix.foreground}</code> to <code>{contrastFix.report.suggestion.recommended.hex}</code> on <code>{contrastFix.background}</code>: {contrastFix.report.suggestion.recommended.ratio}:1 contrast.</p>
+          <p className="text-xs">Calculated from the captured colors. Check all interaction states, then re-scan to verify.</p>
+        </div>}
+        {langFix && <div className="mt-3 space-y-1 text-sm text-neutral-700 dark:text-neutral-300">
+          <p className="font-medium">Suggested language tag correction</p>
+          <p><code>{langFix.value}</code> to <code>{langFix.suggestion}</code>. Confirm it matches the content language, then re-scan.</p>
+        </div>}
 
         {/* Help Link + Track status */}
         <div className="mt-3 flex items-center justify-between">
@@ -110,13 +126,13 @@ export function ViolationCard({ violation, scanId }: ViolationCardProps) {
             {t("violationCard.learnMore")}
             <ExternalLink className="h-3 w-3" />
           </a>
-          <a
-            href={scanId ? `/violations?scanId=${scanId}` : "/violations"}
+          <Link
+            href={scanId ? `/violations?scanId=${encodeURIComponent(scanId)}` : "/violations"}
             className="inline-flex items-center gap-1 text-xs font-medium text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
           >
             {t("violationCard.trackStatus")}
             <ArrowRight className="h-3 w-3" />
-          </a>
+          </Link>
         </div>
       </CardContent>
     </Card>

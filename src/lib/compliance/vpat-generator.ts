@@ -246,8 +246,9 @@ export function generateVPAT(input: VPATInput): VPATDocument {
   const { productName, vendorName, scanData, standard } = input;
 
   // Filter criteria by standard level
-  const targetLevel = standard === "WCAG21-AAA" ? "AAA" : "AA";
+  const targetLevel = standard === "WCAG21-A" ? "A" : standard === "WCAG21-AAA" ? "AAA" : "AA";
   const applicableCriteria = WCAG_21_CRITERIA.filter((c) => {
+    if (targetLevel === "A") return c.level === "A";
     if (targetLevel === "AA") return c.level === "A" || c.level === "AA";
     return true;
   });
@@ -366,7 +367,7 @@ export function generateVPAT(input: VPATInput): VPATDocument {
 
   let overallConformance: ConformanceLevel;
   if (notSupported === 0 && partial === 0) {
-    overallConformance = "Supports";
+    overallConformance = notEvaluated > 0 ? "Not Evaluated" : "Supports";
   } else if (notSupported === 0) {
     overallConformance = "Partially Supports";
   } else if (notSupported <= 3) {
@@ -406,7 +407,7 @@ export function generateVPAT(input: VPATInput): VPATDocument {
     },
     criteria: evaluatedCriteria,
     sections,
-    notes: input.notes || "This report was auto-generated based on automated accessibility scanning. Manual testing may reveal additional issues not detectable by automated tools. Approximately 30-40% of WCAG criteria require manual evaluation.",
+    notes: input.notes || "This draft covers the listed WCAG 2.1 A/AA criteria only. It does not assess every requirement of WCAG AAA, Section 508, or EN 301 549. Manual testing and qualified review are required before sharing conformance claims.",
     legalDisclaimer: "This Accessibility Conformance Report (ACR) is based on automated testing results and does not constitute a legal guarantee of full conformance. The evaluation covers detectable issues only. Organizations should supplement automated testing with manual accessibility audits for comprehensive coverage.",
     branding: input.branding,
   };
@@ -443,8 +444,10 @@ function safeUrl(value: string | undefined): string | null {
 export function vpatToMarkdown(doc: VPATDocument): string {
   const lines: string[] = [];
 
-  lines.push(`# Accessibility Conformance Report`);
+  lines.push(`# Draft - Accessibility Conformance Report`);
   lines.push(`## ${doc.metadata.productName}`);
+  lines.push("");
+  lines.push("Draft for qualified review. Automated results do not establish WCAG conformance. Verify scope, manual findings, and every claim before sharing.");
   lines.push("");
   lines.push(`**Report Date:** ${doc.metadata.reportDate}`);
   lines.push(`**Last Updated:** ${doc.metadata.lastUpdated.split("T")[0]}`);
@@ -533,7 +536,7 @@ export function vpatToHTML(doc: VPATDocument): string {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ACR - ${escapeHtml(doc.metadata.productName)}</title>
+  <title>Draft ACR - ${escapeHtml(doc.metadata.productName)}</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 900px; margin: 0 auto; padding: 2rem; color: #1a1a1a; line-height: 1.6; }
     h1 { border-bottom: 3px solid ${primaryColor}; padding-bottom: 0.5rem; }
@@ -551,12 +554,16 @@ export function vpatToHTML(doc: VPATDocument): string {
     .score { font-size: 2rem; font-weight: 800; color: ${doc.summary.score >= 80 ? '#16a34a' : doc.summary.score >= 60 ? '#d97706' : '#dc2626'}; }
     .disclaimer { background: #fef3c7; border: 1px solid #fcd34d; border-radius: 8px; padding: 1rem; margin-top: 2rem; font-size: 0.85rem; }
     .metadata { color: #6b7280; font-size: 0.9rem; }
+    .table-scroll { overflow-x: auto; }
+    .table-scroll:focus-visible { outline: 2px solid ${primaryColor}; outline-offset: 2px; }
+    .table-scroll table { min-width: 38rem; }
     @media print { body { padding: 1rem; } }
   </style>
 </head>
 <body>
   ${logoTag}
-  <h1>Accessibility Conformance Report</h1>
+  <h1>Draft - Accessibility Conformance Report</h1>
+  <p><strong>Draft for qualified review.</strong> Automated results do not establish WCAG conformance. Verify scope, manual findings, and every claim before sharing.</p>
   <h2>${escapeHtml(doc.metadata.productName)}</h2>
   <div class="metadata">
     <p><strong>Report Date:</strong> ${escapeHtml(doc.metadata.reportDate)} | <strong>Standard:</strong> ${escapeHtml(doc.metadata.standard)}</p>
@@ -581,7 +588,7 @@ export function vpatToHTML(doc: VPATDocument): string {
   ${doc.sections.map((section) => `
   <h2>${escapeHtml(section.title)}</h2>
   <p>${escapeHtml(section.description)}</p>
-  <table>
+  <div class="table-scroll" role="region" aria-label="${escapeHtml(section.title)} criteria" tabindex="0"><table>
     <thead><tr><th>Criteria</th><th>Level</th><th>Conformance</th><th>Remarks</th></tr></thead>
     <tbody>
       ${section.criteria.map((c) => `<tr>
@@ -591,9 +598,11 @@ export function vpatToHTML(doc: VPATDocument): string {
         <td>${escapeHtml(c.remarks)}</td>
       </tr>`).join('')}
     </tbody>
-  </table>
+  </table></div>
   `).join('')}
 
+  <h2>Scope and Notes</h2>
+  <p>${escapeHtml(doc.notes)}</p>
   <div class="disclaimer">
     <strong>Legal Disclaimer:</strong> ${escapeHtml(doc.legalDisclaimer)}
   </div>

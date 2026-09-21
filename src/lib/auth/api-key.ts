@@ -7,8 +7,8 @@
  * WHAT: `authenticateApiKey(authHeader)` parses a `Bearer <key>` header, hashes
  *       the key, looks it up, and returns the key's identity (id, workspaceId,
  *       userId) — or null when missing/invalid/expired.
- * HOW: prefix = first 8 chars, keyHash = sha256(key); a single findFirst mirrors
- *      the exact lookup previously inlined. Callers MUST scope their work to the
+ * HOW: prefix = first 8 chars, keyHash = sha256(key); look up the unique full hash
+ *      and require an unexpired key. Callers MUST scope their work to the
  *      returned `workspaceId` to prevent cross-tenant access.
  */
 
@@ -44,10 +44,8 @@ export async function authenticateApiKey(
   const prefix = apiKey.substring(0, 8);
   const keyHash = createHash("sha256").update(apiKey).digest("hex");
 
-  // Look up by prefix only, then constant-time compare the full hash to prevent
-  // timing attacks that could leak whether a prefix is valid.
   const keyRecord = await prisma.apiKey.findFirst({
-    where: { prefix, expiresAt: { gt: new Date() } },
+    where: { keyHash, prefix, expiresAt: { gt: new Date() } },
   });
 
   if (!keyRecord) return null;

@@ -86,15 +86,23 @@ describe("AI chat tools", () => {
       );
     });
 
-    it("falls back to userId scoping when there is no workspace", async () => {
+    it("limits creator fallback to workspace-less legacy scans", async () => {
       mockScanFindMany.mockResolvedValue([]);
       const tools = createChatTools({ workspaceId: null, userId: "user_1" });
 
       await tools.getRecentScans.execute!({}, {} as never);
 
       expect(mockScanFindMany).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { userId: "user_1" } }),
+        expect.objectContaining({ where: { userId: "user_1", workspaceId: null } }),
       );
+    });
+
+    it("cannot use creator fallback to retrieve a former workspace scan", async () => {
+      mockScanFindFirst.mockResolvedValue(null);
+      const tools = createChatTools({ workspaceId: null, userId: "former-member" });
+      await tools.getViolations.execute!({ scanId: "old-workspace-scan" }, {} as never);
+      expect(mockScanFindFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { id: "old-workspace-scan", userId: "former-member", workspaceId: null } }));
+      expect(mockViolationFindMany).not.toHaveBeenCalled();
     });
 
     it("getViolations refuses a scan the caller cannot access", async () => {

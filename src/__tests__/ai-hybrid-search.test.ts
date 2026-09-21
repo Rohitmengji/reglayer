@@ -7,9 +7,16 @@ vi.mock("server-only", () => ({}));
 vi.mock("@/lib/database/prisma", () => ({ prisma: {} }));
 vi.mock("@/lib/ai/gateway", () => ({ embed: vi.fn(), complete: vi.fn() }));
 
-import { rewriteQuery } from "@/lib/ai/search/hybrid";
+import { hybridSearch, multiQuerySearch, rewriteQuery } from "@/lib/ai/search/hybrid";
+import { embed, complete } from "@/lib/ai/gateway";
 
 describe("Hybrid Search Engine", () => {
+  it("rejects unscoped search before database or provider work", async () => {
+    await expect(hybridSearch("contrast")).rejects.toThrow("Workspace scope");
+    await expect(multiQuerySearch("contrast", { workspaceId: " " })).rejects.toThrow("Workspace scope");
+    expect(embed).not.toHaveBeenCalled();
+    expect(complete).not.toHaveBeenCalled();
+  });
   describe("rewriteQuery", () => {
     it("expands color contrast query with WCAG references", () => {
       const result = rewriteQuery("color contrast issues");

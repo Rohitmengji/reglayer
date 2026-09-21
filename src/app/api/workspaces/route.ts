@@ -2,13 +2,14 @@
  * RegLayer — Workspace Switching API
  *
  * GET /api/workspaces — List all workspaces user belongs to
- * POST /api/workspaces/switch — Switch active workspace (stored in session/cookie)
+ * POST /api/workspaces — Switch active workspace (stored in cookie)
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
+import { readWorkspaceSelection, selectWorkspaceMembership, WORKSPACE_COOKIE } from "@/lib/auth/workspace-selection";
 
 /**
  * GET — List all workspaces the user belongs to with role and plan.
@@ -54,7 +55,13 @@ export async function GET() {
     scanCount: m.workspace._count.scans,
   }));
 
-  return NextResponse.json({ workspaces });
+  const selectedId = await readWorkspaceSelection();
+  const active = selectWorkspaceMembership(user.memberships, selectedId);
+  return NextResponse.json({
+    workspaces,
+    activeWorkspaceId: active?.workspaceId ?? null,
+    selectionInvalid: Boolean(selectedId && !active),
+  }, { headers: { "Cache-Control": "private, no-store" } });
 }
 
 /**
@@ -66,8 +73,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { workspaceId } = await request.json();
-  if (!workspaceId) {
+  const body: unknown = await request.json().catch(() => null);
+  const workspaceId = body && typeof body === "object" && "workspaceId" in body ? body.workspaceId : null;
+  if (typeof workspaceId !== "string" || !workspaceId.trim() || workspaceId.length > 128) {
     return NextResponse.json({ error: "workspaceId required" }, { status: 400 });
   }
 
@@ -86,7 +94,7 @@ export async function POST(request: NextRequest) {
 
   // Set workspace cookie
   const response = NextResponse.json({ success: true, workspaceId, role: membership.role });
-  response.cookies.set("reglayer-workspace", workspaceId, {
+  response.cookies.set(WORKSPACE_COOKIE, workspaceId, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",

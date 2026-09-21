@@ -15,7 +15,8 @@
  * HOW: CRUD via /api/schedules endpoint. Cron execution by Vercel Cron (/api/cron/run-schedules).
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { Suspense, useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { useI18n } from "@/components/i18n-provider";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { AppShell } from "@/components/layout/app-shell";
@@ -65,16 +66,27 @@ const CRON_PRESETS = [
 ];
 
 export default function MonitoringPage() {
+  return <Suspense fallback={<PageLoading message="Loading monitoring..." />}><MonitoringContent /></Suspense>;
+}
+
+function MonitoringContent() {
   const { t } = useI18n();
+  const params = useSearchParams();
+  let suggestedUrl = "";
+  try {
+    const supplied = params.get("url") ?? "";
+    const parsed = new URL(supplied);
+    if (supplied.length <= 2048 && ["http:", "https:"].includes(parsed.protocol) && !parsed.username && !parsed.password) suggestedUrl = parsed.href;
+  } catch {}
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showCreate, setShowCreate] = useState(false);
+  const [showCreate, setShowCreate] = useState(Boolean(suggestedUrl));
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Form state
-  const [formName, setFormName] = useState("");
-  const [formUrl, setFormUrl] = useState("");
+  const [formName, setFormName] = useState(() => suggestedUrl ? `Monitor ${new URL(suggestedUrl).hostname}` : "");
+  const [formUrl, setFormUrl] = useState(suggestedUrl);
   const [formCron, setFormCron] = useState("0 9 * * *");
 
   const fetchSchedules = useCallback(async () => {
@@ -257,11 +269,11 @@ export default function MonitoringPage() {
                     />
                   </div>
                 </div>
-                <div>
-                  <label id="freq-label" className="text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1.5 block">
+                <fieldset>
+                  <legend className="text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-1.5 block">
                     Scan Frequency
-                  </label>
-                  <div role="group" aria-labelledby="freq-label" className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  </legend>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {CRON_PRESETS.map((preset) => (
                       <button
                         key={preset.value}
@@ -285,7 +297,7 @@ export default function MonitoringPage() {
                       </button>
                     ))}
                   </div>
-                </div>
+                </fieldset>
                 <div className="flex items-center gap-2 pt-2">
                   <Button type="submit" size="sm" disabled={creating} className="gap-2">
                     {creating ? (

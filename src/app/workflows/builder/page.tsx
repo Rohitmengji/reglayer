@@ -18,7 +18,6 @@ import {
   addEdge,
   useNodesState,
   useEdgesState,
-  Panel,
   BackgroundVariant,
   type Connection,
   type Node,
@@ -29,12 +28,11 @@ import "@xyflow/react/dist/style.css";
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FeatureGate } from "@/components/ui/feature-gate";
 import {
-  Save, Play, Loader2, ArrowLeft, Plus, Trash2,
-  Scan, FileText, Bell, Shield, Zap, Brain,
+  Save, Play, Loader2, ArrowLeft, Trash2,
+  Scan, FileText, Bell, Shield, Brain,
   Filter, GitBranch, Clock, Send,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -116,6 +114,7 @@ function WorkflowBuilderInner() {
   const [workflowName, setWorkflowName] = useState("Untitled Workflow");
   const [saving, setSaving] = useState(false);
   const [running, setRunning] = useState(false);
+  const [preview, setPreview] = useState<{ steps: string[]; message: string; nodes: Node[]; edges: Edge[]; name: string } | null>(null);
   const nodeIdCounter = useRef(10);
 
   const onConnect = useCallback(
@@ -160,17 +159,20 @@ function WorkflowBuilderInner() {
 
   const handleRun = async () => {
     setRunning(true);
+    setPreview(null);
     try {
       const res = await fetch("/api/workflows/builder/run", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: workflowName, nodes, edges }),
       });
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
-        toast.success("Workflow execution started");
+        if (data.status !== "preview" || data.executed !== false || !Array.isArray(data.plannedNodes)) throw new Error("Invalid preview response");
+        setPreview({ steps: data.plannedNodes.map((id: string) => String(nodes.find((node) => node.id === id)?.data.label ?? id)), message: data.message, nodes, edges, name: workflowName });
+        toast.success("Workflow structure checked. No actions were executed.");
       } else {
-        const data = await res.json().catch(() => ({}));
-        toast.error(data.error || "Execution failed");
+        toast.error(typeof data.error === "string" ? data.error : "Preview failed");
       }
     } catch {
       toast.error("Network error");
@@ -188,8 +190,8 @@ function WorkflowBuilderInner() {
     <AppShell>
       <div className="flex flex-col h-[calc(100vh-4rem)]">
         {/* Toolbar */}
-        <div className="flex items-center justify-between px-4 py-2 border-b border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2 border-b border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900">
+          <div className="flex min-w-0 flex-wrap items-center gap-3">
             <Link href="/workflows">
               <Button variant="ghost" size="sm">
                 <ArrowLeft className="h-4 w-4 mr-1" /> Back
@@ -197,8 +199,9 @@ function WorkflowBuilderInner() {
             </Link>
             <Input
               value={workflowName}
+              aria-label="Workflow name"
               onChange={(e) => setWorkflowName(e.target.value)}
-              className="w-64 text-sm font-medium"
+              className="w-64 max-w-full text-sm font-medium"
             />
             <Badge variant="secondary" className="text-[10px]">
               {nodes.length} nodes · {edges.length} edges
@@ -214,13 +217,31 @@ function WorkflowBuilderInner() {
             </Button>
             <Button size="sm" onClick={handleRun} disabled={running}>
               {running ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Play className="h-3.5 w-3.5 mr-1" />}
-              Run
+              Preview
             </Button>
           </div>
         </div>
 
+        {preview && preview.nodes === nodes && preview.edges === edges && preview.name === workflowName && <section aria-label="Workflow preview" className="border-b border-neutral-200 dark:border-neutral-700 px-4 py-3 space-y-2" role="status">
+          <h2 className="text-sm font-semibold">Structure preview</h2>
+          <p className="text-sm text-neutral-600 dark:text-neutral-300">{preview.message}</p>
+          <ol className="flex flex-wrap gap-x-6 gap-y-1 pl-5 text-sm list-decimal">{preview.steps.map((step, index) => <li key={index}>{step}</li>)}</ol>
+        </section>}
+
+        <details className="shrink-0 border-b border-neutral-200 dark:border-neutral-700 px-4 py-2">
+          <summary className="cursor-pointer py-2 text-sm font-medium">Add step</summary>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 py-2">
+            {NODE_PALETTE.map((item) => {
+              const Icon = item.icon;
+              return <button key={`${item.type}-${item.subtype}`} onClick={() => addNode(item)} className="flex min-h-11 items-center gap-2 rounded-md border border-neutral-200 dark:border-neutral-700 px-3 py-2 text-left text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800">
+                <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />{item.label}
+              </button>;
+            })}
+          </div>
+        </details>
+
         {/* Canvas */}
-        <div className="flex-1 relative">
+        <div className="min-h-80 flex-1 relative">
           <ReactFlow
             nodes={nodes}
             edges={edges}
@@ -234,7 +255,7 @@ function WorkflowBuilderInner() {
           >
             <Controls />
             <MiniMap
-              className="!bg-white dark:!bg-neutral-800 !border-neutral-200 dark:!border-neutral-700"
+              className="hidden sm:block !bg-white dark:!bg-neutral-800 !border-neutral-200 dark:!border-neutral-700"
               nodeColor={(node) => {
                 if (node.type === "trigger") return "#10b981";
                 if (node.type === "condition") return "#f43f5e";
@@ -243,34 +264,6 @@ function WorkflowBuilderInner() {
             />
             <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
 
-            {/* Node Palette Panel */}
-            <Panel position="top-left">
-              <Card className="w-56 shadow-lg">
-                <CardHeader className="py-2 px-3">
-                  <CardTitle className="text-xs font-medium flex items-center gap-1.5">
-                    <Plus className="h-3.5 w-3.5" /> Add Step
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-2 space-y-1 max-h-80 overflow-y-auto">
-                  {NODE_PALETTE.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <button
-                        key={`${item.type}-${item.subtype}`}
-                        onClick={() => addNode(item)}
-                        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors text-left"
-                      >
-                        <Icon className="h-3.5 w-3.5 shrink-0" />
-                        <span>{item.label}</span>
-                        <Badge variant="outline" className="ml-auto text-[9px]">
-                          {item.type}
-                        </Badge>
-                      </button>
-                    );
-                  })}
-                </CardContent>
-              </Card>
-            </Panel>
           </ReactFlow>
         </div>
       </div>

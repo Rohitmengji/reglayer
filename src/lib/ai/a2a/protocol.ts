@@ -96,7 +96,7 @@ export async function startConversation(opts: {
   userId: string;
   workspaceId: string;
 }): Promise<Conversation> {
-  const blueprint = await getBlueprint(opts.agentSlug);
+  const blueprint = await getBlueprint(opts.agentSlug, opts.workspaceId);
   if (!blueprint) {
     throw new Error(`Agent "${opts.agentSlug}" not found`);
   }
@@ -130,7 +130,12 @@ export async function runTurn(
   conversationId: string,
   agentSlug: string,
 ): Promise<{ message: A2AMessage; handoff?: HandoffRequest }> {
-  const blueprint = await getBlueprint(agentSlug);
+  const conversation = await prisma.agentConversation.findUnique({
+    where: { id: conversationId },
+    select: { workspaceId: true },
+  });
+  if (!conversation?.workspaceId) throw new Error("Conversation unavailable");
+  const blueprint = await getBlueprint(agentSlug, conversation.workspaceId);
   if (!blueprint) {
     throw new Error(`Agent "${agentSlug}" not found`);
   }

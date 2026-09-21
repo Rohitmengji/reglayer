@@ -32,9 +32,10 @@ import { BrandProvider, type BrandContextType } from "@/components/layout/BrandP
 import { CommandPalette } from "@/components/command-palette";
 import { ShortcutsModal } from "@/components/shortcuts/shortcuts-modal";
 import { GlobalShortcuts } from "@/components/shortcuts/global-shortcuts";
-import { ViewingPreferences } from "@/components/a11y/viewing-preferences";
+import { ViewingPreferencesHost } from "@/components/a11y/viewing-preferences";
 import { RecentTracker } from "@/components/recent/recent-tracker";
 import { ConfettiCanvas } from "@/components/confetti";
+import { FeaturesProvider } from "@/hooks/use-features";
 
 const DEFAULT_BRAND: BrandContextType = {
   brandName: "RegLayer",
@@ -64,19 +65,22 @@ export function Providers({ children, brand }: { children: React.ReactNode; bran
   return (
     <SessionProvider>
       <QueryClientProvider client={queryClient}>
+        <FeaturesProvider>
         <ThemeProvider>
           <I18nProvider>
             <BrandProvider brand={brand ?? DEFAULT_BRAND}>
+              <ViewingPreferencesHost>
               <CommandPalette />
               <ShortcutsModal />
               <GlobalShortcuts />
-              <ViewingPreferences />
               <RecentTracker />
               <ConfettiCanvas />
               {children}
+              </ViewingPreferencesHost>
             </BrandProvider>
           </I18nProvider>
         </ThemeProvider>
+        </FeaturesProvider>
       </QueryClientProvider>
     </SessionProvider>
   );
