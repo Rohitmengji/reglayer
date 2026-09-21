@@ -120,7 +120,7 @@ function makeGetRecentScans(ctx: ToolContext) {
       const start = Date.now();
       try {
         const take = limit ?? 5;
-        const where = ctx.workspaceId ? { workspaceId: ctx.workspaceId } : { userId: ctx.userId };
+        const where = ctx.workspaceId ? { workspaceId: ctx.workspaceId } : { userId: ctx.userId, workspaceId: null };
         const scans = await withTimeout(
           () => prisma.scan.findMany({
             where,
@@ -170,7 +170,7 @@ function makeGetViolations(ctx: ToolContext) {
         const scan = await prisma.scan.findFirst({
           where: {
             id: scanId,
-            ...(ctx.workspaceId ? { workspaceId: ctx.workspaceId } : { userId: ctx.userId }),
+            ...(ctx.workspaceId ? { workspaceId: ctx.workspaceId } : { userId: ctx.userId, workspaceId: null }),
           },
           select: { id: true },
         });
@@ -296,7 +296,7 @@ function makeGetComplianceStatus(ctx: ToolContext) {
     execute: async () => {
       const start = Date.now();
       try {
-        const where = ctx.workspaceId ? { workspaceId: ctx.workspaceId } : { userId: ctx.userId };
+        const where = ctx.workspaceId ? { workspaceId: ctx.workspaceId } : { userId: ctx.userId, workspaceId: null };
         const [scanCount, siteCount, recentScans] = await withTimeout(
           () => Promise.all([
             prisma.scan.count({ where }),

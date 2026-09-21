@@ -19,7 +19,7 @@ import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
 import { hasPermission, type Permission, type SystemRole, type WorkspaceRole } from "@/lib/auth/rbac";
-import { logger } from "@/lib/telemetry/logger";
+import { readWorkspaceSelection } from "./workspace-selection";
 
 export interface WorkspaceAccess {
   userId: string;
@@ -39,9 +39,8 @@ export type GuardResult =
  *
  * - If `workspaceId` is provided, the role is resolved IN THAT workspace (use
  *   this when the route acts on a resource whose workspace you already know).
- * - Otherwise the caller's primary (earliest-joined) membership is used, which
- *   matches the `getOrCreateWorkspace()` / `findFirst` convention the existing
- *   routes rely on.
+ * - Otherwise use the selected workspace, or the earliest membership only when
+ *   no selection exists. An invalid selection never falls back to another tenant.
  */
 export async function requireWorkspacePermission(
   permission: Permission,
@@ -69,7 +68,8 @@ export async function requireWorkspacePermission(
 
   const systemRole: SystemRole = user.isMasterAdmin ? "MASTER_ADMIN" : "USER";
 
-  let workspaceId = opts?.workspaceId ?? null;
+  const selectedId = opts?.workspaceId ? null : await readWorkspaceSelection();
+  let workspaceId = opts?.workspaceId || selectedId;
   let workspaceRole: WorkspaceRole | null = null;
 
   if (workspaceId) {
@@ -77,6 +77,15 @@ export async function requireWorkspacePermission(
       where: { userId_workspaceId: { userId: user.id, workspaceId } },
       select: { role: true },
     });
+    if (selectedId && !member) {
+      return {
+        ok: false,
+        response: NextResponse.json(
+          { error: "Selected workspace is unavailable. Choose another workspace.", code: "WORKSPACE_SELECTION_INVALID" },
+          { status: 403 }
+        ),
+      };
+    }
     workspaceRole = (member?.role as WorkspaceRole) ?? null;
   } else {
     const member = await prisma.workspaceMember.findFirst({
@@ -87,16 +96,6 @@ export async function requireWorkspacePermission(
     workspaceRole = (member?.role as WorkspaceRole) ?? null;
     workspaceId = member?.workspaceId ?? null;
 
-    // Security note: primary workspace fallback can cause mutations to execute
-    // in an unexpected workspace if the caller has multiple memberships. Log
-    // this so routes can be audited and migrated to always pass workspaceId.
-    if (workspaceId) {
-      logger.warn("api-guard: primary workspace fallback used — caller should pass explicit workspaceId", {
-        userId: user.id,
-        resolvedWorkspaceId: workspaceId,
-        permission,
-      });
-    }
   }
 
   if (!hasPermission(systemRole, workspaceRole, permission)) {

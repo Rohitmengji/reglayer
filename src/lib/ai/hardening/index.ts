@@ -103,6 +103,8 @@ export function sanitizeForLLM(text: string): string {
   sanitized = sanitized.replace(/\b\d{3}-\d{2}-\d{4}\b/g, "[REDACTED-SSN]");
   // Redact credit card numbers
   sanitized = sanitized.replace(/\b\d{16}\b/g, "[REDACTED-CC]");
+  sanitized = sanitized.replace(/\b[A-Z]{2}\d{6,9}\b/g, "[REDACTED-PASSPORT]");
+  sanitized = sanitized.replace(/\bpassword\s*[:=]\s*\S+/gi, "[REDACTED-PASSWORD]");
   return sanitized;
 }
 

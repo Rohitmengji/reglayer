@@ -26,6 +26,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 vi.mock("server-only", () => ({}));
 vi.mock("next-auth", () => ({ getServerSession: vi.fn() }));
 vi.mock("@/lib/auth/config", () => ({ authOptions: {} }));
+vi.mock("@/lib/auth/workspace-selection", () => ({ readWorkspaceSelection: vi.fn(async () => null) }));
 vi.mock("@/lib/rate-limit-middleware", () => ({ applyRateLimit: vi.fn(async () => null) }));
 vi.mock("@/lib/ai/learning/rating-transitions", () => ({
   collectRatingTransitions: vi.fn(() => []),
@@ -57,7 +58,10 @@ const { chatMessage, chatConversation } = vi.hoisted(() => ({
 vi.mock("@/lib/database/prisma", () => ({
   prisma: {
     user: { findUnique: vi.fn(async () => ({ id: "user-1" })) },
-    workspaceMember: { findFirst: vi.fn(async () => ({ workspaceId: "ws-1" })) },
+    workspaceMember: {
+      findFirst: vi.fn(async () => ({ workspaceId: "ws-1" })),
+      findUnique: vi.fn(async () => ({ workspaceId: "ws-2" })),
+    },
     chatConversation,
     chatMessage,
     // Hand the callback the same mocks so per-query calls can be counted.
@@ -69,6 +73,8 @@ vi.mock("@/lib/database/prisma", () => ({
 
 import { getServerSession } from "next-auth";
 import { POST } from "@/app/api/ai/conversations/route";
+import { readWorkspaceSelection } from "@/lib/auth/workspace-selection";
+import { prisma } from "@/lib/database/prisma";
 
 function request(body: unknown): Request {
   return new Request("http://localhost/api/ai/conversations", {
@@ -95,6 +101,24 @@ describe("conversation save issues a fixed number of writes", () => {
     vi.clearAllMocks();
     vi.mocked(getServerSession).mockResolvedValue({ user: { email: "a@b.co" } } as never);
     chatConversation.findFirst.mockResolvedValue({ id: "conv-1" });
+  });
+
+  it("resolves feedback context from the selected workspace", async () => {
+    vi.mocked(readWorkspaceSelection).mockResolvedValueOnce("ws-2");
+    expect((await POST(request(conversation(2)) as never)).status).toBe(200);
+    expect(prisma.workspaceMember.findUnique).toHaveBeenCalledWith({
+      where: { userId_workspaceId: { userId: "user-1", workspaceId: "ws-2" } },
+      select: { workspaceId: true },
+    });
+    expect(prisma.workspaceMember.findFirst).not.toHaveBeenCalled();
+  });
+
+  it("rejects stale workspace selection before saving", async () => {
+    vi.mocked(readWorkspaceSelection).mockResolvedValueOnce("removed-workspace");
+    vi.mocked(prisma.workspaceMember.findUnique).mockResolvedValueOnce(null);
+    expect((await POST(request(conversation(2)) as never)).status).toBe(403);
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(prisma.workspaceMember.findFirst).not.toHaveBeenCalled();
   });
 
   it("writes a long conversation in ONE insert, not one per message", async () => {

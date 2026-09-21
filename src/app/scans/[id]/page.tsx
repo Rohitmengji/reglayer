@@ -227,6 +227,7 @@ export default function ScanDetailPage({
 
         {/* Score */}
         <ScoreCard summary={scan.summary} />
+        <p className="text-sm text-neutral-600 dark:text-neutral-300">{t("scanDetail.automatedLimits")}</p>
 
         {/* Human-verified — what manual testing contributed (criteria automation can't judge) */}
         {manualSummary && (manualSummary.counts.pass + manualSummary.counts.fail + manualSummary.counts.na) > 0 && (
@@ -265,7 +266,7 @@ export default function ScanDetailPage({
         )}
 
         {/* What's next — turn results into action so the user isn't left at a dead end */}
-        <NextSteps hasViolations={scan.violations.length > 0} scanId={scan.id} />
+        <NextSteps hasViolations={scan.violations.length > 0} scanId={scan.id} url={scan.url} />
 
         {/* Deep Scan report — only when a deep scan ran */}
         {scan.metadata.deepScan?.ran && (
@@ -433,14 +434,14 @@ export default function ScanDetailPage({
 // Turns a finished scan into the next valuable action instead of a dead end.
 // Fix/auto-fix/manual-test only make sense when there are issues; monitoring
 // always does.
-function NextSteps({ hasViolations, scanId }: { hasViolations: boolean; scanId: string }) {
+function NextSteps({ hasViolations, scanId, url }: { hasViolations: boolean; scanId: string; url: string }) {
   const { t } = useI18n();
   const steps: Array<{ href: string; label: string; Icon: typeof ListChecks; show: boolean }> = [
-    { href: "/violations", label: t("nextSteps.fix"), Icon: ListChecks, show: hasViolations },
+    { href: `/violations?scanId=${encodeURIComponent(scanId)}`, label: t("nextSteps.fix"), Icon: ListChecks, show: hasViolations },
     // Carry the scan id so the remediation tab preloads + auto-analyzes THIS scan.
     { href: `/automation?tab=remediation&scanId=${encodeURIComponent(scanId)}`, label: t("nextSteps.autoFix"), Icon: Wand2, show: hasViolations },
-    { href: "/manual-testing", label: t("nextSteps.manualTest"), Icon: ClipboardCheck, show: hasViolations },
-    { href: "/monitoring", label: t("nextSteps.monitor"), Icon: Activity, show: true },
+    { href: `/manual-testing?scanId=${encodeURIComponent(scanId)}`, label: t("nextSteps.manualTest"), Icon: ClipboardCheck, show: hasViolations },
+    { href: `/monitoring?url=${encodeURIComponent(url)}`, label: t("nextSteps.monitor"), Icon: Activity, show: true },
   ].filter((s) => s.show);
 
   return (

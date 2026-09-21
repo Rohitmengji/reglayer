@@ -39,6 +39,7 @@ import { dispatchToIntegrations } from "@/lib/integrations/dispatcher";
 import { getOrCreateWorkspace } from "@/lib/database/workspace";
 import { embedScanViolations } from "@/lib/ai/vector/search";
 import type { ScanRequest, ScanResult, ComplianceReport } from "@/lib/types";
+import type { Prisma } from "@/generated/prisma/client";
 
 export interface ScanServiceResult {
   scan: ScanResult;
@@ -277,7 +278,8 @@ export async function persistScan(
   scan: ScanResult,
   compliance: ComplianceReport,
   userEmail?: string,
-  scope?: PersistScanScope
+  scope?: PersistScanScope,
+  database: Prisma.TransactionClient = prisma
 ): Promise<void> {
   // Resolve user and workspace for proper scoping.
   // Prefer pre-resolved scope (avoids an extra user lookup per crawled page).
@@ -286,14 +288,14 @@ export async function persistScan(
   const siteId: string | undefined = scope?.siteId;
 
   if ((userId === undefined || workspaceId === undefined) && userEmail) {
-    const user = await prisma.user.findUnique({ where: { email: userEmail } });
+    const user = await database.user.findUnique({ where: { email: userEmail } });
     if (user) {
       userId = userId ?? user.id;
       workspaceId = workspaceId ?? (await getOrCreateWorkspace(user.id, user.email));
     }
   }
 
-  await prisma.scan.create({
+  await database.scan.create({
     data: {
       id: scan.id,
       url: scan.url,

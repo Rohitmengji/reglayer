@@ -83,16 +83,18 @@ export function useChatSync() {
       const result = await persistConversation({
         conversationId: state.conversationId,
         messages: state.messages,
+        version: state.conversationVersion,
       });
-      if (result.ok && !result.skipped) {
+      if (result.ok && useChatStore.getState().messages === state.messages) {
         // Adopt the id whenever it differs — not only on the first save. A save that
         // recovered from a stale-id 404 comes back with a freshly created id, and
         // keeping the old one would 404-loop into a new conversation on every save.
         if (result.conversationId && result.conversationId !== state.conversationId) {
           setConversationId(result.conversationId);
         }
+        if (result.version !== null) useChatStore.getState().setConversationVersion(result.version);
         // Silently refresh the conversation list so the sidebar stays current
-        fetchConversations();
+        if (!result.skipped) fetchConversations();
       }
     } catch { /* silent — will retry on next trigger */ }
     finally { setIsSaving(false); }
@@ -115,21 +117,13 @@ export function useChatSync() {
   useEffect(() => {
     const handleUnload = () => {
       const state = useChatStore.getState();
-      if (state.messages.length === 0) return;
-      // Use fetch with keepalive: true — more reliable than sendBeacon because
-      // it sends proper Content-Type headers and the server can parse JSON.
-      // keepalive: true allows the request to outlive the page, same as sendBeacon.
-      fetch("/api/ai/conversations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: state.conversationId || undefined,
-          messages: state.messages.map((m) => ({
-            id: m.id, role: m.role, content: m.content, feedback: m.feedback ?? 0,
-          })),
-        }),
+      if (state.messages.length === 0 || state.isStreaming) return;
+      void persistConversation({
+        conversationId: state.conversationId,
+        version: state.conversationVersion,
+        messages: state.messages,
         keepalive: true,
-      }).catch(() => {}); // fire-and-forget
+      }).catch(() => {});
     };
     window.addEventListener("beforeunload", handleUnload);
     return () => window.removeEventListener("beforeunload", handleUnload);

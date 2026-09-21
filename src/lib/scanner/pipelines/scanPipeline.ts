@@ -49,6 +49,7 @@ export async function executeScanPipeline(
   options?: ScanOptions,
   onProgress?: ProgressCallback
 ): Promise<ScanResult> {
+  options?.signal?.throwIfAborted();
   const startTime = Date.now();
 
   return Sentry.startSpan({ name: "scan.pipeline", op: "scan", attributes: { url } }, async () => {
@@ -58,6 +59,7 @@ export async function executeScanPipeline(
       { name: "scan.axe_run", op: "scan.stage" },
       () => runAccessibilityScan(url, options)
     );
+    options?.signal?.throwIfAborted();
 
     // Stage 2: Normalize violations to internal format
     onProgress?.("analyzing", 60);
@@ -83,7 +85,7 @@ export async function executeScanPipeline(
       try {
         const screenshotResult = await Sentry.startSpan(
           { name: "scan.screenshot", op: "scan.stage" },
-          () => captureScreenshot(url, { fullPage: false })
+          () => captureScreenshot(url, { fullPage: false, signal: options?.signal })
         );
         screenshot = screenshotResult.data;
       } catch {
@@ -92,6 +94,7 @@ export async function executeScanPipeline(
     }
 
     // Stage 5: Package final result
+    options?.signal?.throwIfAborted();
     onProgress?.("complete", 100);
     const scanResult: ScanResult = {
       id: generateScanId(),

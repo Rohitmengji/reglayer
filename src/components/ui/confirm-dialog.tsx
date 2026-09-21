@@ -12,6 +12,7 @@ interface ConfirmDialogProps {
   variant?: "danger" | "default";
   onConfirm: () => void;
   onCancel: () => void;
+  busy?: boolean;
 }
 
 export function ConfirmDialog({
@@ -23,10 +24,12 @@ export function ConfirmDialog({
   variant = "default",
   onConfirm,
   onCancel,
+  busy = false,
 }: ConfirmDialogProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const confirmRef = useRef<HTMLButtonElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
 
   // On open: remember the element that had focus, move focus into the dialog.
@@ -34,17 +37,17 @@ export function ConfirmDialog({
   useEffect(() => {
     if (!open) return;
     previouslyFocusedRef.current = document.activeElement as HTMLElement | null;
-    confirmRef.current?.focus();
+    (variant === "danger" ? cancelRef : confirmRef).current?.focus();
     return () => {
       previouslyFocusedRef.current?.focus?.();
     };
-  }, [open]);
+  }, [open, variant]);
 
   useEffect(() => {
     if (!open) return;
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        onCancel();
+        if (!busy) onCancel();
         return;
       }
       if (e.key !== "Tab") return;
@@ -72,13 +75,13 @@ export function ConfirmDialog({
     };
     document.addEventListener("keydown", handleKey);
     return () => document.removeEventListener("keydown", handleKey);
-  }, [open, onCancel]);
+  }, [open, onCancel, busy]);
 
   const handleOverlayClick = useCallback(
     (e: React.MouseEvent) => {
-      if (e.target === overlayRef.current) onCancel();
+      if (!busy && e.target === overlayRef.current) onCancel();
     },
-    [onCancel],
+    [onCancel, busy],
   );
 
   if (!open) return null;
@@ -100,6 +103,7 @@ export function ConfirmDialog({
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
+        aria-busy={busy}
         aria-labelledby="confirm-title"
         aria-describedby="confirm-desc"
         className="w-full max-w-md mx-4 rounded-2xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-2xl animate-scale-in"
@@ -137,8 +141,10 @@ export function ConfirmDialog({
         </div>
         <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-2 sm:gap-3 border-t border-neutral-100 dark:border-neutral-800 px-4 sm:px-6 py-3 sm:py-4">
           <button
+            ref={cancelRef}
             type="button"
             onClick={onCancel}
+            disabled={busy}
             className="w-full sm:w-auto rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-4 py-2 text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors"
           >
             {cancelLabel}
@@ -147,6 +153,7 @@ export function ConfirmDialog({
             ref={confirmRef}
             type="button"
             onClick={onConfirm}
+            disabled={busy}
             className={`w-full sm:w-auto rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors ${
               isDanger
                 ? "bg-red-600 hover:bg-red-700"

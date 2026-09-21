@@ -47,7 +47,7 @@ export default defineConfig({
         reuseExistingServer: false,
         timeout: 30000,
       }
-    : {
+    : process.env.E2E_BASE_URL ? undefined : {
         command: "npm run dev",
         url: "http://localhost:3000",
         reuseExistingServer: true,

@@ -83,7 +83,7 @@ export function ProactiveSuggestions() {
     <div className="space-y-2">
       <div className="flex items-center gap-1.5 mb-2">
         <Sparkles className="h-4 w-4 text-accent" />
-        <h3 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200">AI Suggestions</h3>
+        <h2 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200">Recommended next actions</h2>
       </div>
 
       {visible.map((suggestion) => {
@@ -120,8 +120,9 @@ export function ProactiveSuggestions() {
               {suggestion.dismissible && (
                 <button
                   onClick={() => handleDismiss(suggestion.id)}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-neutral-200 dark:hover:bg-neutral-700"
-                  title="Dismiss"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded hover:bg-neutral-200 dark:hover:bg-neutral-700"
+                  aria-label={`Dismiss ${suggestion.title}`}
+                  title="Dismiss recommendation"
                 >
                   <X className="h-3.5 w-3.5 text-muted-foreground" />
                 </button>

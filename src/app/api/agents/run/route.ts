@@ -13,6 +13,8 @@ import { executeAgentRun } from "@/lib/agents/runner";
 import { PERSONA_CONSTRAINTS } from "@/lib/agents/personas";
 import { validateScanUrl } from "@/lib/validations/ssrf";
 import { z } from "zod";
+import { requireWorkspacePermission } from "@/lib/auth/api-guard";
+import { applyRateLimit } from "@/lib/rate-limit-middleware";
 
 export const dynamic = "force-dynamic";
 
@@ -32,15 +34,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const member = await prisma.workspaceMember.findFirst({
-    where: { user: { email: session.user.email } },
-    include: { workspace: true },
-  });
-  if (!member) {
+  const permission = await requireWorkspacePermission("scans.view");
+  if (!permission.ok) return permission.response;
+  const workspaceId = permission.ctx.workspaceId;
+  if (!workspaceId) return NextResponse.json({ error: "Workspace not found" }, { status: 404 });
+  const workspace = await prisma.workspace.findUnique({ where: { id: workspaceId }, select: { plan: true } });
+  if (!workspace) {
     return NextResponse.json({ error: "Workspace not found" }, { status: 404 });
   }
 
-  if (member.workspace.plan === "FREE") {
+  if (workspace.plan === "FREE") {
     return NextResponse.json(
       { error: "Adversarial Agent testing requires a Pro or Enterprise plan", upgradeRequired: true },
       { status: 403 }
@@ -49,13 +52,15 @@ export async function GET(request: NextRequest) {
 
   const { searchParams } = request.nextUrl;
   const siteId = searchParams.get("siteId");
-  const persona = searchParams.get("persona");
+  const personaResult = launchSchema.shape.persona.optional().safeParse(searchParams.get("persona") || undefined);
+  if (!personaResult.success) return NextResponse.json({ error: "Unknown persona" }, { status: 400 });
+  const persona = personaResult.data;
 
   const runs = await prisma.agentRun.findMany({
     where: {
-      workspaceId: member.workspace.id,
+      workspaceId,
       ...(siteId ? { siteId } : {}),
-      ...(persona ? { persona: persona as never } : {}),
+      ...(persona ? { persona } : {}),
     },
     orderBy: { createdAt: "desc" },
     take: 50,
@@ -79,20 +84,23 @@ export async function GET(request: NextRequest) {
  * the run ID immediately so the client can poll for results.
  */
 export async function POST(request: NextRequest) {
+  const blocked = await applyRateLimit(request, "api");
+  if (blocked) return blocked;
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const member = await prisma.workspaceMember.findFirst({
-    where: { user: { email: session.user.email } },
-    include: { workspace: true },
-  });
-  if (!member) {
+  const permission = await requireWorkspacePermission("scans.run");
+  if (!permission.ok) return permission.response;
+  const workspaceId = permission.ctx.workspaceId;
+  if (!workspaceId) return NextResponse.json({ error: "Workspace not found" }, { status: 404 });
+  const workspace = await prisma.workspace.findUnique({ where: { id: workspaceId }, select: { plan: true } });
+  if (!workspace) {
     return NextResponse.json({ error: "Workspace not found" }, { status: 404 });
   }
 
-  if (member.workspace.plan === "FREE") {
+  if (workspace.plan === "FREE") {
     return NextResponse.json(
       { error: "Adversarial Agent testing requires a Pro or Enterprise plan", upgradeRequired: true },
       { status: 403 }
@@ -124,7 +132,7 @@ export async function POST(request: NextRequest) {
 
   // Verify site belongs to workspace
   const site = await prisma.site.findFirst({
-    where: { id: siteId, workspaceId: member.workspace.id },
+    where: { id: siteId, workspaceId },
   });
   if (!site) {
     return NextResponse.json({ error: "Site not found in workspace" }, { status: 404 });
@@ -133,7 +141,7 @@ export async function POST(request: NextRequest) {
   // Create the run record
   const run = await prisma.agentRun.create({
     data: {
-      workspaceId: member.workspace.id,
+      workspaceId,
       siteId,
       persona,
       goal,
@@ -146,7 +154,7 @@ export async function POST(request: NextRequest) {
   // Execute asynchronously — don't block the response
   executeAgentRun({
     runId: run.id,
-    workspaceId: member.workspace.id,
+    workspaceId,
     siteId,
     persona,
     goal,

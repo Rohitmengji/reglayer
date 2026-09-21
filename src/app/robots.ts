@@ -6,22 +6,16 @@
  * HOW: Next.js Metadata API generates /robots.txt from this export.
  */
 import type { MetadataRoute } from "next";
+import { getSiteUrl, isProductionIndexingEnabled } from "@/lib/seo";
 
 /**
  * robots.txt — controls search engine crawling.
  * Blocks authenticated app pages, allows public marketing pages.
  */
 export default function robots(): MetadataRoute.Robots {
-  const baseUrl = process.env.NEXTAUTH_URL || "https://reglayer.vercel.app";
-
+  if (!isProductionIndexingEnabled()) return { rules: { userAgent: "*", disallow: "/" } };
   return {
-    rules: [
-      {
-        userAgent: "*",
-        allow: ["/", "/pricing", "/privacy", "/cookie-policy", "/contact", "/features", "/auth/login", "/request-access", "/api-reference", "/docs"],
-        disallow: ["/dashboard", "/scans", "/settings", "/admin", "/api/", "/team", "/insights", "/priorities", "/executive", "/agency", "/vault", "/guard", "/regulations", "/violations", "/trends", "/compliance", "/analytics", "/automation", "/manage", "/crawl", "/risk", "/report/"],
-      },
-    ],
-    sitemap: `${baseUrl}/sitemap.xml`,
+    rules: { userAgent: "*", allow: "/", disallow: "/api/" },
+    sitemap: `${getSiteUrl()}/sitemap.xml`,
   };
 }

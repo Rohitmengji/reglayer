@@ -69,6 +69,7 @@
  */
 
 import "server-only";
+import { createHash } from "node:crypto";
 
 import { hybridSearch, multiQuerySearch, type HybridSearchResult } from "@/lib/ai/search/hybrid";
 import { buildGraphContext, type GraphSearchResult } from "@/lib/ai/graph/service";
@@ -219,6 +220,23 @@ export async function optimizedRetrieve(
     };
   }
 
+  if (!cfg.workspaceId.trim()) {
+    return {
+      context: "Workspace retrieval is unavailable because no workspace is selected.",
+      tokenCount: 0,
+      cached: false,
+      intent,
+      stages: ["hybrid-search", "graph-rag", "knowledge-search"].map((name) => ({ name, latencyMs: 0, resultCount: 0, skipped: true, reason: "workspace-required" })),
+      totalLatencyMs: Date.now() - pipelineStart,
+      sourceCount: 0,
+    };
+  }
+
+  const cacheScope = createHash("sha256").update(JSON.stringify([
+    "retrieval-v2", cfg.userId, cfg.workspaceId, cfg.scanId,
+    cfg.graph, cfg.knowledge, cfg.multiQuery, cfg.rerank, cfg.tokenBudget,
+  ])).digest("hex");
+
   // 1. Cache check
   if (cfg.cache && cfg.userId) {
     const cacheStart = Date.now();
@@ -232,7 +250,7 @@ export async function optimizedRetrieve(
 
     const cacheResult = await cacheLookup({
       messages: query,
-      userId: cfg.userId,
+      userId: cacheScope,
       feature: "retrieval",
       queryEmbedding,
     });
@@ -390,7 +408,7 @@ export async function optimizedRetrieve(
     // Fire-and-forget — don't block the response
     cacheStore({
       messages: query,
-      userId: cfg.userId,
+      userId: cacheScope,
       feature: "retrieval",
       response: compressed.compressed,
     }).catch(() => {});

@@ -15,9 +15,9 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { authenticateApiKey, type AuthenticatedApiKey } from "@/lib/auth/api-key";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth/config";
+import { authenticateApiKey } from "@/lib/auth/api-key";
+import { requireWorkspacePermission } from "@/lib/auth/api-guard";
+import { hasPermission, type Permission, type WorkspaceRole } from "@/lib/auth/rbac";
 import { rateLimit, RATE_LIMITS, rateLimitHeaders } from "@/lib/rate-limit";
 import { prisma } from "@/lib/database/prisma";
 import { logger } from "@/lib/telemetry/logger";
@@ -65,15 +65,19 @@ export async function gatewayAuth(
 ): Promise<GatewayResult> {
   // 1. Try API key auth first (preferred for programmatic access)
   const authHeader = request.headers.get("authorization");
+  const permission: Permission = request.method !== "GET" && ["agents", "workflow", "embed"].includes(endpoint) ? "scans.run" : "scans.view";
   if (authHeader?.startsWith("Bearer rl_")) {
-    return apiKeyAuth(authHeader, endpoint);
+    return apiKeyAuth(authHeader, endpoint, permission);
+  }
+  if (authHeader !== null || request.headers.has("x-api-key")) {
+    return { ok: false, response: apiError("Use a valid Bearer API key", "invalid_api_key", 401) };
   }
 
   // 2. Fall back to session auth (for browser/dashboard access)
-  return sessionAuth(endpoint);
+  return sessionAuth(endpoint, permission);
 }
 
-async function apiKeyAuth(authHeader: string, endpoint: string): Promise<GatewayResult> {
+async function apiKeyAuth(authHeader: string, endpoint: string, permission: Permission): Promise<GatewayResult> {
   const key = await authenticateApiKey(authHeader);
   if (!key) {
     return {
@@ -83,6 +87,15 @@ async function apiKeyAuth(authHeader: string, endpoint: string): Promise<Gateway
         { status: 401, headers: { "WWW-Authenticate": "Bearer" } },
       ),
     };
+  }
+
+  if (!key.workspaceId || !key.userId) return { ok: false, response: apiError("API key requires a current workspace member", "forbidden", 403) };
+  const membership = await prisma.workspaceMember.findUnique({
+    where: { userId_workspaceId: { userId: key.userId, workspaceId: key.workspaceId } },
+    select: { role: true },
+  });
+  if (!membership || !hasPermission("USER", membership.role as WorkspaceRole, permission)) {
+    return { ok: false, response: apiError("API key lacks permission in its workspace", "forbidden", 403) };
   }
 
   // Rate limit by API key
@@ -113,38 +126,14 @@ async function apiKeyAuth(authHeader: string, endpoint: string): Promise<Gateway
   };
 }
 
-async function sessionAuth(endpoint: string): Promise<GatewayResult> {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.email) {
-    return {
-      ok: false,
-      response: NextResponse.json(
-        { error: "Authentication required", code: "unauthenticated" },
-        { status: 401, headers: { "WWW-Authenticate": "Bearer" } },
-      ),
-    };
-  }
-
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-    select: { id: true },
-  });
-  if (!user) {
-    return {
-      ok: false,
-      response: NextResponse.json({ error: "User not found" }, { status: 401 }),
-    };
-  }
-
-  const membership = await prisma.workspaceMember.findFirst({
-    where: { userId: user.id },
-    orderBy: { joinedAt: "asc" },
-    select: { workspaceId: true },
-  });
+async function sessionAuth(endpoint: string, permission: Permission): Promise<GatewayResult> {
+  const access = await requireWorkspacePermission(permission);
+  if (!access.ok) return access;
+  if (!access.ctx.workspaceId) return { ok: false, response: apiError("Select a workspace before continuing", "workspace_required", 403) };
 
   // Rate limit by user email
   const tier = V1_RATE_LIMITS[endpoint] ?? RATE_LIMITS.api;
-  const rl = await rateLimit(`v1:${session.user.email}:${endpoint}`, tier, endpoint);
+  const rl = await rateLimit(`v1:${access.ctx.userId}:${endpoint}`, tier, endpoint);
   if (!rl.success) {
     return {
       ok: false,
@@ -158,9 +147,9 @@ async function sessionAuth(endpoint: string): Promise<GatewayResult> {
   return {
     ok: true,
     ctx: {
-      userId: user.id,
-      workspaceId: membership?.workspaceId ?? "",
-      email: session.user.email,
+      userId: access.ctx.userId,
+      workspaceId: access.ctx.workspaceId,
+      email: access.ctx.email,
       authMethod: "session",
     },
   };

@@ -9,7 +9,7 @@ import { FeatureGate } from "@/components/ui/feature-gate";
  * HOW: Fetches /api/team for members. POST to invite, DELETE to remove. RBAC enforces permissions.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -67,6 +67,9 @@ function TeamPageInner() {
   const [error, setError] = useState("");
   const [resetPwUser, setResetPwUser] = useState<string | null>(null);
   const [resetPwValue, setResetPwValue] = useState("");
+  const [mutating, setMutating] = useState(false);
+  const mutationPending = useRef(false);
+  const invitePending = useRef(false);
   const { t } = useI18n();
 
   const [reloadKey, setReloadKey] = useState(0);
@@ -77,7 +80,9 @@ function TeamPageInner() {
   }
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/team")
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15_000);
+    fetch("/api/team", { signal: controller.signal })
       .then((res) => {
         if (!res.ok) throw new Error("Failed");
         return res.json();
@@ -92,12 +97,14 @@ function TeamPageInner() {
       // Don't swallow the failure: surface it so an empty list reads as "couldn't
       // load" (with a retry), never as "you have no team".
       .catch(() => { if (!cancelled) setLoadError(true); })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
+      .finally(() => { clearTimeout(timeout); if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; controller.abort(); clearTimeout(timeout); };
   }, [reloadKey]);
 
   async function handleInvite(e: React.FormEvent) {
     e.preventDefault();
+    if (invitePending.current) return;
+    invitePending.current = true;
     setInviting(true);
     setError("");
     const toastId = toast.loading("Inviting member...");
@@ -115,28 +122,63 @@ function TeamPageInner() {
         return;
       }
       if (data.emailSent) {
-        toast.success(`Invitation sent to ${inviteEmail}`, { id: toastId });
+        toast.success(
+          data.resent
+            ? `Invitation resent to ${inviteEmail} with a new temporary password.`
+            : data.isNewUser
+            ? `Invitation sent to ${inviteEmail} — it contains a temporary password for their first sign-in.`
+            : `Invitation sent to ${inviteEmail}`,
+          { id: toastId }
+        );
+      } else if (data.credentialDelivery === "server-console") {
+        // Local development without SMTP — the operator running the server can
+        // read the temporary password there and hand it over themselves.
+        toast.warning(
+          `${inviteEmail} added — email isn't configured, so their temporary password was printed to the server console.`,
+          { id: toastId, duration: 8000 }
+        );
       } else {
         // Member is added, but they weren't emailed (SMTP not configured). Tell
         // the admin so they can share access manually — especially for new users
         // who must set a password via "Forgot password" before they can sign in.
         toast.warning(
           data.isNewUser
-            ? `${inviteEmail} added — email not configured. Ask them to set a password via "Forgot password" to sign in.`
+            ? `${inviteEmail} added — email isn't configured, so no sign-in details were sent. Set SMTP_HOST, SMTP_USER and SMTP_PASS, then invite again, or ask them to use "Forgot password".`
             : `${inviteEmail} added — email not configured, so no invite was sent.`,
           { id: toastId, duration: 8000 }
         );
       }
-      setMembers([...members, data]);
+      // A resend targets a member already in the list — replace rather than
+      // append so the row isn't duplicated.
+      setMembers((current) =>
+        current.some((m) => m.id === data.id)
+          ? current.map((m) => (m.id === data.id ? { ...m, ...data } : m))
+          : [...current, data]
+      );
       setInviteEmail("");
       setShowInvite(false);
+    } catch {
+      const message = "Invitation could not be confirmed. Refresh the team list before retrying; your email draft is preserved.";
+      setError(message);
+      toast.error(message, { id: toastId });
     } finally {
+      invitePending.current = false;
       setInviting(false);
     }
   }
 
+  async function runMemberAction(message: string, action: (toastId: string | number) => Promise<void>) {
+    if (mutationPending.current) return;
+    mutationPending.current = true;
+    setMutating(true);
+    const toastId = toast.loading(message);
+    try { await action(toastId); }
+    catch { toast.error("The change could not be confirmed. Refresh the team list before retrying.", { id: toastId }); }
+    finally { mutationPending.current = false; setMutating(false); }
+  }
+
   async function handleRoleChange(memberId: string, newRole: string) {
-    const toastId = toast.loading("Updating role...");
+    return runMemberAction("Updating role...", async (toastId) => {
     const res = await fetch("/api/team", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -144,30 +186,32 @@ function TeamPageInner() {
     });
     if (res.ok) {
       toast.success(`Role changed to ${newRole}`, { id: toastId });
-      setMembers(members.map((m) => (m.id === memberId ? { ...m, role: newRole } : m)));
+      setMembers((current) => current.map((m) => (m.id === memberId ? { ...m, role: newRole } : m)));
     } else {
       const data = await res.json();
       toast.error(data.error || "Failed to change role", { id: toastId });
     }
+    });
   }
 
   const [removeTarget, setRemoveTarget] = useState<{ id: string; email: string } | null>(null);
 
   async function handleRemove(memberId: string, email: string) {
-    const toastId = toast.loading("Removing member...");
+    return runMemberAction("Removing member...", async (toastId) => {
     const res = await fetch(`/api/team?id=${memberId}`, { method: "DELETE" });
     if (res.ok) {
       toast.success(`${email} removed from team`, { id: toastId });
-      setMembers(members.filter((m) => m.id !== memberId));
+      setMembers((current) => current.filter((m) => m.id !== memberId));
+      setRemoveTarget(null);
     } else {
       toast.error("Failed to remove member", { id: toastId });
     }
-    setRemoveTarget(null);
+    });
   }
 
   async function handleResetPassword(userId: string) {
-    if (!resetPwValue || resetPwValue.length < 6) return;
-    const toastId = toast.loading("Resetting password...");
+    if (!resetPwValue || resetPwValue.length < 12) return;
+    return runMemberAction("Resetting password...", async (toastId) => {
     const res = await fetch("/api/team", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -181,10 +225,11 @@ function TeamPageInner() {
       const data = await res.json();
       toast.error(data.error || "Failed to reset password", { id: toastId });
     }
+    });
   }
 
   async function handleChangePlan(userId: string, newPlan: string) {
-    const toastId = toast.loading("Updating plan...");
+    return runMemberAction("Updating plan...", async (toastId) => {
     const res = await fetch("/api/team", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -192,11 +237,12 @@ function TeamPageInner() {
     });
     if (res.ok) {
       toast.success(`Plan changed to ${newPlan}`, { id: toastId });
-      setMembers(members.map((m) => (m.userId === userId ? { ...m, plan: newPlan } : m)));
+      setMembers((current) => current.map((m) => (m.userId === userId ? { ...m, plan: newPlan } : m)));
     } else {
       const data = await res.json();
       toast.error(data.error || "Failed to change plan", { id: toastId });
     }
+    });
   }
 
   const isAdmin = ["OWNER", "ADMIN"].includes(currentUserRole);
@@ -258,6 +304,7 @@ function TeamPageInner() {
               <form onSubmit={handleInvite} className="flex flex-col sm:flex-row gap-3">
                 <input
                   type="email"
+                  aria-label="Invite email"
                   required
                   placeholder="colleague@company.com"
                   value={inviteEmail}
@@ -265,6 +312,7 @@ function TeamPageInner() {
                   className="flex-1 rounded-lg border border-neutral-200 dark:border-neutral-700 px-3 py-2 text-sm dark:bg-neutral-800 dark:text-neutral-100"
                 />
                 <ModernSelect
+              label="Invite role"
               options={[{ value: "VIEWER", label: "Viewer" }, { value: "MEMBER", label: "Member" }, { value: "ADMIN", label: "Admin" }]}
               value={inviteRole}
               onChange={setInviteRole}
@@ -277,7 +325,7 @@ function TeamPageInner() {
                   {inviting ? t("team.inviting") : t("team.sendInvite")}
                 </button>
               </form>
-              {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+              {error && <p role="alert" className="mt-2 text-sm text-red-600">{error}</p>}
             </CardContent>
           </Card>
         )}
@@ -309,8 +357,9 @@ function TeamPageInner() {
                 <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">{t("team.noMembersSubtitle")}</p>
               </div>
             ) : (
-              <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
+              <fieldset disabled={mutating} className="min-w-0 divide-y divide-neutral-100 dark:divide-neutral-800">
                 {members.map((member) => {
+                  const canManage = isAdmin && member.role !== "OWNER" && !member.isMasterAdmin && (isMasterAdmin || currentUserRole === "OWNER" || member.role !== "ADMIN");
                   const displayRole = member.isMasterAdmin ? "MASTER_ADMIN" : member.role;
                   const displayLabel = member.isMasterAdmin ? "MASTER ADMIN" : member.role;
                   const RoleIcon = member.isMasterAdmin ? Crown : (roleIcons[member.role] || Users);
@@ -335,10 +384,11 @@ function TeamPageInner() {
                           {new Date(member.joinedAt).toLocaleDateString()}
                         </span>
 
-                        {isAdmin && member.role !== "OWNER" && !member.isMasterAdmin ? (
+                        {canManage ? (
                           <>
                             <div className="relative">
                               <ModernSelect
+                                label={`Role for ${member.email}`}
                                 options={[
                                   { value: "VIEWER", label: "Viewer" },
                                   { value: "MEMBER", label: "Member" },
@@ -350,6 +400,7 @@ function TeamPageInner() {
                             </div>
                             {isMasterAdmin ? (
                               <ModernSelect
+                                label={`Plan for ${member.email}`}
                                 options={[
                                   { value: "FREE", label: "Free" },
                                   { value: "PRO", label: "Pro" },
@@ -371,12 +422,14 @@ function TeamPageInner() {
                           </span>
                         )}
 
-                        {isAdmin && member.role !== "OWNER" && !member.isMasterAdmin && (
+                        {canManage && (
                           <div className="flex items-center gap-1">
-                            {resetPwUser === member.userId ? (
+                            {isMasterAdmin && (resetPwUser === member.userId ? (
                               <div className="flex items-center gap-1">
                                 <input
-                                  type="text"
+                                  type="password"
+                                  aria-label={`New password for ${member.email}`}
+                                  autoComplete="new-password"
                                   placeholder="New password"
                                   value={resetPwValue}
                                   onChange={(e) => setResetPwValue(e.target.value)}
@@ -384,13 +437,14 @@ function TeamPageInner() {
                                 />
                                 <button
                                   onClick={() => handleResetPassword(member.userId)}
-                                  disabled={resetPwValue.length < 6}
+                                  disabled={resetPwValue.length < 12}
                                   className="rounded-md px-2 py-1 text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
                                 >
                                   Set
                                 </button>
                                 <button
                                   onClick={() => { setResetPwUser(null); setResetPwValue(""); }}
+                                  aria-label="Cancel password reset"
                                   className="rounded-md p-1 text-neutral-500 dark:text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200"
                                 >
                                   <X className="h-3 w-3" />
@@ -401,14 +455,16 @@ function TeamPageInner() {
                                 onClick={() => setResetPwUser(member.userId)}
                                 className="rounded-md p-1.5 text-neutral-500 dark:text-neutral-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors"
                                 title="Reset Password"
+                                aria-label={`Reset password for ${member.email}`}
                               >
                                 <KeyRound className="h-3.5 w-3.5" />
                               </button>
-                            )}
+                            ))}
                             <button
                               onClick={() => setRemoveTarget({ id: member.id, email: member.email })}
                               className="rounded-md p-1.5 text-neutral-500 dark:text-neutral-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
                               title="Remove member"
+                              aria-label={`Remove ${member.email}`}
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </button>
@@ -418,7 +474,7 @@ function TeamPageInner() {
                     </div>
                   );
                 })}
-              </div>
+              </fieldset>
             )}
           </CardContent>
         </Card>
@@ -451,6 +507,7 @@ function TeamPageInner() {
         description={`Remove ${removeTarget?.email} from the team? They will lose access to this workspace.`}
         confirmLabel="Remove"
         variant="danger"
+        busy={mutating}
         onConfirm={() => removeTarget && handleRemove(removeTarget.id, removeTarget.email)}
         onCancel={() => setRemoveTarget(null)}
       />

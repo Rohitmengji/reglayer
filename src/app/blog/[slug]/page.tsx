@@ -1,15 +1,14 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { cache } from "react";
 import Link from "next/link";
 import { ArrowLeft, Clock, Calendar, Info, Lightbulb, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { articles } from "./content";
-import type { CalloutVariant, ArticleContent } from "./content";
+import type { CalloutVariant } from "./content";
 import { ArticleEditorWrapper } from "./editor-wrapper";
 import { ArticleActions } from "@/components/blog/article-actions";
 import { safeUrl, safeVideoEmbed } from "@/lib/blog/blockHelpers";
-import { prisma } from "@/lib/database/prisma";
-import { dbArticleToContent } from "@/lib/blog/articleContent";
+import { getPublicArticle } from "@/lib/blog/public-articles";
+import { breadcrumbSchema, publicMetadata } from "@/lib/seo";
 
 /**
  * Resolve an article for public display: a PUBLISHED DB article wins (so CMS
@@ -17,15 +16,7 @@ import { dbArticleToContent } from "@/lib/blog/articleContent";
  * article is the fallback, otherwise null → 404. cache() dedupes the DB hit
  * between generateMetadata and the page render. DB failure falls back to static.
  */
-const getArticleForDisplay = cache(async (slug: string): Promise<ArticleContent | null> => {
-  try {
-    const db = await prisma.article.findUnique({ where: { slug } });
-    if (db && db.status === "PUBLISHED") return dbArticleToContent(db);
-  } catch {
-    // DB unavailable — fall through to the static fallback.
-  }
-  return articles[slug] ?? null;
-});
+const getArticleForDisplay = getPublicArticle;
 
 /** Color + icon per callout tone. "note" (and undefined) keep the brand accent. */
 const CALLOUT_STYLES: Record<CalloutVariant, { box: string; title: string; Icon: typeof Info }> = {
@@ -43,10 +34,11 @@ interface PageProps {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   const article = await getArticleForDisplay(slug);
-  if (!article) return { title: "Article Not Found — RegLayer Blog" };
+  if (!article) notFound();
+  const metadata = publicMetadata(`/blog/${encodeURIComponent(slug)}`, article.title, article.excerpt);
   return {
-    title: `${article.title} — RegLayer Blog`,
-    description: article.excerpt,
+    ...metadata,
+    openGraph: { ...metadata.openGraph, type: "article" },
   };
 }
 
@@ -56,6 +48,7 @@ export default async function ArticlePage({ params }: PageProps) {
   if (!article) notFound();
   return (
     <div className="space-y-6">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema([{ name: "RegLayer", path: "/" }, { name: "Blog", path: "/blog" }, { name: article.title, path: `/blog/${encodeURIComponent(slug)}` }])).replace(/</g, "\\u003c") }} />
       <ArticleEditorWrapper slug={slug} article={article}>
         {/* Navigation */}
         <header className="border-b border-neutral-100 dark:border-neutral-800/50">

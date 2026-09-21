@@ -25,6 +25,7 @@ export interface ScanRequest {
 }
 
 export interface ScanOptions {
+  signal?: AbortSignal;
   includeScreenshot?: boolean;
   waitForSelector?: string;
   timeout?: number;

@@ -162,17 +162,17 @@ export function DecisionEngineTab() {
       {/* Header */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
               <CardTitle className="flex items-center gap-2">
-                <Shield className="h-5 w-5 text-accent" />
+                <Shield className="h-5 w-5 shrink-0 text-accent" />
                 Workspace Decisions
               </CardTitle>
               <CardDescription className="mt-1">
-                Set rules the AI must follow in every response. Decisions are enforced automatically — the AI checks its output against your standards.
+                Set workspace guidance for AI responses. Review generated recommendations before applying them; guidance does not guarantee compliance.
               </CardDescription>
             </div>
-            <Button size="sm" onClick={() => setAdding(!adding)}>
+            <Button size="sm" className="shrink-0" onClick={() => setAdding(!adding)}>
               <Plus className="h-4 w-4 mr-1" />
               Add Decision
             </Button>
@@ -183,7 +183,7 @@ export function DecisionEngineTab() {
         {adding && (
           <CardContent className="border-t pt-4">
             <div className="space-y-3">
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row">
                 <select
                   value={newCategory}
                   onChange={(e) => setNewCategory(e.target.value)}
@@ -240,7 +240,7 @@ export function DecisionEngineTab() {
                     <div>
                       <span className="font-medium text-neutral-800 dark:text-neutral-200">{qd.decision}</span>
                       {qd.rationale && (
-                        <span className="block text-[11px] text-neutral-400 mt-0.5">{qd.rationale}</span>
+                        <span className="block text-[11px] text-neutral-600 dark:text-neutral-400 mt-0.5">{qd.rationale}</span>
                       )}
                     </div>
                   </button>
@@ -299,7 +299,7 @@ export function DecisionEngineTab() {
                                 {d.decision}
                               </p>
                               {d.rationale && (
-                                <p className="text-[11px] text-neutral-400 mt-0.5">{d.rationale}</p>
+                                <p className="text-[11px] text-neutral-600 dark:text-neutral-400 mt-0.5">{d.rationale}</p>
                               )}
                             </div>
                             <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
@@ -336,7 +336,7 @@ export function DecisionEngineTab() {
             <Shield className="h-10 w-10 text-muted-foreground/30 mb-3" />
             <h3 className="font-medium text-neutral-700 dark:text-neutral-300">No decisions set</h3>
             <p className="text-sm text-muted-foreground mt-1 max-w-sm">
-              Add workspace decisions and the AI will enforce them in every response — compliance standards, coding conventions, architecture rules.
+              Add guidance for compliance standards, coding conventions and architecture. Review AI output before relying on it.
             </p>
           </CardContent>
         </Card>

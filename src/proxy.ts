@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { rateLimitSync, rateLimitHeaders } from "@/lib/rate-limit";
 import { validateCsrf } from "@/lib/security/csrf";
+import { getSiteUrl, isIndexablePath, isProductionIndexingEnabled, PRIVATE_PAGE_ROOTS } from "@/lib/seo";
 
 /**
  * Generate a short request correlation ID for tracing.
@@ -61,7 +62,8 @@ const MAIN_DOMAINS = new Set([
 
 const REGLAYER_SUFFIX = ".reglayer.app";
 
-function applySecurityHeaders(response: NextResponse, requestId?: string): NextResponse {
+function applySecurityHeaders(response: NextResponse, requestId?: string, noindex = true): NextResponse {
+  if (noindex) response.headers.set("X-Robots-Tag", "noindex, nofollow");
   for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
     response.headers.set(key, value);
   }
@@ -103,6 +105,12 @@ export async function proxy(request: NextRequest) {
   const hostname = request.headers.get("host") || "localhost";
   const requestId = request.headers.get("x-request-id") || generateRequestId();
 
+  const canonicalHost = new URL(getSiteUrl()).host;
+  if (["GET", "HEAD"].includes(request.method) && isIndexablePath(pathname) && isProductionIndexingEnabled() && hostname !== canonicalHost && ["reglayer.app", "www.reglayer.app", "reglayer.vercel.app"].includes(hostname)) {
+    const destination = new URL(request.nextUrl.pathname + request.nextUrl.search, getSiteUrl());
+    return applySecurityHeaders(NextResponse.redirect(destination, 308), requestId, false);
+  }
+
   // Agency tenant detection — pass hostname to server components via header
   const agencySlug = getAgencySlug(hostname);
   const isAgency = isAgencyDomain(hostname);
@@ -110,6 +118,11 @@ export async function proxy(request: NextRequest) {
   // Public paths — apply security headers only
   const isPublicPath =
     pathname === "/" ||
+    pathname === "/robots.txt" ||
+    pathname === "/sitemap.xml" ||
+    pathname === "/manifest.webmanifest" ||
+    pathname === "/not-found-page" ||
+    (isIndexablePath(pathname) && pathname.startsWith("/blog")) ||
     pathname.startsWith("/auth/") ||
     pathname.startsWith("/pricing") ||
     pathname.startsWith("/privacy") ||
@@ -157,7 +170,18 @@ export async function proxy(request: NextRequest) {
       response.headers.set("x-agency-hostname", hostname.split(":")[0]);
       if (agencySlug) response.headers.set("x-agency-slug", agencySlug);
     }
-    return applySecurityHeaders(response, requestId);
+    const indexable = isProductionIndexingEnabled() && hostname === canonicalHost && isIndexablePath(pathname);
+    return applySecurityHeaders(response, requestId, !indexable);
+  }
+
+  if (!pathname.startsWith("/api/") && pathname !== "/blog/create" && !PRIVATE_PAGE_ROOTS.some(root => pathname === `/${root}` || pathname.startsWith(`/${root}/`))) {
+    return applySecurityHeaders(NextResponse.rewrite(new URL("/not-found-page", request.url), { status: 404 }), requestId);
+  }
+
+  if (/^\/api\/v1\/(chat|rag|embed|search|evaluate|agents|workflow)$/.test(pathname)) {
+    const csrfError = validateCsrf(request);
+    if (csrfError) return applySecurityHeaders(csrfError, requestId);
+    return applySecurityHeaders(NextResponse.next(), requestId);
   }
 
   // Protected paths — require auth
@@ -194,6 +218,19 @@ export async function proxy(request: NextRequest) {
       );
       return applySecurityHeaders(res, requestId);
     }
+  }
+
+  // A member signed in with an emailed temporary password may only finish
+  // password setup. /auth/* is already public, so the setup page stays reachable.
+  if (token.mustSetPassword === true && pathname !== "/api/account/set-password") {
+    if (pathname.startsWith("/api/")) {
+      const res = NextResponse.json(
+        { error: "Choose a password before continuing.", code: "PASSWORD_SETUP_REQUIRED" },
+        { status: 403 },
+      );
+      return applySecurityHeaders(res, requestId);
+    }
+    return applySecurityHeaders(NextResponse.redirect(new URL("/auth/set-password", request.url)), requestId);
   }
 
   const response = NextResponse.next();

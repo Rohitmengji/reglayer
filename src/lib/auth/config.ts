@@ -35,6 +35,7 @@ import { applyProvisioning } from "@/lib/sso/provision-execute";
 import { getEnforcementForEmail } from "@/lib/sso/resolve";
 import { evaluateEnforcement } from "@/lib/sso/enforcement";
 import { emailIsVerified } from "./profile-refresh";
+import { hasPendingInviteCredential, verifyInviteCredential } from "./invite-credential";
 import { logger } from "@/lib/telemetry/logger";
 
 /**
@@ -180,6 +181,17 @@ export const authOptions: NextAuthOptions = {
             if (valid) {
               return { id: dbUser.id, name: dbUser.name || dbUser.email.split("@")[0], email: dbUser.email };
             }
+          }
+          // An invited member signs in with the temporary password from their
+          // invitation email. It never replaces a chosen password (checked
+          // above first) and only grants access to the password-setup step.
+          if (dbUser && await verifyInviteCredential(dbUser.email, credentials.password)) {
+            return {
+              id: dbUser.id,
+              name: dbUser.name || dbUser.email.split("@")[0],
+              email: dbUser.email,
+              mustSetPassword: true,
+            };
           }
         }
 
@@ -343,6 +355,7 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.role = user.role;
+        token.mustSetPassword = user.mustSetPassword === true;
       }
       // Cache the auth context (isMasterAdmin + primary workspace role) in Redis
       // (60s TTL) to avoid a DB hit on every request. workspaceRole is the user's
@@ -392,6 +405,15 @@ export const authOptions: NextAuthOptions = {
           token.isMasterAdmin = false;
           token.workspaceRole = null;
         }
+        // Clear the setup requirement as soon as the member has chosen their own
+        // password, so the token heals itself without a forced sign-out.
+        if (token.mustSetPassword) {
+          try {
+            token.mustSetPassword = await hasPendingInviteCredential(token.email);
+          } catch {
+            // A lookup failure must not strand the member outside setup.
+          }
+        }
       }
       return token;
     },
@@ -400,6 +422,7 @@ export const authOptions: NextAuthOptions = {
         session.user.role = token.role;
         session.user.isMasterAdmin = token.isMasterAdmin ?? false;
         session.user.workspaceRole = (token.workspaceRole as string | null) ?? null;
+        session.user.mustSetPassword = token.mustSetPassword === true;
       }
       return session;
     },

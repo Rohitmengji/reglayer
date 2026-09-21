@@ -56,7 +56,7 @@ export interface RAGContext {
  */
 export async function buildRAGContext(
   userMessage: string,
-  options?: { scanId?: string },
+  options: { workspaceId: string; scanId?: string },
 ): Promise<RAGContext> {
   // Fast path: skip RAG for short/generic messages that won't benefit from retrieval.
   // This eliminates ~1-2s of embed + vector search latency on greetings/generic questions.
@@ -71,6 +71,7 @@ export async function buildRAGContext(
 
   try {
     violations = await searchViolations(userMessage, {
+      workspaceId: options.workspaceId,
       limit: 5,
       minSimilarity: 0.6,
       scanId: options?.scanId,

@@ -14,8 +14,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
-import { prisma } from "@/lib/database/prisma";
-import { ViolationStatus } from "@/generated/prisma/client";
+import { assertScanAccess } from "@/lib/auth/access";
+import { Impact, ViolationStatus } from "@/generated/prisma/client";
 import { getFilteredViolations, getStatusSummary } from "@/lib/violations/status";
 import { requireFeature } from "@/lib/features/require-feature";
 
@@ -46,9 +46,12 @@ export async function GET(request: NextRequest) {
     const { searchParams } = request.nextUrl;
     const scanId = searchParams.get("scanId");
     const statusParam = searchParams.get("status");
-    const impact = searchParams.get("impact");
-    const page = Math.max(1, parseInt(searchParams.get("page") ?? "1"));
-    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "25")));
+    const impacts = searchParams.get("impact")?.split(",").map((value) => value.trim().toLowerCase()).filter(Boolean);
+    if (impacts?.some((value) => !Object.values(Impact).includes(value as Impact))) {
+      return NextResponse.json({ error: "INVALID_IMPACT", message: "Choose critical, serious, moderate or minor impact." }, { status: 400 });
+    }
+    const page = Math.max(1, Math.trunc(Number(searchParams.get("page")) || 1));
+    const limit = Math.min(100, Math.max(1, Math.trunc(Number(searchParams.get("limit")) || 25)));
 
     if (!scanId) {
       return NextResponse.json(
@@ -61,7 +64,7 @@ export async function GET(request: NextRequest) {
     // comma-separated list (e.g. the Exceptions tab = WONT_FIX,ACCEPTABLE_RISK).
     let status: ViolationStatus | ViolationStatus[] | undefined;
     if (statusParam) {
-      const requested = statusParam.split(",").map((s) => s.trim()).filter(Boolean);
+      const requested = statusParam.split(",").map((value) => value.trim().toUpperCase()).filter(Boolean);
       const valid = Object.values(ViolationStatus);
       const invalid = requested.filter((s) => !valid.includes(s as ViolationStatus));
       if (invalid.length > 0) {
@@ -79,44 +82,17 @@ export async function GET(request: NextRequest) {
         : (requested as ViolationStatus[]);
     }
 
-    // Verify scan belongs to user's workspace — the two lookups are
-    // independent, so fetch them in parallel
-    const [user, scan] = await Promise.all([
-      prisma.user.findUnique({
-        where: { email: session.user.email },
-        select: { id: true, memberships: { select: { workspaceId: true } } },
-      }),
-      prisma.scan.findUnique({
-        where: { id: scanId },
-        select: { workspaceId: true },
-      }),
-    ]);
-
-    if (!user) {
+    const access = await assertScanAccess(scanId, session);
+    if (!access.ok) {
       return NextResponse.json(
-        { error: "USER_NOT_FOUND", message: "User not found" },
-        { status: 401 }
-      );
-    }
-
-    if (!scan) {
-      return NextResponse.json(
-        { error: "SCAN_NOT_FOUND", message: "Scan not found" },
-        { status: 404 }
-      );
-    }
-
-    const workspaceIds = user.memberships.map((m) => m.workspaceId);
-    if (scan.workspaceId && !workspaceIds.includes(scan.workspaceId)) {
-      return NextResponse.json(
-        { error: "FORBIDDEN", message: "You don't have access to this scan" },
-        { status: 403 }
+        { error: access.status === 401 ? "USER_NOT_FOUND" : access.status === 404 ? "SCAN_NOT_FOUND" : "FORBIDDEN", message: access.error },
+        { status: access.status }
       );
     }
 
     // Fetch filtered violations + summary in parallel
     const [result, summary] = await Promise.all([
-      getFilteredViolations({ scanId, status, impact: impact ?? undefined, page, limit }),
+      getFilteredViolations({ scanId, status, impact: impacts?.length === 1 ? impacts[0] : impacts?.length ? impacts : undefined, page, limit }),
       getStatusSummary(scanId),
     ]);
 

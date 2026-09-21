@@ -6,26 +6,20 @@
  * HOW: Next.js Metadata API generates /sitemap.xml from this export.
  */
 import type { MetadataRoute } from "next";
+import { getSiteUrl, isProductionIndexingEnabled, PUBLIC_SITE_ROUTES } from "@/lib/seo";
+import { getPublicArticleSummaries } from "@/lib/blog/public-articles";
+
+export const dynamic = "force-dynamic";
 
 /**
  * Sitemap — public pages only.
  * Authenticated pages are excluded (handled by robots.txt disallow).
  */
-export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = process.env.NEXTAUTH_URL || "https://reglayer.vercel.app";
-
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  if (!isProductionIndexingEnabled()) return [];
+  const articles = await getPublicArticleSummaries();
   return [
-    { url: baseUrl, lastModified: new Date(), changeFrequency: "weekly", priority: 1 },
-    { url: `${baseUrl}/pricing`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.9 },
-    { url: `${baseUrl}/features`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.8 },
-    { url: `${baseUrl}/standards`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.8 },
-    { url: `${baseUrl}/docs`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.7 },
-    { url: `${baseUrl}/api-reference`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
-    { url: `${baseUrl}/blog`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.7 },
-    { url: `${baseUrl}/contact`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.6 },
-    { url: `${baseUrl}/auth/login`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.5 },
-    { url: `${baseUrl}/privacy`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.3 },
-    { url: `${baseUrl}/terms`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.3 },
-    { url: `${baseUrl}/cookie-policy`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.2 },
+    ...PUBLIC_SITE_ROUTES.map(route => ({ url: new URL(route, getSiteUrl()).href })),
+    ...articles.map(article => ({ url: `${getSiteUrl()}/blog/${encodeURIComponent(article.slug)}`, ...(article.lastModified ? { lastModified: article.lastModified } : {}) })),
   ];
 }

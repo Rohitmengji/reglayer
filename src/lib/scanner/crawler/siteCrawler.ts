@@ -25,12 +25,14 @@
  * ══════════════════════════════════════════════════════════════════════════════
  */
 
-import { launchBrowser, isServerless } from "@/lib/scanner/browser/launch";
+import { isServerless } from "@/lib/scanner/browser/launch";
+import { createBrowserLifetime } from "@/lib/scanner/browser/lifetime";
 import { humanizeCrawlError } from "./crawlErrors";
 import { applyAuthToContext, AuthenticationError } from "@/lib/scanner/auth";
 import { executeScanPipeline } from "@/lib/scanner/pipelines/scanPipeline";
 import { evaluateCompliance } from "@/lib/compliance/policyEvaluator";
 import { persistScan } from "@/services/scanService";
+import { getOrScanCrawlPage } from "@/services/crawlPageService";
 import { logger } from "@/lib/telemetry/logger";
 import { jobManager, type JobEvent } from "./job-manager";
 import { computeLitigationSurface, type LitigationSurface } from "@/lib/risk/litigationSurface";
@@ -38,12 +40,14 @@ import { validateScanUrl, resolvesToInternalIp } from "@/lib/validations/ssrf";
 import type { Browser, BrowserContext, Page } from "playwright-core";
 import type { AuthConfig } from "@/lib/validations/auth";
 import type { ScanOptions } from "@/lib/types";
+import type { CrawlAttempt } from "./page-checkpoint";
 
 // ══════════════════════════════════════════════════════════════
 // TYPES
 // ══════════════════════════════════════════════════════════════
 
 export interface CrawlConfig {
+  signal?: AbortSignal;
   startUrl: string;
   maxPages: number;
   maxDepth: number;
@@ -67,6 +71,8 @@ export interface CrawlConfig {
   deadline?: number;
   /** Job ID for progress reporting */
   jobId?: string;
+  checkpointPages?: boolean;
+  attempt?: CrawlAttempt;
   /** Known routes to inject directly (bypasses BFS — e.g. admin sidebar routes) */
   knownRoutes?: string[];
   /** Owning user's email — used to persist each crawled page as a real Scan row */
@@ -241,19 +247,18 @@ function shouldSkipUrl(url: string): boolean {
 const MAX_SITEMAP_URLS = 5000;
 const MAX_SITEMAP_BYTES = 5_000_000;
 
-async function discoverFromSitemap(origin: string): Promise<string[]> {
+async function discoverFromSitemap(origin: string, signal?: AbortSignal): Promise<string[]> {
   const urls: string[] = [];
   const candidates = [`${origin}/sitemap.xml`, `${origin}/sitemap-0.xml`];
 
   for (const sitemapUrl of candidates) {
+    signal?.throwIfAborted();
+    const timeout = AbortSignal.timeout(5000);
     try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 5000);
       const res = await fetch(sitemapUrl, {
-        signal: controller.signal,
+        signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
         headers: { "User-Agent": "RegLayer-Auditor/3.0" },
       });
-      clearTimeout(timeout);
       if (!res.ok) continue;
 
       let xml = await res.text();
@@ -270,7 +275,7 @@ async function discoverFromSitemap(origin: string): Promise<string[]> {
         }
       }
       if (urls.length >= MAX_SITEMAP_URLS) break;
-    } catch { /* sitemap not available */ }
+    } catch { signal?.throwIfAborted(); }
   }
   return [...new Set(urls)];
 }
@@ -389,10 +394,32 @@ function effectiveConcurrency(requested: number): number {
 // ══════════════════════════════════════════════════════════════
 
 export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
+  config.signal?.throwIfAborted();
+  const lifetime = createBrowserLifetime(config.signal);
+  try {
+    const result = await runCrawl(config, lifetime);
+    config.signal?.throwIfAborted();
+    return result;
+  } finally {
+    await lifetime.dispose();
+  }
+}
+
+async function runCrawl(config: CrawlConfig, lifetime: ReturnType<typeof createBrowserLifetime>): Promise<CrawlResult> {
+  if (config.attempt && !config.checkpointPages) {
+    throw new Error("Owned crawl attempts require page checkpoints.");
+  }
+  if (config.checkpointPages && (!config.jobId || !config.workspaceId)) {
+    throw new Error("Page checkpoints require a persisted crawl job and workspace.");
+  }
   const startTime = Date.now();
   const crawlId = config.jobId || `audit_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 8)}`;
   const crawlLogger = logger.withContext({ crawlId, startUrl: config.startUrl });
   const requestDelay = config.requestDelay ?? 200;
+  const cancelled = () => {
+    config.signal?.throwIfAborted();
+    return isCancelled(config.jobId);
+  };
   const maxRetries = config.maxRetries ?? 2;
   // Wall-clock budget. On serverless the route sets this ~10s under maxDuration
   // so the crawl returns a "partial" result before the lambda is killed.
@@ -444,7 +471,7 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
   try {
     // launchBrowser() already retries transient Chromium crashes with backoff,
     // so reaching this catch means the browser genuinely could not start.
-    browser = await launchBrowser();
+    browser = await lifetime.launch();
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Browser launch failed";
     crawlLogger.error("Browser launch failed after retries", { error: msg });
@@ -541,7 +568,7 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
   timing.auth = Date.now() - authStart;
 
   // Cancel check
-  if (isCancelled(config.jobId)) {
+  if (cancelled()) {
     await context.close();
     await browser.close();
     emit(config.jobId, { type: "cancelled", timestamp: Date.now() });
@@ -592,7 +619,7 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
   // Sitemap discovery
   if (config.useSitemap !== false) {
     try {
-      const sitemapUrls = await discoverFromSitemap(origin);
+      const sitemapUrls = await discoverFromSitemap(origin, config.signal);
       sitemapUrlCount = sitemapUrls.length;
       sitemapAvailable = sitemapUrls.length > 0;
       // Throttle discovery events: emitting 5000 SSE events for a large sitemap
@@ -615,7 +642,7 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
 
   // BFS discovery with authenticated session
   while (queue.length > 0 && visited.size < config.maxPages) {
-    if (isCancelled(config.jobId)) break;
+    if (cancelled()) break;
     if (isExpired()) { timedOut = true; break; }
 
     const current = queue.shift()!;
@@ -781,7 +808,7 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
   crawlLogger.info("Discovery complete", { total: visited.size, sitemap: sitemapUrlCount, links: linkUrlCount });
 
   // Cancel check
-  if (isCancelled(config.jobId)) {
+  if (cancelled()) {
     emit(config.jobId, { type: "cancelled", timestamp: Date.now() });
     return buildEmptyResult(crawlId, config, startTime, []);
   }
@@ -851,7 +878,7 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
     const timeLeft = deadline - Date.now();
     const effectiveRetries = timeLeft < 20_000 ? 0 : timeLeft < 40_000 ? Math.min(maxRetries, 1) : maxRetries;
     for (let attempt = 0; attempt <= effectiveRetries; attempt++) {
-      if (isCancelled(config.jobId)) return;
+      if (cancelled()) return;
       if (isExpired()) { timedOut = true; return; }
 
       const pageStart = Date.now();
@@ -867,12 +894,20 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
         // normal page load + axe analysis, but not so long that one slow page
         // consumes the entire crawl budget.
         const PAGE_TIMEOUT = isServerless() ? 25_000 : 35_000;
-        const scanResult = await Promise.race([
-          executeScanPipeline(url, scanOptions),
-          new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error("Page scan timed out")), PAGE_TIMEOUT)
-          ),
-        ]);
+        const scanPageOnce = async () => {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(new Error("Page scan timed out")), PAGE_TIMEOUT);
+          const signal = config.signal ? AbortSignal.any([config.signal, controller.signal]) : controller.signal;
+          try {
+            return await executeScanPipeline(url, { ...scanOptions, signal });
+          } finally {
+            clearTimeout(timeout);
+          }
+        };
+        const scanResult = config.checkpointPages
+          ? await getOrScanCrawlPage({ workspaceId: config.workspaceId!, jobId: config.jobId!, url, attempt: config.attempt }, scanPageOnce, config.signal)
+          : await scanPageOnce();
+        config.signal?.throwIfAborted();
 
         for (const v of scanResult.violations) {
           allViolations.push({
@@ -890,7 +925,7 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
         // Persist each successful page as a real Scan row (R-5).
         // This makes the flagship audit durable and counts each page against
         // the scan quota. Best-effort: a DB failure must not fail the crawl.
-        if (config.userEmail || config.workspaceId) {
+        if (!config.checkpointPages && (config.userEmail || config.workspaceId)) {
           try {
             const compliance = evaluateCompliance(scanResult.id, scanResult.violations);
             await persistScan(scanResult, compliance, config.userEmail, {
@@ -988,6 +1023,7 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
 
         return; // Success — exit retry loop
       } catch (err) {
+        config.signal?.throwIfAborted();
         lastError = err instanceof Error ? err.message : "Scan failed";
         if (attempt < effectiveRetries) {
           crawlLogger.warn("Page scan failed, retrying", { url, attempt: attempt + 1, error: lastError });
@@ -1019,7 +1055,7 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
   const inFlight: Promise<void>[] = [];
 
   while (pending.length > 0 || inFlight.length > 0) {
-    if (isCancelled(config.jobId) || isExpired()) {
+    if (cancelled() || isExpired()) {
       if (isExpired()) timedOut = true;
       // Stop scheduling new pages. Give in-flight scans a bounded window to
       // finish so we can include their results; don't wait indefinitely or the
@@ -1042,6 +1078,7 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
         const idx = inFlight.indexOf(p);
         if (idx > -1) inFlight.splice(idx, 1);
       });
+      void p.catch(() => {});
       inFlight.push(p);
     }
     // Race a COPY: a settling promise's finally() splices `inFlight`, so racing
@@ -1052,7 +1089,7 @@ export async function crawlSite(config: CrawlConfig): Promise<CrawlResult> {
   timing.scanning = Date.now() - scanStart;
 
   // Cancel check
-  if (isCancelled(config.jobId)) {
+  if (cancelled()) {
     emit(config.jobId, { type: "cancelled", timestamp: Date.now() });
     // Still return partial results
     timing.total = Date.now() - startTime;

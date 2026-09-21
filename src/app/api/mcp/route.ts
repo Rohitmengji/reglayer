@@ -10,6 +10,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
+import { requireWorkspacePermission } from "@/lib/auth/api-guard";
+import { rateLimit, RATE_LIMITS, rateLimitHeaders } from "@/lib/rate-limit";
+import { logger } from "@/lib/telemetry/logger";
+import { z } from "zod";
 import {
   listResources,
   readResource,
@@ -17,22 +21,23 @@ import {
   callTool,
   listPrompts,
   getPromptMessages,
+  MCPInputError,
 } from "@/lib/ai/mcp/server";
 
 export const runtime = "nodejs";
 
-interface JsonRpcRequest {
-  jsonrpc: "2.0";
-  id: string | number;
-  method: string;
-  params?: Record<string, unknown>;
-}
+const rpcSchema = z.object({
+  jsonrpc: z.literal("2.0"),
+  id: z.union([z.string().max(200), z.number().finite()]).optional(),
+  method: z.string().min(1).max(200),
+  params: z.record(z.string(), z.unknown()).optional(),
+});
 
 function jsonRpcResponse(id: string | number, result: unknown) {
   return NextResponse.json({ jsonrpc: "2.0", id, result });
 }
 
-function jsonRpcError(id: string | number, code: number, message: string) {
+function jsonRpcError(id: string | number | null, code: number, message: string) {
   return NextResponse.json({ jsonrpc: "2.0", id, error: { code, message } });
 }
 
@@ -43,20 +48,26 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let body: JsonRpcRequest;
+  let body: unknown;
   try {
-    body = await request.json() as JsonRpcRequest;
+    body = await request.json();
   } catch {
-    return jsonRpcError(0, -32700, "Parse error");
+    return jsonRpcError(null, -32700, "Parse error");
   }
 
-  if (body.jsonrpc !== "2.0" || !body.method) {
-    return jsonRpcError(body.id ?? 0, -32600, "Invalid request");
-  }
-
-  const { id, method, params } = body;
+  const parsed = rpcSchema.safeParse(body);
+  if (!parsed.success) return jsonRpcError(null, -32600, "Invalid request");
+  const { id, method, params } = parsed.data;
 
   try {
+    const limit = await rateLimit(session.user.email, RATE_LIMITS.api, "mcp");
+    if (!limit.success) return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: rateLimitHeaders(limit) });
+    const permission = await requireWorkspacePermission("scans.view");
+    if (!permission.ok) return permission.response;
+    if (!permission.ctx.workspaceId) return NextResponse.json({ error: "Workspace is required" }, { status: 403 });
+    const context = { workspaceId: permission.ctx.workspaceId };
+    if (id === undefined) return new NextResponse(null, { status: 204 });
+
     switch (method) {
       // ── Discovery ───────────────────────────────────────────────────────
       case "initialize":
@@ -78,9 +89,8 @@ export async function POST(request: NextRequest) {
         return jsonRpcResponse(id, { resources: await listResources() });
 
       case "resources/read": {
-        const uri = (params as { uri?: string })?.uri;
-        if (!uri) return jsonRpcError(id, -32602, "Missing uri parameter");
-        const content = await readResource(uri);
+        const { uri } = z.object({ uri: z.string().min(1).max(2048) }).parse(params);
+        const content = await readResource(uri, context);
         return jsonRpcResponse(id, {
           contents: [{ uri, mimeType: "application/json", text: content }],
         });
@@ -91,10 +101,8 @@ export async function POST(request: NextRequest) {
         return jsonRpcResponse(id, { tools: listTools() });
 
       case "tools/call": {
-        const toolName = (params as { name?: string })?.name;
-        const toolArgs = (params as { arguments?: Record<string, unknown> })?.arguments ?? {};
-        if (!toolName) return jsonRpcError(id, -32602, "Missing tool name");
-        const result = await callTool(toolName, toolArgs);
+        const { name, arguments: args } = z.object({ name: z.string().min(1).max(100), arguments: z.record(z.string(), z.unknown()).default({}) }).parse(params);
+        const result = await callTool(name, args, context);
         return jsonRpcResponse(id, {
           content: [{ type: "text", text: result }],
         });
@@ -105,10 +113,8 @@ export async function POST(request: NextRequest) {
         return jsonRpcResponse(id, { prompts: listPrompts() });
 
       case "prompts/get": {
-        const promptName = (params as { name?: string })?.name;
-        const promptArgs = (params as { arguments?: Record<string, string> })?.arguments ?? {};
-        if (!promptName) return jsonRpcError(id, -32602, "Missing prompt name");
-        const messages = getPromptMessages(promptName, promptArgs);
+        const { name, arguments: args } = z.object({ name: z.string().min(1).max(100), arguments: z.record(z.string(), z.string().max(2048)).default({}) }).parse(params);
+        const messages = getPromptMessages(name, args);
         return jsonRpcResponse(id, { messages });
       }
 
@@ -116,6 +122,8 @@ export async function POST(request: NextRequest) {
         return jsonRpcError(id, -32601, `Method not found: ${method}`);
     }
   } catch (error) {
-    return jsonRpcError(id, -32603, error instanceof Error ? error.message : "Internal error");
+    if (error instanceof z.ZodError || error instanceof MCPInputError) return jsonRpcError(id ?? null, -32602, "Invalid parameters or resource unavailable");
+    logger.error("MCP request failed", { method });
+    return jsonRpcError(id ?? null, -32603, "Request could not be completed. Please try again.");
   }
 }

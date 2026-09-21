@@ -82,6 +82,7 @@ export async function persistConversation(args: {
   messages: readonly PersistableMessage[];
   /** Version last seen for this conversation. Enables the server's staleness check. */
   version?: number | null;
+  keepalive?: boolean;
   fetchImpl?: typeof fetch;
 }): Promise<PersistOutcome> {
   // Queue behind any write already in flight, whether it succeeded or not — a failed
@@ -95,6 +96,7 @@ async function sendConversation(args: {
   conversationId: string | null;
   messages: readonly PersistableMessage[];
   version?: number | null;
+  keepalive?: boolean;
   fetchImpl?: typeof fetch;
 }): Promise<PersistOutcome> {
   const { messages, version = null, fetchImpl = fetch } = args;
@@ -117,6 +119,7 @@ async function sendConversation(args: {
   try {
     response = await fetchImpl("/api/ai/conversations", {
       method: "POST",
+      keepalive: args.keepalive,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         id: conversationId || undefined,

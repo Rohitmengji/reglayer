@@ -9,7 +9,8 @@
  * HOW: Fetches /api/audits for existing plans, POST to create new. Real-time score rollup.
  */
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { Suspense, useState, useEffect, useCallback, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -72,6 +73,7 @@ interface ManualTestPlan {
 
 function ManualTestingPageInner() {
   const { t } = useI18n();
+  const params = useSearchParams();
   const [audits, setAudits] = useState<AuditSummary[]>([]);
   const [selectedAudit, setSelectedAudit] = useState<string | null>(null);
   const [plan, setPlan] = useState<ManualTestPlan | null>(null);
@@ -81,7 +83,10 @@ function ManualTestingPageInner() {
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  const [scanId, setScanId] = useState("");
+  const [scanId, setScanId] = useState(() => {
+    const value = params.get("scanId") ?? "";
+    return /^[a-zA-Z0-9_-]{5,100}$/.test(value) ? value : "";
+  });
   const [scanIdError, setScanIdError] = useState<string | null>(null);
   const [upgradeRequired, setUpgradeRequired] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
@@ -344,9 +349,11 @@ function ManualTestingPageInner() {
             ) : audits.length > 0 ? (
               <Card>
                 <CardHeader className="pb-3"><CardTitle className="text-sm">{t("manualTesting.previousAudits", { count: audits.length })}</CardTitle></CardHeader>
-                <CardContent className="space-y-2" role="list" aria-label="Previous manual test audits">
+                <CardContent>
+                  <ul className="space-y-2" aria-label="Previous manual test audits">
                   {audits.map((audit) => (
-                    <button key={audit.id} onClick={() => loadPlan(audit.id)} role="listitem"
+                    <li key={audit.id}>
+                    <button type="button" onClick={() => loadPlan(audit.id)}
                       className="w-full flex items-center gap-3 p-3 rounded-lg border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-1 transition-colors text-left"
                       aria-label={`Audit: ${audit.scope}, score ${audit.combinedScore != null ? Math.round(audit.combinedScore) : "not evaluated"}, status ${audit.status}`}>
                       <div className={`h-10 w-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${(audit.combinedScore ?? 0) >= 90 ? "bg-green-100 dark:bg-green-900/50 text-green-700" : (audit.combinedScore ?? 0) >= 70 ? "bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700" : "bg-red-100 dark:bg-red-900/50 text-red-700"}`} aria-hidden="true">
@@ -358,7 +365,9 @@ function ManualTestingPageInner() {
                       </div>
                       <Badge variant={audit.status === "completed" ? "success" : "outline"} className="text-xs shrink-0">{audit.status}</Badge>
                     </button>
+                    </li>
                   ))}
+                  </ul>
                 </CardContent>
               </Card>
             ) : !error ? (
@@ -571,7 +580,7 @@ function TestItemCard({ item, onVerdict }: {
 export default function ManualTestingPage() {
   return (
     <FeatureGate feature="manualTesting">
-      <ManualTestingPageInner />
+      <Suspense fallback={<p role="status">Loading manual testing...</p>}><ManualTestingPageInner /></Suspense>
     </FeatureGate>
   );
 }

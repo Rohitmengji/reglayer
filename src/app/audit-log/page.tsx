@@ -12,6 +12,7 @@ import { FeatureGate } from "@/components/ui/feature-gate";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { ClipboardList, ChevronLeft, ChevronRight, Scan, Users, Settings, Webhook, Key, Globe } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 
@@ -20,7 +21,7 @@ interface AuditEntry {
   action: string;
   actor: string | null;
   target: string | null;
-  metadata: Record<string, unknown> | null;
+  summary: string;
   createdAt: string;
 }
 
@@ -34,6 +35,7 @@ interface Pagination {
 const actionIcons: Record<string, typeof Scan> = {
   "scan.created": Scan,
   "scan.completed": Scan,
+  "scan.failed": Scan,
   "scan.deleted": Scan,
   "member.invited": Users,
   "member.removed": Users,
@@ -49,6 +51,7 @@ const actionIcons: Record<string, typeof Scan> = {
 const actionLabels: Record<string, string> = {
   "scan.created": "Scan started",
   "scan.completed": "Scan completed",
+  "scan.failed": "Scan failed",
   "scan.deleted": "Scan deleted",
   "member.invited": "Member invited",
   "member.removed": "Member removed",
@@ -65,26 +68,37 @@ function AuditLogPageInner() {
   const [logs, setLogs] = useState<AuditEntry[]>([]);
   const [pagination, setPagination] = useState<Pagination>({ page: 1, limit: 50, total: 0, pages: 0 });
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [requestedPage, setRequestedPage] = useState(1);
+  const [retry, setRetry] = useState(0);
   const { t } = useI18n();
 
   useEffect(() => {
-    fetchLogs(1);
-  }, []);
-
-  async function fetchLogs(page: number) {
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/audit-log?page=${page}&limit=50`);
-      if (!res.ok) return;
-      const data = await res.json();
-      setLogs(data.logs || []);
-      setPagination(data.pagination || { page: 1, limit: 50, total: 0, pages: 0 });
-    } catch {
-      // Network error
-    } finally {
-      setLoading(false);
+    let disposed = false;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15_000);
+    async function load() {
+      setLoading(true);
+      setLoadFailed(false);
+      try {
+        const response = await fetch(`/api/audit-log?page=${requestedPage}&limit=50`, { cache: "no-store", signal: controller.signal });
+        if (!response.ok) throw new Error("Activity unavailable");
+        const data = await response.json();
+        if (!Array.isArray(data.logs) || !Number.isInteger(data.pagination?.total)) throw new Error("Invalid activity data");
+        if (!disposed) {
+          setLogs(data.logs);
+          setPagination(data.pagination);
+        }
+      } catch {
+        if (!disposed) setLoadFailed(true);
+      } finally {
+        clearTimeout(timeout);
+        if (!disposed) setLoading(false);
+      }
     }
-  }
+    void load();
+    return () => { disposed = true; clearTimeout(timeout); controller.abort(); };
+  }, [requestedPage, retry]);
 
   return (
     <AppShell>
@@ -98,7 +112,7 @@ function AuditLogPageInner() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center justify-between text-base">
+            <CardTitle className="flex flex-wrap items-center justify-between gap-2 text-base">
               <span className="flex items-center gap-2">
                 <ClipboardList className="h-4 w-4" />
                 Activity ({pagination.total} events)
@@ -106,9 +120,11 @@ function AuditLogPageInner() {
               {pagination.pages > 1 && (
                 <div className="flex items-center gap-2 text-sm font-normal">
                   <button
-                    onClick={() => fetchLogs(pagination.page - 1)}
-                    disabled={pagination.page <= 1}
-                    className="rounded p-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-30"
+                    aria-label="Previous activity page"
+                    title="Previous activity page"
+                    onClick={() => setRequestedPage(pagination.page - 1)}
+                    disabled={loading || pagination.page <= 1}
+                    className="flex h-11 w-11 items-center justify-center rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-30"
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </button>
@@ -116,9 +132,11 @@ function AuditLogPageInner() {
                     {pagination.page} / {pagination.pages}
                   </span>
                   <button
-                    onClick={() => fetchLogs(pagination.page + 1)}
-                    disabled={pagination.page >= pagination.pages}
-                    className="rounded p-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-30"
+                    aria-label="Next activity page"
+                    title="Next activity page"
+                    onClick={() => setRequestedPage(pagination.page + 1)}
+                    disabled={loading || pagination.page >= pagination.pages}
+                    className="flex h-11 w-11 items-center justify-center rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-30"
                   >
                     <ChevronRight className="h-4 w-4" />
                   </button>
@@ -127,10 +145,14 @@ function AuditLogPageInner() {
             </CardTitle>
           </CardHeader>
           <CardContent>
+            {loadFailed && <div className="mb-4 space-y-2">
+              <p role="alert" className="text-sm text-neutral-700 dark:text-neutral-200">Could not load activity. Check your workspace access or try again.</p>
+              <Button variant="outline" size="sm" onClick={() => setRetry(value => value + 1)}>{t("common.retry")}</Button>
+            </div>}
             {loading ? (
-              <p className="text-sm text-neutral-500 py-8 text-center">Loading audit log...</p>
+              <p role="status" className="text-sm text-neutral-500 py-8 text-center">Loading audit log...</p>
             ) : logs.length === 0 ? (
-              <div className="text-center py-12">
+              !loadFailed && <div className="text-center py-12">
                 <ClipboardList className="h-10 w-10 text-neutral-300 dark:text-neutral-600 mx-auto mb-3" />
                 <p className="text-sm text-neutral-500 dark:text-neutral-400">No activity recorded yet.</p>
                 <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">Actions like scans, team changes, and settings updates will appear here.</p>
@@ -147,8 +169,8 @@ function AuditLogPageInner() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-neutral-900 dark:text-white">{label}</p>
-                        <div className="flex items-center gap-2 mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
-                          {log.actor && <span>{log.actor}</span>}
+                        <div className="flex flex-wrap items-center gap-2 mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
+                          {log.actor && <span className="break-all">{log.actor}</span>}
                           {log.target && (
                             <>
                               <span>→</span>
@@ -158,15 +180,11 @@ function AuditLogPageInner() {
                             </>
                           )}
                         </div>
-                        {log.metadata && Object.keys(log.metadata).length > 0 && (
-                          <p className="text-[10px] text-neutral-500 dark:text-neutral-400 mt-1 truncate">
-                            {JSON.stringify(log.metadata)}
-                          </p>
-                        )}
+                        <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-300">{log.summary || "Workspace activity was recorded."}</p>
+                        <time dateTime={log.createdAt} className="mt-1 block text-xs text-neutral-500 dark:text-neutral-400">
+                          {new Date(log.createdAt).toLocaleString()}
+                        </time>
                       </div>
-                      <span className="text-[10px] text-neutral-500 dark:text-neutral-400 shrink-0 mt-1">
-                        {new Date(log.createdAt).toLocaleString()}
-                      </span>
                     </div>
                   );
                 })}

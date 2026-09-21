@@ -93,8 +93,11 @@ export async function createBlueprint(opts: {
   return mapBlueprint(result);
 }
 
-export async function getBlueprint(slug: string): Promise<AgentBlueprint | null> {
-  const result = await prisma.agentBlueprint.findUnique({ where: { slug } });
+export async function getBlueprint(slug: string, workspaceId: string): Promise<AgentBlueprint | null> {
+  if (!workspaceId?.trim()) throw new Error("Workspace scope is required");
+  const result = await prisma.agentBlueprint.findFirst({
+    where: { slug, OR: [{ workspaceId }, { isSystem: true }, { isPublic: true }] },
+  });
   return result ? mapBlueprint(result) : null;
 }
 

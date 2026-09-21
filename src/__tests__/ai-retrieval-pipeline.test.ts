@@ -17,6 +17,16 @@ vi.mock("@/lib/ai/graph/service", () => ({
 vi.mock("@/lib/ai/knowledge/service", () => ({
   searchKnowledge: vi.fn().mockResolvedValue([]),
 }));
+vi.mock("@/lib/ai/cache/context-cache", () => ({
+  cacheLookup: vi.fn().mockResolvedValue({ hit: false }),
+  cacheStore: vi.fn().mockResolvedValue(undefined),
+  embeddingLookup: vi.fn().mockResolvedValue(null),
+  embeddingStore: vi.fn().mockResolvedValue(undefined),
+}));
+
+import { cacheLookup, cacheStore } from "@/lib/ai/cache/context-cache";
+import { buildGraphContext } from "@/lib/ai/graph/service";
+import { hybridSearch } from "@/lib/ai/search/hybrid";
 
 import {
   optimizedRetrieve,
@@ -80,6 +90,21 @@ describe("Retrieval Pipeline Optimizer", () => {
   });
 
   describe("optimizedRetrieve", () => {
+    it("isolates exact and semantic cache scope by user, workspace, scan and retrieval settings", async () => {
+      vi.mocked(cacheLookup).mockClear();
+      vi.mocked(cacheStore).mockClear();
+      vi.mocked(buildGraphContext).mockResolvedValue({ entities: [], paths: [], context: "Color contrast findings for this workspace" });
+      const base = { userId: "cache-test-user", workspaceId: "workspace-a", scanId: "scan-a", graph: true, cache: true };
+      for (const config of [base, { ...base }, { ...base, workspaceId: "workspace-b" }, { ...base, scanId: "scan-b" }, { ...base, userId: "other-user" }, { ...base, tokenBudget: 1000 }]) {
+        await optimizedRetrieve("Show color contrast findings", config);
+      }
+      const lookups = vi.mocked(cacheLookup).mock.calls.map(([args]) => args.userId);
+      expect(lookups[0]).toBe(lookups[1]);
+      expect(new Set([lookups[0], ...lookups.slice(2)]).size).toBe(5);
+      expect(vi.mocked(cacheStore).mock.calls.map(([args]) => args.userId)).toEqual(lookups);
+      vi.mocked(buildGraphContext).mockResolvedValue({ entities: [], paths: [], context: "" });
+    });
+
     it("skips retrieval for conversational queries", async () => {
       const result = await optimizedRetrieve("hi");
       expect(result.intent).toBe("conversational");
@@ -117,6 +142,8 @@ describe("Retrieval Pipeline Optimizer", () => {
     });
 
     it("disables graph and knowledge when no workspace", async () => {
+      vi.mocked(hybridSearch).mockClear();
+      vi.mocked(cacheLookup).mockClear();
       const result = await optimizedRetrieve("Find violations", {
         graph: true,
         knowledge: true,
@@ -127,6 +154,9 @@ describe("Retrieval Pipeline Optimizer", () => {
       const kbStage = result.stages.find((s) => s.name === "knowledge-search");
       expect(graphStage?.skipped).toBe(true);
       expect(kbStage?.skipped).toBe(true);
+      expect(hybridSearch).not.toHaveBeenCalled();
+      expect(cacheLookup).not.toHaveBeenCalled();
+      expect(result.context).toContain("no workspace is selected");
     });
   });
 });

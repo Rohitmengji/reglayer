@@ -21,10 +21,8 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useI18n } from "@/components/i18n-provider";
 
 export function Footer() {
-  const { t } = useI18n();
   return (
     <footer className="border-t border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900 py-8 sm:py-12">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
@@ -64,6 +62,7 @@ export function Footer() {
             <p className="text-xs font-semibold uppercase tracking-wider text-neutral-600 dark:text-neutral-400 mb-3">Support</p>
             <ul className="space-y-1">
               <li><Link href="/docs" className="inline-block py-1 text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white">Documentation</Link></li>
+              <li><Link href="/blog" className="inline-block py-1 text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white">Accessibility Blog</Link></li>
               <li><Link href="/api-reference" className="inline-block py-1 text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white">API Reference</Link></li>
               <li><Link href="/contact" className="inline-block py-1 text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white">Contact</Link></li>
             </ul>

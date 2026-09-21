@@ -31,7 +31,7 @@ import {
   Search, LayoutDashboard, Scan, Globe, Grid3X3, Settings,
   BarChart3, Zap, Plug, AlertTriangle, TrendingUp, Building2,
   PieChart, Shield, FileText, Users, Bell, Key, Moon, Sun,
-  ArrowRight, Sparkles, Clock, Star, Keyboard, History, ClipboardCheck,
+  ArrowRight, Sparkles, Clock, Star, Keyboard, History, ClipboardCheck, X,
 } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
 import { useI18n } from "@/components/i18n-provider";
@@ -87,6 +87,7 @@ export function CommandPalette() {
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const { resolvedTheme, setTheme } = useTheme();
 
@@ -124,7 +125,9 @@ export function CommandPalette() {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: reset palette state when it opens (driven by external `open` prop)
       setQuery("");
       setActiveIndex(0);
-      setTimeout(() => inputRef.current?.focus(), 50);
+      const previousFocus = document.activeElement as HTMLElement | null;
+      const frame = requestAnimationFrame(() => inputRef.current?.focus());
+      return () => { cancelAnimationFrame(frame); if (previousFocus?.isConnected) previousFocus.focus(); };
     }
   }, [open]);
 
@@ -156,7 +159,10 @@ export function CommandPalette() {
 
   // ─── Global content search (5a) ───────────────────────────────────────────
   const [searchResults, setSearchResults] = useState<CommandItem[]>([]);
+  const [resultQuery, setResultQuery] = useState("");
+  const [failedQuery, setFailedQuery] = useState<string | null>(null);
   useEffect(() => {
+    if (!open) return;
     if (!query.trim() || query.trim().length < 2) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- clear stale results when the query is emptied/too short
       setSearchResults([]);
@@ -167,6 +173,9 @@ export function CommandPalette() {
       fetch(`/api/search?q=${encodeURIComponent(query)}`, { signal: controller.signal })
         .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`${r.status}`))))
         .then((data: { results?: SearchResult[] }) => {
+          if (controller.signal.aborted) return;
+          setResultQuery(query);
+          setFailedQuery(null);
           setSearchResults(
             (data.results ?? []).map<CommandItem>((res, i) => ({
               id: `search-${i}-${res.href}`,
@@ -178,13 +187,13 @@ export function CommandPalette() {
             }))
           );
         })
-        .catch(() => {});
+        .catch(() => { if (!controller.signal.aborted) { setSearchResults([]); setFailedQuery(query); } });
     }, 200);
     return () => {
       clearTimeout(handle);
       controller.abort();
     };
-  }, [query, navigate]);
+  }, [open, query, navigate]);
 
   const commands: CommandItem[] = useMemo(
     () => [
@@ -217,7 +226,7 @@ export function CommandPalette() {
 
       // Settings
       { id: "settings-theme-toggle", label: resolvedTheme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode", description: "Toggle appearance", icon: resolvedTheme === "dark" ? Sun : Moon, action: () => { setTheme(resolvedTheme === "dark" ? "light" : "dark"); setOpen(false); }, group: "settings", keywords: ["theme", "dark", "light", "mode"] },
-      { id: "settings-api-keys", label: "API Keys", description: "Manage API access", icon: Key, action: () => navigate("/settings?tab=api"), group: "settings", keywords: ["api", "key", "token"] },
+      { id: "settings-api-keys", label: "API Keys", description: "Manage API access", icon: Key, action: () => navigate("/settings?tab=api-keys"), group: "settings", keywords: ["api", "key", "token"] },
       { id: "settings-shortcuts", label: "Keyboard Shortcuts", description: "View all shortcuts", icon: Keyboard, action: () => { setOpen(false); window.dispatchEvent(new Event("reglayer:open-shortcuts")); }, group: "settings", keywords: ["keyboard", "shortcuts", "keys", "help"] },
     ],
     [navigate, resolvedTheme, setTheme, recentCommands]
@@ -238,8 +247,8 @@ export function CommandPalette() {
       .filter((cmd) => cmd.score > 0)
       .sort((a, b) => b.score - a.score);
     // Server-side content matches (scans/sites/violations) lead the list.
-    return [...searchResults, ...scored];
-  }, [commands, query, searchResults]);
+    return [...(resultQuery === query ? searchResults : []), ...scored];
+  }, [commands, query, searchResults, resultQuery]);
 
   // Reset active index when results change
   useEffect(() => {
@@ -250,15 +259,24 @@ export function CommandPalette() {
   // ─── Keyboard navigation ───────────────────────────────────────────────────
 
   function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Tab") {
+      const controls = panelRef.current?.querySelectorAll<HTMLElement>('input, button:not([tabindex="-1"])');
+      if (controls?.length) {
+        const first = controls[0];
+        const last = controls[controls.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    }
     if (e.key === "ArrowDown") {
       e.preventDefault();
       setActiveIndex((i) => Math.min(i + 1, filtered.length - 1));
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setActiveIndex((i) => Math.max(i - 1, 0));
-    } else if (e.key === "Enter" && filtered[activeIndex]) {
+    } else if (e.key === "Enter" && e.target === inputRef.current && orderedCommands[activeIndex]) {
       e.preventDefault();
-      filtered[activeIndex].action();
+      orderedCommands[activeIndex].action();
     }
   }
 
@@ -278,6 +296,7 @@ export function CommandPalette() {
     }
     return groups;
   }, [filtered]);
+  const orderedCommands = Object.values(grouped).flat();
 
   const groupLabels: Record<string, string> = {
     search: "Results",
@@ -304,8 +323,10 @@ export function CommandPalette() {
       {/* Palette */}
       <div className="fixed inset-0 z-10000 flex items-start justify-center pt-[15vh] px-4">
         <div
+          ref={panelRef}
           className="w-full max-w-140 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-2xl dark:border-neutral-700 dark:bg-neutral-900 animate-in slide-in-from-top-2 fade-in duration-200"
           role="dialog"
+          aria-modal="true"
           aria-label="Command palette"
           onKeyDown={handleKeyDown}
         >
@@ -320,9 +341,14 @@ export function CommandPalette() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               aria-label="Search commands"
+              role="combobox"
+              aria-expanded="true"
+              aria-controls="command-options"
+              aria-activedescendant={orderedCommands[activeIndex] ? `command-option-${activeIndex}` : undefined}
               autoComplete="off"
               spellCheck={false}
             />
+            <button type="button" aria-label="Close search" title="Close search" onClick={() => setOpen(false)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-neutral-600 dark:text-neutral-300"><X className="h-4 w-4" aria-hidden="true" /></button>
             <kbd className="hidden sm:inline-flex h-5 items-center gap-0.5 rounded border border-neutral-200 bg-neutral-50 px-1.5 text-[10px] font-medium text-neutral-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-400">
               ESC
             </kbd>
@@ -334,7 +360,8 @@ export function CommandPalette() {
           </div>
 
           {/* Results */}
-          <div ref={listRef} className="max-h-90 overflow-y-auto overscroll-contain p-2" role="listbox" aria-label="Commands">
+          {failedQuery === query && <p role="status" className="px-4 py-2 text-xs text-amber-800 dark:text-amber-300">Content search is unavailable. Navigation commands still work; try your search again.</p>}
+          <div id="command-options" ref={listRef} className="max-h-90 overflow-y-auto overscroll-contain p-2" role="listbox" aria-label="Commands">
             {filtered.length === 0 ? (
               <div className="py-8 text-center text-sm text-neutral-500 dark:text-neutral-400">
                 No results for &quot;{query}&quot;
@@ -353,6 +380,8 @@ export function CommandPalette() {
                       <button
                         key={item.id}
                         data-index={idx}
+                        id={`command-option-${idx}`}
+                        tabIndex={-1}
                         role="option"
                         aria-selected={isActive}
                         className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors duration-75 ${

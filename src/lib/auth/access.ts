@@ -75,7 +75,7 @@ export async function assertScanAccess(
 
   const workspaceIds = user.memberships.map((m) => m.workspaceId);
   const ownsByWorkspace = scan.workspaceId !== null && workspaceIds.includes(scan.workspaceId);
-  const ownsByUser = scan.userId !== null && scan.userId === user.id;
+  const ownsByUser = scan.workspaceId === null && scan.userId !== null && scan.userId === user.id;
 
   if (ownsByWorkspace || ownsByUser) {
     return { ok: true, userId: user.id, isMasterAdmin: false, workspaceId: scan.workspaceId };
@@ -116,7 +116,7 @@ export async function assertCrawlJobAccess(
   }
   const workspaceIds = user.memberships.map((m) => m.workspaceId);
   const ownsByWorkspace = owner.workspaceId !== null && workspaceIds.includes(owner.workspaceId);
-  const ownsByUser = owner.userId !== null && owner.userId === user.id;
+  const ownsByUser = owner.workspaceId === null && owner.userId !== null && owner.userId === user.id;
   if (ownsByWorkspace || ownsByUser) {
     return { ok: true, userId: user.id, isMasterAdmin: false, workspaceId: owner.workspaceId };
   }

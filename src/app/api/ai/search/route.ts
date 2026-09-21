@@ -14,6 +14,7 @@ import { authOptions } from "@/lib/auth/config";
 import { z } from "zod";
 import { searchViolations } from "@/lib/ai/vector/search";
 import { isAIAvailable } from "@/lib/ai/gateway";
+import { requireWorkspacePermission } from "@/lib/auth/api-guard";
 
 const searchSchema = z.object({
   query: z.string().min(2).max(500),
@@ -27,6 +28,10 @@ export async function POST(request: NextRequest) {
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const permission = await requireWorkspacePermission("scans.view");
+  if (!permission.ok) return permission.response;
+  if (!permission.ctx.workspaceId) return NextResponse.json({ error: "Workspace is required" }, { status: 403 });
 
   if (!isAIAvailable()) {
     return NextResponse.json(
@@ -52,6 +57,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const results = await searchViolations(parsed.data.query, {
+      workspaceId: permission.ctx.workspaceId,
       limit: parsed.data.limit,
       minSimilarity: parsed.data.minSimilarity,
       scanId: parsed.data.scanId,

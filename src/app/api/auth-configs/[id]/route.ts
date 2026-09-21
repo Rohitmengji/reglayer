@@ -35,16 +35,10 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
   const perm = await requireWorkspacePermission("settings.manage");
   if (!perm.ok) return perm.response;
 
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-    select: { id: true, memberships: { select: { workspaceId: true }, take: 1 } },
-  });
-
-  if (!user || !user.memberships[0]) {
+  const workspaceId = perm.ctx.workspaceId;
+  if (!workspaceId) {
     return NextResponse.json({ error: "User or workspace not found" }, { status: 404 });
   }
-
-  const workspaceId = user.memberships[0].workspaceId;
 
   // Verify the config belongs to this workspace (IDOR protection)
   const config = await prisma.authConfig.findFirst({

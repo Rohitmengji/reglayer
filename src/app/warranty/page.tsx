@@ -7,9 +7,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Shield, ShieldCheck, ShieldAlert, ShieldX, Clock, AlertTriangle, CheckCircle2, FileWarning } from "lucide-react";
+import { Shield, ShieldCheck, ShieldAlert, ShieldX, Clock, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
-import { useI18n } from "@/components/i18n-provider";
 
 interface WarrantyPolicy {
   id: string;
@@ -62,7 +61,6 @@ const TIER_LABELS: Record<string, string> = {
 };
 
 export default function WarrantyPage() {
-  const { t } = useI18n();
   const [policies, setPolicies] = useState<WarrantyPolicy[]>([]);
   const [selectedPolicy, setSelectedPolicy] = useState<string | null>(null);
   const [eligibility, setEligibility] = useState<EligibilityVerdict | null>(null);
@@ -132,7 +130,7 @@ export default function WarrantyPage() {
               Compliance Warranty
             </h1>
             <p className="mt-1 text-neutral-500 dark:text-neutral-400">
-              Financial coverage backed by continuous accessibility monitoring
+              Review recorded policy status and eligibility. This screen does not establish insurance or legal coverage; any protection depends on a separate approved agreement and its terms.
             </p>
           </div>
         </div>
@@ -160,7 +158,7 @@ export default function WarrantyPage() {
             <Shield className="h-12 w-12 text-neutral-300 dark:text-neutral-600 mx-auto mb-4" />
             <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">No Warranty Policies</h2>
             <p className="mt-2 text-neutral-500 dark:text-neutral-400 max-w-md mx-auto">
-              Enroll a site in the Compliance Warranty program to get financial coverage backed by your accessibility monitoring data.
+              No policies are recorded for this workspace. Contact your account administrator to confirm whether an approved agreement is available. Monitoring or a scan score alone does not grant coverage.
             </p>
           </div>
         )}

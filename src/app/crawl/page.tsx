@@ -710,7 +710,7 @@ function CrawlPageInner() {
                 <div className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full text-xs font-medium transition-all ${
                   isCurrent ? "bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 ring-2 ring-blue-200 dark:ring-blue-800"
                   : isPast ? "bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300"
-                  : "bg-neutral-100 dark:bg-neutral-800 text-neutral-400"
+                  : "bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300"
                 }`}>
                   {isPast && <CheckCircle2 className="h-3 w-3" />}
                   {isCurrent && step === "running" && <Loader2 className="h-3 w-3 animate-spin" />}
@@ -757,7 +757,6 @@ function CrawlPageInner() {
                 features={[t("crawl.mode.deepFeature1"), t("crawl.mode.deepFeature2"), t("crawl.mode.deepFeature3")]}
                 recommendedLabel={t("crawl.mode.recommended")}
                 authNeededLabel={t("crawl.mode.authNeeded")}
-                recommended
                 onClick={() => selectMode("deep")}
               />
             </div>
@@ -777,7 +776,7 @@ function CrawlPageInner() {
                     )}
                   </>
                 ) : (
-                  <span className="text-neutral-400">{t("crawl.targetEnterNext")}</span>
+                  <span className="text-neutral-600 dark:text-neutral-400">{t("crawl.targetEnterNext")}</span>
                 )}
               </span>
             </div>
@@ -982,7 +981,7 @@ function ModeCard({ icon, title, description, pageCountHint, color, features, re
       )}
       <div className={`h-12 w-12 rounded-xl flex items-center justify-center mb-4 ${c.icon}`}>{icon}</div>
       <h3 className="text-base font-semibold text-neutral-900 dark:text-white mb-1">{title}</h3>
-      <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-4 leading-relaxed">{description}</p>
+      <p className="text-xs text-neutral-600 dark:text-neutral-300 mb-4 leading-relaxed">{description}</p>
       <div className="space-y-1.5 mb-4">
         {features.map((f) => (
           <div key={f} className="flex items-center gap-2 text-xs text-neutral-600 dark:text-neutral-300">
@@ -993,7 +992,7 @@ function ModeCard({ icon, title, description, pageCountHint, color, features, re
       <div className="flex items-center justify-between pt-3 border-t border-neutral-200/60 dark:border-neutral-700/60">
         <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${c.badge}`}>{pageCountHint}</span>
         {requiresAuth && (
-          <span className="text-[10px] text-amber-600 dark:text-amber-400 flex items-center gap-1">
+          <span className="text-[10px] text-amber-800 dark:text-amber-300 flex items-center gap-1">
             <Lock className="h-2.5 w-2.5" /> {authNeededLabel}
           </span>
         )}

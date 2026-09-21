@@ -23,8 +23,14 @@
 
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
+import { isProductionIndexingEnabled } from "./src/lib/seo";
 
 const nextConfig: NextConfig = {
+  htmlLimitedBots: /.*/,
+  trailingSlash: false,
+  async headers() {
+    return isProductionIndexingEnabled() ? [] : [{ source: "/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] }];
+  },
   // @boxyhq/saml-jackson (embedded SSO) pulls typeorm + dynamic driver requires
   // that must NOT be bundled — externalize so the server build resolves them at runtime.
   serverExternalPackages: ["@sparticuz/chromium", "playwright", "puppeteer-core", "pg", "@boxyhq/saml-jackson"],

@@ -82,4 +82,33 @@ describe("buildTeamInviteEmail", () => {
     });
     expect(p.html).toContain("https://reglayer.vercel.app/auth/forgot-password");
   });
+
+  it("normalizes a trailing slash on the app URL so links never double up", () => {
+    process.env.NEXT_PUBLIC_APP_URL = "https://reglayer.vercel.app/";
+    const p = buildTeamInviteEmail("x@acme.com", {
+      workspaceName: "Acme",
+      inviterName: "Dana",
+      role: "MEMBER",
+      isNewUser: true,
+    });
+    expect(p.html).toContain("https://reglayer.vercel.app/auth/forgot-password");
+    expect(p.html).not.toContain("reglayer.vercel.app//");
+  });
+
+  it("wraps the message in the modern branded layout", () => {
+    const p = buildTeamInviteEmail("new@acme.com", {
+      workspaceName: "Acme",
+      inviterName: "Dana",
+      role: "MEMBER",
+      isNewUser: false,
+    });
+    // Full HTML document with a hidden preheader and branded header.
+    expect(p.html).toContain("<!DOCTYPE html>");
+    expect(p.html).toContain('name="color-scheme"');
+    expect(p.html).toContain("RegLayer");
+    expect(p.html.toLowerCase()).toContain("mso-hide:all"); // preheader hidden in Outlook
+    // The CTA is a table-based bulletproof button, not a bare inline link.
+    expect(p.html).toContain('bgcolor="#4f46e5"');
+    expect(p.html).toContain("web accessibility"); // footer
+  });
 });

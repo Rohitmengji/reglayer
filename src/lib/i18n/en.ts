@@ -1082,7 +1082,8 @@ export const en = {
   "scanDetail.url": "URL",
   "scanDetail.scanned": "Scanned",
   "scanDetail.duration": "Duration",
-  "scanDetail.compliance": "Compliance",
+  "scanDetail.compliance": "Policy rules without detected findings",
+  "scanDetail.automatedLimits": "These metrics summarize automated findings, not WCAG conformance. A policy rule with no detected finding may still need manual assessment. Complete manual testing before making a compliance claim.",
   "scanDetail.ruleResults": "Compliance Rule Results",
   "scanDetail.pass": "Pass",
   "scanDetail.fail": "Fail",
@@ -1105,7 +1106,7 @@ export const en = {
   "compare.backToHistory": "← Back to Scan History",
 
   // Score Card
-  "scoreCard.title": "Compliance Score",
+  "scoreCard.title": "Automated accessibility score",
   "scoreCard.bandsLabel": "What this score means",
   "scoreCard.bandsExplain": "90+ excellent, 70-89 good, 50-69 needs work, below 50 poor. Higher is better — fewer and less-severe accessibility issues.",
   "scoreCard.critical": "Critical",
@@ -1685,7 +1686,7 @@ export const en = {
 
   // Screen Reader Page
   "screenReader.title": "Screen Reader Playback",
-  "screenReader.subtitle": "Experience any webpage as a screen reader user. Hear and see the exact reading order and announcements.",
+  "screenReader.subtitle": "Preview an approximate reading sequence from page structure. This simulation does not reproduce NVDA, JAWS, or VoiceOver; verify behavior with real assistive technology.",
   "screenReader.placeholder": "Enter URL to analyze (e.g. example.com)",
   "screenReader.capturing": "Capturing...",
   "screenReader.capture": "Capture",
@@ -2077,12 +2078,12 @@ export const en = {
 
   // Landing page — hero
   "landing.heroBadge": "WCAG 2.2 + ADA + EAA + Section 508 — One platform, every standard.",
-  "landing.heroTitle": "Web Accessibility compliance, fully automated.",
-  "landing.heroDesc": "RegLayer scans your websites against WCAG 2.2 AA, Section 508, ADA, EAA, and EN 301 549 — generates audit-ready compliance reports, and monitors regressions. One platform for worldwide accessibility standards.",
+  "landing.heroTitle": "RegLayer accessibility testing",
+  "landing.heroDesc": "Run automated WCAG checks, inspect evidence, and track remediation. Manual testing is still required; a score is not a compliance certification.",
   "landing.startScanning": "Start Scanning Free",
   "landing.viewPricing": "View Pricing",
   "landing.noCreditCard": "No credit card required",
-  "landing.wcagCompliant": "WCAG 2.2 compliant",
+  "landing.wcagCompliant": "WCAG 2.2 checks",
   "landing.globalStandards": "Global standards coverage",
 
   // Landing page — social proof
@@ -2097,9 +2098,9 @@ export const en = {
   "landing.everythingYouNeed": "Everything you need for accessibility compliance",
   "landing.featuresSubtitle": "Built for developers and compliance officers who need to meet global accessibility standards — WCAG, ADA, EAA, Section 508, and more.",
   "landing.deepScanning": "Deep WCAG 2.2 Scanning",
-  "landing.deepScanningDesc": "axe-core powered analysis against WCAG 2.2 AA with headless Chromium. Strict as a manual tester. Results in under 30 seconds.",
+  "landing.deepScanningDesc": "Automated axe-core checks in Chromium. Coverage and duration depend on the page; manual evaluation is still necessary.",
   "landing.fullSiteCrawling": "Full-Site Crawling",
-  "landing.fullSiteCrawlingDesc": "Automatically discover and scan every page on your site. Find issues before your users do.",
+  "landing.fullSiteCrawlingDesc": "Discover linked pages within your selected scope and plan limits. Review partial coverage and errors before relying on results.",
   "landing.multiStandard": "Multi-Standard Scoring",
   "landing.multiStandardDesc": "Compliance scores mapped to WCAG 2.2, ADA, Section 508, EAA, and EN 301 549 with trend analytics.",
   "landing.auditReports": "Audit-Ready Reports",
@@ -2146,8 +2147,8 @@ export const en = {
   "landing.ssoRbacSub": "Role-based access control",
 
   // Landing page — final CTA
-  "landing.ctaTitle": "Don't wait for the EAA deadline",
-  "landing.ctaDesc": "Start scanning your website today. Get a full compliance report in minutes, not weeks. Free tier includes 10 scans per month — no credit card required.",
+  "landing.ctaTitle": "Start with an accessibility baseline",
+  "landing.ctaDesc": "Base Free plan: {scans} scans per month.",
   "landing.getStartedFree": "Get Started Free",
   "landing.comparePlans": "Compare Plans",
 
@@ -2224,7 +2225,7 @@ export const en = {
   "demoScan.scanAnother": "Scan another",
   "demoScan.totalViolations": "{count} total violations found · Sign up to get AI fix suggestions, VPAT reports, and continuous monitoring",
   "demoScan.loadingMessage": "Launching browser & scanning accessibility...",
-  "demoScan.footer": "No signup required · 3 free scans/hour · Results in under 30 seconds",
+  "demoScan.footer": "No signup required · Limited free scans · Duration depends on the page",
 
   // Footer
   "footer.description": "Web Accessibility compliance platform. Automated scanning, monitoring, and reporting for global standards.",
@@ -2396,6 +2397,12 @@ export const en = {
   "notifications.empty": "You're all caught up",
   "notifications.emptyHint": "New scans and activity will show up here",
   "notifications.viewAll": "View all",
+  "notifications.markAllRead": "Mark all as read",
+  "notifications.allRead": "All recent notifications are read",
+  "notifications.loadError": "Notifications could not be loaded. Try again.",
+  "notifications.storageError": "Read status is saved for this tab only. Browser storage is unavailable.",
+  "notifications.viewActivity": "View activity",
+  "notifications.unread": "Unread",
 
   // Accessibility viewing preferences
   "a11y.title": "Accessibility",

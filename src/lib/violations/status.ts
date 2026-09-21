@@ -49,7 +49,7 @@ export interface ViolationFilter {
   scanId?: string;
   /** A single status, or several (e.g. the Exceptions tab = WONT_FIX + ACCEPTABLE_RISK). */
   status?: ViolationStatus | ViolationStatus[];
-  impact?: string;
+  impact?: string | string[];
   page?: number;
   limit?: number;
 }
@@ -283,7 +283,7 @@ export async function getFilteredViolations(
     // WONT_FIX + ACCEPTABLE_RISK) paginates with a single correct `total`.
     where.status = Array.isArray(filter.status) ? { in: filter.status } : filter.status;
   }
-  if (filter.impact) where.impact = filter.impact;
+  if (filter.impact) where.impact = Array.isArray(filter.impact) ? { in: filter.impact } : filter.impact;
 
   // Count total for pagination
   const total = await prisma.violation.count({ where });

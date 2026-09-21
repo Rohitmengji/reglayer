@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import {
-  Shield,
   Scan,
   BarChart3,
   FileText,
@@ -11,16 +10,13 @@ import {
   Globe,
   CheckCircle2,
   ArrowRight,
-  Users,
-  Lock,
   Clock,
-  Star,
   ChevronDown,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Footer } from "@/components/layout/footer";
 import { DemoScan } from "@/components/demo-scan";
-import { AnimatedStats } from "@/components/animated-stats";
+import { PLAN_LIMITS } from "@/lib/credits/plan-limits";
 import { ProductTour } from "@/components/product-tour";
 import { useI18n } from "@/components/i18n-provider";
 import { SUPPORTED_LOCALES } from "@/lib/i18n/translations";
@@ -61,7 +57,7 @@ export function LandingContent() {
           <nav className="hidden lg:flex items-center gap-6">
             <a href="#features" className="text-sm text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors">{t("landing.navFeatures")}</a>
             <a href="#compliance" className="text-sm text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors">{t("landing.navCompliance")}</a>
-            <a href="#testimonials" className="text-sm text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors">{t("landing.navTestimonials")}</a>
+            <Link href="/docs" className="text-sm text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors">{t("docs.title")}</Link>
             <Link href="/pricing" className="text-sm text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white transition-colors">{t("landing.navPricing")}</Link>
           </nav>
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
@@ -116,8 +112,7 @@ export function LandingContent() {
         <section className="mx-auto max-w-5xl px-4 sm:px-6 pt-8 sm:pt-20 pb-10 sm:pb-24 text-center">
           <div className="inline-flex items-center gap-1.5 sm:gap-2 rounded-full border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 px-2.5 sm:px-3 py-1 text-[10px] sm:text-xs font-medium text-neutral-600 dark:text-neutral-300 mb-6 sm:mb-8">
             <Zap className="h-3 w-3 shrink-0" />
-            <span className="sm:hidden">WCAG 2.2 + ADA + EAA + Section 508</span>
-            <span className="hidden sm:inline">{t("landing.heroBadge")}</span>
+            <span>WCAG 2.2</span>
           </div>
           <h1 className="text-[1.75rem] sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-neutral-900 dark:text-white leading-[1.15]">
             {t("landing.heroTitle")}
@@ -148,27 +143,6 @@ export function LandingContent() {
 
           {/* Demo Scan — convert visitors without signup */}
           <DemoScan />
-        </section>
-
-        {/* Social Proof */}
-        <section className="border-y border-neutral-100 dark:border-neutral-800 py-12 sm:py-16">
-          <div className="mx-auto max-w-6xl px-4 sm:px-6">
-            <div className="text-center mb-6 sm:mb-8">
-              <p className="inline-flex items-center gap-2 rounded-full bg-neutral-100 dark:bg-neutral-800 px-3 sm:px-4 py-1.5 text-[10px] sm:text-xs font-medium uppercase tracking-wider text-neutral-600 dark:text-neutral-300">
-                <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
-                {t("landing.trustedBy")}
-              </p>
-            </div>
-            <AnimatedStats
-              stats={[
-                { value: "< 30s", label: t("landing.scanTime"), icon: "speed" },
-                { value: "80+", label: t("landing.wcagRules"), icon: "scan" },
-                { value: "6", label: "Standards Covered", icon: "shield" },
-                { value: "24/7", label: "Continuous Monitoring", icon: "clock" },
-                { value: "50+", label: "Pages per Scan", icon: "globe" },
-              ]}
-            />
-          </div>
         </section>
 
         {/* Features Grid */}
@@ -247,55 +221,6 @@ export function LandingContent() {
           </div>
         </section>
 
-        {/* Testimonials */}
-        <section id="testimonials" className="py-16 sm:py-24">
-          <div className="mx-auto max-w-6xl px-4 sm:px-6">
-            <h2 className="text-center text-2xl sm:text-3xl font-bold text-neutral-900 dark:text-white mb-10 sm:mb-12">
-              {t("landing.whatTeamsSay")}
-            </h2>
-            <div className="grid gap-6 md:grid-cols-3">
-              {([
-                { quoteKey: "landing.testimonial1Quote" as const, authorKey: "landing.testimonial1Author" as const, roleKey: "landing.testimonial1Role" as const, stars: 5 },
-                { quoteKey: "landing.testimonial2Quote" as const, authorKey: "landing.testimonial2Author" as const, roleKey: "landing.testimonial2Role" as const, stars: 5 },
-                { quoteKey: "landing.testimonial3Quote" as const, authorKey: "landing.testimonial3Author" as const, roleKey: "landing.testimonial3Role" as const, stars: 5 },
-              ]).map((item) => (
-                <div key={item.authorKey} className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-6">
-                  <div className="flex gap-0.5 mb-3">
-                    {Array.from({ length: item.stars }).map((_, i) => (
-                      <Star key={i} className="h-4 w-4 fill-amber-400 text-amber-400" />
-                    ))}
-                  </div>
-                  <p className="text-sm text-neutral-600 dark:text-neutral-300 leading-relaxed">&ldquo;{t(item.quoteKey)}&rdquo;</p>
-                  <div className="mt-4 border-t border-neutral-100 dark:border-neutral-700 pt-4">
-                    <p className="text-sm font-semibold text-neutral-900 dark:text-white">{t(item.authorKey)}</p>
-                    <p className="text-xs text-neutral-500 dark:text-neutral-400">{t(item.roleKey)}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Security & Trust */}
-        <section className="border-y border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900 py-16">
-          <div className="mx-auto max-w-6xl px-4 sm:px-6">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 sm:gap-8 text-center">
-              {[
-                { icon: Lock, labelKey: "landing.soc2" as const, subKey: "landing.soc2Sub" as const },
-                { icon: Shield, labelKey: "landing.gdpr" as const, subKey: "landing.gdprSub" as const },
-                { icon: Globe, labelKey: "landing.euHosted" as const, subKey: "landing.euHostedSub" as const },
-                { icon: Users, labelKey: "landing.ssoRbac" as const, subKey: "landing.ssoRbacSub" as const },
-              ].map((item) => (
-                <div key={item.labelKey} className="flex flex-col items-center">
-                  <item.icon className="h-6 w-6 text-neutral-700 dark:text-neutral-300 mb-2" />
-                  <p className="text-sm font-semibold text-neutral-900 dark:text-white">{t(item.labelKey)}</p>
-                  <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-0.5">{t(item.subKey)}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
         {/* Final CTA */}
         <section className="py-16 sm:py-24">
           <div className="mx-auto max-w-3xl px-4 sm:px-6 text-center">
@@ -303,7 +228,7 @@ export function LandingContent() {
               {t("landing.ctaTitle")}
             </h2>
             <p className="mt-4 text-base sm:text-lg text-neutral-600 dark:text-neutral-300 leading-relaxed">
-              {t("landing.ctaDesc")}
+              {t("landing.ctaDesc", { scans: String(PLAN_LIMITS.FREE.scansPerMonth) })}
             </p>
             <div className="mt-10 flex flex-col sm:flex-row justify-center gap-4">
               <Link

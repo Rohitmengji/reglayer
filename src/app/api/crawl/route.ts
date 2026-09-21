@@ -118,6 +118,10 @@ export async function POST(request: NextRequest) {
     const resolved = await getOrCreateWorkspace(planCtx.userId, userEmail);
     workspaceId = resolved || null;
   }
+  const checkpointPages = process.env.CRAWL_PAGE_CHECKPOINTS_ENABLED === "true";
+  if (checkpointPages && !workspaceId) {
+    return NextResponse.json({ error: "Unable to resolve the audit workspace. Please try again shortly." }, { status: 503 });
+  }
 
   // Resolve the effective auth. A saved-config selection (authConfigId) wins and
   // is decrypted server-side (workspace-scoped → IDOR-safe); otherwise use the
@@ -164,6 +168,7 @@ export async function POST(request: NextRequest) {
     excludePatterns,
     auth: resolvedAuth,
     knownRoutes,
+    checkpointPages,
     // Durable per-page Scan persistence (R-5)
     userEmail,
     workspaceId: workspaceId ?? undefined,
@@ -173,7 +178,6 @@ export async function POST(request: NextRequest) {
   const job = jobManager.createJob(crawlConfig);
 
   // Durable job state (R-5): survives Vercel cold starts / cross-instance reads.
-  // Best-effort — if this write fails the in-memory job still runs.
   try {
     await prisma.crawlJobRecord.create({
       data: {
@@ -190,6 +194,9 @@ export async function POST(request: NextRequest) {
       jobId: job.id,
       error: error instanceof Error ? error.message : "Unknown",
     });
+    const message = "Unable to save the audit. Please try again shortly.";
+    jobManager.emitEvent(job.id, { type: "error", error: message, timestamp: Date.now() });
+    return NextResponse.json({ error: message }, { status: 503 });
   }
 
   // Run the crawl via after(): the response is returned immediately, but Vercel
@@ -209,6 +216,28 @@ export async function POST(request: NextRequest) {
   after(async () => {
     // Safety: if we ever throw before clearing the ticker, ensure finalization.
     let finalized = false;
+    const finalizeRecord = async (data: Prisma.CrawlJobRecordUpdateManyMutationInput) => {
+      const updated = await prisma.crawlJobRecord.updateMany({
+        where: { id: job.id, status: "processing" },
+        data,
+      });
+      if (updated.count === 0) {
+        const record = await prisma.crawlJobRecord.findUnique({
+          where: { id: job.id },
+          select: { status: true, error: true },
+        });
+        if (record?.status === "failed" || record?.status === "cancelled") {
+          const local = jobManager.getJob(job.id);
+          if (local) {
+            local.result = undefined;
+            local.error = record.error ?? undefined;
+          }
+          jobManager.emitEvent(job.id, record.status === "cancelled"
+            ? { type: "cancelled", timestamp: Date.now() }
+            : { type: "error", error: record.error ?? "The audit stopped unexpectedly.", timestamp: Date.now() });
+        }
+      }
+    };
     const persistProgress = async () => {
       if (finalized) return;
       try {
@@ -226,8 +255,8 @@ export async function POST(request: NextRequest) {
         }
         const p = j.progress;
         const total = p.pagesTotal || maxPages;
-        await prisma.crawlJobRecord.update({
-          where: { id: job.id },
+        await prisma.crawlJobRecord.updateMany({
+          where: { id: job.id, status: "processing" },
           data: {
             status: "processing",
             progress: total > 0 ? Math.min(99, Math.round((p.pagesScanned / total) * 100)) : 0,
@@ -275,16 +304,13 @@ export async function POST(request: NextRequest) {
             ? Math.round((result.pagesScanned / pagesTotal) * 100)
             : 0;
       try {
-        await prisma.crawlJobRecord.update({
-          where: { id: job.id },
-          data: {
-            status,
-            progress,
-            pagesScanned: result.pagesScanned,
-            pagesTotal,
-            result: result as unknown as Prisma.InputJsonValue,
-            error: inMemory?.error ?? null,
-          },
+        await finalizeRecord({
+          status,
+          progress,
+          pagesScanned: result.pagesScanned,
+          pagesTotal,
+          result: result as unknown as Prisma.InputJsonValue,
+          error: inMemory?.error ?? null,
         });
       } catch (err) {
         logger.warn("Failed to finalize CrawlJobRecord (settled)", {
@@ -299,10 +325,7 @@ export async function POST(request: NextRequest) {
       logger.error("Background crawl failed", { jobId: job.id, error: message });
       jobManager.emitEvent(job.id, { type: "error", error: message, timestamp: Date.now() });
       try {
-        await prisma.crawlJobRecord.update({
-          where: { id: job.id },
-          data: { status: "failed", error: message },
-        });
+        await finalizeRecord({ status: "failed", error: message });
       } catch (err) {
         logger.warn("Failed to finalize CrawlJobRecord (failed)", {
           jobId: job.id,

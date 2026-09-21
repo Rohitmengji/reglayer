@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
 
   // Resolve plan from workspace (billing truth) → fallback to user.plan
   const membership = await prisma.workspaceMember.findFirst({
-    where: { userId: user.id },
+    where: { userId: user.id, ...(perm.ctx.workspaceId ? { workspaceId: perm.ctx.workspaceId } : {}) },
     select: { workspace: { select: { plan: true } } },
     orderBy: { joinedAt: "asc" },
   });

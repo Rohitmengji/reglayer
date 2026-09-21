@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
+import { requireWorkspacePermission } from "@/lib/auth/api-guard";
 
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -21,27 +22,11 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(100, Math.max(1, Number(request.nextUrl.searchParams.get("limit")) || 50));
     const url = request.nextUrl.searchParams.get("url");
 
-    // Scope: users see only their own scans; master admins see all workspace scans
-    // (single query — membership rides along instead of a second round trip)
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      select: {
-        id: true,
-        isMasterAdmin: true,
-        memberships: { select: { workspaceId: true }, take: 1 },
-      },
-    });
-
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    const membership = user.memberships[0];
-
-    // Master admins see all scans in their workspace; regular users see only their own
-    const scopeFilter = user.isMasterAdmin && membership
-      ? { workspaceId: membership.workspaceId }
-      : { userId: user.id };
+    const permission = await requireWorkspacePermission("scans.view");
+    if (!permission.ok) return permission.response;
+    const scopeFilter = permission.ctx.workspaceId
+      ? { workspaceId: permission.ctx.workspaceId }
+      : { userId: permission.ctx.userId, workspaceId: null };
 
     const where = {
       ...(url ? { url, status: "COMPLETED" as const } : {}),
@@ -71,7 +56,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(
       { scans, count: scans.length },
-      { headers: { "Cache-Control": "private, max-age=15" } }
+      { headers: { "Cache-Control": "private, no-store" } }
     );
   } catch {
     return NextResponse.json({ error: "Failed to load scans", scans: [] }, { status: 500 });

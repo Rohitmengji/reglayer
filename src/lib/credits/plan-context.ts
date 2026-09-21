@@ -17,6 +17,7 @@ import "server-only";
 
 import { prisma } from "@/lib/database/prisma";
 import { PLAN_LIMITS, ADMIN_SCAN_LIMITS, type PlanType } from "@/lib/credits/plan-limits";
+import { readWorkspaceSelection } from "@/lib/auth/workspace-selection";
 
 type WorkspaceRole = "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
 
@@ -51,11 +52,18 @@ export async function getPlanContext(): Promise<PlanContext | null> {
   const planLimits = PLAN_LIMITS[plan];
 
   // Resolve workspace role for role-based limit overrides
-  const membership = await prisma.workspaceMember.findFirst({
-    where: { userId: user.id },
-    select: { role: true, workspaceId: true },
-    orderBy: { joinedAt: "asc" },
-  });
+  const selectedId = await readWorkspaceSelection();
+  const membership = selectedId
+    ? await prisma.workspaceMember.findUnique({
+        where: { userId_workspaceId: { userId: user.id, workspaceId: selectedId } },
+        select: { role: true, workspaceId: true },
+      })
+    : await prisma.workspaceMember.findFirst({
+        where: { userId: user.id },
+        select: { role: true, workspaceId: true },
+        orderBy: { joinedAt: "asc" },
+      });
+  if (selectedId && !membership) return null;
 
   const workspaceRole = (membership?.role as WorkspaceRole) ?? null;
   const isAdminRole = workspaceRole === "OWNER" || workspaceRole === "ADMIN";

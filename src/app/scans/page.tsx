@@ -10,7 +10,8 @@
 
 import { PageLoading } from "@/components/ui/page-loading";
 import { PageError } from "@/components/ui/page-error";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
+import { toast } from "sonner";
 import { useSession } from "next-auth/react";
 import { isWorkspaceAdmin } from "@/lib/auth/roles";
 import { AppShell } from "@/components/layout/app-shell";
@@ -76,25 +77,35 @@ export default function ScansPage() {
   const { t } = useI18n();
   // Scan deletion is OWNER/ADMIN-or-master (scans.delete) — gate the button to match.
   const isAdmin = isWorkspaceAdmin(session);
+  const requestRef = useRef<AbortController | null>(null);
 
-  useEffect(() => {
+  const loadScans = useCallback(() => {
+    requestRef.current?.abort();
     const controller = new AbortController();
+    requestRef.current = controller;
+    const timeout = setTimeout(() => controller.abort(), 15_000);
     fetch("/api/scans", { signal: controller.signal })
       .then((r) => {
         if (!r.ok) throw new Error(`Request failed with status ${r.status}`);
         return r.json();
       })
       .then((data) => {
+        if (requestRef.current !== controller) return;
         setScans(data.scans || []);
-        setLoading(false);
       })
-      .catch((err) => {
-        if (err instanceof DOMException && err.name === "AbortError") return;
-        setError(t("scans.loadErrorBody"));
-        setLoading(false);
+      .catch(() => {
+        if (requestRef.current === controller) setError(t("scans.loadErrorBody"));
+      })
+      .finally(() => {
+        clearTimeout(timeout);
+        if (requestRef.current === controller) setLoading(false);
       });
-    return () => controller.abort();
   }, [t]);
+
+  useEffect(() => {
+    loadScans();
+    return () => { requestRef.current?.abort(); requestRef.current = null; };
+  }, [loadScans]);
 
   // Filtered scans
   const filteredScans = useMemo(() => {
@@ -115,8 +126,8 @@ export default function ScansPage() {
       result = result.filter((s) => {
         if (severityFilter === "critical") return s.critical > 0;
         if (severityFilter === "serious") return s.serious > 0;
-        if (severityFilter === "clean") return s.totalViolations === 0;
-        if (severityFilter === "failing") return (s.score ?? 0) < 70;
+        if (severityFilter === "clean") return s.status === "COMPLETED" && s.totalViolations === 0;
+        if (severityFilter === "failing") return s.status === "COMPLETED" && s.score !== null && s.score < 70;
         return true;
       });
     }
@@ -179,14 +190,22 @@ export default function ScansPage() {
   }
 
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const deletePending = useRef(false);
 
   async function handleDelete(id: string) {
-    const res = await fetch(`/api/scans/${id}`, { method: "DELETE" });
-    if (res.ok) {
+    if (deletePending.current) return;
+    deletePending.current = true;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/scans/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Delete failed");
       setScans((prev) => prev.filter((s) => s.id !== id));
       setSelectedScans((prev) => prev.filter((s) => s !== id));
-    }
-    setDeleteTarget(null);
+      setDeleteTarget(null);
+      toast.success("Scan deleted");
+    } catch { toast.error("Scan could not be deleted. Please try again."); }
+    finally { deletePending.current = false; setDeleting(false); }
   }
 
   function toggleSelect(id: string) {
@@ -199,18 +218,20 @@ export default function ScansPage() {
     );
   }
 
-  function getTrend(list: ScanRecord[], index: number): "up" | "down" | "flat" {
-    if (index >= list.length - 1) return "flat";
-    const current = list[index].score ?? 0;
-    const previous = list[index + 1].score ?? 0;
-    if (current > previous) return "up";
-    if (current < previous) return "down";
+  function getTrend(scan?: ScanRecord): "up" | "down" | "flat" {
+    if (!scan || scan.status !== "COMPLETED" || scan.score === null) return "flat";
+    const previous = scans.filter((candidate) => candidate.url === scan.url && candidate.status === "COMPLETED" && candidate.score !== null && candidate.createdAt < scan.createdAt)
+      .sort((left, right) => right.createdAt.localeCompare(left.createdAt))[0];
+    if (!previous || previous.score === null) return "flat";
+    if (scan.score > previous.score) return "up";
+    if (scan.score < previous.score) return "down";
     return "flat";
   }
 
+  const completedScans = filteredScans.filter((scan) => scan.status === "COMPLETED" && scan.score !== null);
   const averageScore =
-    filteredScans.length > 0
-      ? Math.round(filteredScans.reduce((sum, s) => sum + (s.score ?? 0), 0) / filteredScans.length)
+    completedScans.length > 0
+      ? Math.round(completedScans.reduce((sum, scan) => sum + (scan.score ?? 0), 0) / completedScans.length)
       : 0;
 
   const totalViolationsAll = filteredScans.reduce((sum, s) => sum + s.totalViolations, 0);
@@ -256,7 +277,7 @@ export default function ScansPage() {
             />
             <SummaryCard
               label={t("scans.avgScore")}
-              value={averageScore.toString()}
+              value={completedScans.length > 0 ? averageScore.toString() : "Not available"}
               icon={<TrendingUp className="h-4 w-4 text-green-500" />}
             />
             <SummaryCard
@@ -266,11 +287,11 @@ export default function ScansPage() {
             />
             <SummaryCard
               label={t("scans.latestScore")}
-              value={scans[0]?.score?.toString() ?? "—"}
+              value={filteredScans[0]?.score?.toString() ?? "—"}
               icon={
-                getTrend(filteredScans, 0) === "up" ? (
+                getTrend(filteredScans[0]) === "up" ? (
                   <TrendingUp className="h-4 w-4 text-green-500" />
-                ) : getTrend(filteredScans, 0) === "down" ? (
+                ) : getTrend(filteredScans[0]) === "down" ? (
                   <TrendingDown className="h-4 w-4 text-red-500" />
                 ) : (
                   <Minus className="h-4 w-4 text-neutral-500 dark:text-neutral-400" />
@@ -291,12 +312,14 @@ export default function ScansPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={t("scans.searchPlaceholder")}
+                aria-label="Search scans"
                 className="w-full rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 pl-9 pr-3 py-2 text-sm text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
               />
             </div>
 
             {/* Severity Filter */}
             <ModernSelect
+              label="Severity"
               options={[
                 { value: "all", label: t("scans.filterAllSeverities") },
                 { value: "critical", label: t("scans.filterHasCritical") },
@@ -310,6 +333,7 @@ export default function ScansPage() {
 
             {/* Date Filter */}
             <ModernSelect
+              label="Date"
               options={[
                 { value: "all", label: t("scans.dateAllTime") },
                 { value: "today", label: t("scans.dateToday") },
@@ -349,7 +373,7 @@ export default function ScansPage() {
           <PageError
             title={t("scans.loadErrorTitle")}
             message={error}
-            onRetry={() => { setError(null); setLoading(true); fetch("/api/scans").then(r => r.json()).then(d => setScans(d.scans || [])).catch(() => setError(t("scans.loadErrorBody"))).finally(() => setLoading(false)); }}
+            onRetry={() => { setLoading(true); setError(null); loadScans(); }}
             fallbackHref="/dashboard"
           />
         ) : scans.length === 0 ? (
@@ -414,7 +438,7 @@ export default function ScansPage() {
                 </button>
               )}
             </div>
-            {sortedScans.map((scan, index) => (
+            {sortedScans.map((scan) => (
               <div
                 key={scan.id}
                 className={`group rounded-xl border bg-white dark:bg-neutral-900 p-4 sm:p-5 transition-all hover:shadow-md ${
@@ -425,20 +449,13 @@ export default function ScansPage() {
               >
                 <div className="flex items-center gap-3 sm:gap-4">
                   {/* Checkbox */}
-                  <button
-                    onClick={() => toggleSelect(scan.id)}
-                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-colors ${
-                      selectedScans.includes(scan.id)
-                        ? "border-blue-500 bg-blue-500 text-white"
-                        : "border-neutral-300 dark:border-neutral-600 hover:border-blue-400"
-                    }`}
-                  >
-                    {selectedScans.includes(scan.id) && (
-                      <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 12 12">
-                        <path d="M10 3L4.5 8.5 2 6" stroke="currentColor" strokeWidth="2" fill="none" />
-                      </svg>
-                    )}
-                  </button>
+                  <input
+                    type="checkbox"
+                    checked={selectedScans.includes(scan.id)}
+                    onChange={() => toggleSelect(scan.id)}
+                    aria-label={`Compare ${scan.pageTitle || scan.url}`}
+                    className="h-6 w-6 shrink-0"
+                  />
 
                   {/* Score */}
                   <div className="flex items-center gap-2">
@@ -455,19 +472,20 @@ export default function ScansPage() {
                     >
                       {scan.score !== null ? Math.round(scan.score) : "—"}
                     </span>
-                    {getTrend(sortedScans, index) === "up" && <TrendingUp className="h-4 w-4 text-green-500" />}
-                    {getTrend(sortedScans, index) === "down" && <TrendingDown className="h-4 w-4 text-red-500" />}
+                    {getTrend(scan) === "up" && <TrendingUp aria-label="Improved since previous scan of this URL" className="h-4 w-4 text-green-500" />}
+                    {getTrend(scan) === "down" && <TrendingDown aria-label="Declined since previous scan of this URL" className="h-4 w-4 text-red-500" />}
                   </div>
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
                     <Link
-                      href={`/report/${scan.id}`}
+                      href={`/scans/${scan.id}`}
                       className="text-sm font-medium text-neutral-900 dark:text-white truncate block hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                     >
                       {scan.pageTitle || scan.url}
                     </Link>
                     <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate">{scan.url}</p>
+                    {scan.status !== "COMPLETED" && <span className="text-xs font-medium text-neutral-600 dark:text-neutral-300">{scan.status === "FAILED" ? "Scan failed" : scan.status === "RUNNING" ? "Scanning" : "Pending"}</span>}
                   </div>
 
                   {/* Violations */}
@@ -476,7 +494,7 @@ export default function ScansPage() {
                     {scan.serious > 0 && <Badge variant="serious">{scan.serious}</Badge>}
                     {scan.moderate > 0 && <Badge variant="moderate">{scan.moderate}</Badge>}
                     {scan.minor > 0 && <Badge variant="minor">{scan.minor}</Badge>}
-                    {scan.totalViolations === 0 && <Badge variant="success">{t("scans.clean")}</Badge>}
+                    {scan.status === "COMPLETED" && scan.totalViolations === 0 && <Badge variant="success">{t("scans.clean")}</Badge>}
                   </div>
 
                   {/* Meta */}
@@ -495,7 +513,7 @@ export default function ScansPage() {
                   </div>
 
                   {/* Actions */}
-                  <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center gap-1">
                     <Link
                       href={`/report/${scan.id}`}
                       className="rounded-md p-1.5 text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-600 dark:hover:text-white dark:text-neutral-300"
@@ -509,6 +527,7 @@ export default function ScansPage() {
                         onClick={() => setDeleteTarget(scan.id)}
                         className="rounded-md p-1.5 text-neutral-500 dark:text-neutral-300 hover:bg-red-50 dark:hover:bg-red-950 hover:text-red-600 dark:hover:text-red-400 transition-colors"
                         title={t("scans.deleteAdmin")}
+                        aria-label={`Delete ${scan.pageTitle || scan.url}`}
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -526,6 +545,7 @@ export default function ScansPage() {
         description={t("scans.deleteDescription")}
         confirmLabel={t("common.delete")}
         variant="danger"
+        busy={deleting}
         onConfirm={() => deleteTarget && handleDelete(deleteTarget)}
         onCancel={() => setDeleteTarget(null)}
       />
@@ -557,10 +577,12 @@ function CopyLinkButton({ scanId }: { scanId: string }) {
   const [copied, setCopied] = useState(false);
   const { t } = useI18n();
 
-  function handleCopy() {
-    navigator.clipboard.writeText(`${window.location.origin}/report/${scanId}`);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/report/${scanId}`);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { toast.error("Link could not be copied. Please try again."); }
   }
 
   return (

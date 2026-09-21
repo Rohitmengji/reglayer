@@ -10,16 +10,16 @@
  *
  * WHAT: A bell button with an unread badge that opens a dropdown of recent
  * scans / critical issues / workspace activity (read-only, from
- * /api/notifications/feed). Opening it marks everything seen (localStorage).
+ * /api/notifications/feed). Read state changes only through explicit actions.
  *
  * HOW: Reuses the sidebar's outside-click + upward dropdown pattern. Relative
  * timestamps use Intl.RelativeTimeFormat in the active locale.
  * ---------------------------------------------------------
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bell, Scan, AlertTriangle, Activity } from "lucide-react";
+import { Bell, Scan, AlertTriangle, Activity, CheckCheck, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { useI18n } from "@/components/i18n-provider";
 import { useNotifications } from "@/hooks/use-notifications";
@@ -64,9 +64,11 @@ function relativeTime(iso: string, locale: string): string {
 export function NotificationBell() {
   const router = useRouter();
   const { t, locale } = useI18n();
-  const { items, unreadCount, markAllSeen, isUnread } = useNotifications();
+  const { items, unreadCount, markAllSeen, markSeen, isUnread, loading, error, refreshing, refresh, storageError } = useNotifications();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const panelId = useId();
 
   // Close on outside click (mirrors the sidebar workspace switcher).
   useEffect(() => {
@@ -80,7 +82,6 @@ export function NotificationBell() {
   function toggle() {
     const next = !open;
     setOpen(next);
-    if (next) markAllSeen();
   }
 
   function go(href: string) {
@@ -89,12 +90,20 @@ export function NotificationBell() {
   }
 
   return (
-    <div className="relative" ref={ref}>
+    <div className="relative" ref={ref} role="presentation" onKeyDownCapture={event => {
+      if (event.key === "Escape" && open) {
+        event.preventDefault();
+        event.stopPropagation();
+        setOpen(false);
+        trigger.current?.focus();
+      }
+    }}>
       <button
+        ref={trigger}
         onClick={toggle}
         className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
-        aria-label={t("notifications.title")}
-        aria-haspopup="true"
+        aria-label={`${t("notifications.title")}${unreadCount ? ` (${unreadCount})` : ""}`}
+        aria-controls={open ? panelId : undefined}
         aria-expanded={open}
       >
         {/* Icon sized + anchored like the other menu-row icons (h-3.5) so the bell
@@ -116,20 +125,26 @@ export function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute bottom-full left-0 right-0 mb-1 max-h-[60vh] overflow-y-auto overscroll-contain rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-lg py-1 z-50">
-          <div className="flex items-center justify-between px-3 py-2 border-b border-neutral-100 dark:border-neutral-800">
+        <section id={panelId} aria-label={t("notifications.title")} className="absolute bottom-full left-0 right-0 mb-1 flex max-h-[min(60dvh,28rem)] flex-col overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-lg z-50">
+          <div className="shrink-0 border-b border-neutral-100 dark:border-neutral-800 p-3">
+            <div className="flex items-center justify-between gap-2">
             <p className="text-[12px] font-semibold text-neutral-700 dark:text-neutral-300">
               {t("notifications.title")}
             </p>
-            <button
-              onClick={() => go("/audit-log")}
-              className="text-[11px] font-medium text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-200"
-            >
-              {t("notifications.viewAll")}
+            <button type="button" onClick={() => void refresh()} disabled={refreshing} aria-label={t("common.retry")} title={t("common.retry")} className="flex h-8 w-8 shrink-0 items-center justify-center rounded text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-50">
+              <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} aria-hidden="true" />
             </button>
+            </div>
+            <button type="button" onClick={markAllSeen} disabled={loading || error || unreadCount === 0} className="flex min-h-9 w-full items-center gap-2 rounded px-1 text-left text-xs font-medium text-neutral-800 dark:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-50">
+              <CheckCheck className="h-4 w-4 shrink-0" aria-hidden="true" />
+              {t("notifications.markAllRead")}
+            </button>
+            <p className="text-[11px] text-neutral-600 dark:text-neutral-400" role="status">{!loading && !error && unreadCount === 0 && items.length > 0 ? t("notifications.allRead") : ""}</p>
           </div>
-
-          {items.length === 0 ? (
+          <div className="min-h-0 overflow-y-auto overscroll-contain">
+          {error && <p role="alert" className="px-3 py-3 text-xs text-red-700 dark:text-red-400">{t("notifications.loadError")}</p>}
+          {storageError && <p role="status" className="px-3 py-2 text-xs text-amber-800 dark:text-amber-300">{t("notifications.storageError")}</p>}
+          {loading ? <p role="status" className="px-4 py-6 text-sm text-neutral-600 dark:text-neutral-300">{t("common.loading")}</p> : !error && items.length === 0 ? (
             <div className="px-4 py-8 text-center">
               <p className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
                 {t("notifications.empty")}
@@ -145,7 +160,7 @@ export function NotificationBell() {
               return (
                 <button
                   key={item.id}
-                  onClick={() => go(item.href)}
+                  onClick={() => { markSeen(item); go(item.href); }}
                   className="flex w-full items-start gap-2.5 px-3 py-2.5 text-left hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"
                 >
                   <span
@@ -161,12 +176,12 @@ export function NotificationBell() {
                       <span className="truncate text-[13px] font-medium text-neutral-800 dark:text-neutral-200">
                         {item.title}
                       </span>
-                      {unread && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" aria-hidden />}
+                      {unread && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" aria-label={t("notifications.unread")} role="img" />}
                     </span>
                     <span className="block truncate text-[11px] text-neutral-500 dark:text-neutral-400">
                       {item.body}
                     </span>
-                    <span className="block text-[10px] text-neutral-400 dark:text-neutral-500">
+                    <span className="block text-[11px] text-neutral-500 dark:text-neutral-400">
                       {relativeTime(item.createdAt, locale)}
                     </span>
                   </span>
@@ -174,7 +189,9 @@ export function NotificationBell() {
               );
             })
           )}
-        </div>
+          </div>
+          <button type="button" onClick={() => go("/audit-log")} className="min-h-10 shrink-0 border-t border-neutral-100 px-3 py-2 text-left text-xs font-medium text-neutral-700 dark:border-neutral-800 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800">{t("notifications.viewActivity")}</button>
+        </section>
       )}
     </div>
   );

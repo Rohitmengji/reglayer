@@ -44,21 +44,21 @@ export interface ProactiveSuggestion {
  */
 export async function generateSuggestions(workspaceId: string): Promise<ProactiveSuggestion[]> {
   const suggestions: ProactiveSuggestion[] = [];
+  const latestScan = await getLastScan(workspaceId);
+  const lastScanDate = latestScan?.createdAt;
 
   const [
     recentScans,
     violationStats,
     siteCount,
-    lastScanDate,
   ] = await Promise.all([
     getRecentScanStats(workspaceId),
-    getViolationTrend(workspaceId),
+    getViolationTrend(workspaceId, latestScan?.id),
     getSiteCount(workspaceId),
-    getLastScanDate(workspaceId),
   ]);
 
   // 1. No scans yet — onboarding nudge
-  if (recentScans.total === 0) {
+  if (recentScans.total === 0 && !lastScanDate) {
     suggestions.push({
       id: "onboarding-first-scan",
       title: "Run your first accessibility scan",
@@ -66,7 +66,7 @@ export async function generateSuggestions(workspaceId: string): Promise<Proactiv
       category: "action",
       priority: "high",
       actionLabel: "Start Scan",
-      actionHref: "/test?tab=scans",
+      actionHref: "/dashboard#scan-url",
       dismissible: true,
     });
   }
@@ -75,12 +75,12 @@ export async function generateSuggestions(workspaceId: string): Promise<Proactiv
   if (recentScans.total >= 2 && recentScans.trend === "declining") {
     suggestions.push({
       id: "score-declining",
-      title: "Accessibility score is declining",
-      description: `Your average score dropped from ${recentScans.previousAvg} to ${recentScans.currentAvg} in the last 7 days. ${recentScans.newViolations} new violations detected.`,
+      title: "Recent scans have a lower average score",
+      description: `The average across scans is ${recentScans.currentAvg}, compared with ${recentScans.previousAvg} in the previous week. Different pages may have been scanned; review comparable results before concluding there is a regression.`,
       category: "risk",
-      priority: "critical",
-      actionLabel: "View Violations",
-      actionHref: "/violations",
+      priority: "high",
+      actionLabel: "Review Trends",
+      actionHref: "/reports?tab=trends",
       metadata: { previousAvg: recentScans.previousAvg, currentAvg: recentScans.currentAvg },
       dismissible: false,
     });
@@ -90,12 +90,12 @@ export async function generateSuggestions(workspaceId: string): Promise<Proactiv
   if (violationStats.criticalOpen > 0) {
     suggestions.push({
       id: "critical-violations",
-      title: `${violationStats.criticalOpen} critical violations need attention`,
-      description: "Critical violations block keyboard users and screen reader users entirely. These should be your top priority.",
+      title: `${violationStats.criticalOpen} critical findings in your latest scan`,
+      description: "Review the affected elements and user impact, then verify each fix with a new scan.",
       category: "compliance",
       priority: "critical",
       actionLabel: "Fix Critical Issues",
-      actionHref: "/violations?impact=critical&status=open",
+      actionHref: `/violations?scanId=${encodeURIComponent(latestScan!.id)}&impact=critical&status=OPEN`,
       metadata: { count: violationStats.criticalOpen },
       dismissible: false,
     });
@@ -119,39 +119,13 @@ export async function generateSuggestions(workspaceId: string): Promise<Proactiv
   if (recentScans.total > 0 && recentScans.currentAvg < 90 && violationStats.easyFixes > 5) {
     suggestions.push({
       id: "quick-wins",
-      title: `${violationStats.easyFixes} easy fixes available`,
-      description: "These violations have automated code fixes that could boost your score by 10-20 points in under an hour.",
+      title: `${violationStats.easyFixes} lower-severity findings to review`,
+      description: "These minor and moderate findings are open in your latest scan. Review their evidence and effort before planning remediation.",
       category: "insight",
       priority: "medium",
-      actionLabel: "View Quick Fixes",
-      actionHref: "/violations?impact=minor,moderate&status=open",
+      actionLabel: "Review Findings",
+      actionHref: `/violations?scanId=${encodeURIComponent(latestScan!.id)}&impact=minor,moderate&status=OPEN`,
       metadata: { easyFixes: violationStats.easyFixes },
-      dismissible: true,
-    });
-  }
-
-  // 6. Compliance deadline approaching (EAA June 2025 is passed, but others)
-  suggestions.push({
-    id: "compliance-check",
-    title: "Review your compliance posture",
-    description: "Regulations are tightening. Review your WCAG 2.2 AA compliance status and ensure all critical user flows pass.",
-    category: "compliance",
-    priority: "low",
-    actionLabel: "Compliance Matrix",
-    actionHref: "/compliance?tab=matrix",
-    dismissible: true,
-  });
-
-  // 7. Multiple sites but no monitoring
-  if (siteCount >= 3 && recentScans.total < siteCount) {
-    suggestions.push({
-      id: "setup-monitoring",
-      title: "Set up continuous monitoring",
-      description: `You have ${siteCount} sites but only ${recentScans.total} recent scans. Enable scheduled scanning to catch regressions automatically.`,
-      category: "action",
-      priority: "medium",
-      actionLabel: "Configure Schedules",
-      actionHref: "/automation?tab=schedules",
       dismissible: true,
     });
   }
@@ -160,7 +134,7 @@ export async function generateSuggestions(workspaceId: string): Promise<Proactiv
   const priorityOrder: Record<SuggestionPriority, number> = { critical: 0, high: 1, medium: 2, low: 3 };
   suggestions.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
 
-  return suggestions.slice(0, 5); // Max 5 suggestions
+  return suggestions.slice(0, 3);
 }
 
 // ── Data Fetchers ─────────────────────────────────────────────────────────────
@@ -171,11 +145,11 @@ async function getRecentScanStats(workspaceId: string) {
 
   const [recent, previous] = await Promise.all([
     prisma.scan.findMany({
-      where: { workspaceId, createdAt: { gte: sevenDaysAgo } },
+      where: { workspaceId, status: "COMPLETED", score: { not: null }, createdAt: { gte: sevenDaysAgo } },
       select: { score: true, totalViolations: true },
     }),
     prisma.scan.findMany({
-      where: { workspaceId, createdAt: { gte: fourteenDaysAgo, lt: sevenDaysAgo } },
+      where: { workspaceId, status: "COMPLETED", score: { not: null }, createdAt: { gte: fourteenDaysAgo, lt: sevenDaysAgo } },
       select: { score: true, totalViolations: true },
     }),
   ]);
@@ -199,11 +173,13 @@ async function getRecentScanStats(workspaceId: string) {
   };
 }
 
-async function getViolationTrend(workspaceId: string) {
+async function getViolationTrend(workspaceId: string, scanId?: string) {
+  if (!scanId) return { criticalOpen: 0, easyFixes: 0 };
   const [critical, easy] = await Promise.all([
     prisma.violation.count({
       where: {
         scan: { workspaceId },
+        scanId,
         impact: "critical",
         status: "OPEN",
       },
@@ -211,6 +187,7 @@ async function getViolationTrend(workspaceId: string) {
     prisma.violation.count({
       where: {
         scan: { workspaceId },
+        scanId,
         impact: { in: ["minor", "moderate"] },
         status: "OPEN",
       },
@@ -224,13 +201,13 @@ async function getSiteCount(workspaceId: string) {
   return prisma.site.count({ where: { workspaceId } });
 }
 
-async function getLastScanDate(workspaceId: string): Promise<Date | null> {
+async function getLastScan(workspaceId: string) {
   const scan = await prisma.scan.findFirst({
-    where: { workspaceId },
+    where: { workspaceId, status: "COMPLETED" },
     orderBy: { createdAt: "desc" },
-    select: { createdAt: true },
+    select: { id: true, createdAt: true },
   });
-  return scan?.createdAt ?? null;
+  return scan;
 }
 
 function daysSince(date: Date): number {

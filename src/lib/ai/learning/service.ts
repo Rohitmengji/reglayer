@@ -115,9 +115,10 @@ export async function recordFeedback(input: FeedbackInput): Promise<string> {
  * Analyze feedback for a specific prompt template.
  * Returns aggregate metrics, complaints, praises, and model comparison.
  */
-export async function analyzeFeedback(promptId: string): Promise<FeedbackAnalysis> {
+export async function analyzeFeedback(promptId: string, workspaceId?: string): Promise<FeedbackAnalysis> {
+  if (workspaceId !== undefined && !workspaceId.trim()) throw new Error("Workspace scope is required");
   const feedback = await prisma.feedbackEntry.findMany({
-    where: { promptId },
+    where: { promptId, ...(workspaceId ? { workspaceId } : {}) },
     orderBy: { createdAt: "desc" },
     take: 200,
     select: { rating: true, comment: true, model: true, createdAt: true },
@@ -344,17 +345,19 @@ export async function runLearningCycle(promptId: string): Promise<{
 /**
  * Get learning status across all prompts (dashboard view).
  */
-export async function getLearningOverview(): Promise<{
+export async function getLearningOverview(workspaceId?: string): Promise<{
   totalFeedback: number;
   avgRating: number;
-  pendingImprovements: number;
-  appliedImprovements: number;
+  pendingImprovements: number | null;
+  appliedImprovements: number | null;
 }> {
+  if (workspaceId !== undefined && !workspaceId.trim()) throw new Error("Workspace scope is required");
+  const where = workspaceId ? { workspaceId } : {};
   const [totalFeedback, avgResult, pending, applied] = await Promise.all([
-    prisma.feedbackEntry.count(),
-    prisma.feedbackEntry.aggregate({ _avg: { rating: true } }),
-    prisma.promptImprovement.count({ where: { status: "PROPOSED" } }),
-    prisma.promptImprovement.count({ where: { status: "APPLIED" } }),
+    prisma.feedbackEntry.count({ where }),
+    prisma.feedbackEntry.aggregate({ where, _avg: { rating: true } }),
+    workspaceId ? Promise.resolve(null) : prisma.promptImprovement.count({ where: { status: "PROPOSED" } }),
+    workspaceId ? Promise.resolve(null) : prisma.promptImprovement.count({ where: { status: "APPLIED" } }),
   ]);
 
   return {

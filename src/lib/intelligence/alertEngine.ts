@@ -12,6 +12,7 @@
 
 import { prisma } from "@/lib/database/prisma";
 import { validateScanUrl, resolvesToInternalIp } from "@/lib/validations/ssrf";
+import { renderEmailLayout, emailParagraph, emailButton, emailCallout, escapeHtml, emailAppUrl } from "@/lib/email/layout";
 import type { ScanResult } from "@/lib/types";
 
 export interface AlertRule {
@@ -133,25 +134,19 @@ async function dispatchAlertEmail(
   const to = owner?.user?.email;
   if (!to) return;
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://reglayer.vercel.app";
+  const appUrl = emailAppUrl();
   const reportUrl = `${appUrl}/scans/${alert.scanId}`;
   await sendEmail({
     to,
     subject: `⚠️ RegLayer alert: ${hostnameOf(alert.url)}`,
-    html: `
-      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto;">
-        <div style="border-bottom: 1px solid #e5e5e5; padding: 20px 0;">
-          <h2 style="margin: 0; font-size: 18px; color: #171717;">⚠️ Monitoring Alert</h2>
-        </div>
-        <div style="padding: 24px 0;">
-          <p style="color: #525252; margin: 0 0 16px;">A monitor you configured for <strong>${alert.url}</strong> was triggered.</p>
-          <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
-            <p style="margin: 0; font-size: 14px; color: #991b1b;">${alert.message}</p>
-          </div>
-          <a href="${reportUrl}" style="display: inline-block; background: #171717; color: #fff; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-size: 14px; font-weight: 500;">View Scan</a>
-        </div>
-      </div>
-    `,
+    html: renderEmailLayout({
+      preheader: `A monitor for ${hostnameOf(alert.url)} was triggered`,
+      title: "Monitoring alert",
+      contentHtml: `
+        ${emailParagraph(`A monitor you configured for <strong>${escapeHtml(alert.url)}</strong> was triggered.`)}
+        ${emailCallout(escapeHtml(alert.message), "danger")}
+        ${emailButton(reportUrl, "View scan")}`,
+    }),
     text: `Monitoring alert for ${alert.url}\n${alert.message}\nView scan: ${reportUrl}`,
   });
 }

@@ -130,25 +130,29 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
 
-    const result = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
+    try {
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
 
-    setLoading(false);
-
-    if (result?.error) {
+    if (!result || result.error) {
       // NextAuth returns "AccessDenied" when the signIn callback blocks a non-SSO
       // login on an SSO-enforced domain (#24) — point the user at SSO instead of
       // implying their password was wrong.
       setError(
-        result.error === "AccessDenied"
+        result?.error === "AccessDenied"
           ? t("login.ssoRequired")
           : t("login.invalidCredentials")
       );
     } else {
       router.push("/dashboard");
+    }
+    } catch {
+      setError(t("login.errorSignin"));
+    } finally {
+      setLoading(false);
     }
   }
 

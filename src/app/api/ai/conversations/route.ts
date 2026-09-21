@@ -26,6 +26,7 @@ import { bumpConversationVersion } from "@/lib/ai/chat/generation-lease";
 import { stripUnstorableChars } from "@/lib/ai/chat/db-safe-text";
 import { diffMessages } from "@/lib/ai/chat/message-diff";
 import { z } from "zod";
+import { readWorkspaceSelection } from "@/lib/auth/workspace-selection";
 
 /**
  * The save is an interactive transaction against a remote Postgres, and Prisma's
@@ -148,19 +149,21 @@ async function saveConversation(request: NextRequest) {
   // Auto-generate title from first user message if not provided
   const effectiveTitle = title || messages.find((m) => m.role === "user")?.content.slice(0, 60) || "New conversation";
 
-  // Resolve the caller's primary workspace so feedback we forward to the learning
-  // system can be found by calculateReliabilityScores(workspaceId) — ChatConversation
-  // itself has no workspace context today, so without this every rating would land
-  // with workspaceId: null and be invisible to per-workspace quality scoring.
-  // Same "earliest-joined membership" convention as requireWorkspacePermission's
-  // fallback (src/lib/auth/api-guard.ts) — this route intentionally does not enforce
-  // a workspace permission (chat history is personal), it only needs the id for tagging.
-  const primaryMembership = await prisma.workspaceMember.findFirst({
-    where: { userId: user.id },
-    orderBy: { joinedAt: "asc" },
-    select: { workspaceId: true },
-  });
-  const workspaceId = primaryMembership?.workspaceId;
+  const selectedId = await readWorkspaceSelection();
+  const membership = selectedId
+    ? await prisma.workspaceMember.findUnique({
+        where: { userId_workspaceId: { userId: user.id, workspaceId: selectedId } },
+        select: { workspaceId: true },
+      })
+    : await prisma.workspaceMember.findFirst({
+        where: { userId: user.id },
+        orderBy: { joinedAt: "asc" },
+        select: { workspaceId: true },
+      });
+  if (selectedId && !membership) {
+    return NextResponse.json({ error: "Selected workspace is unavailable. Choose another workspace." }, { status: 403 });
+  }
+  const workspaceId = membership?.workspaceId;
 
   if (id) {
     // Update existing — verify ownership INSIDE transaction to prevent TOCTOU race.

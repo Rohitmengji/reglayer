@@ -164,7 +164,8 @@ describe("conversation persistence", () => {
     const messages = [{ id: "m1", role: "user" as const, content: "hello" }];
 
     const first = await persistConversation({ conversationId: null, messages, fetchImpl });
-    const second = await persistConversation({ conversationId: "conv-1", messages, fetchImpl });
+    const second = await persistConversation({ conversationId: null, messages, fetchImpl, keepalive: true });
+    expect(second).toMatchObject({ ok: true, conversationId: "conv-1", skipped: true });
 
     expect(first).toMatchObject({ ok: true, skipped: false });
     // A duplicate write to a delete-and-recreate endpoint is pure risk.

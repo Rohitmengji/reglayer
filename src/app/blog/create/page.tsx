@@ -222,7 +222,7 @@ export default function CreateArticlePage() {
                   placeholder="Topic: e.g., 'WCAG 3.0 Silver timeline and what it means'"
                   className="w-full rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-3 py-2 text-sm text-neutral-900 dark:text-white placeholder-neutral-400 outline-none focus:ring-1 focus:ring-violet-500"
                 />
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <div className="flex flex-col gap-2 xl:flex-row xl:flex-wrap xl:items-center">
                   <ModernSelect
               options={CATEGORIES.map((c) => ({ value: c, label: c }))}
               value={aiCategory}

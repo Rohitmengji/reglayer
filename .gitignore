@@ -64,7 +64,7 @@ e2e/__snapshots__/
 # ── Internal documentation — architecture, strategy, and proprietary designs ─
 # These contain competitive intelligence (system design, roadmaps, security
 # architecture, AI platform plans). Keep local only.
-docs/
+/docs/
 
 # ── Security: sensitive files that must NEVER be committed ──────────────────
 # Private keys and certificates

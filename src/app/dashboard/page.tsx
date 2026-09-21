@@ -38,6 +38,7 @@ import { ProactiveSuggestions } from "@/components/ai/ProactiveSuggestions";
 import { OnboardingFlow } from "@/components/onboarding/onboarding-flow";
 import { SinceLastVisit } from "@/components/dashboard/since-last-visit";
 import { RoleOnboarding } from "@/components/onboarding/role-onboarding";
+import { OnboardingChecklist } from "@/components/onboarding/checklist";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useScanStore } from "@/stores/scanStore";
@@ -104,6 +105,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const controller = new AbortController();
+    let disposed = false;
     // Timeout slow API fetches after 15s to prevent infinite loading state
     const timeoutId = setTimeout(() => controller.abort(), 15_000);
 
@@ -111,7 +113,7 @@ export default function DashboardPage() {
     fetch("/api/onboarding/status", { signal: controller.signal })
       .then((r) => r.ok ? r.json() : null)
       .then((onboarding) => {
-        if (!onboarding) return;
+        if (disposed || !onboarding) return;
         // Show role picker ONLY if:
         // - User has no persona set (server-side)
         // - User has fewer than 3 scans (genuinely new, not a veteran on a new browser)
@@ -132,6 +134,7 @@ export default function DashboardPage() {
         return r.json();
       })
       .then((d) => {
+        if (disposed) return;
         setStats(d);
         // Show onboarding if user has no scans and hasn't dismissed
         if (d.totalScans === 0 && !localStorage.getItem("reglayer_onboarding_dismissed")) {
@@ -140,17 +143,17 @@ export default function DashboardPage() {
       })
       // Surface a load failure (with retry) instead of silently showing nothing —
       // the scan form above stays usable regardless.
-      .catch(() => { if (!controller.signal.aborted) setStatsError(true); })
+      .catch(() => { if (!disposed) setStatsError(true); })
       .finally(() => {
-        if (!controller.signal.aborted) setStatsLoading(false);
+        if (!disposed) setStatsLoading(false);
       });
 
     fetch("/api/credits", { signal: controller.signal })
       .then((r) => r.ok ? r.json() : null)
-      .then((d) => d && setCredits(d.credits))
+      .then((d) => !disposed && d && setCredits(d.credits))
       .catch(() => {});
 
-    return () => { controller.abort(); clearTimeout(timeoutId); };
+    return () => { disposed = true; controller.abort(); clearTimeout(timeoutId); };
   }, [statsReloadKey]);
 
   function handleScanComplete(result: unknown) {
@@ -230,12 +233,6 @@ export default function DashboardPage() {
           />
         )}
 
-        {/* Scan Form */}
-        <ScanForm onScanComplete={handleScanComplete} />
-
-        {/* AI Proactive Suggestions */}
-        <ProactiveSuggestions />
-
         {/* Stats Overview */}
         {statsLoading && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -292,11 +289,15 @@ export default function DashboardPage() {
         )}
 
         {/* Empty state — no scans yet (shown only when onboarding is dismissed) */}
+        <ProactiveSuggestions />
+        <ScanForm onScanComplete={handleScanComplete} />
+        <OnboardingChecklist />
+
         {!statsLoading && stats && stats.totalScans === 0 && !showOnboarding && (
           <div className="rounded-xl border border-dashed border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900/50 p-6 text-center">
             <Globe className="mx-auto h-8 w-8 text-neutral-400 dark:text-neutral-500 mb-3" />
             <p className="text-sm font-medium text-neutral-700 dark:text-neutral-300">No scans yet</p>
-            <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+            <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-1">
               Enter a URL above to run your first accessibility scan
             </p>
           </div>

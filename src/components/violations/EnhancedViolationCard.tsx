@@ -17,7 +17,7 @@
  *      Uses shadcn Card/Badge/Button patterns for consistency.
  */
 
-import { useState, useCallback, useMemo, useEffect, useRef } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef, useId } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -133,20 +133,40 @@ export function EnhancedViolationCard({ violation, onStatusChange }: EnhancedVio
   const [noteText, setNoteText] = useState("");
   const [showHistory, setShowHistory] = useState(false);
   const noteTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const noteDialogRef = useRef<HTMLDialogElement>(null);
+  const statusButtonRef = useRef<HTMLButtonElement>(null);
+  const noteId = useId();
 
-  // Focus the textarea when the dialog opens (replaces the `autoFocus` prop,
-  // which jsx-a11y flags — DOM-attribute autofocus fires on mount regardless
-  // of context, while this only runs when the dialog is deliberately opened
-  // by the user). Escape closes it, matching the WAI-ARIA Dialog pattern and
-  // giving keyboard users the same exit the backdrop click gives pointer users.
   useEffect(() => {
     if (!noteDialogOpen) return;
+    const dialog = noteDialogRef.current;
+    const trigger = statusButtonRef.current;
+    dialog?.showModal();
     noteTextareaRef.current?.focus();
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setNoteDialogOpen(false);
+    function handleTab(event: KeyboardEvent) {
+      if (event.key !== "Tab" || !dialog) return;
+      const controls = Array.from(dialog.querySelectorAll<HTMLElement>(
+        'button:not(:disabled), textarea:not(:disabled), input:not(:disabled), select:not(:disabled), a[href], [tabindex]:not([tabindex="-1"])'
+      )).filter(element => element.getClientRects().length > 0);
+      const first = controls[0];
+      const last = controls.at(-1);
+      if (!first || !last) {
+        event.preventDefault();
+        dialog.focus();
+      } else if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+    dialog?.addEventListener("keydown", handleTab);
+    return () => {
+      dialog?.removeEventListener("keydown", handleTab);
+      dialog?.close();
+      trigger?.focus();
     };
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
   }, [noteDialogOpen]);
 
   const { state, isUpdating, isVerifying, error, updateStatus, verifyFix } = useViolationStatus(
@@ -159,7 +179,12 @@ export function EnhancedViolationCard({ violation, onStatusChange }: EnhancedVio
       verifiedAt: violation.verifiedAt,
     },
     {
-      onSuccess: (newStatus) => onStatusChange?.(violation.id, newStatus),
+      onSuccess: (newStatus) => {
+        setNoteDialogOpen(false);
+        setPendingStatus(null);
+        setNoteText("");
+        onStatusChange?.(violation.id, newStatus);
+      },
       onError: () => {}, // Error shown via `error` state
     }
   );
@@ -180,12 +205,9 @@ export function EnhancedViolationCard({ violation, onStatusChange }: EnhancedVio
   );
 
   const handleNoteSubmit = useCallback(() => {
-    if (!pendingStatus || noteText.trim().length < 10) return;
-    updateStatus(pendingStatus, noteText.trim());
-    setNoteDialogOpen(false);
-    setPendingStatus(null);
-    setNoteText("");
-  }, [pendingStatus, noteText, updateStatus]);
+    if (isUpdating || !pendingStatus || noteText.trim().length < 10) return;
+    void updateStatus(pendingStatus, noteText.trim());
+  }, [isUpdating, pendingStatus, noteText, updateStatus]);
 
   const handleVerify = useCallback(() => {
     verifyFix();
@@ -227,6 +249,13 @@ export function EnhancedViolationCard({ violation, onStatusChange }: EnhancedVio
   const statusAriaLabel = t(meta.ariaKey);
 
   const elements = Array.isArray(violation.affectedElements) ? violation.affectedElements : [];
+  const evidence = (node: ViolationCardData["affectedElements"][number], index: number) => (
+    <div key={index} className="min-w-0 space-y-2 rounded-md bg-neutral-50 p-3 text-xs dark:bg-neutral-800">
+      {node.target?.length > 0 && <p className="break-all font-mono font-medium text-neutral-800 dark:text-neutral-200">{node.target.join(" ")}</p>}
+      <code className="block whitespace-pre-wrap break-all text-neutral-700 dark:text-neutral-300">{node.html}</code>
+      {node.failureSummary && <p className="whitespace-pre-wrap break-words text-neutral-700 dark:text-neutral-300">{node.failureSummary}</p>}
+    </div>
+  );
 
   return (
     <Card
@@ -290,15 +319,12 @@ export function EnhancedViolationCard({ violation, onStatusChange }: EnhancedVio
             <p className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
               {t(elements.length === 1 ? "violations.affectedElementsSingular" : "violations.affectedElementsPlural", { count: String(elements.length) })}
             </p>
-            {elements.slice(0, 2).map((node, i) => (
-              <div key={i} className="rounded-md bg-neutral-50 dark:bg-neutral-800 p-2 font-mono text-xs overflow-x-auto">
-                <code className="text-neutral-700 dark:text-neutral-300 whitespace-pre-wrap break-all">
-                  {node.html}
-                </code>
-              </div>
-            ))}
+            {elements.slice(0, 2).map(evidence)}
             {elements.length > 2 && (
-              <p className="text-xs text-neutral-500">{t("violationCard.moreElements", { count: String(elements.length - 2) })}</p>
+              <details className="min-w-0">
+                <summary className="min-h-11 cursor-pointer py-3 text-xs font-medium text-neutral-700 dark:text-neutral-200">{t("violationCard.moreElements", { count: String(elements.length - 2) })}</summary>
+                <div className="space-y-2">{elements.slice(2).map(evidence)}</div>
+              </details>
             )}
           </div>
         )}
@@ -341,8 +367,8 @@ export function EnhancedViolationCard({ violation, onStatusChange }: EnhancedVio
         )}
 
         {/* Error Display */}
-        {error && (
-          <div className="rounded-md bg-red-50 dark:bg-red-900/10 px-3 py-2 text-xs text-red-600 dark:text-red-400">
+        {error && !noteDialogOpen && (
+          <div role="alert" className="rounded-md bg-red-50 dark:bg-red-900/10 px-3 py-2 text-xs text-red-600 dark:text-red-400">
             {error}
           </div>
         )}
@@ -353,6 +379,7 @@ export function EnhancedViolationCard({ violation, onStatusChange }: EnhancedVio
             {/* Status Dropdown */}
             <div className="relative">
               <button
+                ref={statusButtonRef}
                 onClick={() => setDropdownOpen(!dropdownOpen)}
                 disabled={isUpdating}
                 className="inline-flex items-center gap-1.5 rounded-md border border-neutral-200 dark:border-neutral-700 px-2.5 py-1.5 text-xs font-medium transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-50"
@@ -476,29 +503,30 @@ export function EnhancedViolationCard({ violation, onStatusChange }: EnhancedVio
 
       {/* Note Dialog (modal for WONT_FIX / ACCEPTABLE_RISK) */}
       {noteDialogOpen && (
-        // Backdrop is click-to-dismiss for pointer users only — Escape (handled in the
-        // effect above) is the keyboard equivalent; role="dialog" belongs on the panel
-        // below, not this full-screen backdrop.
-        // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/no-noninteractive-element-interactions
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-          onClick={() => setNoteDialogOpen(false)}
+        <dialog
+          ref={noteDialogRef}
+          aria-labelledby={`${noteId}-title`}
+          aria-describedby={`${noteId}-description`}
+          aria-busy={isUpdating}
+          onCancel={(event) => {
+            if (isUpdating) event.preventDefault();
+            else setNoteDialogOpen(false);
+          }}
+          className="m-auto w-[calc(100%_-_2rem)] max-w-md max-h-[calc(100dvh_-_2rem)] overflow-y-auto rounded-lg border border-neutral-200 bg-white p-6 shadow-xl backdrop:bg-black/50 dark:border-neutral-700 dark:bg-neutral-900"
         >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="note-dialog-title"
-            className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 shadow-xl p-6 w-full max-w-md mx-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 id="note-dialog-title" className="text-sm font-semibold text-neutral-900 dark:text-white mb-2">
+            <h3 id={`${noteId}-title`} className="text-sm font-semibold text-neutral-900 dark:text-white mb-2">
               {t("violations.addReason")}
             </h3>
-            <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-4">
+            <p id={`${noteId}-description`} className="text-xs text-neutral-500 dark:text-neutral-400 mb-4">
               {t("violations.noteDialogDesc", { status: t(pendingStatus === "WONT_FIX" ? "violations.wontFix" : "violations.acceptableRisk") })}
             </p>
+            {error && <p role="alert" className="mb-3 text-sm text-red-700 dark:text-red-300">{error}</p>}
+            <fieldset disabled={isUpdating}>
+            <label htmlFor={noteId} className="sr-only">{t("violations.addReason")}</label>
             <textarea
+              id={noteId}
               ref={noteTextareaRef}
+              aria-describedby={`${noteId}-minimum`}
               value={noteText}
               onChange={(e) => setNoteText(e.target.value)}
               placeholder={t("violations.notePlaceholder")}
@@ -506,7 +534,7 @@ export function EnhancedViolationCard({ violation, onStatusChange }: EnhancedVio
               rows={3}
               minLength={10}
             />
-            <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
+            <p id={`${noteId}-minimum`} className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
               {t("violations.charMinimum", { count: String(noteText.trim().length) })}
             </p>
             <div className="flex justify-end gap-2 mt-4">
@@ -520,13 +548,14 @@ export function EnhancedViolationCard({ violation, onStatusChange }: EnhancedVio
               <Button
                 size="sm"
                 onClick={handleNoteSubmit}
-                disabled={noteText.trim().length < 10}
+                disabled={isUpdating || noteText.trim().length < 10}
               >
+                {isUpdating && <Loader2 className="mr-2 h-3 w-3 animate-spin" aria-hidden="true" />}
                 {t("violations.confirm")}
               </Button>
             </div>
-          </div>
-        </div>
+            </fieldset>
+        </dialog>
       )}
     </Card>
   );

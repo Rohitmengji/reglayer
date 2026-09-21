@@ -25,7 +25,7 @@
  * ---------------------------------------------------------
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useId } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useI18n } from "@/components/i18n-provider";
@@ -34,6 +34,7 @@ import {
   Globe, Scan, Users, Plug, Sparkles,
 } from "lucide-react";
 import { fireConfetti } from "@/components/confetti";
+import { useConsent } from "@/components/cookie-consent";
 
 interface OnboardingTask {
   id: string;
@@ -51,7 +52,9 @@ export function OnboardingChecklist() {
   const { data: session } = useSession();
   const { t } = useI18n();
   const router = useRouter();
-  const [expanded, setExpanded] = useState(true);
+  const tasksId = useId();
+  const { hasConsented } = useConsent();
+  const [expanded, setExpanded] = useState(false);
   const [dismissed, setDismissed] = useState(true); // hidden by default until loaded
   const [tasks, setTasks] = useState<OnboardingTask[]>([]);
   const [loading, setLoading] = useState(true);
@@ -93,7 +96,7 @@ export function OnboardingChecklist() {
         }
       });
     return () => { cancelled = true; };
-  }, [userEmail]);
+  }, [userEmail, t]);
 
   // Celebrate on completion
   useEffect(() => {
@@ -117,18 +120,21 @@ export function OnboardingChecklist() {
   }, []);
 
   // Don't show if not logged in, dismissed, or loading
-  if (!session?.user || dismissed || loading || total === 0) return null;
+  if (!hasConsented || !session?.user || dismissed || loading || total === 0) return null;
 
   // Hide if all completed
   if (completed === total && localStorage.getItem(COMPLETED_KEY)) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 z-40 w-72 sm:w-80 sm:bottom-6 sm:right-6 animate-in slide-in-from-bottom-4 fade-in duration-300">
-      <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
+    <section aria-label={t("onboarding.gettingStarted")} className="w-full border-y border-neutral-200 dark:border-neutral-700">
+      <div className="overflow-hidden">
         {/* Header */}
+        <div className="flex items-center">
         <button
           onClick={() => setExpanded(!expanded)}
-          className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"
+          aria-expanded={expanded}
+          aria-controls={tasksId}
+          className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"
         >
           {/* Progress ring */}
           <div className="relative h-9 w-9 shrink-0">
@@ -159,7 +165,7 @@ export function OnboardingChecklist() {
             <div className="text-sm font-semibold text-neutral-900 dark:text-white">
               {completed === total ? t("onboarding.complete") : t("onboarding.gettingStarted")}
             </div>
-            <div className="text-xs text-neutral-500 dark:text-neutral-400">
+            <div className="text-xs text-neutral-600 dark:text-neutral-400">
               {completed}/{total} tasks completed
             </div>
           </div>
@@ -170,22 +176,20 @@ export function OnboardingChecklist() {
             ) : (
               <ChevronUp className="h-4 w-4 text-neutral-400" />
             )}
-            <span
-              role="button"
-              tabIndex={0}
-              onClick={(e) => { e.stopPropagation(); dismiss(); }}
-              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.stopPropagation(); dismiss(); } }}
-              className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer"
-              aria-label="Dismiss checklist"
-            >
-              <X className="h-3.5 w-3.5 text-neutral-400" />
-            </span>
           </div>
         </button>
+        <button
+          type="button"
+          onClick={dismiss}
+          className="mr-2 flex h-11 w-11 shrink-0 items-center justify-center rounded hover:bg-neutral-100 dark:hover:bg-neutral-800"
+          aria-label="Dismiss checklist"
+        >
+          <X className="h-4 w-4 text-neutral-600 dark:text-neutral-400" aria-hidden="true" />
+        </button>
+        </div>
 
         {/* Tasks */}
-        {expanded && (
-          <div className="border-t border-neutral-100 dark:border-neutral-800 px-2 py-2 space-y-0.5 max-h-65 overflow-y-auto">
+          <div id={tasksId} hidden={!expanded} className="border-t border-neutral-100 dark:border-neutral-800 px-2 py-2 space-y-0.5 max-h-65 overflow-y-auto">
             {tasks.map((task) => (
               <button
                 key={task.id}
@@ -207,7 +211,7 @@ export function OnboardingChecklist() {
                     {task.label}
                   </div>
                   {!task.completed && (
-                    <div className="text-xs text-neutral-400 dark:text-neutral-500 truncate">
+                    <div className="text-xs text-neutral-600 dark:text-neutral-400 truncate">
                       {task.description}
                     </div>
                   )}
@@ -215,9 +219,8 @@ export function OnboardingChecklist() {
               </button>
             ))}
           </div>
-        )}
       </div>
-    </div>
+    </section>
   );
 }
 

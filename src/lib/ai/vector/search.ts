@@ -174,6 +174,7 @@ export async function embedScanViolations(scanId: string): Promise<number> {
  *
  * @example
  * const results = await searchViolations("text readability problems", {
+ *   workspaceId: "authorized_workspace",
  *   limit: 10,
  *   minSimilarity: 0.7,
  *   scanId: "scan_123",  // optional: scope to a specific scan
@@ -181,27 +182,24 @@ export async function embedScanViolations(scanId: string): Promise<number> {
  */
 export async function searchViolations(
   query: string,
-  options?: {
+  options: {
+    workspaceId: string;
     limit?: number;
     minSimilarity?: number;
     scanId?: string;
   },
 ): Promise<ViolationSearchResult[]> {
-  const limit = options?.limit ?? 10;
-  const minSimilarity = options?.minSimilarity ?? 0.5;
+  if (!options?.workspaceId?.trim()) throw new Error("Workspace scope is required");
+  const limit = options.limit ?? 10;
+  const minSimilarity = options.minSimilarity ?? 0.5;
+  if (!Number.isInteger(limit) || limit < 1 || limit > 50 || !Number.isFinite(minSimilarity) || minSimilarity < 0 || minSimilarity > 1) throw new Error("Invalid search options");
+  const scanFilter = options.scanId ? Prisma.sql`AND v."scanId" = ${options.scanId}` : Prisma.sql``;
+  const workspaceFilter = Prisma.sql`AND v."scanId" IN (SELECT id FROM scans WHERE "workspaceId" = ${options.workspaceId})`;
 
-  // Fast check: skip expensive embed + search if no violations have embeddings yet
-  try {
-    const hasEmbeddings = await prisma.$queryRaw<[{ count: bigint }]>`
-      SELECT COUNT(*) as count FROM violations WHERE embedding IS NOT NULL LIMIT 1
-    `;
-    if (!hasEmbeddings[0] || hasEmbeddings[0].count === BigInt(0)) {
-      return [];
-    }
-  } catch {
-    // pgvector not enabled or table doesn't have column — skip silently
-    return [];
-  }
+  const hasEmbeddings = await prisma.$queryRaw<[{ exists: boolean }]>(Prisma.sql`
+    SELECT EXISTS(SELECT 1 FROM violations v WHERE v.embedding IS NOT NULL ${workspaceFilter} ${scanFilter}) AS "exists"
+  `);
+  if (!hasEmbeddings[0]?.exists) return [];
 
   // 1. Embed the search query
   const result = await embed({
@@ -209,18 +207,14 @@ export async function searchViolations(
     metadata: { feature: "violation-search" },
   });
 
-  if (!result || result.embeddings.length === 0) return [];
+  if (!result || !result.embeddings[0]?.length || !result.embeddings[0].every(Number.isFinite)) throw new Error("Search embedding unavailable");
 
   const queryVector = `[${result.embeddings[0].join(",")}]`;
 
   // 2. Find nearest violations using cosine distance
   // pgvector's <=> operator returns cosine distance (0 = identical, 2 = opposite).
   // We convert to similarity: 1 - distance.
-  const scanFilter = options?.scanId
-    ? Prisma.sql`AND v."scanId" = ${options.scanId}`
-    : Prisma.sql``;
-
-  const results = await prisma.$queryRaw<ViolationSearchResult[]>`
+  const results = await prisma.$queryRaw<ViolationSearchResult[]>(Prisma.sql`
     SELECT * FROM (
       SELECT
         v.id,
@@ -233,12 +227,12 @@ export async function searchViolations(
         1 - (v.embedding <=> ${queryVector}::vector) AS similarity
       FROM violations v
       WHERE v.embedding IS NOT NULL
-        ${scanFilter}
+        ${workspaceFilter} ${scanFilter}
       ORDER BY v.embedding <=> ${queryVector}::vector
       LIMIT ${limit}
     ) sub
     WHERE sub.similarity >= ${minSimilarity}
-  `;
+  `);
 
   return results;
 }
