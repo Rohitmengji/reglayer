@@ -78,7 +78,7 @@ function AgentsPageInner() {
     }
     setRun({ running: true, slug, result: null });
     try {
-      const res = await fetch("/api/agents/run", {
+      const res = await fetch("/api/ai/agents/run", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ agentSlug: slug, task: taskInput.trim() }),
