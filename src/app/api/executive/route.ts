@@ -16,11 +16,16 @@ export async function GET() {
 
   try {
     // guard already resolved user + workspace — no duplicate queries
-    const { userId, workspaceId, isMasterAdmin } = guard;
+    const { userId, workspaceId } = guard;
 
-    const scopeFilter = isMasterAdmin && workspaceId
+    // Scope to the selected authorized workspace for every user — matching the
+    // collaborative dashboard/history behavior — so a shared workspace reports the
+    // same portfolio for all its members. Only fall back to creator-owned,
+    // workspace-less scans when no workspace is resolved (e.g. a master admin with
+    // no membership); never mix in another workspace's scans via the user id.
+    const scopeFilter = workspaceId
       ? { workspaceId }
-      : { userId };
+      : { userId, workspaceId: null };
 
     // 12-week window for the trend chart + bounded site rankings.
     const now = new Date();

@@ -12,7 +12,7 @@ import { Suspense, lazy } from "react";
 import { useSearchParams } from "next/navigation";
 import { useI18n } from "@/components/i18n-provider";
 import { AppShell } from "@/components/layout/app-shell";
-import { TabNav, type Tab } from "@/components/ui/tab-nav";
+import { TabNav, resolveActiveTab, type Tab } from "@/components/ui/tab-nav";
 import { EmbeddedProvider } from "@/components/layout/embedded-context";
 import { FeatureGate } from "@/components/ui/feature-gate";
 import { Wand2, DollarSign, Route, Activity, Component, Clock } from "lucide-react";
@@ -27,7 +27,6 @@ const SchedulesPage = lazy(() => import("@/app/automation/schedules-page"));
 function AutomationContent() {
   const { t } = useI18n();
   const searchParams = useSearchParams();
-  const activeTab = searchParams.get("tab") || "remediation";
 
   // Built inside the component so labels go through t() (a module-level array
   // can't translate).
@@ -39,6 +38,7 @@ function AutomationContent() {
     { id: "design-system", label: t("automation.tabDesignSystem"), icon: Component },
     { id: "schedules", label: t("automation.tabSchedules"), icon: Clock },
   ];
+  const activeTab = resolveActiveTab(tabs, searchParams.get("tab"));
 
   return (
     <AppShell>

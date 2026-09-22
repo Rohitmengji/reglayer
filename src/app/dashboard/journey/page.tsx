@@ -127,7 +127,7 @@ function JourneyPageInner() {
           <p className="text-muted-foreground">
             {t("journey.subtitleFull")}
           </p>
-          <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+          <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
             {t("journey.requiresPlan")}
           </p>
         </div>

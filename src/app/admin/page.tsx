@@ -89,6 +89,7 @@ export default function AdminPage() {
   const router = useRouter();
   const [data, setData] = useState<AdminData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [expandedWorkspace, setExpandedWorkspace] = useState<string | null>(null);
   const [changingPlan, setChangingPlan] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
@@ -128,21 +129,26 @@ export default function AdminPage() {
   }, []);
 
   async function fetchData() {
-    const res = await fetch("/api/admin");
-    if (res.status === 403) {
-      router.push("/dashboard");
-      return;
-    }
-    if (res.ok) {
+    setLoadError(false);
+    try {
+      const res = await fetch("/api/admin");
+      if (res.status === 403) {
+        router.push("/dashboard");
+        return;
+      }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setData(await res.json());
+      // Pending access requests are secondary — a failure here must not blank the panel.
+      const reqRes = await fetch("/api/access-request");
+      if (reqRes.ok) {
+        const reqData = await reqRes.json();
+        setPendingRequests(reqData.requests || []);
+      }
+    } catch {
+      setLoadError(true);
+    } finally {
+      setLoading(false);
     }
-    // Fetch pending access requests
-    const reqRes = await fetch("/api/access-request");
-    if (reqRes.ok) {
-      const reqData = await reqRes.json();
-      setPendingRequests(reqData.requests || []);
-    }
-    setLoading(false);
   }
 
   async function handleChangePlan(workspaceId: string, plan: string) {
@@ -349,11 +355,30 @@ export default function AdminPage() {
     setActionLoading(false);
   }
 
-  if (loading || !data) {
+  if (loading) {
     return (
       <AppShell>
         <div className="flex-1 flex items-center justify-center">
           <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full" />
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (!data) {
+    return (
+      <AppShell>
+        <div className="flex-1 flex flex-col items-center justify-center text-center py-20 gap-3">
+          <Shield className="h-10 w-10 text-amber-500" />
+          <h2 className="text-lg font-semibold">Couldn&apos;t load the admin panel</h2>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400 max-w-sm">
+            {loadError
+              ? "The admin data failed to load. This is a loading problem, not a permissions change — try again in a moment."
+              : "No admin data is available right now."}
+          </p>
+          <Button variant="outline" size="sm" onClick={() => { setLoading(true); fetchData(); }}>
+            Try again
+          </Button>
         </div>
       </AppShell>
     );

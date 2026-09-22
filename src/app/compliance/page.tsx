@@ -11,7 +11,7 @@
 import { Suspense, lazy } from "react";
 import { useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
-import { TabNav, type Tab } from "@/components/ui/tab-nav";
+import { TabNav, resolveActiveTab, type Tab } from "@/components/ui/tab-nav";
 import { EmbeddedProvider } from "@/components/layout/embedded-context";
 import { Grid3X3, FileText, ClipboardCheck, Globe } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
@@ -32,7 +32,7 @@ const tabs: Tab[] = [
 function ComplianceHub() {
   const { t } = useI18n();
   const searchParams = useSearchParams();
-  const activeTab = searchParams.get("tab") || "matrix";
+  const activeTab = resolveActiveTab(tabs, searchParams.get("tab"));
 
   return (
     <AppShell>

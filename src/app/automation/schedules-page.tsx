@@ -13,9 +13,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Clock, Play, Pause } from "lucide-react";
+import { Plus, Trash2, Clock, Play, Pause, Loader2, AlertCircle } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 import { ModernSelect } from "@/components/ui/modern-select";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface Schedule {
   id: string;
@@ -81,6 +82,10 @@ export default function SchedulesPage() {
   const { t } = useI18n();
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [mutatingId, setMutatingId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Schedule | null>(null);
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
   const [cron, setCron] = useState("0 9 * * *");
@@ -117,10 +122,19 @@ export default function SchedulesPage() {
   }, []);
 
   async function fetchSchedules() {
-    const res = await fetch("/api/schedules");
-    if (res.ok) {
+    setLoading(true);
+    setLoadError(false);
+    try {
+      const res = await fetch("/api/schedules");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      setSchedules(data.schedules);
+      setSchedules(Array.isArray(data.schedules) ? data.schedules : []);
+    } catch {
+      // Keep any previously loaded rows on screen and surface an explicit retry —
+      // a failed load must never look like a genuinely empty list.
+      setLoadError(true);
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -153,21 +167,51 @@ export default function SchedulesPage() {
   }
 
   async function handleToggle(id: string) {
-    await fetch("/api/schedules", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "toggle", id }),
-    });
-    fetchSchedules();
+    if (mutatingId) return;
+    setMutatingId(id);
+    setError("");
+    try {
+      const res = await fetch("/api/schedules", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "toggle", id }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || "Couldn't update the schedule. Please try again.");
+        return;
+      }
+      await fetchSchedules();
+    } catch {
+      setError("Couldn't reach the server. Please try again.");
+    } finally {
+      setMutatingId(null);
+    }
   }
 
-  async function handleDelete(id: string) {
-    await fetch("/api/schedules", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "delete", id }),
-    });
-    fetchSchedules();
+  async function confirmDelete() {
+    if (!deleteTarget || mutatingId) return;
+    const id = deleteTarget.id;
+    setMutatingId(id);
+    setError("");
+    try {
+      const res = await fetch("/api/schedules", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "delete", id }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || "Couldn't delete the schedule. Please try again.");
+        return;
+      }
+      await fetchSchedules();
+    } catch {
+      setError("Couldn't reach the server. Please try again.");
+    } finally {
+      setMutatingId(null);
+      setDeleteTarget(null);
+    }
   }
 
   return (
@@ -182,6 +226,13 @@ export default function SchedulesPage() {
           New Schedule
         </Button>
       </div>
+
+      {error && !showForm && (
+        <div className="rounded-lg border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-950/30 px-4 py-3 flex items-center gap-3">
+          <AlertCircle className="h-4 w-4 shrink-0 text-red-600 dark:text-red-400" />
+          <p className="min-w-0 flex-1 text-xs text-red-700 dark:text-red-400">{error}</p>
+        </div>
+      )}
 
       {showForm && (
         <Card>
@@ -271,7 +322,23 @@ export default function SchedulesPage() {
         </Card>
       )}
 
-      {schedules.length === 0 ? (
+      {loading && schedules.length === 0 ? (
+        <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-12 flex flex-col items-center justify-center text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-neutral-400 dark:text-neutral-500" />
+          <p className="mt-4 text-sm text-neutral-500 dark:text-neutral-400">Loading schedules...</p>
+        </div>
+      ) : loadError && schedules.length === 0 ? (
+        <div className="rounded-xl border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/30 p-8 flex flex-col items-center justify-center text-center">
+          <AlertCircle className="h-8 w-8 text-amber-600 dark:text-amber-400" />
+          <p className="mt-3 text-sm font-medium text-amber-800 dark:text-amber-300">Couldn&apos;t load your schedules</p>
+          <p className="mt-1 text-xs text-amber-700/80 dark:text-amber-400/80 max-w-sm">
+            This is a loading problem, not an empty list. Any saved schedules are still there.
+          </p>
+          <Button size="sm" variant="outline" className="mt-4" onClick={() => fetchSchedules()} disabled={loading}>
+            {loading ? "Retrying..." : "Try again"}
+          </Button>
+        </div>
+      ) : schedules.length === 0 ? (
         <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-12 flex flex-col items-center justify-center text-center">
           <Clock className="h-10 w-10 text-neutral-300 dark:text-neutral-600" />
           <p className="mt-4 text-sm font-medium text-neutral-600 dark:text-neutral-300">No schedules configured</p>
@@ -281,6 +348,17 @@ export default function SchedulesPage() {
         </div>
       ) : (
         <div className="space-y-3">
+          {loadError && (
+            <div className="rounded-lg border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/30 px-4 py-3 flex items-center gap-3">
+              <AlertCircle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+              <p className="min-w-0 flex-1 text-xs text-amber-800 dark:text-amber-300">
+                Couldn&apos;t refresh &mdash; showing the last known list, which may be out of date.
+              </p>
+              <Button size="sm" variant="outline" onClick={() => fetchSchedules()} disabled={loading} className="shrink-0">
+                {loading ? "Retrying..." : "Try again"}
+              </Button>
+            </div>
+          )}
           {schedules.map((schedule) => (
             <div key={schedule.id} className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4">
               <div className="flex items-start justify-between">
@@ -333,10 +411,30 @@ export default function SchedulesPage() {
                   )}
                 </div>
                 <div className="flex items-center gap-1 ml-3 shrink-0">
-                  <Button variant="ghost" size="icon" title={schedule.enabled ? "Pause" : "Resume"} onClick={() => handleToggle(schedule.id)}>
-                    {schedule.enabled ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    title={schedule.enabled ? "Pause" : "Resume"}
+                    aria-label={schedule.enabled ? `Pause ${schedule.name}` : `Resume ${schedule.name}`}
+                    disabled={mutatingId !== null}
+                    onClick={() => handleToggle(schedule.id)}
+                  >
+                    {mutatingId === schedule.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : schedule.enabled ? (
+                      <Pause className="h-4 w-4" />
+                    ) : (
+                      <Play className="h-4 w-4" />
+                    )}
                   </Button>
-                  <Button variant="ghost" size="icon" title="Delete" onClick={() => handleDelete(schedule.id)}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    title="Delete"
+                    aria-label={`Delete ${schedule.name}`}
+                    disabled={mutatingId !== null}
+                    onClick={() => setDeleteTarget(schedule)}
+                  >
                     <Trash2 className="h-4 w-4 text-neutral-500 dark:text-neutral-400 hover:text-red-500" />
                   </Button>
                 </div>
@@ -345,6 +443,23 @@ export default function SchedulesPage() {
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title="Delete this schedule?"
+        description={
+          deleteTarget
+            ? `"${deleteTarget.name}" will stop running and be removed. This can't be undone.`
+            : ""
+        }
+        confirmLabel="Delete schedule"
+        variant="danger"
+        busy={mutatingId !== null}
+        onConfirm={confirmDelete}
+        onCancel={() => {
+          if (mutatingId === null) setDeleteTarget(null);
+        }}
+      />
     </div>
   );
 }
