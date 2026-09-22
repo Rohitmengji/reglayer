@@ -28,7 +28,7 @@ export function ConditionNode({ data, selected }: NodeProps) {
           <Icon className="h-3.5 w-3.5" />
         </div>
         <div>
-          <p className="text-[10px] uppercase tracking-wide text-rose-600 dark:text-rose-400 font-medium">
+          <p className="text-[10px] uppercase tracking-wide text-rose-700 dark:text-rose-400 font-medium">
             Condition
           </p>
           <p className="text-xs font-medium text-neutral-800 dark:text-neutral-200">
@@ -43,7 +43,7 @@ export function ConditionNode({ data, selected }: NodeProps) {
       )}
       {/* Two output handles: Yes / No */}
       <div className="flex justify-between mt-2 text-[9px] font-medium">
-        <span className="text-green-600 dark:text-green-400">Yes</span>
+        <span className="text-green-700 dark:text-green-400">Yes</span>
         <span className="text-red-600 dark:text-red-400">No</span>
       </div>
       <Handle
