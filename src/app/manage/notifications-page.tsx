@@ -8,7 +8,7 @@
  * HOW: Fetches /api/notifications preferences, PATCH to update toggles.
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Bell } from "lucide-react";
 
@@ -41,19 +41,32 @@ export default function NotificationsPage() {
     teamActivity: false,
   });
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [testSending, setTestSending] = useState(false);
   const [testResult, setTestResult] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetch("/api/notifications")
-      .then((r) => { if (!r.ok) throw new Error("Failed"); return r.json(); })
-      .then((d) => { if (d.preferences) setPrefs(d.preferences); })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+  const loadPrefs = useCallback(async () => {
+    setLoading(true);
+    setLoadError(false);
+    try {
+      const res = await fetch("/api/notifications");
+      if (!res.ok) throw new Error("Failed");
+      const d = await res.json();
+      if (d.preferences) setPrefs(d.preferences);
+    } catch {
+      // Don't expose the hardcoded defaults as if they were the user's real,
+      // editable settings — a failed load must block edits and offer a retry.
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- async fetch, setState after await
+  useEffect(() => { loadPrefs(); }, [loadPrefs]);
 
   async function handleToggle(key: keyof NotificationPrefs) {
     const previous = prefs;
@@ -91,6 +104,19 @@ export default function NotificationsPage() {
         <CardContent>
           {loading ? (
             <p className="text-sm text-neutral-500 text-center py-8">Loading preferences...</p>
+          ) : loadError ? (
+            <div className="text-center py-8">
+              <p className="text-sm font-medium text-neutral-700 dark:text-neutral-200">Couldn&apos;t load your notification preferences</p>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1 max-w-sm mx-auto">
+                Editing is disabled until they load, so you don&apos;t accidentally change a setting you can&apos;t see. This is a loading problem, not your saved choices.
+              </p>
+              <button
+                onClick={loadPrefs}
+                className="mt-4 rounded-lg border border-neutral-300 dark:border-neutral-700 px-3 py-1.5 text-xs font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800"
+              >
+                Try again
+              </button>
+            </div>
           ) : (
             <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
               {notificationSettings.map((item) => (
@@ -102,6 +128,9 @@ export default function NotificationsPage() {
                   <button
                     onClick={() => handleToggle(item.key)}
                     disabled={saving}
+                    role="switch"
+                    aria-checked={prefs[item.key]}
+                    aria-label={item.label}
                     className={`relative shrink-0 inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                       prefs[item.key] ? "bg-neutral-900 dark:bg-white" : "bg-neutral-200 dark:bg-neutral-700"
                     }`}

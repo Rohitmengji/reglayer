@@ -24,6 +24,7 @@ import {
   Medal,
 } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -67,7 +68,10 @@ export default function CompetitivePage() {
   const [competitors, setCompetitors] = useState<CompetitorEntry[]>([]);
   const [benchmark, setBenchmark] = useState<Benchmark | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [scanning, setScanning] = useState<string | null>(null); // competitorId or "all"
+  const [removing, setRemoving] = useState<string | null>(null);
+  const [removeTarget, setRemoveTarget] = useState<CompetitorEntry | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Add competitor form
@@ -77,21 +81,23 @@ export default function CompetitivePage() {
   const [adding, setAdding] = useState(false);
 
   const loadData = async () => {
+    setLoadError(false);
     try {
       const [compRes, benchRes] = await Promise.all([
         fetch("/api/competitive"),
         fetch("/api/competitive?mode=benchmark"),
       ]);
-      if (compRes.ok) {
-        const data = await compRes.json();
-        setCompetitors(data.competitors || []);
-      }
+      // A non-OK competitor response is a load failure, not an empty roster — keep
+      // any previously loaded competitors and surface an explicit retry instead.
+      if (!compRes.ok) throw new Error(`HTTP ${compRes.status}`);
+      const data = await compRes.json();
+      setCompetitors(data.competitors || []);
       if (benchRes.ok) {
-        const data = await benchRes.json();
-        setBenchmark(data);
+        const benchData = await benchRes.json();
+        setBenchmark(benchData);
       }
     } catch {
-      setError("Failed to load competitive data");
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -126,16 +132,28 @@ export default function CompetitivePage() {
     }
   };
 
-  const handleRemove = async (competitorId: string) => {
+  const confirmRemove = async () => {
+    if (!removeTarget || removing) return;
+    const competitorId = removeTarget.id;
+    setRemoving(competitorId);
+    setError(null);
     try {
-      await fetch("/api/competitive", {
+      const res = await fetch("/api/competitive", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ competitorId }),
       });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || "Failed to remove competitor");
+        return;
+      }
       await loadData();
     } catch {
       setError("Failed to remove competitor");
+    } finally {
+      setRemoving(null);
+      setRemoveTarget(null);
     }
   };
 
@@ -212,6 +230,21 @@ export default function CompetitivePage() {
           <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded-lg text-sm">
             <AlertCircle className="h-4 w-4 shrink-0" />
             {error}
+          </div>
+        )}
+
+        {loadError && competitors.length > 0 && (
+          <div className="flex items-center justify-between gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-300 rounded-lg text-sm">
+            <span className="flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              Couldn&apos;t refresh &mdash; showing the last known data, which may be out of date.
+            </span>
+            <button
+              onClick={loadData}
+              className="shrink-0 px-3 py-1 rounded-md bg-white dark:bg-neutral-800 border border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300 font-medium hover:bg-amber-100 dark:hover:bg-amber-900/40"
+            >
+              Try again
+            </button>
           </div>
         )}
 
@@ -336,17 +369,35 @@ export default function CompetitivePage() {
                   key={c.id}
                   competitor={c}
                   scanning={scanning === c.id}
+                  removing={removing === c.id}
                   onScan={() => handleScan(c.id)}
-                  onRemove={() => handleRemove(c.id)}
-                  disabled={scanning !== null}
+                  onRemove={() => setRemoveTarget(c)}
+                  disabled={scanning !== null || removing !== null}
                 />
               ))}
             </div>
           </div>
         )}
 
+        {/* Load Error (no data to fall back on) */}
+        {loadError && competitors.length === 0 && (
+          <div className="text-center py-16 border border-dashed border-amber-300 dark:border-amber-800 rounded-xl">
+            <AlertCircle className="h-12 w-12 text-amber-500 mx-auto mb-4" />
+            <h3 className="text-lg font-medium mb-2">Couldn&apos;t load competitive data</h3>
+            <p className="text-neutral-500 dark:text-neutral-400 mb-4 max-w-md mx-auto">
+              This is a loading problem, not an empty list. Any competitors you&apos;ve added are still tracked.
+            </p>
+            <button
+              onClick={loadData}
+              className="px-4 py-2 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-lg hover:opacity-90 text-sm font-medium"
+            >
+              Try again
+            </button>
+          </div>
+        )}
+
         {/* Empty State */}
-        {competitors.length === 0 && !showAdd && (
+        {competitors.length === 0 && !showAdd && !loadError && (
           <div className="text-center py-16 border border-dashed border-neutral-300 dark:border-neutral-700 rounded-xl">
             <Trophy className="h-12 w-12 text-neutral-300 dark:text-neutral-600 mx-auto mb-4" />
             <h3 className="text-lg font-medium mb-2">No competitors tracked yet</h3>
@@ -361,6 +412,23 @@ export default function CompetitivePage() {
             </button>
           </div>
         )}
+
+        <ConfirmDialog
+          open={removeTarget !== null}
+          title="Remove this competitor?"
+          description={
+            removeTarget
+              ? `${removeTarget.name || removeTarget.url} and its tracked history will be removed from your benchmark. This can't be undone.`
+              : ""
+          }
+          confirmLabel="Remove competitor"
+          variant="danger"
+          busy={removing !== null}
+          onConfirm={confirmRemove}
+          onCancel={() => {
+            if (removing === null) setRemoveTarget(null);
+          }}
+        />
       </div>
     </AppShell>
   );
@@ -427,12 +495,14 @@ function TrendIndicator({ value }: { value: number }) {
 function CompetitorCard({
   competitor,
   scanning,
+  removing,
   onScan,
   onRemove,
   disabled,
 }: {
   competitor: CompetitorEntry;
   scanning: boolean;
+  removing: boolean;
   onScan: () => void;
   onRemove: () => void;
   disabled: boolean;
@@ -461,10 +531,12 @@ function CompetitorCard({
           </button>
           <button
             onClick={onRemove}
+            disabled={disabled || removing}
             title="Remove competitor"
-            className="p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-neutral-500 hover:text-red-600"
+            aria-label={`Remove ${competitor.name || competitor.url}`}
+            className="p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-neutral-500 hover:text-red-600 disabled:opacity-50"
           >
-            <Trash2 className="h-4 w-4" />
+            {removing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
           </button>
         </div>
       </div>

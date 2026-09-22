@@ -128,6 +128,8 @@ const IMPACT_STYLES: Record<string, string> = {
 export default function RadarPage() {
   const [data, setData] = useState<RadarData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [geo, setGeo] = useState("GLOBAL");
   const [industry, setIndustry] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -136,23 +138,24 @@ export default function RadarPage() {
     let cancelled = false;
     async function loadData() {
       setLoading(true);
+      setLoadError(false);
       try {
         const params = new URLSearchParams({ geos: geo });
         if (industry) params.set("industry", industry);
         const res = await fetch(`/api/regulations/radar?${params}`);
-        if (!cancelled && res.ok) {
-          const result = await res.json();
-          setData(result);
-        }
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const result = await res.json();
+        if (!cancelled) setData(result);
       } catch {
-        // Silently handle errors
+        // A failed load must surface an explicit retry, not a blank body.
+        if (!cancelled) setLoadError(true);
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
     loadData();
     return () => { cancelled = true; };
-  }, [geo, industry]);
+  }, [geo, industry, reloadKey]);
 
   return (
     <AppShell>
@@ -174,6 +177,7 @@ export default function RadarPage() {
             <select
               value={geo}
               onChange={(e) => setGeo(e.target.value)}
+              aria-label="Filter regulations by region"
               className="px-3 py-2 border border-neutral-200 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-900 text-sm"
             >
               {GEO_OPTIONS.map((o) => (
@@ -183,6 +187,7 @@ export default function RadarPage() {
             <select
               value={industry}
               onChange={(e) => setIndustry(e.target.value)}
+              aria-label="Filter regulations by industry"
               className="px-3 py-2 border border-neutral-200 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-900 text-sm"
             >
               {INDUSTRY_OPTIONS.map((o) => (
@@ -249,6 +254,20 @@ export default function RadarPage() {
               </div>
             )}
           </>
+        ) : loadError ? (
+          <div className="text-center py-16 border border-dashed border-amber-300 dark:border-amber-800 rounded-xl">
+            <AlertTriangle className="h-10 w-10 text-amber-500 mx-auto mb-3" />
+            <h3 className="text-lg font-medium mb-1">Couldn&apos;t load regulatory radar</h3>
+            <p className="text-neutral-500 dark:text-neutral-400 mb-4 max-w-md mx-auto">
+              This is a loading problem, not a compliance verdict. Try again or adjust the filters above.
+            </p>
+            <button
+              onClick={() => setReloadKey((k) => k + 1)}
+              className="px-4 py-2 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-lg hover:opacity-90 text-sm font-medium"
+            >
+              Try again
+            </button>
+          </div>
         ) : null}
       </div>
     </AppShell>

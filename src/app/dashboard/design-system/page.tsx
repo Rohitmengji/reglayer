@@ -209,7 +209,7 @@ export default function DesignSystemPage() {
         <p className="text-muted-foreground">
           Scan Storybook to find accessibility issues at the component level. Fix once, fix everywhere.
         </p>
-        <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+        <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
           Requires Pro or Enterprise plan. Free tier shows a demo report only.
         </p>
       </div>
