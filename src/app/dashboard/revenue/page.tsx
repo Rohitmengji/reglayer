@@ -86,7 +86,7 @@ function RevenueImpactPageInner() {
           <p className="text-muted-foreground">
             {t("revenue.subtitle")}
           </p>
-          <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+          <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
             {t("revenue.disclaimer")}
           </p>
         </div>
@@ -96,8 +96,9 @@ function RevenueImpactPageInner() {
           <CardContent className="pt-6">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
-                <label className="text-sm font-medium block mb-1">{t("revenue.monthlyVisitors")}</label>
+                <label htmlFor="revenue-visitors" className="text-sm font-medium block mb-1">{t("revenue.monthlyVisitors")}</label>
                 <input
+                  id="revenue-visitors"
                   type="number"
                   value={visitors}
                   onChange={(e) => setVisitors(e.target.value)}
@@ -105,8 +106,9 @@ function RevenueImpactPageInner() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium block mb-1">{t("revenue.avgOrderValue")}</label>
+                <label htmlFor="revenue-aov" className="text-sm font-medium block mb-1">{t("revenue.avgOrderValue")}</label>
                 <input
+                  id="revenue-aov"
                   type="number"
                   value={aov}
                   onChange={(e) => setAov(e.target.value)}
@@ -114,8 +116,9 @@ function RevenueImpactPageInner() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium block mb-1">{t("revenue.conversionRate")}</label>
+                <label htmlFor="revenue-conv-rate" className="text-sm font-medium block mb-1">{t("revenue.conversionRate")}</label>
                 <input
+                  id="revenue-conv-rate"
                   type="number"
                   value={convRate}
                   onChange={(e) => setConvRate(e.target.value)}
@@ -219,7 +222,7 @@ function RevenueImpactPageInner() {
                     <Shield className="h-5 w-5" />
                     <h3 className="font-semibold">{t("revenue.legalRisk")}</h3>
                   </div>
-                  <p className="text-[11px] text-amber-600 dark:text-amber-400 mb-3">{t("revenue.legalDisclaimer")}</p>
+                  <p className="text-[11px] text-amber-700 dark:text-amber-400 mb-3">{t("revenue.legalDisclaimer")}</p>
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <span>{t("revenue.riskLevel")}</span>

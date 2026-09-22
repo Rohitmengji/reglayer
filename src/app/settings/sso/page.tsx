@@ -54,10 +54,14 @@ function SsoSettingsInner() {
   useEffect(() => {
     let cancelled = false;
     fetch("/api/sso/connections")
-      .then((res) => {
+      .then(async (res) => {
         if (res.status === 403) throw new Error("forbidden");
-        if (res.status === 503) throw new Error("not_provisioned");
-        if (!res.ok) throw new Error("error");
+        if (!res.ok) {
+          // Only an explicit reason is the stable "not provisioned" state; any
+          // other failure — including a transient 503 — is a retryable error.
+          const body = await res.json().catch(() => ({}));
+          throw new Error(res.status === 503 && body?.reason === "not_provisioned" ? "not_provisioned" : "error");
+        }
         return res.json();
       })
       .then((data) => {

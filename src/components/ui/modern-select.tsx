@@ -169,7 +169,7 @@ export function ModernSelect({
       >
         <span
           id={valueId}
-          className={cn("truncate", activeOption ? "font-medium text-neutral-900 dark:text-white" : "text-neutral-400")}
+          className={cn("truncate", activeOption ? "font-medium text-neutral-900 dark:text-white" : "text-neutral-500 dark:text-neutral-400")}
         >
           {activeOption?.label ?? placeholder}
         </span>

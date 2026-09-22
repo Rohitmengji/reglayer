@@ -84,6 +84,7 @@ export default function RumPage() {
   const [error, setError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const [copied, setCopied] = useState(false);
+  const [copyFailed, setCopyFailed] = useState(false);
 
   useEffect(() => {
     fetch(`/api/rum/events?period=${period}`)
@@ -99,11 +100,21 @@ export default function RumPage() {
     setReloadKey((k) => k + 1);
   }
 
-  function copySnippet() {
-    const snippet = `<script src="${data?.snippet || `${window.location.origin}/api/rum/snippet?key=YOUR_SITE_KEY`}" async></script>`;
-    navigator.clipboard.writeText(snippet);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const appOrigin = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== "undefined" ? window.location.origin : "");
+  // One canonical snippet shared by the visible code and the Copy button, using an
+  // absolute URL so pasting either points at RegLayer, not the visitor's own origin.
+  const embedSnippet = `<script src="${data?.snippet || `${appOrigin}/api/rum/snippet?key=YOUR_SITE_KEY`}" async></script>`;
+
+  async function copySnippet() {
+    try {
+      await navigator.clipboard.writeText(embedSnippet);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Never claim a successful copy the browser refused; prompt manual select.
+      setCopyFailed(true);
+      setTimeout(() => setCopyFailed(false), 3000);
+    }
   }
 
   const agg = data?.aggregation;
@@ -129,11 +140,11 @@ export default function RumPage() {
           </div>
           <Button variant="outline" size="sm" onClick={copySnippet}>
             {copied ? <Check className="h-3 w-3 mr-1" /> : <Copy className="h-3 w-3 mr-1" />}
-            {copied ? "Copied!" : "Copy"}
+            {copied ? "Copied!" : copyFailed ? "Copy failed — select manually" : "Copy"}
           </Button>
         </div>
         <code className="text-xs bg-muted p-2 rounded block overflow-x-auto">
-          {`<script src="${data?.snippet || "/api/rum/snippet?key=YOUR_SITE_KEY"}" async></script>`}
+          {embedSnippet}
         </code>
         <p className="text-xs text-muted-foreground mt-2">
           Add this to your site&apos;s &lt;head&gt;. The ~3KB script detects focus traps, keyboard failures, missing labels, and more.

@@ -235,7 +235,7 @@ export function ScanForm({ onScanComplete }: ScanFormProps) {
         ) : !canRunScans && (
           <p role="status" className="text-sm text-neutral-700 dark:text-neutral-200">Your role in this workspace does not allow new scans. Ask a workspace owner or administrator for scanning access.</p>
         )}
-        <form onSubmit={handleSubmit} className="flex gap-3">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3 min-[371px]:flex-row">
           <Input
             id="scan-url"
             type="text"
@@ -244,10 +244,10 @@ export function ScanForm({ onScanComplete }: ScanFormProps) {
             onChange={(e) => setUrl(e.target.value)}
             required
             disabled={isScanning || !canRunScans}
-            className="flex-1"
+            className="w-full min-[371px]:flex-1"
             aria-label="Website URL to scan for accessibility compliance"
           />
-          <Button type="submit" disabled={isScanning || !canRunScans || !url}>
+          <Button type="submit" disabled={isScanning || !canRunScans || !url} className="w-full min-[371px]:w-auto">
             {isScanning ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -162,29 +162,29 @@ function AgentBuilderInner() {
     <AppShell>
       <div className="max-w-5xl mx-auto space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3 min-w-0">
             <Link href="/agents">
               <Button variant="ghost" size="sm">
                 <ArrowLeft className="h-4 w-4 mr-1" /> Agents
               </Button>
             </Link>
-            <div className="flex items-center gap-2">
-              <div className="p-2 rounded-lg bg-violet-100 dark:bg-violet-900/30">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="p-2 rounded-lg bg-violet-100 dark:bg-violet-900/30 shrink-0">
                 <Bot className="h-5 w-5 text-violet-600 dark:text-violet-400" />
               </div>
-              <div>
-                <h1 className="text-xl font-bold tracking-tight">Agent Builder</h1>
-                <p className="text-xs text-muted-foreground">Create a custom AI agent for your workspace</p>
+              <div className="min-w-0">
+                <h1 className="text-xl font-bold tracking-tight truncate">Agent Builder</h1>
+                <p className="text-xs text-muted-foreground truncate">Create a custom AI agent for your workspace</p>
               </div>
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={handleTest} disabled={testing}>
+          <div className="flex gap-2 shrink-0">
+            <Button variant="outline" size="sm" onClick={handleTest} disabled={testing} className="flex-1 sm:flex-none">
               {testing ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Play className="h-3.5 w-3.5 mr-1" />}
               Test
             </Button>
-            <Button size="sm" onClick={handleSave} disabled={saving}>
+            <Button size="sm" onClick={handleSave} disabled={saving} className="flex-1 sm:flex-none">
               {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Save className="h-3.5 w-3.5 mr-1" />}
               Save Agent
             </Button>
@@ -204,16 +204,18 @@ function AgentBuilderInner() {
               <CardContent className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">Agent Name</label>
+                    <label htmlFor="agent-name" className="text-xs text-muted-foreground mb-1 block">Agent Name</label>
                     <Input
+                      id="agent-name"
                       value={config.name}
                       onChange={(e) => updateConfig({ name: e.target.value })}
                       placeholder="e.g., Compliance Auditor"
                     />
                   </div>
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">Category</label>
+                    <label htmlFor="agent-category" className="text-xs text-muted-foreground mb-1 block">Category</label>
                     <select
+                      id="agent-category"
                       value={config.category}
                       onChange={(e) => updateConfig({ category: e.target.value })}
                       className="w-full h-9 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-3 text-sm"
@@ -225,8 +227,9 @@ function AgentBuilderInner() {
                   </div>
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">Description</label>
+                  <label htmlFor="agent-description" className="text-xs text-muted-foreground mb-1 block">Description</label>
                   <Input
+                    id="agent-description"
                     value={config.description}
                     onChange={(e) => updateConfig({ description: e.target.value })}
                     placeholder="Brief description of what this agent does"
@@ -343,16 +346,18 @@ function AgentBuilderInner() {
                 <div className="pt-3 space-y-3 border-t border-neutral-200 dark:border-neutral-700 mt-3">
                   <div>
                     <div className="flex justify-between mb-1">
-                      <label className="text-[10px] text-muted-foreground">Temperature</label>
+                      <label htmlFor="agent-temperature" className="text-[10px] text-muted-foreground">Temperature</label>
                       <span className="text-[10px] font-mono">{config.temperature}</span>
                     </div>
                     <input
+                      id="agent-temperature"
                       type="range"
                       min="0"
                       max="1"
                       step="0.1"
                       value={config.temperature}
                       onChange={(e) => updateConfig({ temperature: parseFloat(e.target.value) })}
+                      aria-valuetext={`${config.temperature} of 1`}
                       className="w-full h-1.5 accent-accent"
                     />
                     <div className="flex justify-between text-[9px] text-muted-foreground">
@@ -361,8 +366,9 @@ function AgentBuilderInner() {
                     </div>
                   </div>
                   <div>
-                    <label className="text-[10px] text-muted-foreground mb-1 block">Max Tokens</label>
+                    <label htmlFor="agent-max-tokens" className="text-[10px] text-muted-foreground mb-1 block">Max Tokens</label>
                     <Input
+                      id="agent-max-tokens"
                       type="number"
                       value={config.maxTokens}
                       onChange={(e) => updateConfig({ maxTokens: parseInt(e.target.value) || 2048 })}

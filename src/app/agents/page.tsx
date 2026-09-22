@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
   Bot, Shield, Scale, Code, FileText, Search, Play,
-  Loader2, Sparkles, ChevronRight, Clock,
+  Loader2, Sparkles, ChevronRight, Clock, AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { FeatureGate } from "@/components/ui/feature-gate";
@@ -48,19 +48,24 @@ const CATEGORY_META: Record<string, { icon: typeof Bot; color: string }> = {
 function AgentsPageInner() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [taskInput, setTaskInput] = useState("");
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
   const [run, setRun] = useState<AgentRun>({ running: false, slug: "", result: null });
 
   const fetchAgents = useCallback(async () => {
+    setLoadError(false);
     try {
       const res = await fetch("/api/agents");
-      if (res.ok) {
-        const data = await res.json();
-        setAgents(data.agents ?? []);
-      }
-    } catch { /* silent */ }
-    finally { setLoading(false); }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setAgents(data.agents ?? []);
+    } catch {
+      // A failed catalog load must not masquerade as an empty roster.
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect -- async fetch, setState after await
@@ -160,6 +165,19 @@ function AgentsPageInner() {
           </Card>
         )}
 
+        {/* Stale-data notice when a refresh failed but a cached list remains */}
+        {!loading && loadError && agents.length > 0 && (
+          <div className="flex items-center justify-between gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-300 rounded-lg text-sm">
+            <span className="flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              Couldn&apos;t refresh the agent list &mdash; showing the last known catalog.
+            </span>
+            <Button variant="outline" size="sm" className="shrink-0" onClick={() => { setLoading(true); fetchAgents(); }}>
+              Try again
+            </Button>
+          </div>
+        )}
+
         {/* Agent Grid */}
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -241,14 +259,30 @@ function AgentsPageInner() {
           </div>
         )}
 
+        {/* Load error — distinct from a genuinely empty catalog */}
+        {!loading && loadError && agents.length === 0 && (
+          <Card className="border-dashed border-amber-300 dark:border-amber-800">
+            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+              <AlertCircle className="h-10 w-10 text-amber-500 mb-3" />
+              <h3 className="font-medium">Couldn&apos;t load agents</h3>
+              <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+                This is a loading problem, not an empty list. Try again in a moment.
+              </p>
+              <Button variant="outline" size="sm" className="mt-4" onClick={() => { setLoading(true); fetchAgents(); }}>
+                Try again
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Empty state */}
-        {!loading && agents.length === 0 && (
+        {!loading && !loadError && agents.length === 0 && (
           <Card className="border-dashed">
             <CardContent className="flex flex-col items-center justify-center py-12 text-center">
               <Bot className="h-10 w-10 text-muted-foreground/30 mb-3" />
               <h3 className="font-medium">No agents available</h3>
               <p className="text-sm text-muted-foreground mt-1 max-w-sm">
-                AI agents will appear here once the system agents are seeded.
+                Specialized compliance agents will appear here once they&apos;re enabled for your workspace.
               </p>
             </CardContent>
           </Card>
