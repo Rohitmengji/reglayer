@@ -15,9 +15,9 @@ import { requireWorkspacePermission } from "@/lib/auth/api-guard";
 import { encryptToken } from "@/lib/crypto";
 
 // Only providers the event dispatcher actually delivers to (lib/integrations/dispatcher.ts).
-// linear/gitlab/zapier/email are "coming soon" in the UI and intentionally not
+// linear/gitlab/zapier are "coming soon" in the UI and intentionally not
 // connectable yet — accepting them would store a config that never fires.
-const VALID_PROVIDERS = ["slack", "jira", "github", "teams"];
+const VALID_PROVIDERS = ["slack", "jira", "github", "teams", "email"];
 
 /**
  * GET /api/integrations — List all integrations for the user's workspace
@@ -121,11 +121,37 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Validate SMTP config
-  if (provider === "email" && config) {
-    const { host, port, user: smtpUser } = config as Record<string, unknown>;
-    if (!host || !port || !smtpUser) {
-      return NextResponse.json({ error: "SMTP config requires host, port, and user" }, { status: 400 });
+  // Validate + verify the Email (SMTP) integration. The password arrives as
+  // accessToken so it is encrypted at rest and never stored in plaintext config.
+  if (provider === "email") {
+    const cfg = (config ?? {}) as Record<string, unknown>;
+    const smtpPass = typeof body.accessToken === "string" ? body.accessToken.trim() : "";
+    if (!cfg.host || !cfg.port || !cfg.user || !smtpPass) {
+      return NextResponse.json({ error: "SMTP requires host, port, username, and password." }, { status: 400 });
+    }
+    const recipient = typeof cfg.to === "string" ? cfg.to.trim() : "";
+    // Linear, ReDoS-safe recipient sanity check (avoids a backtracking regex on user input).
+    const at = recipient.indexOf("@");
+    const lastDot = recipient.lastIndexOf(".");
+    const validRecipient =
+      !recipient ||
+      (at > 0 &&
+        at === recipient.lastIndexOf("@") &&
+        lastDot > at + 1 &&
+        lastDot < recipient.length - 1 &&
+        !/\s/.test(recipient));
+    if (!validRecipient) {
+      return NextResponse.json({ error: "Enter a valid recipient email address." }, { status: 400 });
+    }
+    const { verifySmtp } = await import("@/lib/email/service");
+    const verified = await verifySmtp({
+      host: String(cfg.host),
+      port: Number(cfg.port) || 587,
+      user: String(cfg.user),
+      pass: smtpPass,
+    });
+    if (!verified.success) {
+      return NextResponse.json({ error: `SMTP connection failed — ${verified.error ?? "check host, port, and credentials."}` }, { status: 400 });
     }
   }
 

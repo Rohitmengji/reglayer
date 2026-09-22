@@ -125,6 +125,72 @@ export function isEmailConfigured(): boolean {
   return !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
 }
 
+/** SMTP credentials for a workspace's own "Email (SMTP)" integration. */
+export interface SmtpConnection {
+  host: string;
+  port: number;
+  user: string;
+  pass: string;
+}
+
+// Short-lived transporter for a caller-supplied SMTP server. Kept apart from the
+// shared platform transporter so per-workspace credentials never leak into it;
+// tight timeouts stop a slow relay from stalling event dispatch.
+function createSmtpTransport(conn: SmtpConnection): nodemailer.Transporter {
+  const port = Number(conn.port) || 587;
+  return nodemailer.createTransport({
+    host: conn.host,
+    port,
+    secure: port === 465,
+    auth: { user: conn.user, pass: conn.pass },
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 15_000,
+  });
+}
+
+/** Verify SMTP credentials by opening and closing a connection. */
+export async function verifySmtp(conn: SmtpConnection): Promise<{ success: boolean; error?: string }> {
+  if (!conn.host || !conn.user || !conn.pass) {
+    return { success: false, error: "SMTP requires host, username, and password." };
+  }
+  const transport = createSmtpTransport(conn);
+  try {
+    await transport.verify();
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : String(err) };
+  } finally {
+    transport.close();
+  }
+}
+
+/** Send one message through a caller-supplied SMTP server. */
+export async function sendEmailViaSmtp(
+  conn: SmtpConnection,
+  payload: EmailPayload
+): Promise<{ success: boolean; id?: string; error?: string }> {
+  if (!conn.host || !conn.user || !conn.pass) {
+    return { success: false, error: "SMTP requires host, username, and password." };
+  }
+  const transport = createSmtpTransport(conn);
+  try {
+    const info = await transport.sendMail({
+      from: payload.from || conn.user,
+      to: payload.to,
+      subject: payload.subject,
+      html: payload.html,
+      text: payload.text,
+      replyTo: payload.replyTo,
+    });
+    return { success: true, id: info.messageId };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : String(err) };
+  } finally {
+    transport.close();
+  }
+}
+
 /**
  * Send scan complete notification
  */

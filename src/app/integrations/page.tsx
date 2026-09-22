@@ -121,15 +121,15 @@ const integrationDefs: IntegrationDef[] = [
   {
     id: "email",
     name: "Email (SMTP)",
-    description: "Send compliance reports via your own SMTP server.",
+    description: "Send compliance reports through your own SMTP server.",
     icon: "📧",
     category: "Communication",
-    comingSoon: true,
     fields: [
       { key: "host", label: "SMTP Host", placeholder: "smtp.company.com" },
       { key: "port", label: "Port", placeholder: "587" },
       { key: "user", label: "Username", placeholder: "notifications@company.com" },
-      { key: "pass", label: "Password", placeholder: "••••••••", type: "password" },
+      { key: "accessToken", label: "Password", placeholder: "••••••••", type: "password" },
+      { key: "to", label: "Send reports to", placeholder: "team@company.com" },
     ],
   },
 ];

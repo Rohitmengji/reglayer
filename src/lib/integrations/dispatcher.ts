@@ -8,6 +8,14 @@
 
 import { prisma } from "@/lib/database/prisma";
 import { decryptToken } from "@/lib/crypto";
+import {
+  renderEmailLayout,
+  emailParagraph,
+  emailStatTable,
+  emailButton,
+  emailCallout,
+  escapeHtml,
+} from "@/lib/email/layout";
 
 /**
  * Dispatch notification to all connected integrations for a workspace
@@ -51,6 +59,12 @@ export async function dispatchToIntegrations(
           if (accessToken) {
             const ghResult = await createGithubIssue({ ...integration, accessToken }, event, payload);
             results.push({ provider: "github", ...ghResult });
+          }
+          break;
+        case "email":
+          if (integration.config) {
+            const emailResult = await sendEmailNotification({ config: integration.config, accessToken }, event, payload);
+            results.push({ provider: "email", ...emailResult });
           }
           break;
         default:
@@ -306,4 +320,101 @@ async function createGithubIssue(
   }
 
   return { success: true };
+}
+
+/**
+ * Send an event notification through a workspace's own SMTP server.
+ * host/port/user/recipient live in config; the SMTP password is the encrypted
+ * accessToken (already decrypted by the caller).
+ */
+async function sendEmailNotification(
+  integration: { config: unknown; accessToken: string | null },
+  event: string,
+  payload: Record<string, unknown>
+): Promise<{ success: boolean; error?: string }> {
+  const config = integration.config as
+    | { host?: string; port?: string | number; user?: string; to?: string }
+    | null;
+  if (!config?.host || !config?.user) {
+    return { success: false, error: "Email config missing SMTP host or user" };
+  }
+  if (!integration.accessToken) {
+    return { success: false, error: "Email integration missing SMTP password" };
+  }
+
+  const recipient = (typeof config.to === "string" && config.to.trim()) || config.user;
+  const { subject, html, text } = formatEmailMessage(event, payload);
+
+  const { sendEmailViaSmtp } = await import("@/lib/email/service");
+  const result = await sendEmailViaSmtp(
+    { host: config.host, port: Number(config.port) || 587, user: config.user, pass: integration.accessToken },
+    { to: recipient, subject, html, text }
+  );
+  return { success: result.success, error: result.error };
+}
+
+/** Build the branded subject + HTML/text body for an email notification. */
+function formatEmailMessage(
+  event: string,
+  payload: Record<string, unknown>
+): { subject: string; html: string; text: string } {
+  const url = (payload.url as string) || "";
+  const safeUrl = escapeHtml(url) || "your site";
+  const score = Number(payload.score ?? 0);
+  const violations = Number(payload.violations ?? 0);
+  const critical = Number(payload.critical ?? 0);
+  const reportUrl = (payload.reportUrl as string) || "";
+  const scoreColor = score >= 90 ? "#166534" : score >= 70 ? "#92400e" : "#991b1b";
+
+  switch (event) {
+    case "scan.completed": {
+      const contentHtml =
+        emailParagraph(`Your latest RegLayer accessibility scan for <strong>${safeUrl}</strong> has finished.`) +
+        emailStatTable([
+          { label: "URL", value: safeUrl },
+          { label: "Score", value: `${score}%`, valueColor: scoreColor },
+          { label: "Violations", value: String(violations) },
+          { label: "Critical", value: String(critical), valueColor: critical > 0 ? "#991b1b" : "#166534" },
+        ]) +
+        (reportUrl ? emailButton(reportUrl, "View full report") : "");
+      return {
+        subject: `Scan complete — ${url || "your site"} scored ${score}%`,
+        html: renderEmailLayout({ preheader: `${url} scored ${score}%`, title: "Accessibility scan complete", contentHtml }),
+        text: `Scan complete for ${url}\nScore: ${score}%\nViolations: ${violations} (critical: ${critical})${reportUrl ? `\nReport: ${reportUrl}` : ""}`,
+      };
+    }
+    case "scan.failed": {
+      const errText = escapeHtml((payload.error as string) || "Unknown error");
+      const contentHtml =
+        emailParagraph(`The RegLayer accessibility scan for <strong>${safeUrl}</strong> could not complete.`) +
+        emailCallout(`<strong>Error:</strong> ${errText}`, "danger");
+      return {
+        subject: `Scan failed — ${url || "your site"}`,
+        html: renderEmailLayout({ preheader: `Scan failed for ${url}`, title: "Accessibility scan failed", contentHtml }),
+        text: `Scan failed for ${url}\nError: ${(payload.error as string) || "Unknown error"}`,
+      };
+    }
+    case "compliance.dropped": {
+      const prev = Number(payload.previousScore ?? 0);
+      const curr = Number(payload.currentScore ?? 0);
+      const contentHtml =
+        emailParagraph(`Compliance for <strong>${safeUrl}</strong> has dropped.`) +
+        emailCallout(`Score fell from <strong>${prev}%</strong> to <strong>${curr}%</strong>.`, "warning") +
+        (reportUrl ? emailButton(reportUrl, "Review report") : "");
+      return {
+        subject: `Compliance dropped — ${url || "your site"} (${prev}% → ${curr}%)`,
+        html: renderEmailLayout({ preheader: `${url} dropped to ${curr}%`, title: "Compliance score dropped", contentHtml }),
+        text: `Compliance dropped for ${url}\n${prev}% -> ${curr}%${reportUrl ? `\nReport: ${reportUrl}` : ""}`,
+      };
+    }
+    default: {
+      const subject = `RegLayer — ${event}`;
+      const contentHtml = emailParagraph(`Event <strong>${escapeHtml(event)}</strong> for <strong>${safeUrl}</strong>.`);
+      return {
+        subject,
+        html: renderEmailLayout({ preheader: subject, title: "RegLayer notification", contentHtml }),
+        text: `${subject}${url ? ` — ${url}` : ""}`,
+      };
+    }
+  }
 }
