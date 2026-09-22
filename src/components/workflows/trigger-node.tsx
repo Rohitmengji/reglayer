@@ -27,7 +27,7 @@ export function TriggerNode({ data, selected }: NodeProps) {
           <Icon className="h-3.5 w-3.5" />
         </div>
         <div>
-          <p className="text-[10px] uppercase tracking-wide text-emerald-600 dark:text-emerald-400 font-medium">
+          <p className="text-[10px] uppercase tracking-wide text-emerald-700 dark:text-emerald-400 font-medium">
             Trigger
           </p>
           <p className="text-xs font-medium text-neutral-800 dark:text-neutral-200">

@@ -282,7 +282,7 @@ function IntegrationsPageInner() {
                                     <h3 className="font-semibold text-neutral-900 dark:text-white">{def.name}</h3>
                                     {isActive && <CheckCircle2 className="h-4 w-4 text-green-600" />}
                                     {def.comingSoon && (
-                                      <span className="rounded-full bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5 text-[10px] font-medium text-neutral-500 dark:text-neutral-400">
+                                      <span className="rounded-full bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5 text-[10px] font-medium text-neutral-600 dark:text-neutral-400">
                                         Coming soon
                                       </span>
                                     )}
