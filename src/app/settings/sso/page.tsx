@@ -121,6 +121,9 @@ function SsoSettingsInner() {
       resetForm();
       setShowAdd(false);
       reload();
+    } catch {
+      // Network/unexpected failure — resolve the loading toast instead of leaving it spinning.
+      toast.error(t("sso.toastCreateFailed"), { id: toastId });
     } finally {
       setCreating(false);
     }

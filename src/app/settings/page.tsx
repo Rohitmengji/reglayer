@@ -955,6 +955,14 @@ function ApiKeysTab() {
 }
 /* ─────────────── Integrations Tab ─────────────── */
 function IntegrationsTab() {
+  const appOrigin = (process.env.NEXT_PUBLIC_APP_URL || (typeof window !== "undefined" ? window.location.origin : "https://reglayer.vercel.app")).replace(/\/+$/, "");
+  const badgeSnippet = `![Accessibility](${appOrigin}/api/badge?url=YOUR_URL)`;
+  const copySnippet = (text: string) => {
+    void navigator.clipboard?.writeText(text).then(
+      () => toast.success("Copied to clipboard"),
+      () => toast.error("Couldn’t copy"),
+    );
+  };
   return (
     <div className="space-y-6">
       {/* GitHub — configured on the dedicated Integrations page (DB-backed connector) */}
@@ -994,13 +1002,19 @@ function IntegrationsTab() {
           </div>
           <CardDescription>Receive notifications when scans complete or alerts trigger</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
+          <a
+            href="/webhooks"
+            className="inline-flex items-center gap-2 rounded-lg bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-100"
+          >
+            Manage Webhooks
+          </a>
           <div className="rounded-lg bg-neutral-50 dark:bg-neutral-800 p-3 text-xs text-neutral-600 dark:text-neutral-300 space-y-1">
             <p className="font-medium">Webhook Events:</p>
             <p>• <code>scan.completed</code> — fires after every scan</p>
             <p>• <code>alert.triggered</code> — fires when alert condition met</p>
             <p>• <code>score.dropped</code> — fires on regression</p>
-            <p className="mt-2">Configure via API: <code>POST /api/monitors</code></p>
+            <p className="mt-2">Or configure programmatically: <code>POST /api/monitors</code></p>
           </div>
         </CardContent>
       </Card>
@@ -1012,9 +1026,20 @@ function IntegrationsTab() {
           <CardDescription>Show your accessibility score in READMEs</CardDescription>
         </CardHeader>
         <CardContent>
-          <code className="block rounded-lg bg-neutral-50 dark:bg-neutral-800 p-3 text-xs text-neutral-700 dark:text-neutral-200 break-all">
-            ![Accessibility](https://reglayer.vercel.app/api/badge?url=YOUR_URL)
-          </code>
+          <div className="flex items-start gap-2">
+            <code className="block flex-1 rounded-lg bg-neutral-50 dark:bg-neutral-800 p-3 text-xs text-neutral-700 dark:text-neutral-200 break-all">
+              {badgeSnippet}
+            </code>
+            <Button
+              size="sm"
+              variant="outline"
+              className="shrink-0"
+              onClick={() => copySnippet(badgeSnippet)}
+              aria-label="Copy badge markdown"
+            >
+              <Copy className="h-3.5 w-3.5" />
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>

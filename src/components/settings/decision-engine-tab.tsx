@@ -18,7 +18,9 @@ import { Badge } from "@/components/ui/badge";
 import {
   Plus, Trash2, Shield, Code, Palette, Zap, TestTube,
   GitBranch, Settings, Lock, BarChart3, Loader2, Pencil, Check, X,
+  AlertTriangle, RotateCcw,
 } from "lucide-react";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface Decision {
   id: string;
@@ -58,16 +60,25 @@ export function DecisionEngineTab() {
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
+  const [loadError, setLoadError] = useState<"none" | "forbidden" | "error">("none");
+  const [deleteTarget, setDeleteTarget] = useState<Decision | null>(null);
 
   const fetchDecisions = useCallback(async () => {
+    setLoading(true);
     try {
       const res = await fetch("/api/ai/decisions");
       if (res.ok) {
         const data = await res.json();
         setDecisions(data.decisions ?? []);
+        setLoadError("none");
+      } else {
+        setLoadError(res.status === 403 ? "forbidden" : "error");
       }
-    } catch { /* silent */ }
-    finally { setLoading(false); }
+    } catch {
+      setLoadError("error");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect -- async fetch, setState after await
@@ -117,11 +128,16 @@ export function DecisionEngineTab() {
   };
 
   const handleDelete = async (id: string) => {
+    const previous = decisions;
+    setDecisions((prev) => prev.filter((d) => d.id !== id));
     try {
-      await fetch(`/api/ai/decisions?id=${encodeURIComponent(id)}`, { method: "DELETE" });
-      setDecisions((prev) => prev.filter((d) => d.id !== id));
+      const res = await fetch(`/api/ai/decisions?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+      if (!res.ok) throw new Error();
       toast.success("Decision removed");
-    } catch { toast.error("Failed to delete"); }
+    } catch {
+      setDecisions(previous);
+      toast.error("Failed to delete");
+    }
   };
 
   const handleEdit = async (id: string) => {
@@ -159,6 +175,21 @@ export function DecisionEngineTab() {
 
   return (
     <div className="space-y-6">
+      {/* Non-blocking load-failure banner — the management UI below stays usable. */}
+      {loadError !== "none" && (
+        <div className="flex flex-col gap-2 rounded-lg border border-amber-200 dark:border-amber-900/50 bg-amber-50 dark:bg-amber-950/30 px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+          <p className="flex items-center gap-2 text-xs text-amber-800 dark:text-amber-300">
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+            {loadError === "forbidden"
+              ? "You may not have permission to manage decisions — changes might not save."
+              : "Couldn’t load your saved decisions. They may be out of date."}
+          </p>
+          <Button size="sm" variant="outline" className="shrink-0 self-start sm:self-auto" onClick={fetchDecisions}>
+            <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Retry
+          </Button>
+        </div>
+      )}
+
       {/* Header */}
       <Card>
         <CardHeader>
@@ -315,7 +346,7 @@ export function DecisionEngineTab() {
                                 size="sm"
                                 variant="ghost"
                                 className="h-7 w-7 p-0 hover:text-red-500"
-                                onClick={() => handleDelete(d.id)}
+                                onClick={() => setDeleteTarget(d)}
                               >
                                 <Trash2 className="h-3 w-3" />
                               </Button>
@@ -341,6 +372,16 @@ export function DecisionEngineTab() {
           </CardContent>
         </Card>
       ) : null}
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="Remove decision"
+        description={deleteTarget ? `Remove “${deleteTarget.decision}”? The AI will stop enforcing it.` : ""}
+        confirmLabel="Remove"
+        variant="danger"
+        onConfirm={() => { if (deleteTarget) handleDelete(deleteTarget.id); setDeleteTarget(null); }}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }
