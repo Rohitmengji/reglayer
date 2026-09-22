@@ -40,6 +40,13 @@ export function TabNav({ tabs, basePath, className }: TabNavProps) {
   // Keeps the highlighted tab in sync with the panel the hub renders.
   const activeTab = resolveActiveTab(tabs, searchParams.get("tab"));
 
+  // Preserve any non-tab query params (scan id, filters) when switching tabs.
+  const hrefFor = (id: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", id);
+    return `${basePath}?${params.toString()}`;
+  };
+
   return (
     // Route-based tabs are navigation: a labeled <nav> landmark + aria-current on
     // the active link is the correct, screen-reader-friendly pattern (not an
@@ -56,7 +63,7 @@ export function TabNav({ tabs, basePath, className }: TabNavProps) {
         return (
           <Link
             key={tab.id}
-            href={`${basePath}?tab=${tab.id}`}
+            href={hrefFor(tab.id)}
             scroll={false}
             aria-current={isActive ? "page" : undefined}
             aria-label={tab.label}

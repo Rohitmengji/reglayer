@@ -32,7 +32,7 @@ import { useSession } from "next-auth/react";
 import { clearLocalWorkspaceState, signOutAndClear } from "@/lib/auth/sign-out";
 import { cn } from "@/lib/utils/cn";
 import { useTheme } from "@/components/theme-provider";
-import { Shield, LayoutDashboard, Scan, Grid3X3, Moon, Sun, Crown, ChevronDown, Settings, BarChart3, Zap, Plug, LogOut, AlertTriangle, TrendingUp, Building2, ChevronsUpDown, Check, BookOpen, Search, HelpCircle, Trophy, Radar, Flame, Sparkles, Bot, Workflow, Store, Activity } from "lucide-react";
+import { Shield, LayoutDashboard, Scan, Grid3X3, Moon, Sun, Crown, ChevronDown, Settings, BarChart3, Zap, Plug, LogOut, AlertTriangle, TrendingUp, Building2, ChevronsUpDown, Check, BookOpen, Search, HelpCircle, Trophy, Radar, Flame, Sparkles, Bot, Workflow, Activity } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 import { SUPPORTED_LOCALES, type TranslationKey } from "@/lib/i18n/translations";
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -116,7 +116,6 @@ const navSections: NavSection[] = [
       { name: "Chaos", key: "nav.chaos", href: "/chaos", icon: Flame },
       { name: "Agents", key: "nav.agents", href: "/agents", icon: Bot },
       { name: "Workflows", key: "nav.workflows", href: "/workflows", icon: Workflow },
-      { name: "Marketplace", key: "nav.marketplace", href: "/marketplace", icon: Store },
       { name: "Warranty", key: "nav.warranty", href: "/warranty", icon: Shield },
       { name: "Competitive", key: "nav.competitive", href: "/competitive", icon: Trophy },
       { name: "Radar", key: "nav.radar", href: "/radar", icon: Radar },
@@ -167,15 +166,8 @@ function useClickOutside(ref: React.RefObject<HTMLElement | null>, handler: () =
     const onDown = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) handler();
     };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") handler();
-    };
     document.addEventListener("mousedown", onDown);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDown);
-      document.removeEventListener("keydown", onKey);
-    };
+    return () => document.removeEventListener("mousedown", onDown);
   }, [ref, handler, enabled]);
 }
 
@@ -188,6 +180,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
   const langRef = useRef<HTMLDivElement>(null);
+  const langBtnRef = useRef<HTMLButtonElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const { hasFeature, loading: featuresLoading } = useFeatures();
   const [wsOpen, setWsOpen] = useState(false);
@@ -203,6 +196,19 @@ export function Sidebar({ onNavigate }: SidebarProps) {
   useClickOutside(langRef, closeLang, langOpen);
   useClickOutside(userMenuRef, closeUserMenu, userMenuOpen);
   useClickOutside(wsRef, closeWs, wsOpen);
+
+  // Escape closes the innermost open menu first (language → account → workspace)
+  // and restores focus to the language button, instead of collapsing both at once.
+  useEffect(() => {
+    const onEscape = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      if (langOpen) { setLangOpen(false); langBtnRef.current?.focus(); }
+      else if (userMenuOpen) setUserMenuOpen(false);
+      else if (wsOpen) setWsOpen(false);
+    };
+    document.addEventListener("keydown", onEscape);
+    return () => document.removeEventListener("keydown", onEscape);
+  }, [langOpen, userMenuOpen, wsOpen]);
 
   const identity = session?.user?.email ?? session?.user?.id ?? "";
   const workspaceQuery = useQuery({
@@ -466,6 +472,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                   )}
                   <div className="relative" ref={langRef}>
                     <button
+                      ref={langBtnRef}
                       onClick={() => setLangOpen(!langOpen)}
                       className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-2 py-1 text-[11px] font-medium text-neutral-600 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-all"
                       aria-label="Select language"

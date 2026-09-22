@@ -17,8 +17,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { FeatureGate } from "@/components/ui/feature-gate";
 import {
-  Store, Search, Download, Star, Filter, Workflow,
-  Shield, Bot, FileText, Loader2, TrendingUp,
+  Store, Search, Download, Workflow,
+  Shield, Bot, FileText, Loader2,
   CheckCircle2, Users, Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -266,7 +266,6 @@ function MarketplacePageInner() {
         {/* Stats Bar */}
         <div className="flex items-center gap-4 text-xs text-muted-foreground">
           <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" /> {filteredItems.length} items</span>
-          <span className="flex items-center gap-1"><TrendingUp className="h-3.5 w-3.5" /> {filteredItems.reduce((s, i) => s + i.downloads, 0).toLocaleString()} total installs</span>
           <span className="flex items-center gap-1"><Sparkles className="h-3.5 w-3.5" /> {filteredItems.filter((i) => i.isVerified).length} verified</span>
         </div>
 
@@ -321,15 +320,7 @@ function MarketplacePageInner() {
                       ))}
                     </div>
                     {/* Footer */}
-                    <div className="flex items-center justify-between border-t border-neutral-100 dark:border-neutral-800 pt-3">
-                      <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
-                        <span className="flex items-center gap-0.5">
-                          <Star className="h-3 w-3 fill-amber-400 text-amber-400" /> {item.rating.toFixed(1)}
-                        </span>
-                        <span className="flex items-center gap-0.5">
-                          <Download className="h-3 w-3" /> {item.downloads.toLocaleString()}
-                        </span>
-                      </div>
+                    <div className="flex items-center justify-end border-t border-neutral-100 dark:border-neutral-800 pt-3">
                       <Button
                         size="sm"
                         variant="outline"
