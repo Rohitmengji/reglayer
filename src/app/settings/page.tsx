@@ -410,22 +410,28 @@ function AccountTab() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
+    let cancelled = false;
     fetch("/api/account")
       .then((r) => {
         if (r.status === 401) { signOutAndClear({ callbackUrl: "/auth/login" }); return null; }
-        return r.ok ? r.json() : null;
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
       })
       .then((d) => {
+        if (cancelled) return;
         if (d?.user) {
           setProfile(d.user);
           setName(d.user.name || "");
           setEmail(d.user.email || "");
         }
       })
-      .catch(() => {});
-  }, []);
+      .catch(() => { if (!cancelled) setLoadError(true); });
+    return () => { cancelled = true; };
+  }, [reloadKey]);
 
   async function handleProfileUpdate(e: React.FormEvent) {
     e.preventDefault();
@@ -497,6 +503,9 @@ function AccountTab() {
     }
   }
 
+  if (loadError) {
+    return <PageError title="Account unavailable" message="We couldn’t load your account details. Please try again." onRetry={() => { setLoadError(false); setReloadKey((k) => k + 1); }} />;
+  }
   if (!profile) {
     return <PageLoading message="Loading your profile..." />;
   }
@@ -831,6 +840,8 @@ function ApiKeysTab() {
   const [keyName, setKeyName] = useState("");
   const [newKey, setNewKey] = useState<string | null>(null);
   const [showKey, setShowKey] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const { t } = useI18n();
 
   useEffect(() => {
@@ -838,36 +849,50 @@ function ApiKeysTab() {
   }, []);
 
   async function fetchKeys() {
-    const res = await fetch("/api/keys");
-    if (res.ok) {
+    setLoadError(false);
+    try {
+      const res = await fetch("/api/keys");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setKeys(data.keys || []);
+    } catch {
+      setLoadError(true);
+    } finally {
+      setLoading(false);
     }
   }
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
-    const res = await fetch("/api/keys", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: keyName }),
-    });
-    if (res.ok) {
+    try {
+      const res = await fetch("/api/keys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: keyName }),
+      });
+      if (!res.ok) throw new Error();
       const data = await res.json();
       setNewKey(data.key);
       setKeyName("");
       setShowCreate(false);
       fetchKeys();
+    } catch {
+      toast.error("Couldn’t create the key. Please try again.");
     }
   }
 
   async function handleRevoke(id: string) {
-    await fetch("/api/keys", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
-    });
-    fetchKeys();
+    try {
+      const res = await fetch("/api/keys", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      if (!res.ok) throw new Error();
+      fetchKeys();
+    } catch {
+      toast.error("Couldn’t revoke the key. Please try again.");
+    }
   }
 
   return (
@@ -924,7 +949,17 @@ function ApiKeysTab() {
         </form>
       )}
 
-      {keys.length === 0 ? (
+      {loading ? (
+        <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-8 text-center">
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">Loading API keys…</p>
+        </div>
+      ) : loadError ? (
+        <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-8 text-center">
+          <AlertTriangle className="h-8 w-8 text-amber-500 mx-auto mb-3" />
+          <p className="text-sm text-neutral-600 dark:text-neutral-300">We couldn’t load your API keys.</p>
+          <Button size="sm" variant="outline" className="mt-3" onClick={fetchKeys}>Try again</Button>
+        </div>
+      ) : keys.length === 0 ? (
         <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-8 text-center">
           <Key className="h-8 w-8 text-neutral-300 mx-auto mb-3" />
           <p className="text-sm text-neutral-500 dark:text-neutral-400">{t("settings.noApiKeys")}</p>
