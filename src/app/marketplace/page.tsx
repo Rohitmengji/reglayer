@@ -409,6 +409,7 @@ function MarketplacePageInner() {
                       <Input id="pub-tags" value={publishForm.tags} onChange={(e) => setPublishForm((f) => ({ ...f, tags: e.target.value }))} placeholder="comma, separated" />
                     </div>
                   </div>
+                  <p className="text-[11px] text-muted-foreground">Published items are visible to everyone and can be installed by any workspace — don&rsquo;t include secrets or internal-only details.</p>
                   <div className="flex justify-end gap-2 pt-1">
                     <Button type="button" variant="outline" size="sm" onClick={() => setShowPublish(false)}>Cancel</Button>
                     <Button type="submit" size="sm" disabled={publishing}>{publishing ? "Publishing…" : "Publish"}</Button>
