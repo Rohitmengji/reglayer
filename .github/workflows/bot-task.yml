@@ -48,7 +48,7 @@ jobs:
           echo "description=$DESC" >> "$GITHUB_OUTPUT"
 
       - name: Comment — AI working
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             await github.rest.issues.createComment({
@@ -83,7 +83,7 @@ jobs:
           echo "$DIFF" > /tmp/diff.txt
 
       - name: Comment — changes ready for approval
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const fs = require('fs');
@@ -121,7 +121,7 @@ jobs:
 
       - name: Comment — agent failed
         if: failure()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const fs = require('fs');
@@ -184,7 +184,7 @@ jobs:
 
       - name: Comment — no changes
         if: steps.changes.outputs.has_changes == 'false'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             await github.rest.issues.createComment({
@@ -196,7 +196,7 @@ jobs:
 
       - name: Comment — running gates
         if: steps.changes.outputs.has_changes == 'true'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             await github.rest.issues.createComment({
@@ -245,7 +245,7 @@ jobs:
 
       - name: Comment — PR created
         if: steps.changes.outputs.has_changes == 'true' && success()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           ISSUE_NUM: ${{ github.event.issue.number }}
         with:
@@ -274,7 +274,7 @@ jobs:
 
       - name: Comment — gates failed
         if: failure()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
