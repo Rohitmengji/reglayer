@@ -52,6 +52,10 @@ interface ScanFormProps {
   onScanComplete?: (result: unknown) => void;
 }
 
+/** Stash a URL under this key and dispatch the event to prefill the scan box. */
+export const PREFILL_URL_KEY = "reglayer_prefill_url";
+export const PREFILL_URL_EVENT = "reglayer-prefill-scan-url";
+
 export function ScanForm({ onScanComplete }: ScanFormProps) {
   const [url, setUrl] = useState("");
   const [lastUrl, setLastUrl] = useState("");
@@ -64,6 +68,7 @@ export function ScanForm({ onScanComplete }: ScanFormProps) {
   const [region, setRegion] = useState("");
   const slowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const urlInputRef = useRef<HTMLInputElement | null>(null);
   const { t } = useI18n();
   const { hasFeature, canRunScans, accessLoading, accessError, retryAccess } = useFeatures();
   const deepScanEnabled = hasFeature("deepScan");
@@ -80,20 +85,22 @@ export function ScanForm({ onScanComplete }: ScanFormProps) {
     };
   }, []);
 
-  // Pick up a URL the user typed in the onboarding flow (the dashboard stashes it
-  // in sessionStorage and fires "onboarding-scan"). Previously this was dropped,
-  // so a new user had to retype the URL — friction at the most important moment.
+  // Pick up a URL another part of the dashboard wants scanned (onboarding, or
+  // "Scan again" on a recent scan). Without this the user retypes a URL the app
+  // already knows — friction at the most important moment, and every day after.
   useEffect(() => {
-    function pickUpOnboardingUrl() {
-      const u = sessionStorage.getItem("reglayer_onboarding_url");
+    function pickUpPrefillUrl() {
+      const u = sessionStorage.getItem(PREFILL_URL_KEY);
       if (u) {
         setUrl(u);
-        sessionStorage.removeItem("reglayer_onboarding_url");
+        sessionStorage.removeItem(PREFILL_URL_KEY);
+        urlInputRef.current?.focus();
+        urlInputRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
       }
     }
-    pickUpOnboardingUrl();
-    window.addEventListener("onboarding-scan", pickUpOnboardingUrl);
-    return () => window.removeEventListener("onboarding-scan", pickUpOnboardingUrl);
+    pickUpPrefillUrl();
+    window.addEventListener(PREFILL_URL_EVENT, pickUpPrefillUrl);
+    return () => window.removeEventListener(PREFILL_URL_EVENT, pickUpPrefillUrl);
   }, []);
 
   function normalizeUrl(input: string): string {
@@ -238,6 +245,7 @@ export function ScanForm({ onScanComplete }: ScanFormProps) {
         <form onSubmit={handleSubmit} className="flex flex-col gap-3 min-[371px]:flex-row">
           <Input
             id="scan-url"
+            ref={urlInputRef}
             type="text"
             placeholder="https://www.google.com"
             value={url}

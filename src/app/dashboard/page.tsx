@@ -31,7 +31,7 @@ import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { useAnimatedNumber } from "@/hooks/use-animated-number";
 import { AppShell } from "@/components/layout/app-shell";
-import { ScanForm } from "@/components/scanner/scan-form";
+import { ScanForm, PREFILL_URL_KEY, PREFILL_URL_EVENT } from "@/components/scanner/scan-form";
 import { ScoreCard } from "@/components/dashboard/score-card";
 import { ViolationCard } from "@/components/scanner/violation-card";
 import { ProactiveSuggestions } from "@/components/ai/ProactiveSuggestions";
@@ -214,9 +214,8 @@ export default function DashboardPage() {
             onComplete={() => setShowOnboarding(false)}
             onStartScan={(url) => {
               setShowOnboarding(false);
-              // Trigger scan form with the URL — set it in sessionStorage for ScanForm to pick up
-              sessionStorage.setItem("reglayer_onboarding_url", url);
-              window.dispatchEvent(new Event("onboarding-scan"));
+              sessionStorage.setItem(PREFILL_URL_KEY, url);
+              window.dispatchEvent(new Event(PREFILL_URL_EVENT));
             }}
           />
         )}
@@ -370,15 +369,14 @@ export default function DashboardPage() {
               <h3 className="text-sm font-semibold text-neutral-700 dark:text-neutral-200 mb-3">{t("dashboard.recentScans")}</h3>
               <div className="space-y-2">
                 {stats.recentScans.slice(0, 5).map((scan) => (
-                  <Link
+                  <div
                     key={scan.id}
-                    href={`/report/${scan.id}`}
-                    className="flex items-center justify-between rounded-lg p-2.5 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 border border-transparent hover:border-indigo-100 dark:hover:border-indigo-900/40 transition-all cursor-pointer"
+                    className="flex items-center justify-between gap-2 rounded-lg p-2.5 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 border border-transparent hover:border-indigo-100 dark:hover:border-indigo-900/40 transition-all"
                   >
-                    <div className="min-w-0 flex-1">
+                    <Link href={`/report/${scan.id}`} className="min-w-0 flex-1">
                       <p className="text-sm text-neutral-800 dark:text-neutral-200 truncate">{scan.url}</p>
                       <p className="text-xs text-neutral-500 dark:text-neutral-400">{new Date(scan.date).toLocaleDateString()}</p>
-                    </div>
+                    </Link>
                     <div className="flex items-center gap-2">
                       {scan.violations > 0 && (
                         <span className="text-xs text-neutral-500 dark:text-neutral-400">{t("dashboard.issues", { count: scan.violations })}</span>
@@ -390,8 +388,19 @@ export default function DashboardPage() {
                       }`}>
                         {scan.score}
                       </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          sessionStorage.setItem(PREFILL_URL_KEY, scan.url);
+                          window.dispatchEvent(new Event(PREFILL_URL_EVENT));
+                        }}
+                        aria-label={`Scan ${scan.url} again`}
+                        className="shrink-0 rounded-md border border-neutral-200 dark:border-neutral-700 px-2 py-1 text-xs font-medium text-neutral-600 dark:text-neutral-300 hover:bg-white dark:hover:bg-neutral-800"
+                      >
+                        Scan again
+                      </button>
                     </div>
-                  </Link>
+                  </div>
                 ))}
               </div>
             </CardContent>
