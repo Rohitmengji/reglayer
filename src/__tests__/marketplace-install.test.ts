@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 const mocks = vi.hoisted(() => ({
   session: vi.fn(),
   permission: vi.fn(),
+  rateLimit: vi.fn(),
   itemFind: vi.fn(),
   itemUpdate: vi.fn(),
   workflowCreate: vi.fn(),
@@ -12,6 +13,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("next-auth", () => ({ getServerSession: mocks.session }));
 vi.mock("@/lib/auth/config", () => ({ authOptions: {} }));
 vi.mock("@/lib/auth/api-guard", () => ({ requireWorkspacePermission: mocks.permission }));
+vi.mock("@/lib/rate-limit-middleware", () => ({ applyRateLimit: mocks.rateLimit }));
 vi.mock("@/lib/database/prisma", () => ({ prisma: {
   marketplaceItem: { findUnique: mocks.itemFind, update: mocks.itemUpdate },
   savedWorkflow: { create: mocks.workflowCreate },
@@ -26,6 +28,7 @@ beforeEach(() => {
   vi.resetAllMocks();
   mocks.session.mockResolvedValue({ user: { email: "admin@example.test" } });
   mocks.permission.mockResolvedValue({ ok: true, ctx: { userId: "user-1", workspaceId: "ws-1", isMasterAdmin: false } });
+  mocks.rateLimit.mockResolvedValue(null);
   mocks.itemUpdate.mockResolvedValue({});
   mocks.workflowCreate.mockResolvedValue({ id: "saved-1" });
   mocks.createBlueprint.mockResolvedValue({ id: "bp-1" });
@@ -74,16 +77,31 @@ describe("Marketplace install", () => {
     expect(mocks.itemUpdate).not.toHaveBeenCalled();
   });
 
-  it("returns 409 when the agent blueprint already exists", async () => {
+  it("returns 409 when the agent slug already exists (P2002)", async () => {
     mocks.itemFind.mockResolvedValue(agentItem);
-    mocks.createBlueprint.mockRejectedValue(new Error("Unique constraint failed"));
+    mocks.createBlueprint.mockRejectedValue({ code: "P2002" });
     expect((await POST(request({ itemId: "ag-1", type: "agent" }))).status).toBe(409);
+    expect(mocks.itemUpdate).not.toHaveBeenCalled();
+  });
+
+  it("returns 409 (not 500) when a workflow name already exists in the workspace", async () => {
+    mocks.itemFind.mockResolvedValue(workflowItem);
+    mocks.workflowCreate.mockRejectedValue({ code: "P2002" });
+    expect((await POST(request({ itemId: "wf-1", type: "workflow" }))).status).toBe(409);
     expect(mocks.itemUpdate).not.toHaveBeenCalled();
   });
 
   it("reports that rule installs are not available yet without inflating downloads", async () => {
     mocks.itemFind.mockResolvedValue({ id: "ru-1", type: "rule", title: "A Rule", description: "desc", category: "Accessibility", definition: {} });
     expect((await POST(request({ itemId: "ru-1", type: "rule" }))).status).toBe(400);
+    expect(mocks.itemUpdate).not.toHaveBeenCalled();
+  });
+
+  it("short-circuits with 429 when rate limited, before any lookup or install", async () => {
+    mocks.rateLimit.mockResolvedValue(NextResponse.json({ error: "Too many requests" }, { status: 429 }));
+    expect((await POST(request({ itemId: "wf-1", type: "workflow" }))).status).toBe(429);
+    expect(mocks.itemFind).not.toHaveBeenCalled();
+    expect(mocks.workflowCreate).not.toHaveBeenCalled();
     expect(mocks.itemUpdate).not.toHaveBeenCalled();
   });
 });

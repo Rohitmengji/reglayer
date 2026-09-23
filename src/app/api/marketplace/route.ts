@@ -10,6 +10,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
 import { requireWorkspacePermission } from "@/lib/auth/api-guard";
+import { applyRateLimit } from "@/lib/rate-limit-middleware";
 import { z } from "zod";
 
 export async function GET(request: NextRequest) {
@@ -23,7 +24,8 @@ export async function GET(request: NextRequest) {
   const type = url.searchParams.get("type") || "";
   const category = url.searchParams.get("category") || "";
   const sort = url.searchParams.get("sort") || "downloads";
-  const limit = Math.min(parseInt(url.searchParams.get("limit") || "30"), 100);
+  const limit = Math.min(Math.max(parseInt(url.searchParams.get("limit") || "30", 10) || 30, 1), 100);
+  const offset = Math.max(parseInt(url.searchParams.get("offset") || "0", 10) || 0, 0);
 
   const where: Record<string, unknown> = {};
   if (type) where.type = type;
@@ -41,27 +43,31 @@ export async function GET(request: NextRequest) {
   else if (sort === "rating") orderBy.rating = "desc";
   else orderBy.createdAt = "desc";
 
-  const items = await prisma.marketplaceItem.findMany({
-    where,
-    orderBy,
-    take: limit,
-    select: {
-      id: true,
-      type: true,
-      title: true,
-      description: true,
-      category: true,
-      author: true,
-      downloads: true,
-      rating: true,
-      ratingCount: true,
-      tags: true,
-      isVerified: true,
-      createdAt: true,
-    },
-  });
+  const [items, total] = await Promise.all([
+    prisma.marketplaceItem.findMany({
+      where,
+      orderBy,
+      skip: offset,
+      take: limit,
+      select: {
+        id: true,
+        type: true,
+        title: true,
+        description: true,
+        category: true,
+        author: true,
+        downloads: true,
+        rating: true,
+        ratingCount: true,
+        tags: true,
+        isVerified: true,
+        createdAt: true,
+      },
+    }),
+    prisma.marketplaceItem.count({ where }),
+  ]);
 
-  return NextResponse.json({ items, total: items.length });
+  return NextResponse.json({ items, total, limit, offset, hasMore: offset + items.length < total });
 }
 
 const publishSchema = z.object({
@@ -85,6 +91,9 @@ export async function POST(request: NextRequest) {
   if (!perm.ctx.workspaceId || !perm.ctx.userId) {
     return NextResponse.json({ error: "Workspace not found" }, { status: 404 });
   }
+
+  const limited = await applyRateLimit(request, "api");
+  if (limited) return limited;
 
   let body: unknown;
   try { body = await request.json(); } catch {

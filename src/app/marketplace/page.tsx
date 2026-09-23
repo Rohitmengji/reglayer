@@ -19,7 +19,7 @@ import { FeatureGate } from "@/components/ui/feature-gate";
 import {
   Store, Search, Download, Workflow,
   Shield, Bot, FileText, Loader2,
-  CheckCircle2, Users, Sparkles, Plus, X,
+  CheckCircle2, Users, Plus, X,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -57,11 +57,17 @@ interface SavedWorkflowSummary { id: string; name: string; }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
+const PAGE_SIZE = 24;
+
 function MarketplacePageInner() {
   const [items, setItems] = useState<MarketplaceItem[]>([]);
+  const [total, setTotal] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
   const [activeType, setActiveType] = useState<string | null>(null);
   const [installing, setInstalling] = useState<string | null>(null);
@@ -71,27 +77,48 @@ function MarketplacePageInner() {
   const [publishForm, setPublishForm] = useState({ workflowId: "", title: "", description: "", category: "Accessibility", tags: "" });
   const [publishing, setPublishing] = useState(false);
 
-  const fetchItems = useCallback(async () => {
-    setLoading(true);
+  // Debounce the search box so we query once the user pauses, not per keystroke.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  // Close the Publish dialog on Escape for keyboard users.
+  useEffect(() => {
+    if (!showPublish) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setShowPublish(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [showPublish]);
+
+  const fetchPage = useCallback(async (offset: number, replace: boolean) => {
+    if (replace) setLoading(true); else setLoadingMore(true);
     try {
       const params = new URLSearchParams();
-      if (search) params.set("q", search);
+      if (debouncedSearch) params.set("q", debouncedSearch);
       if (activeCategory !== "All") params.set("category", activeCategory);
       if (activeType) params.set("type", activeType);
+      params.set("limit", String(PAGE_SIZE));
+      if (offset) params.set("offset", String(offset));
 
       const res = await fetch(`/api/marketplace?${params.toString()}`);
       if (!res.ok) throw new Error("load failed");
       const data = await res.json();
-      setItems(Array.isArray(data.items) ? data.items : []);
+      const next: MarketplaceItem[] = Array.isArray(data.items) ? data.items : [];
+      setItems((prev) => (replace ? next : [...prev, ...next]));
+      setTotal(typeof data.total === "number" ? data.total : next.length);
+      setHasMore(Boolean(data.hasMore));
       setLoadError(false);
     } catch {
-      setItems([]);
+      if (replace) setItems([]);
       setLoadError(true);
-    } finally { setLoading(false); }
-  }, [search, activeCategory, activeType]);
+    } finally {
+      if (replace) setLoading(false); else setLoadingMore(false);
+    }
+  }, [debouncedSearch, activeCategory, activeType]);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect -- async fetch, setState after await
-  useEffect(() => { fetchItems(); }, [fetchItems]);
+  useEffect(() => { fetchPage(0, true); }, [fetchPage]);
 
   const openPublish = async () => {
     setShowPublish(true);
@@ -129,7 +156,7 @@ function MarketplacePageInner() {
       toast.success("Published to the marketplace");
       setShowPublish(false);
       setPublishForm({ workflowId: "", title: "", description: "", category: "Accessibility", tags: "" });
-      fetchItems();
+      fetchPage(0, true);
     } catch { toast.error("Network error"); }
     finally { setPublishing(false); }
   };
@@ -145,7 +172,7 @@ function MarketplacePageInner() {
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
         toast.success(`"${item.title}" installed`);
-        fetchItems();
+        fetchPage(0, true);
       } else {
         toast.error(data.error || "Install failed");
       }
@@ -153,15 +180,7 @@ function MarketplacePageInner() {
     finally { setInstalling(null); }
   };
 
-  const filteredItems = items.filter((item) => {
-    if (activeCategory !== "All" && item.category !== activeCategory) return false;
-    if (activeType && item.type !== activeType) return false;
-    if (search) {
-      const q = search.toLowerCase();
-      return item.title.toLowerCase().includes(q) || item.description.toLowerCase().includes(q) || item.tags.some((t) => t.includes(q));
-    }
-    return true;
-  });
+  const hasActiveFilters = debouncedSearch !== "" || activeCategory !== "All" || activeType !== null;
 
   return (
     <AppShell>
@@ -235,8 +254,7 @@ function MarketplacePageInner() {
 
         {/* Stats Bar */}
         <div className="flex items-center gap-4 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" /> {filteredItems.length} items</span>
-          <span className="flex items-center gap-1"><Sparkles className="h-3.5 w-3.5" /> {filteredItems.filter((i) => i.isVerified).length} verified</span>
+          <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" /> {total} {total === 1 ? "item" : "items"}</span>
         </div>
 
         {/* Items Grid */}
@@ -250,7 +268,15 @@ function MarketplacePageInner() {
               <Store className="h-10 w-10 text-muted-foreground/30 mb-3" />
               <h3 className="font-medium">Couldn’t load the marketplace</h3>
               <p className="text-sm text-muted-foreground mt-1">Please try again.</p>
-              <Button size="sm" variant="outline" className="mt-4" onClick={fetchItems}>Try again</Button>
+              <Button size="sm" variant="outline" className="mt-4" onClick={() => fetchPage(0, true)}>Try again</Button>
+            </CardContent>
+          </Card>
+        ) : items.length === 0 && hasActiveFilters ? (
+          <Card className="border-dashed">
+            <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+              <Store className="h-10 w-10 text-muted-foreground/30 mb-3" />
+              <h3 className="font-medium">No items match your search</h3>
+              <p className="text-sm text-muted-foreground mt-1">Try adjusting your filters or search terms.</p>
             </CardContent>
           </Card>
         ) : items.length === 0 ? (
@@ -262,17 +288,10 @@ function MarketplacePageInner() {
               <Button size="sm" className="mt-4" onClick={openPublish}><Plus className="h-4 w-4 mr-1" /> Publish a workflow</Button>
             </CardContent>
           </Card>
-        ) : filteredItems.length === 0 ? (
-          <Card className="border-dashed">
-            <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-              <Store className="h-10 w-10 text-muted-foreground/30 mb-3" />
-              <h3 className="font-medium">No items match your search</h3>
-              <p className="text-sm text-muted-foreground mt-1">Try adjusting your filters or search terms.</p>
-            </CardContent>
-          </Card>
         ) : (
+          <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredItems.map((item) => {
+            {items.map((item) => {
               const cfg = TYPE_CONFIG[item.type];
               const Icon = cfg.icon;
               const isInstalling = installing === item.id;
@@ -329,6 +348,14 @@ function MarketplacePageInner() {
               );
             })}
           </div>
+          {hasMore && (
+            <div className="flex justify-center pt-4">
+              <Button variant="outline" size="sm" onClick={() => fetchPage(items.length, false)} disabled={loadingMore}>
+                {loadingMore ? <Loader2 className="h-4 w-4 animate-spin" /> : "Load more"}
+              </Button>
+            </div>
+          )}
+          </>
         )}
 
         {showPublish && (
