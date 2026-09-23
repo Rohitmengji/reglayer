@@ -19,7 +19,7 @@ import { FeatureGate } from "@/components/ui/feature-gate";
 import {
   Store, Search, Download, Workflow,
   Shield, Bot, FileText, Loader2,
-  CheckCircle2, Users, Sparkles,
+  CheckCircle2, Users, Sparkles, Plus, X,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -51,102 +51,25 @@ const TYPE_CONFIG = {
 
 const CATEGORIES = ["All", "Accessibility", "Legal", "Reporting", "Monitoring", "Remediation", "Design System"];
 
-const FEATURED_ITEMS: MarketplaceItem[] = [
-  {
-    id: "featured-1",
-    type: "workflow",
-    title: "WCAG 2.2 Full Audit Pipeline",
-    description: "Automated 8-step workflow: crawl → scan → categorize violations → prioritize → generate report → email stakeholders.",
-    category: "Accessibility",
-    author: "RegLayer Team",
-    downloads: 2840,
-    rating: 4.9,
-    ratingCount: 156,
-    tags: ["wcag", "audit", "automated"],
-    isVerified: true,
-    createdAt: "2026-06-15T00:00:00Z",
-  },
-  {
-    id: "featured-2",
-    type: "rule",
-    title: "ADA Title III Compliance Gate",
-    description: "Guard policy that blocks deploys if critical WCAG A violations exist on key user paths.",
-    category: "Legal",
-    author: "ComplianceFirst",
-    downloads: 1520,
-    rating: 4.7,
-    ratingCount: 89,
-    tags: ["ada", "legal", "ci-cd"],
-    isVerified: true,
-    createdAt: "2026-05-20T00:00:00Z",
-  },
-  {
-    id: "featured-3",
-    type: "agent",
-    title: "Remediation Advisor Agent",
-    description: "AI agent that analyzes violations and generates step-by-step code fixes with framework-specific examples.",
-    category: "Remediation",
-    author: "a11y.dev",
-    downloads: 3100,
-    rating: 4.8,
-    ratingCount: 203,
-    tags: ["ai", "fixes", "react", "vue"],
-    isVerified: true,
-    createdAt: "2026-06-01T00:00:00Z",
-  },
-  {
-    id: "featured-4",
-    type: "template",
-    title: "VPAT 2.4 Report Template",
-    description: "Pre-filled VPAT template with all WCAG 2.2 criteria, auto-populated from scan results.",
-    category: "Reporting",
-    author: "AccessibilityPros",
-    downloads: 980,
-    rating: 4.6,
-    ratingCount: 67,
-    tags: ["vpat", "report", "wcag-2.2"],
-    isVerified: false,
-    createdAt: "2026-07-01T00:00:00Z",
-  },
-  {
-    id: "featured-5",
-    type: "workflow",
-    title: "Continuous Monitoring + Slack Alerts",
-    description: "Scheduled scan every 6 hours → diff against baseline → alert in Slack if score drops below threshold.",
-    category: "Monitoring",
-    author: "DevOpsA11y",
-    downloads: 1890,
-    rating: 4.5,
-    ratingCount: 112,
-    tags: ["monitoring", "slack", "alerts"],
-    isVerified: true,
-    createdAt: "2026-06-10T00:00:00Z",
-  },
-  {
-    id: "featured-6",
-    type: "rule",
-    title: "EAA (European Accessibility Act) Checklist",
-    description: "Complete rule set mapping EAA requirements to WCAG criteria with auto-assessment scoring.",
-    category: "Legal",
-    author: "EU-Compliance",
-    downloads: 750,
-    rating: 4.4,
-    ratingCount: 45,
-    tags: ["eaa", "european", "compliance"],
-    isVerified: false,
-    createdAt: "2026-07-05T00:00:00Z",
-  },
-];
+// ── Component ──────────────────────────────────────────────────────
+
+interface SavedWorkflowSummary { id: string; name: string; }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 function MarketplacePageInner() {
-  const [items, setItems] = useState<MarketplaceItem[]>(FEATURED_ITEMS);
-  const [loading, setLoading] = useState(false);
+  const [items, setItems] = useState<MarketplaceItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
   const [activeType, setActiveType] = useState<string | null>(null);
   const [installing, setInstalling] = useState<string | null>(null);
+
+  const [showPublish, setShowPublish] = useState(false);
+  const [savedWorkflows, setSavedWorkflows] = useState<SavedWorkflowSummary[]>([]);
+  const [publishForm, setPublishForm] = useState({ workflowId: "", title: "", description: "", category: "Accessibility", tags: "" });
+  const [publishing, setPublishing] = useState(false);
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
@@ -157,18 +80,59 @@ function MarketplacePageInner() {
       if (activeType) params.set("type", activeType);
 
       const res = await fetch(`/api/marketplace?${params.toString()}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.items?.length > 0) {
-          setItems(data.items);
-        }
-      }
-    } catch { /* Use local featured items as fallback */ }
-    finally { setLoading(false); }
+      if (!res.ok) throw new Error("load failed");
+      const data = await res.json();
+      setItems(Array.isArray(data.items) ? data.items : []);
+      setLoadError(false);
+    } catch {
+      setItems([]);
+      setLoadError(true);
+    } finally { setLoading(false); }
   }, [search, activeCategory, activeType]);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect -- async fetch, setState after await
   useEffect(() => { fetchItems(); }, [fetchItems]);
+
+  const openPublish = async () => {
+    setShowPublish(true);
+    try {
+      const res = await fetch("/api/workflows/builder");
+      if (res.ok) {
+        const data = await res.json();
+        setSavedWorkflows(Array.isArray(data.workflows) ? data.workflows : []);
+      }
+    } catch { /* the form explains when there's nothing to publish */ }
+  };
+
+  const handlePublish = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!publishForm.workflowId || publishForm.title.trim().length < 3 || publishForm.description.trim().length < 10) {
+      toast.error("Pick a workflow and add a title (3+) and description (10+ characters).");
+      return;
+    }
+    setPublishing(true);
+    try {
+      const res = await fetch("/api/marketplace", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "workflow",
+          title: publishForm.title.trim(),
+          description: publishForm.description.trim(),
+          category: publishForm.category,
+          tags: publishForm.tags.split(",").map((t) => t.trim()).filter(Boolean).slice(0, 10),
+          sourceWorkflowId: publishForm.workflowId,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { toast.error(data.error || "Publish failed"); return; }
+      toast.success("Published to the marketplace");
+      setShowPublish(false);
+      setPublishForm({ workflowId: "", title: "", description: "", category: "Accessibility", tags: "" });
+      fetchItems();
+    } catch { toast.error("Network error"); }
+    finally { setPublishing(false); }
+  };
 
   const handleInstall = async (item: MarketplaceItem) => {
     setInstalling(item.id);
@@ -178,10 +142,11 @@ function MarketplacePageInner() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ itemId: item.id, type: item.type }),
       });
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
-        toast.success(`"${item.title}" installed successfully`);
+        toast.success(`"${item.title}" installed`);
+        fetchItems();
       } else {
-        const data = await res.json().catch(() => ({}));
         toast.error(data.error || "Install failed");
       }
     } catch { toast.error("Network error"); }
@@ -202,17 +167,22 @@ function MarketplacePageInner() {
     <AppShell>
       <div className="space-y-6 max-w-6xl mx-auto">
         {/* Header */}
-        <div>
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-violet-100 dark:bg-violet-900/30">
-              <Store className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <div className="p-2 rounded-lg bg-violet-100 dark:bg-violet-900/30">
+                <Store className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+              </div>
+              <h1 className="text-2xl font-bold tracking-tight">Marketplace</h1>
+              <Badge variant="secondary" className="text-[10px]">Community</Badge>
             </div>
-            <h1 className="text-2xl font-bold tracking-tight">Marketplace</h1>
-            <Badge variant="secondary" className="text-[10px]">Community</Badge>
+            <p className="text-sm text-muted-foreground mt-1 ml-11">
+              Discover workflows, rules, agents, and templates built by the community. Install with one click.
+            </p>
           </div>
-          <p className="text-sm text-muted-foreground mt-1 ml-11">
-            Discover workflows, rules, agents, and templates built by the community. Install with one click.
-          </p>
+          <Button size="sm" className="shrink-0 self-start" onClick={openPublish}>
+            <Plus className="h-4 w-4 mr-1" /> Publish
+          </Button>
         </div>
 
         {/* Search & Filters */}
@@ -274,6 +244,24 @@ function MarketplacePageInner() {
           <div className="flex items-center justify-center py-16">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>
+        ) : loadError ? (
+          <Card className="border-dashed">
+            <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+              <Store className="h-10 w-10 text-muted-foreground/30 mb-3" />
+              <h3 className="font-medium">Couldn’t load the marketplace</h3>
+              <p className="text-sm text-muted-foreground mt-1">Please try again.</p>
+              <Button size="sm" variant="outline" className="mt-4" onClick={fetchItems}>Try again</Button>
+            </CardContent>
+          </Card>
+        ) : items.length === 0 ? (
+          <Card className="border-dashed">
+            <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+              <Store className="h-10 w-10 text-muted-foreground/30 mb-3" />
+              <h3 className="font-medium">No items yet</h3>
+              <p className="text-sm text-muted-foreground mt-1 max-w-sm">Publish one of your workflows to share it with your team and the community.</p>
+              <Button size="sm" className="mt-4" onClick={openPublish}><Plus className="h-4 w-4 mr-1" /> Publish a workflow</Button>
+            </CardContent>
+          </Card>
         ) : filteredItems.length === 0 ? (
           <Card className="border-dashed">
             <CardContent className="flex flex-col items-center justify-center py-16 text-center">
@@ -340,6 +328,67 @@ function MarketplacePageInner() {
                 </Card>
               );
             })}
+          </div>
+        )}
+
+        {showPublish && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-label="Publish to marketplace">
+            <div className="w-full max-w-md rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-lg">
+              <div className="flex items-center justify-between border-b border-neutral-100 dark:border-neutral-800 px-4 py-3">
+                <h2 className="text-sm font-semibold">Publish a workflow</h2>
+                <button onClick={() => setShowPublish(false)} className="text-muted-foreground hover:text-foreground" aria-label="Close">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              {savedWorkflows.length === 0 ? (
+                <div className="px-4 py-8 text-center">
+                  <p className="text-sm text-muted-foreground">You don&rsquo;t have any saved workflows to publish yet.</p>
+                  <a href="/workflows/builder" className="mt-3 inline-block text-xs font-medium text-violet-600 dark:text-violet-400 hover:underline">Build one in the Workflow Builder →</a>
+                </div>
+              ) : (
+                <form onSubmit={handlePublish} className="px-4 py-4 space-y-3">
+                  <div>
+                    <label htmlFor="pub-wf" className="text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1 block">Workflow</label>
+                    <select
+                      id="pub-wf"
+                      value={publishForm.workflowId}
+                      onChange={(e) => {
+                        const wf = savedWorkflows.find((w) => w.id === e.target.value);
+                        setPublishForm((f) => ({ ...f, workflowId: e.target.value, title: f.title || wf?.name || "" }));
+                      }}
+                      className="w-full rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-3 py-2 text-sm"
+                    >
+                      <option value="">Select a workflow…</option>
+                      {savedWorkflows.map((w) => (<option key={w.id} value={w.id}>{w.name}</option>))}
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="pub-title" className="text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1 block">Title</label>
+                    <Input id="pub-title" value={publishForm.title} onChange={(e) => setPublishForm((f) => ({ ...f, title: e.target.value }))} placeholder="e.g. Weekly compliance audit" />
+                  </div>
+                  <div>
+                    <label htmlFor="pub-desc" className="text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1 block">Description</label>
+                    <textarea id="pub-desc" value={publishForm.description} onChange={(e) => setPublishForm((f) => ({ ...f, description: e.target.value }))} rows={3} placeholder="What does this workflow do?" className="w-full rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-3 py-2 text-sm resize-y" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label htmlFor="pub-cat" className="text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1 block">Category</label>
+                      <select id="pub-cat" value={publishForm.category} onChange={(e) => setPublishForm((f) => ({ ...f, category: e.target.value }))} className="w-full rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-3 py-2 text-sm">
+                        {CATEGORIES.filter((c) => c !== "All").map((c) => (<option key={c} value={c}>{c}</option>))}
+                      </select>
+                    </div>
+                    <div>
+                      <label htmlFor="pub-tags" className="text-xs font-medium text-neutral-700 dark:text-neutral-300 mb-1 block">Tags</label>
+                      <Input id="pub-tags" value={publishForm.tags} onChange={(e) => setPublishForm((f) => ({ ...f, tags: e.target.value }))} placeholder="comma, separated" />
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2 pt-1">
+                    <Button type="button" variant="outline" size="sm" onClick={() => setShowPublish(false)}>Cancel</Button>
+                    <Button type="submit" size="sm" disabled={publishing}>{publishing ? "Publishing…" : "Publish"}</Button>
+                  </div>
+                </form>
+              )}
+            </div>
           </div>
         )}
       </div>
