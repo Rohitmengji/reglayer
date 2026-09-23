@@ -92,7 +92,13 @@ export async function POST(request: NextRequest) {
     if (!def?.systemPrompt) {
       return NextResponse.json({ error: "This agent is missing its configuration and can't be installed." }, { status: 422 });
     }
-    const slug = `${item.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "agent"}-${Math.random().toString(36).slice(2, 8)}`;
+    // Deterministic per (workspace, item): a re-install or a double-click collides
+    // on the existing unique slug index (P2002 -> 409) instead of silently creating
+    // a duplicate agent. The workspace tag keeps different workspaces independent.
+    const base = item.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "agent";
+    const itemTag = item.id.replace(/[^a-z0-9]/gi, "").slice(-8).toLowerCase();
+    const wsTag = workspaceId.replace(/[^a-z0-9]/gi, "").slice(-8).toLowerCase();
+    const slug = `${base}-${itemTag}-${wsTag}`;
     try {
       const { createBlueprint } = await import("@/lib/ai/marketplace/registry");
       await createBlueprint({
@@ -109,10 +115,10 @@ export async function POST(request: NextRequest) {
         workspaceId,
       });
     } catch (err) {
-      // agent_blueprints.slug is globally unique; with the random suffix a
-      // P2002 here is a rare slug collision the user can simply retry.
+      // Deterministic slug is unique per (workspace, item); a P2002 means this
+      // workspace already installed this agent — a re-install or a double-click.
       if (err && typeof err === "object" && "code" in err && (err as { code?: string }).code === "P2002") {
-        return NextResponse.json({ error: "Couldn't install this agent — please try again." }, { status: 409 });
+        return NextResponse.json({ error: "You've already installed this agent in this workspace." }, { status: 409 });
       }
       throw err;
     }
