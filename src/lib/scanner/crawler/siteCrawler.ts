@@ -37,6 +37,7 @@ import { logger } from "@/lib/telemetry/logger";
 import { jobManager, type JobEvent } from "./job-manager";
 import { computeLitigationSurface, type LitigationSurface } from "@/lib/risk/litigationSurface";
 import { validateScanUrl, resolvesToInternalIp } from "@/lib/validations/ssrf";
+import { normalizeUrl, isSameOrigin, shouldSkipUrl, matchesPatterns } from "./url-utils";
 import type { Browser, BrowserContext, Page } from "playwright-core";
 import type { AuthConfig } from "@/lib/validations/auth";
 import type { ScanOptions } from "@/lib/types";
@@ -192,52 +193,11 @@ interface PagePerformance {
 // URL UTILITIES
 // ══════════════════════════════════════════════════════════════
 
-function normalizeUrl(url: string): string {
-  try {
-    const parsed = new URL(url);
-    parsed.hash = "";
-    parsed.searchParams.delete("_rsc");
-    parsed.searchParams.delete("__nextDataReq");
-    let normalized = parsed.toString();
-    if (normalized.endsWith("/") && parsed.pathname !== "/") {
-      normalized = normalized.slice(0, -1);
-    }
-    return normalized;
-  } catch {
-    return url;
-  }
-}
+// ══════════════════════════════════════════════════════════════
+// URL UTILITIES — see ./url-utils (pure, unit-tested separately)
+// ══════════════════════════════════════════════════════════════
 
-function isSameOrigin(url: string, origin: string): boolean {
-  try { return new URL(url).origin === origin; } catch { return false; }
-}
-
-function matchesPatterns(url: string, include?: string[], exclude?: string[]): boolean {
-  if (exclude?.length) {
-    for (const p of exclude) { if (url.includes(p)) return false; }
-  }
-  if (include?.length) {
-    return include.some((p) => url.includes(p));
-  }
-  return true;
-}
-
-const SKIP_EXTENSIONS = new Set([
-  ".pdf", ".zip", ".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp",
-  ".mp4", ".webm", ".mp3", ".woff", ".woff2", ".ttf", ".eot",
-  ".css", ".js", ".map", ".json", ".xml", ".rss",
-]);
-
-const SKIP_PATHS = ["/api/", "/_next/", "/static/", "/__nextjs", "/favicon"];
-
-function shouldSkipUrl(url: string): boolean {
-  try {
-    const path = new URL(url).pathname.toLowerCase();
-    for (const ext of SKIP_EXTENSIONS) { if (path.endsWith(ext)) return true; }
-    for (const p of SKIP_PATHS) { if (path.includes(p)) return true; }
-  } catch { return true; }
-  return false;
-}
+export { normalizeUrl, isSameOrigin, shouldSkipUrl, matchesPatterns };
 
 // ══════════════════════════════════════════════════════════════
 // SITEMAP DISCOVERY
@@ -668,15 +628,39 @@ async function runCrawl(config: CrawlConfig, lifetime: ReturnType<typeof createB
       // discovered link against the PRE-redirect origin → it finds nothing and
       // the crawl silently returns a misleading 1-page "success".
       if (current.depth === 0) {
+        let landedUrl = "";
+        let landedOrigin: string | null = null;
         try {
-          const landed = new URL(page.url()).origin;
-          if (landed !== origin) {
-            crawlLogger.info("Adopting redirected origin for discovery", { from: origin, to: landed });
-            origin = landed;
-            // Don't re-scan the same content under both origins.
-            visited.add(normalizeUrl(page.url()));
+          landedUrl = page.url();
+          landedOrigin = new URL(landedUrl).origin;
+        } catch { landedOrigin = null; }
+
+        if (landedOrigin && landedOrigin !== origin) {
+          // SSRF: the browser follows redirects itself, so this destination was
+          // never checked — only the seed URL was. Re-validate before adopting
+          // it, otherwise a public seed that redirects to 169.254.169.254 (or
+          // any private host) silently moves the whole crawl inside the network.
+          const ssrfErr =
+            validateScanUrl(landedUrl) ??
+            ((await resolvesToInternalIp(landedUrl))
+              ? "redirect target resolves to an internal address"
+              : null);
+          if (ssrfErr) {
+            // Log origins only — never the full URL, which may carry credentials.
+            crawlLogger.warn("Blocked redirect to internal target", { from: origin, to: landedOrigin });
+            errors.push({
+              url: normalizedUrl,
+              phase: "discovery",
+              error: `Redirect blocked for security: ${ssrfErr}`,
+              timestamp: Date.now(),
+            });
+            break;
           }
-        } catch { /* keep the original origin */ }
+          crawlLogger.info("Adopting redirected origin for discovery", { from: origin, to: landedOrigin });
+          origin = landedOrigin;
+          // Don't re-scan the same content under both origins.
+          visited.add(normalizeUrl(landedUrl));
+        }
       }
 
       // Session health check
