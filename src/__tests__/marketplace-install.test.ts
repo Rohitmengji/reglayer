@@ -70,6 +70,17 @@ describe("Marketplace install", () => {
     expect(mocks.itemUpdate).toHaveBeenCalledTimes(1);
   });
 
+  it("derives a deterministic, workspace-scoped agent slug so re-installs collide instead of duplicating", async () => {
+    mocks.itemFind.mockResolvedValue(agentItem);
+    await POST(request({ itemId: "ag-1", type: "agent" }));
+    await POST(request({ itemId: "ag-1", type: "agent" }));
+    const slug1 = mocks.createBlueprint.mock.calls[0][0].slug;
+    const slug2 = mocks.createBlueprint.mock.calls[1][0].slug;
+    expect(slug1).toBe(slug2); // stable across installs — no random suffix
+    expect(slug1).not.toMatch(/agent-[a-z0-9]{6}$/); // not the old random scheme
+    expect(slug1).toContain("ws-1".replace(/[^a-z0-9]/gi, "")); // scoped to the workspace
+  });
+
   it("rejects an agent with no configuration and does not inflate downloads", async () => {
     mocks.itemFind.mockResolvedValue({ ...agentItem, definition: {} });
     expect((await POST(request({ itemId: "ag-1", type: "agent" }))).status).toBe(422);
