@@ -70,7 +70,8 @@ const publishSchema = z.object({
   description: z.string().min(10).max(2000),
   category: z.string().min(1).max(100),
   tags: z.array(z.string().max(50)).max(10).default([]),
-  definition: z.record(z.string(), z.unknown()), // the actual content
+  definition: z.record(z.string(), z.unknown()).optional(), // the actual content
+  sourceWorkflowId: z.string().optional(), // publish an existing saved workflow by id
 });
 
 export async function POST(request: NextRequest) {
@@ -95,7 +96,25 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: parsed.error.flatten().fieldErrors }, { status: 400 });
   }
 
-  const { type, title, description, category, tags, definition } = parsed.data;
+  const { type, title, description, category, tags, sourceWorkflowId } = parsed.data;
+  let definition = parsed.data.definition;
+
+  // Publishing an existing saved workflow: pull its real definition server-side
+  // (scoped to the caller's workspace) instead of trusting a client-sent blob.
+  if (sourceWorkflowId) {
+    const wf = await prisma.savedWorkflow.findFirst({
+      where: { id: sourceWorkflowId, workspaceId: perm.ctx.workspaceId },
+      select: { definition: true },
+    });
+    if (!wf) {
+      return NextResponse.json({ error: "Workflow not found" }, { status: 404 });
+    }
+    definition = wf.definition as Record<string, unknown>;
+  }
+
+  if (!definition || Object.keys(definition).length === 0) {
+    return NextResponse.json({ error: "Nothing to publish — select a workflow to share." }, { status: 400 });
+  }
 
   const item = await prisma.marketplaceItem.create({
     data: {
