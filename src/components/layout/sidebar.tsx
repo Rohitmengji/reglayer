@@ -32,7 +32,7 @@ import { useSession } from "next-auth/react";
 import { clearLocalWorkspaceState, signOutAndClear } from "@/lib/auth/sign-out";
 import { cn } from "@/lib/utils/cn";
 import { useTheme } from "@/components/theme-provider";
-import { Shield, LayoutDashboard, Scan, Grid3X3, Moon, Sun, Crown, ChevronDown, Settings, BarChart3, Zap, Plug, LogOut, AlertTriangle, TrendingUp, Building2, ChevronsUpDown, Check, BookOpen, Search, HelpCircle, Trophy, Radar, Flame, Sparkles, Bot, Workflow, Activity } from "lucide-react";
+import { Shield, LayoutDashboard, Scan, Grid3X3, Moon, Sun, Crown, ChevronDown, Settings, BarChart3, Zap, Plug, LogOut, AlertTriangle, TrendingUp, Building2, ChevronsUpDown, Check, BookOpen, Search, HelpCircle, Trophy, Radar, Flame, Sparkles, Bot, Workflow, Store, Activity } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 import { SUPPORTED_LOCALES, type TranslationKey } from "@/lib/i18n/translations";
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -116,6 +116,7 @@ const navSections: NavSection[] = [
       { name: "Chaos", key: "nav.chaos", href: "/chaos", icon: Flame },
       { name: "Agents", key: "nav.agents", href: "/agents", icon: Bot },
       { name: "Workflows", key: "nav.workflows", href: "/workflows", icon: Workflow },
+      { name: "Marketplace", key: "nav.marketplace", href: "/marketplace", icon: Store },
       { name: "Warranty", key: "nav.warranty", href: "/warranty", icon: Shield },
       { name: "Competitive", key: "nav.competitive", href: "/competitive", icon: Trophy },
       { name: "Radar", key: "nav.radar", href: "/radar", icon: Radar },
