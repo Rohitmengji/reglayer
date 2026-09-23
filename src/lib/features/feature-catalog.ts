@@ -97,6 +97,13 @@ export const FEATURE_CATALOG: FeatureDefinition[] = [
     plans: ["PRO", "ENTERPRISE"],
   },
   {
+    id: "marketplace",
+    name: "Marketplace",
+    description: "Browse and install community workflows, rules, agents, and templates",
+    category: "automation",
+    plans: ["PRO", "ENTERPRISE"],
+  },
+  {
     id: "timeline",
     name: "AI Timeline",
     description: "Unified chronological feed of every AI action — chat, scans, agents, workflows, decisions",
@@ -244,4 +251,5 @@ export const SIDEBAR_FEATURE_MAP: Record<string, string> = {
   "/agency": "agency",
   "/settings": "settings",
   "/dashboard/timeline": "timeline",
+  "/marketplace": "marketplace",
 };
