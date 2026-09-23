@@ -4,12 +4,14 @@ import { NextRequest, NextResponse } from "next/server";
 const mocks = vi.hoisted(() => ({
   session: vi.fn(),
   permission: vi.fn(),
+  rateLimit: vi.fn(),
   workflowFind: vi.fn(),
   itemCreate: vi.fn(),
 }));
 vi.mock("next-auth", () => ({ getServerSession: mocks.session }));
 vi.mock("@/lib/auth/config", () => ({ authOptions: {} }));
 vi.mock("@/lib/auth/api-guard", () => ({ requireWorkspacePermission: mocks.permission }));
+vi.mock("@/lib/rate-limit-middleware", () => ({ applyRateLimit: mocks.rateLimit }));
 vi.mock("@/lib/database/prisma", () => ({ prisma: {
   savedWorkflow: { findFirst: mocks.workflowFind },
   marketplaceItem: { create: mocks.itemCreate },
@@ -20,6 +22,7 @@ beforeEach(() => {
   vi.resetAllMocks();
   mocks.session.mockResolvedValue({ user: { email: "author@example.test", name: "Author" } });
   mocks.permission.mockResolvedValue({ ok: true, ctx: { userId: "user-1", workspaceId: "ws-1", isMasterAdmin: false } });
+  mocks.rateLimit.mockResolvedValue(null);
   mocks.workflowFind.mockResolvedValue({ definition: { nodes: [{ id: "a" }], edges: [] } });
   mocks.itemCreate.mockResolvedValue({ id: "item-1", title: "My Flow" });
 });
@@ -53,6 +56,13 @@ describe("Marketplace publish", () => {
 
   it("rejects a publish with no definition and no source workflow", async () => {
     expect((await POST(request(base))).status).toBe(400);
+    expect(mocks.itemCreate).not.toHaveBeenCalled();
+  });
+
+  it("short-circuits with 429 when rate limited, before any publish", async () => {
+    mocks.rateLimit.mockResolvedValue(NextResponse.json({ error: "Too many requests" }, { status: 429 }));
+    expect((await POST(request({ ...base, sourceWorkflowId: "wf-9" }))).status).toBe(429);
+    expect(mocks.workflowFind).not.toHaveBeenCalled();
     expect(mocks.itemCreate).not.toHaveBeenCalled();
   });
 });

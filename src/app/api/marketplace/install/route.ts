@@ -9,6 +9,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/config";
 import { prisma } from "@/lib/database/prisma";
 import { requireWorkspacePermission } from "@/lib/auth/api-guard";
+import { applyRateLimit } from "@/lib/rate-limit-middleware";
 import { z } from "zod";
 
 const installSchema = z.object({
@@ -27,6 +28,9 @@ export async function POST(request: NextRequest) {
   if (!perm.ctx.workspaceId) {
     return NextResponse.json({ error: "Workspace not found" }, { status: 404 });
   }
+
+  const limited = await applyRateLimit(request, "api");
+  if (limited) return limited;
 
   let body: unknown;
   try { body = await request.json(); } catch {
@@ -60,18 +64,27 @@ export async function POST(request: NextRequest) {
   // actually succeeds, so a failed or unsupported install never inflates it.
   if (item.type === "workflow") {
     const def = item.definition as { nodes?: unknown[]; edges?: unknown[] };
-    await prisma.savedWorkflow.create({
-      data: {
-        name: item.title,
-        workspaceId,
-        createdBy: userId,
-        definition: JSON.parse(JSON.stringify(item.definition)),
-        nodeCount: Array.isArray(def?.nodes) ? def.nodes.length : 0,
-        edgeCount: Array.isArray(def?.edges) ? def.edges.length : 0,
-        description: item.description,
-        category: item.category,
-      },
-    });
+    try {
+      await prisma.savedWorkflow.create({
+        data: {
+          name: item.title,
+          workspaceId,
+          createdBy: userId,
+          definition: JSON.parse(JSON.stringify(item.definition)),
+          nodeCount: Array.isArray(def?.nodes) ? def.nodes.length : 0,
+          edgeCount: Array.isArray(def?.edges) ? def.edges.length : 0,
+          description: item.description,
+          category: item.category,
+        },
+      });
+    } catch (err) {
+      // savedWorkflow is unique per (workspaceId, name) — a duplicate name is a
+      // user-fixable conflict, not a 500.
+      if (err && typeof err === "object" && "code" in err && (err as { code?: string }).code === "P2002") {
+        return NextResponse.json({ error: `You already have a workflow named “${item.title}”. Rename or remove it first.` }, { status: 409 });
+      }
+      throw err;
+    }
   } else if (item.type === "agent") {
     const def = item.definition as {
       systemPrompt?: string; model?: string; temperature?: number; maxTokens?: number; tools?: string[];
@@ -95,8 +108,13 @@ export async function POST(request: NextRequest) {
         createdBy: userId,
         workspaceId,
       });
-    } catch {
-      return NextResponse.json({ error: "Could not install this agent — it may already exist in your workspace." }, { status: 409 });
+    } catch (err) {
+      // agent_blueprints.slug is globally unique; with the random suffix a
+      // P2002 here is a rare slug collision the user can simply retry.
+      if (err && typeof err === "object" && "code" in err && (err as { code?: string }).code === "P2002") {
+        return NextResponse.json({ error: "Couldn't install this agent — please try again." }, { status: 409 });
+      }
+      throw err;
     }
   } else {
     return NextResponse.json({ error: `Installing “${item.type}” items isn't available yet.` }, { status: 400 });
