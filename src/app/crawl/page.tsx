@@ -1268,6 +1268,13 @@ function AuditResults({ result }: { result: AuditResult }) {
                 <p className="text-sm font-semibold text-neutral-900 dark:text-white">{t("crawl.results.overallScore")}</p>
                 <p className="text-xs text-neutral-500 mt-0.5">{t("crawl.results.scoreSummary", { pages: String(result.pagesScanned), violations: String(result.totalViolations), duration: formatDuration(result.duration) })}</p>
                 <p className="text-xs text-neutral-400 mt-0.5">{t("crawl.results.templateIssuesFound", { count: String(patterns.filter(p => p.isTemplateIssue).length) })}</p>
+                {/* State how the number was derived, and that it is not a conformance claim. */}
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-2 max-w-prose">
+                  {result.outcome === "partial"
+                    ? t("crawl.results.scoreMethodologyPartial", { pages: String(result.pagesScanned) })
+                    : t("crawl.results.scoreMethodology", { pages: String(result.pagesScanned) })}
+                </p>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1 max-w-prose">{t("crawl.results.scoreDisclaimer")}</p>
               </div>
             </div>
             <div className="flex gap-4 sm:ml-auto">
