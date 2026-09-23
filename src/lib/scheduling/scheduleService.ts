@@ -52,6 +52,15 @@ export function calculateNextRun(cron: string, from?: Date): Date | null {
 }
 
 /**
+ * A "spring forward" DST day is only 23 hours, so a perfectly valid daily cron
+ * measures 1380 minutes instead of 1440 on that date. Without slack the plan
+ * check would reject a legitimate daily schedule for anyone in a DST timezone,
+ * twice a year. An hour of slack still sits well above the next real cadence
+ * down (12-hourly = 720), so it cannot be used to sneak a faster schedule.
+ */
+const DST_SLACK_MINUTES = 60;
+
+/**
  * Validate a cron expression against plan limits.
  * Returns null if valid, error message if invalid.
  */
@@ -64,7 +73,7 @@ export function validateCronForPlan(cron: string, plan: string): string | null {
     const second = interval.next().toDate();
     const diffMinutes = (second.getTime() - first.getTime()) / 60000;
 
-    if (diffMinutes < minInterval) {
+    if (diffMinutes < minInterval - DST_SLACK_MINUTES) {
       const readable = minInterval >= 1440
         ? `${minInterval / 1440} day(s)`
         : `${minInterval} minutes`;
