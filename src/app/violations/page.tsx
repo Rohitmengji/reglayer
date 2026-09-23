@@ -71,6 +71,7 @@ function ViolationsPageInner() {
   const scanIdParam = searchParams.get("scanId") ?? "";
 
   const [resolvedScanId, setResolvedScanId] = useState(scanIdParam);
+  const [resolvedScan, setResolvedScan] = useState<{ url?: string; createdAt?: string } | null>(null);
   const [data, setData] = useState<ViolationsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -107,6 +108,7 @@ function ViolationsPageInner() {
         if (disposed) return;
         if (json?.scans?.[0]?.id) {
           setResolvedScanId(json.scans[0].id);
+          setResolvedScan({ url: json.scans[0].url, createdAt: json.scans[0].createdAt });
         } else {
           setNoScans(true);
           setLoading(false);
@@ -277,6 +279,16 @@ function ViolationsPageInner() {
             </p>
           </div>
         </div>
+
+        {/* Scope notice — these counts cover one scan, not the whole workspace. */}
+        {!scanIdParam && effectiveScanId && (
+          <div className="rounded-lg border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/40 px-3 py-2 text-xs text-neutral-600 dark:text-neutral-400">
+            Showing issues from your most recent scan
+            {resolvedScan?.url ? <> of <span className="font-medium text-neutral-800 dark:text-neutral-200">{resolvedScan.url}</span></> : null}
+            {resolvedScan?.createdAt ? <> on {new Date(resolvedScan.createdAt).toLocaleDateString()}</> : null}
+            . Totals below are for this scan only — open a specific scan to review its issues.
+          </div>
+        )}
 
         <div className="flex flex-wrap items-center justify-between gap-3">
           {effectiveScanId && <Link className="text-sm font-medium text-accent underline" href={`/scans/${encodeURIComponent(effectiveScanId)}`}>View scan details</Link>}
