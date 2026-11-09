@@ -158,14 +158,17 @@ export function DemoScan() {
   return (
     <div className="mx-auto mt-10 max-w-xl px-4 sm:px-0" data-tour="scan-input">
       <form onSubmit={handleScan} className="relative">
-        <div className="flex items-center rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-lg overflow-hidden focus-within:border-neutral-400 dark:focus-within:border-neutral-500 transition-colors">
+        <div className="flex items-center rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-lg overflow-hidden focus-within:border-neutral-400 dark:focus-within:border-neutral-500 focus-within:ring-2 focus-within:ring-neutral-400/40 dark:focus-within:ring-neutral-500/40 transition-[color,border-color,box-shadow]">
           <Globe className="h-5 w-5 text-neutral-500 dark:text-neutral-400 ml-3 sm:ml-4 shrink-0" />
           <input
             type="text"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder="Enter website URL..."
-            className="flex-1 min-w-0 px-2 sm:px-3 py-3.5 sm:py-4 text-sm bg-transparent text-neutral-900 dark:text-white placeholder:text-neutral-400 border-none outline-none shadow-none appearance-none"
+            aria-label="Website URL"
+            // The global :focus-visible outline would be clipped by the wrapper's overflow-hidden into
+            // two stray vertical lines; the wrapper's focus-within ring is the focus indicator instead.
+            className="flex-1 min-w-0 px-2 sm:px-3 py-3.5 sm:py-4 text-sm bg-transparent text-neutral-900 dark:text-white placeholder:text-neutral-400 border-none outline-none! shadow-none appearance-none"
             disabled={loading}
           />
           <button
